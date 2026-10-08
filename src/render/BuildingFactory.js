@@ -124,10 +124,10 @@ function buildExterior0(def, uid = 1) {
   if (fl0 > 0.1) lining(g, fl0, lh, (-W / 2 + T + l1) / 2, iz, Math.PI, lm); if (fr0 > 0.1) lining(g, fr0, lh, (r0 + W / 2 - T) / 2, iz, Math.PI, lm);
   // open double doors, hinged at the jambs and swung into the room
   const rustic = RUSTIC.includes(def.wall), dkey = rustic ? 'wall_planks' : (uid % 2 ? 'door_green' : 'door_blue'), dcol = rustic ? 0x7a5230 : (uid % 2 ? 0x4a7a50 : 0x3f6fae);
-  const dmat = texMat(dkey, dcol, 1, 1), lw = dw / 2 - 0.04, hingeZ = fz - T / 2 - 0.05;
-  for (const side of [-1, 1]) {
+  const single = def.w === 1, dmat = texMat(dkey, dcol, 1, 1), lw = single ? dw - 0.08 : dw / 2 - 0.04, hingeZ = fz - T / 2 - 0.05;
+  for (const side of single ? [-1] : [-1, 1]) {
     const geo = new THREE.BoxGeometry(lw, 2.45, 0.06); geo.translate(-side * lw / 2, 1.25, 0);
-    const leaf = new THREE.Mesh(geo, dmat); leaf.position.set(door + side * (dw / 2 - 0.02), 0.15, hingeZ); leaf.rotation.y = -side * 1.25; leaf.castShadow = true; g.add(leaf);
+    const leaf = new THREE.Mesh(geo, dmat); leaf.position.set(door + side * (dw / 2 - 0.02), 0.15, hingeZ); leaf.rotation.y = -side * (single ? 1.5 : 1.25); leaf.castShadow = true; g.add(leaf);
   }
   // sign above the door
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture(def.name) }));
@@ -190,6 +190,8 @@ function buildPark(def, uid) {
     return buildCamp(def, g, roof, cols);
   } else if (def.park === 'well') {
     return buildWell(def, g, roof, cols);
+  } else if (def.park === 'postbox') {
+    return buildPostbox(def, g, roof, cols);
   } else { // ball field
     const dirt = new THREE.Mesh(new THREE.BoxGeometry(W * 0.62, 0.05, W * 0.62), stdMat(0xc79a62)); dirt.rotation.y = Math.PI / 4; dirt.position.set(0, 0.11, 1.0); g.add(dirt);
     const inner = new THREE.Mesh(new THREE.BoxGeometry(W * 0.38, 0.06, W * 0.38), stdMat(0x6aa64f)); inner.rotation.y = Math.PI / 4; inner.position.set(0, 0.12, 1.0); g.add(inner);
@@ -298,6 +300,19 @@ function buildCamp(def, g, roof, cols) {
   cols.push({ cx: 0, cz: 0, sx: 2.4, sz: 2.4 });
   const update = (dt, t) => { const k = 1 + Math.sin(t * 17) * 0.12 + Math.sin(t * 29) * 0.08; f1.scale.set(1 + Math.sin(t * 13) * 0.08, k, 1); f2.scale.set(1, 1 + Math.sin(t * 23 + 1) * 0.2, 1); f3.scale.set(1, 1 + Math.sin(t * 19 + 2) * 0.25, 1); };
   return { group: g, roof, colliders: cols, height: 1.2, update, fire: { x: 0, y: 1.0, z: 0 }, smokeSrc: { x: 0, y: 1.6, z: 0 } };
+}
+/** A red English pillar box on a little paved square, with a flag that pops up when there is post. */
+function buildPostbox(def, g, roof, cols) {
+  g.clear(); const pave = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 3.2), stdMat(0xa29a8a)); pave.position.y = 0.05; pave.receiveShadow = true; g.add(pave);
+  const red = stdMat(0xc0241e, { roughness: 0.55 }), black = stdMat(0x1a1a1a);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 1.35, 12), red); body.position.y = 0.8; body.castShadow = true; g.add(body);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.12, 12), red); cap.position.y = 1.52; g.add(cap);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.46, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), red); dome.position.y = 1.58; dome.castShadow = true; g.add(dome);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.55, 0.14, 12), black); base.position.y = 0.17; g.add(base);
+  box(g, 0.42, 0.06, 0.06, 0x111111, 0, 1.22, 0.42); box(g, 0.3, 0.16, 0.02, 0xf0e6c8, 0, 0.9, 0.45);
+  const flag = new THREE.Group(); flag.position.set(0.5, 1.0, 0); const pole = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.05), stdMat(0x333333)); pole.position.y = 0.3; const f = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.3), stdMat(0xffd23f)); f.position.set(0, 0.55, 0.15); flag.add(pole, f); g.add(flag);
+  flag.userData.keep = true; g.userData.flag = flag;
+  cols.push({ cx: 0, cz: 0, sx: 1.0, sz: 1.0 }); return { group: g, roof, colliders: cols, height: 1.8, flag };
 }
 function buildWell(def, g, roof, cols) {
   g.clear(); const dirt = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.9, 0.1, 10), stdMat(0x8a8272)); dirt.position.y = 0.04; g.add(dirt);

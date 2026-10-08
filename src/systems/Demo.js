@@ -14,7 +14,7 @@ export function generateDemo(g) {
   for (const [id, x, z] of plan) for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [2, 1], [-2, 1], [3, 0], [-3, 0], [0, 2], [0, -2]]) if (place(id, x + dx, z + dz)) break;
   for (const [id, x, z] of [['stockyard', 20, 14], ['surveyor', 24, 14], ['campfire', 18, 17], ['hut', 12, 14]]) if (!B.byDef(id).length) for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [2, 1], [-2, 1], [3, 0], [-3, 0], [0, 2], [0, -2], [4, 2], [-4, 2]]) if (place(id, x + dx, z + dz)) break;
   for (const it of g.tools.items) { g.tools.take(it); g.player.tools.add(it.id); }
-  const zones = [['cottage', 0.28], ['hut', 0.12], ['cabin', 0.12], ['townhouse', 0.14], ['shop', 0.14], ['forager', 0.04], ['fisher', 0.04], ['park', 0.06], ['school', 0.02], ['apartments', 0.04]];
+  const zones = [['cottage', 0.24], ['shack', 0.06], ['hut', 0.1], ['cabin', 0.12], ['townhouse', 0.14], ['shop', 0.14], ['forager', 0.04], ['fisher', 0.04], ['park', 0.06], ['school', 0.02], ['apartments', 0.04]];
   for (let i = 0; i < 900; i++) { const x = 4 + Math.floor(Math.random() * 33), z = 6 + Math.floor(Math.random() * 30); let r = Math.random(), id = 'cottage'; for (const [k, p] of zones) { if ((r -= p) < 0) { id = k; break; } } if (id === 'school' && B.count('school')) id = 'cottage'; place(id, x, z); }
   g.population.simCap = 70; let n = 0; while (g.population.freeBeds() > 0 && g.population.sims.length < 70 && n++ < 90) g.population.arrive();
   g.clock.hour = 10; g.advance(2);

@@ -104,7 +104,7 @@ export class BuildingManager {
     // seats (chairs, sofas, benches) so sims can sit
     b.spots.seat = []; const head = (r) => (b.rot + r) * Math.PI / 2;
     const addSeat = (lx, lz, r, kind) => { const [x, z] = b.toWorld(lx, lz); b.spots.seat.push({ x, z, heading: head(r), kind, taken: null, b }); };
-    const layoutKind = ['house', 'hut', 'cabin', 'tavern', 'apartments'].includes(def.layout) ? 'dining' : (['clinic', 'townhall', 'police'].includes(def.layout) ? 'waiting' : 'desk');
+    const layoutKind = ['house', 'hut', 'shack', 'cabin', 'tavern', 'apartments'].includes(def.layout) ? 'dining' : (['clinic', 'townhall', 'police'].includes(def.layout) ? 'waiting' : 'desk');
     for (const f of L.furniture) {
       const rr = (f.r || 0) * Math.PI / 2, c = Math.round(Math.cos(rr)), sn = Math.round(Math.sin(rr));
       if (f.t === 'chair' || f.t === 'stool') addSeat(f.x, f.z, f.r || 0, f.t === 'stool' && def.layout === 'tavern' ? 'dining' : layoutKind);
@@ -126,7 +126,7 @@ export class BuildingManager {
     if (ext.smokeSrc) b.smoke = { lx: ext.smokeSrc.x, ly: ext.smokeSrc.y, lz: ext.smokeSrc.z };
     if (ext.fire) b.fire = ext.fire;
     if (ext.fieldPlots && this.game.resources) this.game.resources.addFields(b, ext.fieldPlots);
-    if (def.id === 'hut' && !this.game.starterHome && !this.game.flags.noStarter) { this.game.starterHome = b; b.reservedForPlayer = true; if (b.spots.bed[0]) b.spots.bed[0].taken = 'player'; this.game.messages.push('Planning Office', 'This hut is Sam\'s home. Sleep in its bed (E) when you are tired.', 'good'); }
+    if (def.beds && def.cat === 'res' && !this.game.starterHome && !this.game.flags.noStarter) { this.game.starterHome = b; b.reservedForPlayer = true; if (b.spots.bed[0]) b.spots.bed[0].taken = 'player'; this.game.messages.push('Planning Office', 'This is Sam\'s home. Sleep in its bed (E) when you are tired.', 'good'); }
     this.world.events.emit('building:done', b);
   }
 

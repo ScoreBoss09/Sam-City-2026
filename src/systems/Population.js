@@ -75,6 +75,7 @@ export class Population {
     const s = this.makeResident({ role, age: role ? 20 + Math.floor(Math.random() * 38) : null });
     this.assignHome(s); this.assignJob(s, vacancy);
     if (!g.demoMode && this.count() <= 16) g.messages.push('Lift', `${s.name} arrived in Sam City${role ? ' as a ' + ROLES[role].name.toLowerCase() : ''}.`);
+    if (!g.demoMode && Math.random() < 0.4) { const notes = [`Thank you for the bed. It is small but it is mine. I shall work hard.`, `Arrived safe. The Lift was quicker than they said. Is it always this quiet at night?`, `My mother said I would never live in a town with a proper Stockyard. Well!`, `Lovely to be here. Where does the post go after you read it? Just curious.`, `I brought my own kettle. Do pop round.`]; g.mail.send(s.name, 'A note from a newcomer', `Dear Sam,\n\n${notes[Math.floor(Math.random() * notes.length)]}\n\n${s.first}`); }
     return s;
   }
   /** A couple (sometimes with a child) arrives together and shares a home. */

@@ -18,7 +18,7 @@ export function serialize(g) {
     sims: sims.map((s) => ({ name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.look, hunger: s.hunger, orient: s.orient, mood: s.moodBoost, actor: s.actor, talk: s.talkCount, gaveClue: !!s.gaveClue,
       home: s.home ? g.buildings.list.indexOf(s.home) : -1, work: s.workplace ? g.buildings.list.indexOf(s.workplace) : -1, role: s.role, partner: s.partner ? idOf.get(s.partner) : -1, parents: s.parents.map((p) => idOf.get(p)).filter((i) => i !== undefined), coupleDay: s.coupleDay || 0,
       rel: [...s.rel.entries()].map(([id, v]) => { const o = g.population.sims.find((q) => q.id === id); return o && idOf.has(o) ? [idOf.get(o), Math.round(v)] : null; }).filter(Boolean) })),
-    raids: g.raids.serialize(), roadPlans: g.roadPlans.serialize(), toolsTaken: g.tools.takenIds(),
+    raids: g.raids.serialize(), post: g.mail.serialize(), roadPlans: g.roadPlans.serialize(), toolsTaken: g.tools.takenIds(),
     player: { x: g.player.x, z: g.player.z, heading: g.player.heading, yaw: g.player.yaw, energy: g.player.energy, hunger: g.player.hunger, tools: [...g.player.tools], inv: g.player.inv }, piles: g.piles.serialize(),
   };
 }
@@ -46,7 +46,7 @@ export function restore(g, d) {
     if (s.id === 'lift') g.lift = b; if (s.id === 'tunnel') g.tunnel = b; if (s.id === 'surveyor') g.surveyor = b; if (s.starter) { g.starterHome = b; b.reservedForPlayer = true; if (b.spots.bed[0]) b.spots.bed[0].taken = 'player'; }
     made.push(b);
   }
-  delete g.flags.noStarter; g.security.guards = []; g.security.init(); g.raids.reset(); g.raids.load(d.raids);
+  delete g.flags.noStarter; g.security.guards = []; g.security.init(); g.raids.reset(); g.raids.load(d.raids); g.mail.load(d.post);
   g.roadPlans.load(d.roadPlans); g.tools.build(g.tools.x, g.tools.z, d.toolsTaken || []); g.player.tools = new Set((d.player && d.player.tools) || []); if (d.player && d.player.hunger != null) g.player.hunger = d.player.hunger;
   // economy, clock, story
   g.economy.load(d.economy); g.clock.load(d.clock); g.story.load(d.story); Object.assign(g.flags, d.flags);

@@ -31,6 +31,11 @@ function fillWork(def, lay, min) {
 
 const LAYOUTS = {
   none: () => empty(),
+  shack(def) {
+    const l = empty(), D = def.d * TILE;
+    l.furniture.push({ t: 'strawbed', x: -0.85, z: -D / 2 + 1.3, r: 0 }, { t: 'stool', x: 1.0, z: 0.5, r: 3 }, { t: 'chest', x: 1.1, z: -1.15, r: 1 });
+    l.beds.push({ x: -0.85, z: -D / 2 + 1.3, ax: 0.3, az: 0.4 }); l.idle.push({ x: 0.3, z: 0.6 }); return l;
+  },
   hut(def) {
     const l = empty(), W = def.w * TILE, D = def.d * TILE;
     for (let i = 0; i < def.beds; i++) { const x = -1.7 + i * 3.4, z = -D / 2 + 1.5; l.furniture.push({ t: 'strawbed', x, z, r: 0 }); l.beds.push({ x, z, ax: x, az: z + 2.0 }); }

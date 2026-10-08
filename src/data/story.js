@@ -78,7 +78,7 @@ export const OBJECTIVES = [
   obj('plan', '1. Plan your camp (planning view)', [
     step('Click ROADS (left), then drag a dirt path away from the Supply Lift.', (g) => g.roadPlans.count + (g.flags.pathsBuilt || 0) >= 3, (g) => ({ x: g.lift.doorOut.x, z: g.lift.doorOut.z + 6 })),
     step('Click BUILDINGS, the Civic tab, then Stockyard. Click beside your path to order it.', (g) => hasB(g, 'stockyard')),
-    step('Now order a Wooden Hut (BUILDINGS, Homes) beside the path.', (g) => hasB(g, 'hut')),
+    step('Now order a Log Cabin for Sam (BUILDINGS, Homes) beside the path.', (g) => hasB(g, 'shack') || hasB(g, 'hut')),
   ]),
   obj('tools', '2. Become Sam and pick up tools', [
     step('Press TAB to step into Sam\'s shoes.', (g) => g.flags.sawSim),
@@ -94,26 +94,25 @@ export const OBJECTIVES = [
     step('Build the Stockyard: stand by the site and tap E in the green.', (g) => hasB(g, 'stockyard', 'done'), (g) => siteOf(g, 'stockyard')),
   ]),
   obj('hut', '5. A roof for Sam', [
-    step('Bring 8 timber to the Hut site. Chop more, or press E at the Stockyard to pack what the site needs.', (g) => siteFull(g, 'hut'), (g) => (g.player.invTotal() ? siteOf(g, 'hut') : (g.depot ? { x: g.depot.doorOut.x, z: g.depot.doorOut.z } : nearestTree(g)))),
-    step('Build the Hut (tap E in the green). It will be Sam\'s home.', (g) => hasB(g, 'hut', 'done'), (g) => siteOf(g, 'hut')),
+    step('Bring 6 timber to the Log Cabin site. Chop more, or press E at the Stockyard to pack what the site needs.', (g) => siteFull(g, 'shack') || siteFull(g, 'hut'), (g) => (g.player.invTotal() ? (siteOf(g, 'shack') || siteOf(g, 'hut')) : (g.depot ? { x: g.depot.doorOut.x, z: g.depot.doorOut.z } : nearestTree(g)))),
+    step('Build the Log Cabin (tap E in the green). It will be Sam\'s home.', (g) => hasB(g, 'shack', 'done') || hasB(g, 'hut', 'done'), (g) => siteOf(g, 'shack') || siteOf(g, 'hut')),
   ]),
   obj('eat', '6. Eat something', [
     step('Pick up the Basket from the Tool Rack.', (g) => g.player.tools.has('basket'), rackTarget),
     step('Pick berries from a bush (tap E), then press Q to eat.', (g) => (g.flags.ate || 0) >= 1),
   ]),
-  obj('office', '7. The Surveyor\'s Hut', [
-    step('Planning view: BUILDINGS > Civic > Surveyor\'s Hut. Order it beside the path.', (g) => hasB(g, 'surveyor')),
-    step('Supply 8 timber and build it.', (g) => hasB(g, 'surveyor', 'done'), (g) => siteOf(g, 'surveyor') || nearestTree(g)),
-    step('Use the planning terminal inside (E). Permits and trade happen there.', (g) => g.flags.terminalOpened, (g) => { const b = g.buildings.list.find((q) => q.id === 'surveyor' && q.state === 'done'); return b && b.doorOut; }),
+  obj('post', '7. A postbox for letters', [
+    step('Planning view: order a Postbox (BUILDINGS, Civic) beside the path, then build it. It only needs 2 timber.', (g) => hasB(g, 'postbox', 'done'), (g) => siteOf(g, 'postbox') || nearestTree(g)),
+    step('Check the post (E at the red Postbox). Reports and permit forms come by letter.', (g) => g.flags.postRead, (g) => { const b = g.mail.box; return b && { x: b.cx, z: b.cz }; }),
   ]),
   obj('feed', '8. Feed the camp', [
     step('Order a Campfire and a Forager\'s Hut (Food tab) and build them. The forager brings food to the Stockyard.', (g) => g.buildings.count('campfire') && g.buildings.count('forager'), (g) => siteOf(g, 'campfire') || siteOf(g, 'forager')),
   ]),
   obj('settle', '9. Welcome settlers', [
-    step('Newcomers arrive when there is a free bed and 3 food in the Stockyard. Reach 6 residents.', (g) => g.population.count() >= 6),
+    step('Settlers need beds: build more Log Cabins (1 bed) or Wooden Huts (2). They arrive when there is a free bed and 3 food in the Stockyard. Reach 6 residents.', (g) => g.population.count() >= 6),
     step('Sleep through a night in Sam\'s own bed (E, after 20:00 or when tired).', (g) => g.flags.slept),
   ]),
-  obj('yard2', '10. Builders and lumber', [step('Request permits at the terminal for a Lumber Camp and a Builders\' Yard, then build both.', (g) => g.buildings.count('lumbercamp') && g.buildings.count('contractor'), (g) => siteOf(g, 'lumbercamp') || siteOf(g, 'contractor'))]),
+  obj('yard2', '10. Builders and lumber', [step('Post permit forms (Postbox) for a Lumber Camp and a Builders\' Yard, then build both.', (g) => g.buildings.count('lumbercamp') && g.buildings.count('contractor'), (g) => siteOf(g, 'lumbercamp') || siteOf(g, 'contractor'))]),
   obj('hamlet', '11. Grow the hamlet', [step('Reach 15 residents: build Log Cabins, a Quarry and a Farm.', (g) => g.population.count() >= 15 && g.buildings.count('quarry') && g.buildings.count('farm'), (g) => nearestSite(g))]),
   obj('village', '12. A proper village', [step('Raise a Tavern and a Brickworks, then begin on Stone Cottages.', (g) => g.buildings.count('tavern') && g.buildings.count('brickworks') && g.buildings.count('cottage') >= 1, (g) => nearestSite(g))]),
   obj('town', '13. Become a town', [step('Reach 30 residents with a Town Hall and a Schoolhouse.', (g) => g.population.count() >= 30 && g.buildings.count('townhall') && g.buildings.count('school'), (g) => nearestSite(g))]),

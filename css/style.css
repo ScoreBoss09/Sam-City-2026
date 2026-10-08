@@ -117,3 +117,19 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 .stepdots em { margin-left: 6px; font-style: normal; font-size: 10px; color: #8d9bb3; }
 #workgame { top: auto !important; bottom: 28px; }
 #c-pad { margin-top: 6px; background: transparent; border: 1px solid #3a4a66; color: #8d9bb3; font: 11px 'Courier New', monospace; cursor: pointer; padding: 2px 6px; } #c-pad:hover { color: #fff; }
+
+#wg-combo { font: bold 13px 'Courier New', monospace; color: #ff9a3c; text-align: center; height: 16px; margin-top: 3px; text-shadow: 0 0 6px #ff5a00; }
+#workgame[data-heat="2"] { border-color: #ffb03a; } #workgame[data-heat="3"] { border-color: #ff7a2a; box-shadow: 0 0 14px rgba(255,120,40,.6); } #workgame[data-heat="4"] { border-color: #ff4a1a; box-shadow: 0 0 22px rgba(255,80,20,.8); }
+#workgame[data-heat="3"] #wg-perfect, #workgame[data-heat="4"] #wg-perfect { background: #fff07a; box-shadow: 0 0 12px #ffcc00; }
+
+#countdown { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); text-align: center; color: #fff; z-index: 25; pointer-events: none; text-shadow: 3px 3px 0 #000; }
+#countdown div { font: bold 18px 'Courier New', monospace; letter-spacing: 3px; color: #ff6b5a; } #countdown b { font: bold 72px 'Courier New', monospace; display: block; }
+#countdown.tick b { animation: cdpop .5s; } @keyframes cdpop { 0% { transform: scale(1.5); color: #ff4a3a; } 100% { transform: scale(1); } }
+
+#terminal.post .win { background: #efe4c8; color: #2a2116; border-color: #8a6a3a; font-family: Georgia, 'Times New Roman', serif; }
+#terminal.post h2 { color: #8a1f17; } #terminal.post .tabs button { background: #d9c9a2; color: #2a2116; border-color: #8a6a3a; } #terminal.post .tabs button.on { background: #8a1f17; color: #fff; }
+#terminal.post table, #terminal.post td, #terminal.post th { color: #2a2116; border-color: #b9a479; } #terminal.post .note { color: #5a4a32; } #terminal.post button { font-family: Georgia, serif; }
+#terminal .letter { background: #fbf6e8; border: 1px solid #c9b48a; margin: 8px 0; padding: 10px 14px; box-shadow: 2px 2px 0 rgba(0,0,0,.12); color: #2a2116; }
+#terminal .letter.new { border-left: 5px solid #c0241e; } #terminal .letter .lh { display: flex; justify-content: space-between; } #terminal .letter .lh span, #terminal .letter .lf { font-size: 12px; color: #7a6a4a; }
+#terminal .letter .lb { margin-top: 6px; line-height: 1.5; font-size: 14px; } #terminal .letter.report .lb { font-family: 'Courier New', monospace; font-size: 13px; }
+#minimap { bottom: 168px !important; } #messages { bottom: 380px !important; }

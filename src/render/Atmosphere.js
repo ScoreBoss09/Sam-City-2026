@@ -43,14 +43,14 @@ export class Atmosphere {
     const ang = ((h - 6) / 12) * Math.PI, el = Math.max(0.12, Math.sin(ang));
     const dir = new THREE.Vector3(Math.cos(ang) * 0.9, el, 0.45).normalize();
     this.sun.position.set(focus.x + dir.x * 120, dir.y * 120, focus.z + dir.z * 120); this.sun.target.position.set(focus.x, 0, focus.z);
-    this.sun.intensity = lerp(0.65, 2.4, day);
+    const rain = this.rain || 0; this.sun.intensity = lerp(0.65, 2.4, day) * (1 - rain * 0.6);
     this.sun.color.copy(C(0xfff1d6)).lerp(C(0xff9a55), Math.min(1, dusk * 0.8)).lerp(C(0x8fa6ea), this.night);
     this.hemi.intensity = lerp(0.62, 0.8, day); this.hemi.color.copy(C(0xcfe6ff)).lerp(C(0x5a73b8), this.night); this.hemi.groundColor.copy(C(0x55664a)).lerp(C(0x2c3c60), this.night);
-    const sky = C(0x9ec9ee).lerp(C(0xf0a070), Math.min(1, dusk * 0.7)).lerp(C(0x111d40), this.night);
-    this.scene.background.copy(sky); this.scene.fog.color.copy(sky);
+    const sky = C(0x9ec9ee).lerp(C(0xf0a070), Math.min(1, dusk * 0.7)).lerp(C(0x7d8794), rain * 0.75).lerp(C(0x111d40), this.night);
+    this.scene.background.copy(sky); this.scene.fog.color.copy(sky); this.scene.fog.near = lerp(220, 60, rain); this.scene.fog.far = lerp(520, 260, rain);
     setWindowGlow(Math.min(1, this.night + Math.min(0.6, dusk * 0.5)));
     // clouds & their shadows
-    this.cloudTex.offset.x += dt * 0.0025; this.cloudTex.offset.y += dt * 0.0012; this.cloudShadow.material.opacity = 0.2 * day * (1 - this.night);
+    this.cloudTex.offset.x += dt * 0.0025; this.cloudTex.offset.y += dt * 0.0012; this.cloudShadow.material.opacity = (0.2 + rain * 0.25) * day * (1 - this.night);
     const lowView = focus.y !== undefined ? false : true; const size = MAP * TILE;
     for (const sp of this.clouds.children) { sp.userData.a += dt * sp.userData.sp * 0.1; sp.position.x = size / 2 + Math.cos(sp.userData.a) * sp.userData.r; sp.position.z = size / 2 + Math.sin(sp.userData.a) * sp.userData.r; }
     for (const m of this.cloudMats) m.color.copy(C(0xffffff)).lerp(C(0xf0a070), Math.min(1, dusk * 0.6)).lerp(C(0x1a2340), this.night); this.clouds.visible = !this.hideDome;

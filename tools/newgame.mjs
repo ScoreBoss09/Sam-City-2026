@@ -22,11 +22,11 @@ await p.mouse.move(ax, ay); await p.mouse.down(); for (let i = 1; i <= 12; i++) 
 await state('after path drag');
 const placeAt = async (tab, id) => {
   await p.click('button.tool[data-t="build"]'); await p.waitForTimeout(100); if (tab) { await p.click(`button.subtab[data-tab="${tab}"]`); await p.waitForTimeout(100); } await p.click(`button.sub[data-s="${id}"]`); await p.waitForTimeout(100);
-  const spot = await ev(([id, tx, z0]) => { const B = window.__game.buildings; for (let dz = 1; dz < 7; dz++) for (const dx of [-2, 2, -3, 3]) { const r = B.evaluate(id, tx + dx, z0 + dz, 0); if (r.ok) return [r.geo.cx, r.geo.cz, tx + dx, z0 + dz]; } return null; }, [id, tx, z0]);
+  const spot = await ev(([id, tx, z0]) => { const B = window.__game.buildings; for (let dz = 1; dz < 7; dz++) for (const dx of [-1, 1, -2, 2, -3, 3]) { const r = B.evaluate(id, tx + dx, z0 + dz, 0); if (r.ok) return [r.geo.cx, r.geo.cz, tx + dx, z0 + dz]; } return null; }, [id, tx, z0]);
   if (!spot) { console.log('no spot for', id); return; }
   const [sx, sy] = await screen((spot[2] + 0.5) * 4, (spot[3] + 0.5) * 4); await p.mouse.move(sx, sy); await p.waitForTimeout(300); await p.mouse.click(sx, sy); await p.waitForTimeout(200);
 };
-await placeAt('Civic', 'stockyard'); await placeAt('Homes', 'hut');
+await placeAt('Civic', 'stockyard'); await placeAt('Homes', 'shack');
 await state('after ordering');
 await p.screenshot({ path: S + 'ng_1.png' });
 // ---- sim mode: tools
@@ -49,7 +49,7 @@ const haul = async (id) => {
   console.log('  site before build', await ev((id) => { const s = window.__game.buildings.list.find((q) => q.id === id); return JSON.stringify(s.have) + ' ' + s.state; }, id)); await ev((id) => { const g = window.__game, s = g.buildings.list.find((q) => q.id === id); g.player.teleport(s.cx, s.cz); }, id); const t0 = Date.now(); await work(20000, (id) => window.__game.buildings.list.some((q) => q.id === id && q.state === 'done'), id); console.log('  built in', ((Date.now() - t0) / 1000).toFixed(1), 's; stuck?', await ev(() => { const g = window.__game; return g.world.collides(g.player.x, g.player.z, 0.4); }));
 };
 await haul('stockyard'); await state('stockyard');
-await haul('hut'); await state('hut');
+await haul('shack'); await state('cabin');
 // ---- eat: berries
 await ev(() => { const g = window.__game, n = g.resources.nodes.filter((q) => q.kind === 'berry' && q.amount >= 1).sort((a, b) => Math.hypot(a.x - g.player.x, a.z - g.player.z) - Math.hypot(b.x - g.player.x, b.z - g.player.z))[0]; const st = g.resources.standPoint(n, n); g.player.teleport(st.x, st.z); g.player.inv = {}; g.player.hunger = 70; });
 await p.waitForTimeout(150); await work(5000, () => (window.__game.player.inv.food || 0) >= 4); await p.keyboard.press('KeyQ'); await p.waitForTimeout(300);
