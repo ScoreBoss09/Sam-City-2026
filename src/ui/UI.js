@@ -4,6 +4,7 @@ import { fmtMoney } from '../util.js';
 import { MONTHS } from '../core/Clock.js';
 import { TOOLS as TOOL_NAMES, TOOL_ICON, MAT_ICON, BACKPACK } from '../player/Player.js';
 import { Sfx } from '../core/Sfx.js';
+import { CURIOS } from '../systems/Curios.js';
 
 const $ = (id) => document.getElementById(id);
 const TOOLS = [
@@ -21,7 +22,7 @@ export class UI {
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; game.clock.speed = +b.dataset.s; });
-    $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('d-choices').addEventListener('click', (e) => { const b = e.target.closest('.dchoice'); if (b) this.say(b.dataset.topic); }); $('inventory').addEventListener('click', (e) => this.invClick(e));
+    $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('d-choices').addEventListener('click', (e) => { const b = e.target.closest('.dchoice'); if (b) this.say(b.dataset.topic); }); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); });
     game.messages.on('msg', (m) => this.addMessage(m));
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
     $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
@@ -44,7 +45,7 @@ export class UI {
   // ---------- controller ----------
   /** Swap keyboard hints for controller buttons while a pad is in use. */
   keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, 'A').replace(/\bF\b/g, 'X').replace(/\bQ\b/g, 'Y').replace(/\bTAB\b/g, 'START').replace(/\bV\b/g, 'RB').replace(/\bG\b/g, 'B').replace(/\bR\b/g, 'D-pad ↓'); }
-  padScope() { if (!this.game.started) return $('title'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); if (this.invOpen) return $('inventory'); return null; }
+  padScope() { if (!this.game.started) return $('title'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); if (this.invOpen) return $('inventory'); if (this.journalOpen) return $('journal'); return null; }
   padUpdate(inp, dt) {
     const P = inp.pad, g = this.game; if (!inp.padActive || !P.connected) { this.clearPadFocus(); return; }
     // menu focus (title screen, terminal)
@@ -148,6 +149,21 @@ export class UI {
   openTerminal(b, mode = 'computer') { this.terminalB = b; this.termMode = mode; this.terminalTab = mode === 'post' ? 'letters' : (this.terminalTab === 'letters' ? 'permits' : this.terminalTab); this.modalOpen = true; this.game.input.unlock(); if (mode === 'post') this.game.flags.postRead = true; else this.game.flags.terminalOpened = true; this.renderTerminal(); this.show('terminal'); $('terminal').classList.toggle('post', mode === 'post'); }
   closeTerminal() { this.terminalB = null; this.modalOpen = false; this.hide('terminal'); }
 
+  // ---------- journal ----------
+  openJournal() { this.journalOpen = true; this.modalOpen = true; this.game.input.unlock(); this.renderJournal(); this.show('journal'); Sfx.play('ui'); }
+  closeJournal() { this.journalOpen = false; this.modalOpen = false; this.hide('journal'); }
+  renderJournal() {
+    const g = this.game, f = g.flags, cur = g.curios, P = g.population;
+    const friends = P.sims.filter((s) => (s.samRel || 0) >= 40 && !s.remove).map((s) => s.name), acq = P.sims.filter((s) => (s.samRel || 0) >= 8 && (s.samRel || 0) < 40 && !s.remove).length;
+    const items = CURIOS.map((c) => cur.found.has(c.id) ? `<div class="cu has" title="${c.desc}"><span class="ic">${c.icon}</span><b>${c.name}</b><small>${c.desc}</small></div>` : '<div class="cu"><span class="ic">?</span><b>Not found yet</b><small>Look for a glint on the ground.</small></div>').join('');
+    const best = g.workgame.best || 0;
+    $('journal').innerHTML = `<h2><span>SAM'S JOURNAL</span><button data-j="close">Close</button></h2>
+      <div class="jstats"><div><b>${g.clock.totalDays}</b><span>days on the island</span></div><div><b>${g.buildings.list.filter((b) => b.state === 'done' && !b.def.special).length}</b><span>buildings finished</span></div><div><b>${f.gathered || 0}</b><span>things gathered</span></div><div><b>${best}</b><span>best gold chain</span></div><div><b>${f.favours || 0}</b><span>favours done</span></div><div><b>${f.cooked || 0}</b><span>campfire meals</span></div></div>
+      <div class="jsec">Friends (${friends.length})${acq ? ` · ${acq} acquaintances` : ''}</div><div class="jfr">${friends.length ? friends.join(', ') : 'Nobody yet. Talk to people, do them favours.'}</div>
+      <div class="jsec">Curios found: ${cur.found.size} / ${CURIOS.length}</div><div class="cus">${items}</div>
+      <div class="hint">${this.game.input.padActive ? 'D-pad ← opens this' : 'J opens this'} · Esc to close</div>`;
+  }
+
   // ---------- backpack ----------
   openInventory() { this.invOpen = true; this.modalOpen = true; this.game.input.unlock(); this.renderInventory(); this.show('inventory'); Sfx.play('ui'); }
   closeInventory() { this.invOpen = false; this.modalOpen = false; this.hide('inventory'); }
@@ -243,7 +259,7 @@ export class UI {
     $('h-tier').textContent = tierOf(P.count());
     $('b-hunger').style.width = Math.round(100 - g.player.hunger) + '%'; $('b-hunger').style.background = g.player.hunger > 70 ? '#ff6b6b' : '#e8b44a'; $('h-tools').textContent = [...g.player.tools].map((t) => TOOL_NAMES[t]).join(', ') || 'none yet';
     $('b-energy').style.width = Math.round(g.player.energy) + '%'; $('b-energy').style.background = g.player.energy < 25 ? '#ff6b6b' : '#7be08f';
-    $('h-carry').textContent = `${g.player.invTotal()}/${BACKPACK}`; $('h-pack').textContent = g.player.invText(); $('b-pack').style.width = (g.player.invTotal() / BACKPACK * 100) + '%'; const F = g.favours.list; $('h-favours').innerHTML = F.length ? '<b>Favours</b><br>' + F.map((f) => `! ${f.sim.first}${f.asked ? `: ${f.n} ${f.mat}` : ' wants a word'}`).join('<br>') : ''; $('h-keys').textContent = g.input.padActive ? 'D-pad ↑ backpack · D-pad ↓ drop · Y eat' : 'I backpack · R drop · Q eat';
+    $('h-carry').textContent = `${g.player.invTotal()}/${BACKPACK}`; $('h-pack').textContent = g.player.invText(); $('b-pack').style.width = (g.player.invTotal() / BACKPACK * 100) + '%'; const F = g.favours.list; $('h-favours').innerHTML = F.length ? '<b>Favours</b><br>' + F.map((f) => `! ${f.sim.first}${f.asked ? `: ${f.n} ${f.mat}` : ' wants a word'}`).join('<br>') : ''; $('h-keys').textContent = g.input.padActive ? 'D-pad ↑ backpack · ↓ drop · ← journal · Y eat' : 'I backpack · R drop · J journal · Q eat';
     if (this.helpT > 0) { this.helpT -= 0.25; if (this.helpT <= 0) $('help').classList.add('hidden'); }
     if (this._padWas !== g.input.padActive) { this._padWas = g.input.padActive; this.setMode(g.mode); }
     $('crosshair').classList.toggle('hidden', g.mode === 'god' && !g.input.padActive); $('crosshair').classList.toggle('godcur', g.mode === 'god');

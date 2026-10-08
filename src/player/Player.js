@@ -36,7 +36,7 @@ export class Player {
     else if (t.pile) { x = t.pile.x; z = t.pile.z; } else if (t.item) { x = t.item.x; z = t.item.z; s = 0.5; } else if (t.sim) { x = t.sim.x; z = t.sim.z; s = 0.6; } else if (t.spot) { x = t.spot.x; z = t.spot.z; } else if (t.b) { x = t.b.cx; z = t.b.cz; s = 1.4; } else { r.visible = false; return; }
     r.visible = true; const pulse = 1 + Math.sin(performance.now() / 160) * 0.06; r.scale.set(s * pulse, s * pulse, 1); r.position.set(x, 0.08, z); r.material.color.setHex(t.work ? 0x7be08f : 0xffd23f);
   }
-  teleport(x, z, heading) { this.x = x; this.z = z; if (heading !== undefined) { this.heading = heading; this.yaw = heading; } }
+  teleport(x, z, heading) { if (this.seat) { this.seat.taken = null; this.seat = null; } this.x = x; this.z = z; if (heading !== undefined) { this.heading = heading; this.yaw = heading; } }
   headPos() { return [this.x, 1.65, this.z]; }
 
   // ---------- backpack ----------
@@ -68,11 +68,13 @@ export class Player {
       let fx = 0, fz = 0; if (inp.down('KeyW')) fz += 1; if (inp.down('KeyS')) fz -= 1; if (inp.down('KeyA')) fx -= 1; if (inp.down('KeyD')) fx += 1;
       const input = fx || fz, run = inp.down('ShiftLeft') || inp.down('ShiftRight'), heavy = this.invTotal() > 8 ? 0.85 : 1;
       if (this.seat) {   // sitting: rest up; moving (or E) stands Sam up again
-        if (input || inp.hit('KeyE')) this.standUp();
+        const fireSeat = s0 => s0.b && s0.b.def.park === 'camp';
+        if (inp.hit('KeyE') && fireSeat(this.seat) && (this.inv.food || 0) >= 2 && this.hunger > 15) this.cookMeal(this.seat.b);
+        else if (input || inp.hit('KeyE')) this.standUp();
         else {
           const s = this.seat; this.x = s.x; this.z = s.z; this.heading = s.heading; this.speed = 0; this.ring.visible = false; g.workgame.stop();
           const fire = s.b && s.b.def.park === 'camp'; this.energy = Math.min(100, this.energy + rawDt * (fire ? 5 : 3));
-          g.ui.setPrompt(`Sitting${fire ? ' by the fire' : ''}. Resting: energy ${Math.round(this.energy)}%. Move to stand up${this.hunger > 30 ? ', Q to eat' : ''}.`, -1, true);
+          g.ui.setPrompt(`Sitting${fire ? ' by the fire' : ''}. Resting: energy ${Math.round(this.energy)}%. Move to stand up${fire && (this.inv.food || 0) >= 2 && this.hunger > 15 ? ', E to cook a meal' : this.hunger > 30 ? ', Q to eat' : ''}.`, -1, true);
           if (inp.hit('KeyQ')) this.eat(); this.syncMesh(rawDt); return;
         }
       }
@@ -88,7 +90,7 @@ export class Player {
       if (this.swingT > 0.3 && !this.swingHit && this.weapon) { this.swingHit = true; this.strike(); }
       if (inp.hit('KeyQ')) this.eat();
       if (inp.hit('KeyR')) this.drop();
-      if (inp.hit('KeyI')) g.ui.openInventory();
+      if (inp.hit('KeyI')) g.ui.openInventory(); if (inp.hit('KeyJ')) g.ui.openJournal();
       this.interact(rawDt);
     } else { this.game.workgame.stop(); this.ring.visible = false; }
     // needs (game seconds)
@@ -151,7 +153,9 @@ export class Player {
     }
     if (g.raids.pickup && !this.weapon) { const q = g.raids.pickup, d = Math.hypot(q.x - px, q.z - pz); if (d < 2.6) consider({ kind: 'weapon', text: 'Take the militia club  (F to swing)' }, d - 1); }
     for (const it of g.tools.items) { if (it.taken) continue; const d = Math.hypot(it.x - px, it.z - pz); if (d < 2.5) consider({ kind: 'tool', item: it, text: `Pick up the ${TOOLS[it.id]}` }, d - 2); }
+    { const cu = g.curios && g.curios.near(px, pz, 2.2); if (cu) consider({ kind: 'curio', item: cu, text: `Pick up something shiny...` }, Math.hypot(cu.x - px, cu.z - pz) - 1.5); }
     for (const p of g.piles.list) { const d = Math.hypot(p.x - px, p.z - pz); if (d < 2.2) consider({ kind: 'pile', pile: p, text: full ? 'Your backpack is full' : `Pick up ${Object.entries(p.items).map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }, d - 1.2); }
+    for (const b of B) if (b.state === 'done' && b.def.park === 'camp' && (this.inv.food || 0) >= 2 && this.hunger > 15) { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 4.5) consider({ kind: 'cook', b, text: 'Cook a hot meal on the fire (uses 2 food)' }, d - 2.5); }
     for (const b of B) if (b.state === 'done' && b.spots.seat && (b.def.open || b.def.park || b === g.buildings.playerInside)) for (const s of b.spots.seat) { if (s.taken) continue; const d = Math.hypot(s.x - px, s.z - pz); if (d < (b.def.park === 'camp' ? 2.2 : 1.4)) consider({ kind: 'seat', seat: s, b, text: b.def.park === 'camp' ? 'Sit by the fire' : 'Sit down' }, d + 0.3, s.x, s.z); }
     if (g.roadPlans.count) {
       const p0 = g.roadPlans.at(px, pz); let rp = p0, rd = 0; if (!rp) { for (const q of g.roadPlans.plans.values()) { const d = Math.hypot(q.cx - px, q.cz - pz); if (d < 3.4 && (!rp || d < rd)) { rp = q; rd = d; } } }
@@ -200,9 +204,9 @@ export class Player {
       else if (n.kind === 'field') addGather(n, 'field', 'Harvest crops', 'food', 1.9, 2, 'harvest', d);
     }
     { const [tx, tz] = w.tileOf(px, pz), tt = w.inBounds(tx, tz) ? w.terrain[w.idx(tx, tz)] : 0;
-      if (tt === T.SAND && !w.road[w.idx(tx, tz)]) addGather({ kind: 'sand', infinite: true, amount: 999, x: px, z: pz }, 'sand', 'Dig sand', 'glass', 3.0, 1, 'dig', 2.5, ['glassworks', 'Glassworks']);
+      if (tt === T.SAND && !w.road[w.idx(tx, tz)]) addGather({ kind: 'sand', infinite: true, amount: 999, x: px, z: pz }, 'sand', 'Dig sand', 'glass', 3.0, 1, 'dig', 2.9, ['glassworks', 'Glassworks']);
       const ax0 = px - Math.sin(this.yaw) * 2.6, az0 = pz - Math.cos(this.yaw) * 2.6, [ax, az] = w.tileOf(ax0, az0);
-      if (w.inBounds(ax, az) && w.terrain[w.idx(ax, az)] === T.WATER && w.isLand(tx, tz)) addGather({ kind: 'fish', infinite: true, amount: 999, x: ax0, z: az0 }, 'fish', 'Fish', 'food', 3.2, 2, 'fish', 2.6); }
+      if (w.inBounds(ax, az) && w.terrain[w.idx(ax, az)] === T.WATER && w.isLand(tx, tz)) addGather({ kind: 'fish', infinite: true, amount: 999, x: ax0, z: az0 }, 'fish', 'Fish', 'food', 3.2, 2, 'fish', 1.4); }
     return best;
   }
   /** Materials in the backpack that this site still needs: [[mat, qty], ...] */
@@ -226,7 +230,10 @@ export class Player {
     else if (t.kind === 'bed' && e) this.trySleep(t.spot);
     else if (t.kind === 'tool' && e) { g.tools.take(t.item); this.tools.add(t.item.id); Sfx.play('pickup'); g.ui.toast(`You take the ${TOOLS[t.item.id]}. It goes on your belt.`, 2600); }
     else if (t.kind === 'pile' && e) this.takePile(t.pile);
+    else if (t.kind === 'curio' && e) g.curios.take(t.item);
     else if (t.kind === 'seat' && e) this.sitOn(t.seat, t.b);
+    else if (t.kind === 'cook' && e) this.cookMeal(t.b);
+    else if (false) { this.invTake('food', 2); this.hunger = 0; this.energy = Math.min(100, this.energy + 20); g.flags.ate = (g.flags.ate || 0) + 1; g.flags.cooked = (g.flags.cooked || 0) + 1; Sfx.play('eat'); Sfx.noise(0.6, { freq: 1800, q: 0.6, vol: 0.15 }); g.particles.burst(t.b.cx, 0.8, t.b.cz, 0xffb03a, 12, 0.6, 3, 0.08); g.ui.toast(['A proper stew! You feel brand new.', 'Fish on a stick, charred just right.', 'Berry crumble, campfire style. Delicious.', 'Toasted bread and hot jam. Lovely.'][Math.floor(Math.random() * 4)], 2800); }
     else if (t.kind === 'weapon' && e) { if (g.raids.take()) { this.weapon = 'club'; Sfx.play('pickup'); g.ui.toast('You take the club. Press F to swing it.', 3200); } }
     else if (t.kind === 'site' && t.deliver && e) this.deliverTo(t.b);
     else if (t.kind === 'work') { if (held) { this.working = true; g.economy.earn(12 * rawDt); this.hold = (this.hold + rawDt * 0.2) % 1; } else this.hold = 0; }
@@ -247,18 +254,18 @@ export class Player {
     if (tap || held) { this.lockT = performance.now(); if (this.lock !== t) { this.lock = t; this.lockPos = { x: this.x, z: this.z }; } }
     const fx = t.node ? t.node.x : t.b ? t.b.cx : t.plan.cx, fz = t.node ? t.node.z : t.b ? t.b.cz : t.plan.cz; let value = 0;
     if (tap) {
-      const r = wg.press(); value = STROKE[r.q] * r.mult;
+      const r = wg.press(); value = r.q === 'none' ? 0 : r.fish ? (r.q === 'miss' ? 0 : 1.2) * r.mult : STROKE[r.q] * r.mult;
       if (t.node) { if (t.nk === 'tree') { g.terrain.hitTree(t.node); g.terrain.fallFrom = { x: this.x, z: this.z }; } else g.resources.shake(t.node); } this.strikeT = 0.5; this.faceTo(fx, fz); if (r.q === 'perfect') this.shake = 0.25;
       const hx = this.x + (fx - this.x) * 0.6, hz = this.z + (fz - this.z) * 0.6; g.particles.burst(hx, t.work === 'build' ? 0.8 : 1.0, hz, t.nk === 'berry' ? (Math.random() < 0.5 ? 0xc0243a : 0x7a2a8a) : t.nk === 'field' ? 0xe0c050 : CHIP[t.work], r.q === 'perfect' ? 14 : r.q === 'good' ? 8 : 3, 1, 3.2);
     }
-    if (held) { value += dt * 0.35; this.faceTo(fx, fz); }
-    if (held || this.strikeT > 0) this.working = true;
+    if (held && t.work !== 'fish') { value += dt * 0.35; this.faceTo(fx, fz); }
+    if (held || this.strikeT > 0 || t.work === 'fish') this.working = true;
     const speed = Math.max(1, g.clock.speed);
     if (t.kind === 'gather') {
       this.gatherT = (this.gatherT || 0) + value * t.time;
       while (this.gatherT >= t.time) {
         this.gatherT -= t.time; if (!g.resources.take(t.node)) { this.gatherT = 0; break; }
-        const got = this.invAdd(t.mat, t.per); g.flags.gathered = (g.flags.gathered || 0) + got; Sfx.play('unit'); wg.pop(`+${got} ${MATERIALS[t.mat].name.toLowerCase()}`, 'unit');
+        const got = this.invAdd(t.mat, t.per); g.flags.gathered = (g.flags.gathered || 0) + got; Sfx.play('unit'); wg.pop(t.nk === 'fish' ? `+${got} food: ${['a mackerel', 'a fat cod', 'a herring', 'a little sole', 'a plaice', 'a sardine', 'an old boot... no, a crab', 'a whopping sea bass'][Math.floor(Math.random() * 8)]}!` : `+${got} ${MATERIALS[t.mat].name.toLowerCase()}`, 'unit');
         if (this.invRoom() <= 0) { g.ui.toast('Backpack full! Store it at the Stockyard, deliver it to a site, or drop it (R).'); this.gatherT = 0; break; }
         if (t.node.kind === 'tree' && !t.node.alive) { const tn = t.node; setTimeout(() => { g.particles.burst(tn.x, 0.6, tn.z, 0x4a7a3a, 26, 2.2, 2.5); Sfx.noise(0.6, { freq: 160, vol: 0.7, type: 'lowpass' }); }, 900); wg.pop('TIMBER!', 'perfect'); this.lock = null; break; }
       }
@@ -271,6 +278,12 @@ export class Player {
       const p = t.plan; if (value && g.roadPlans.work(p, value * 1.6 * (tap ? 1 : speed))) { wg.stop(); Sfx.play('unit'); g.ui.toast('Path dug!'); } else if (p.type === 2 && !p.paid) g.ui.toast('No stone in the Stockyard for paving.');
       wg.setProgress(p.progress, `${Math.round(p.progress * 100)}%`);
     }
+  }
+  cookMeal(b) {
+    const g = this.game; if (!this.seat || !this.seat) { const s = b.spots.seat && b.spots.seat.find((q) => !q.taken); if (s && !this.seat) this.sitOn(s, b); }
+    this.invTake('food', 2); this.hunger = 0; this.energy = Math.min(100, this.energy + 20); g.flags.ate = (g.flags.ate || 0) + 1; g.flags.cooked = (g.flags.cooked || 0) + 1;
+    Sfx.play('eat'); Sfx.noise(0.6, { freq: 1800, q: 0.6, vol: 0.15 }); g.particles.burst(b.cx, 0.8, b.cz, 0xffb03a, 12, 0.6, 3, 0.08);
+    g.ui.toast(['A proper stew! You feel brand new.', 'Fish on a stick, charred just right.', 'Berry crumble, campfire style. Delicious.', 'Toasted bread and hot jam. Lovely.'][Math.floor(Math.random() * 4)], 2800);
   }
   sitOn(seat, b) { seat.taken = 'player'; this.seat = Object.assign(seat, { b }); this.prevPos = { x: this.x, z: this.z }; this.x = seat.x; this.z = seat.z; this.heading = seat.heading; Sfx.play('ui'); this.game.workgame.stop(); this.lock = null; }
   standUp() { const s = this.seat; if (!s) return; s.taken = null; this.seat = null; this.x = s.x + Math.sin(s.heading) * 0.8; this.z = s.z + Math.cos(s.heading) * 0.8; this.unstick(); }

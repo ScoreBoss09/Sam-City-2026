@@ -33,6 +33,14 @@ export class Atmosphere {
     const cloudTex = new THREE.CanvasTexture(cc2); this.clouds = new THREE.Group(); this.cloudMats = [];
     for (let i = 0; i < 16; i++) { const m = new THREE.SpriteMaterial({ map: cloudTex, transparent: true, depthWrite: false, opacity: 0.85, fog: false }); const sp = new THREE.Sprite(m); const a = rnd() * 6.28, r = 90 + rnd() * 220; sp.position.set(size / 2 + Math.cos(a) * r, 70 + rnd() * 50, size / 2 + Math.sin(a) * r); const sc = 70 + rnd() * 60; sp.scale.set(sc, sc / 2, 1); sp.userData = { a, r, sp: 0.004 + rnd() * 0.006 }; this.clouds.add(sp); this.cloudMats.push(m); }
     scene.add(this.clouds);
+    // night sky: stars, the moon and a visible sun disc (all follow the camera so they sit at "infinity")
+    const N = 900, sp = new Float32Array(N * 3), r2 = mulberry32(77);
+    for (let i = 0; i < N; i++) { const u = r2() * 2 - 1, a = r2() * Math.PI * 2, y = Math.abs(u) * 0.9 + 0.1, rr = Math.sqrt(1 - y * y); sp[i * 3] = Math.cos(a) * rr * 380; sp[i * 3 + 1] = y * 380; sp[i * 3 + 2] = Math.sin(a) * rr * 380; }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false })); this.stars.renderOrder = -1; scene.add(this.stars);
+    const disc = (col, glow) => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 4, 32, 32, 32); gr.addColorStop(0, col); gr.addColorStop(0.45, col); gr.addColorStop(0.5, glow); gr.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); };
+    this.sunDisc = new THREE.Sprite(new THREE.SpriteMaterial({ map: disc('#fff6d8', 'rgba(255,220,140,0.35)'), transparent: true, depthWrite: false, fog: false })); this.sunDisc.scale.set(60, 60, 1); scene.add(this.sunDisc);
+    this.moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: disc('#e8eef8', 'rgba(170,190,230,0.25)'), transparent: true, depthWrite: false, fog: false, opacity: 0 })); this.moon.scale.set(36, 36, 1); scene.add(this.moon);
   }
   update(dt, clock, focus, story, glitch) {
     const h = clock.hour;
@@ -49,6 +57,11 @@ export class Atmosphere {
     const sky = C(0x9ec9ee).lerp(C(0xf0a070), Math.min(1, dusk * 0.7)).lerp(C(0x7d8794), rain * 0.75).lerp(C(0x111d40), this.night);
     this.scene.background.copy(sky); this.scene.fog.color.copy(sky); this.scene.fog.near = lerp(220, 60, rain); this.scene.fog.far = lerp(520, 260, rain);
     setWindowGlow(Math.min(1, this.night + Math.min(0.6, dusk * 0.5)));
+    // stars, moon and sun disc
+    const cam = this.camPos || focus, rainK = 1 - (this.rain || 0);
+    this.stars.position.set(cam.x, 0, cam.z); this.stars.material.opacity = Math.min(1, this.night * 1.2) * rainK; this.stars.visible = !this.hideDome && this.stars.material.opacity > 0.02;
+    this.sunDisc.position.set(cam.x + dir.x * 340, Math.max(-40, Math.sin(ang) * 340), cam.z + dir.z * 340); this.sunDisc.material.opacity = (1 - this.night) * rainK; this.sunDisc.material.color.copy(C(0xffffff)).lerp(C(0xffa060), Math.min(1, dusk)); this.sunDisc.visible = !this.hideDome;
+    const ma = ang + Math.PI; this.moon.position.set(cam.x + Math.cos(ma) * 300, Math.max(-40, Math.sin(ma) * 300 + 60), cam.z + 120); this.moon.material.opacity = this.night * rainK; this.moon.visible = !this.hideDome && this.night > 0.05;
     // clouds & their shadows
     this.cloudTex.offset.x += dt * 0.0025; this.cloudTex.offset.y += dt * 0.0012; this.cloudShadow.material.opacity = (0.2 + rain * 0.25) * day * (1 - this.night);
     const lowView = focus.y !== undefined ? false : true; const size = MAP * TILE;
