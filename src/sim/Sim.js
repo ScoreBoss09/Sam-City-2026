@@ -78,7 +78,13 @@ export class Sim {
     this.path = wp; this.dest = dest; this.phase = 1; return true;
   }
   standUp() {
-    if (this.sitting) { const s = this.sitting; s.taken = null; this.sitting = null; const f = s.heading; this.glide = { x: s.x + Math.sin(f) * 0.75, z: s.z + Math.cos(f) * 0.75 }; }
+    if (this.sitting) {
+      const s = this.sitting; s.taken = null; this.sitting = null; const f = s.heading, B = this.game.buildings, n = s.b && B.navGrid(s.b);
+      const clear = (x, z) => { if (n) { const cx = Math.floor((x - n.ox) / n.C), cz = Math.floor((z - n.oz) / n.C); return cx >= 0 && cz >= 0 && cx < n.W && cz < n.H && n.free[cz * n.W + cx]; } return !this.game.world.collides(x, z, 0.25); };
+      // step out of the chair to whichever side is clear (forward is usually the table)
+      let to = null; for (const a of [0, Math.PI / 2, -Math.PI / 2, Math.PI]) { const x = s.x + Math.sin(f + a) * 0.8, z = s.z + Math.cos(f + a) * 0.8; if (clear(x, z)) { to = { x, z }; break; } }
+      this.glide = to || { x: s.x, z: s.z };
+    }
   }
   sitAt(seat) { seat.taken = this; this.sitting = seat; this.glide = { x: seat.x, z: seat.z }; this.faceGoal = seat.heading; }
   freeSeat(b, kinds) { return b && b.spots.seat ? b.spots.seat.filter((s) => !s.taken && (!kinds || kinds.includes(s.kind))) : []; }

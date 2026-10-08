@@ -123,6 +123,7 @@ function buildExterior0(def, uid = 1) {
   lining(g, D - 2 * T, lh, -ix, 0, Math.PI / 2, lm); lining(g, D - 2 * T, lh, ix, 0, -Math.PI / 2, lm);
   const fl0 = l1 - (-W / 2 + T), fr0 = (W / 2 - T) - r0;
   if (fl0 > 0.1) lining(g, fl0, lh, (-W / 2 + T + l1) / 2, iz, Math.PI, lm); if (fr0 > 0.1) lining(g, fr0, lh, (r0 + W / 2 - T) / 2, iz, Math.PI, lm);
+  if (ceilH - 2.72 > 0.1) { const lh2 = ceilH - 2.72, lt = new THREE.Mesh(new THREE.PlaneGeometry(dw + 0.02, lh2), lm); lt.position.set(door, 2.62 + lh2 / 2, iz); lt.rotation.y = Math.PI; g.add(lt); }   // inside of the lintel
   // 3D window sills on the front (matching the painted windows), flower boxes on homes, a few 90s satellite dishes
   { const f = FACADES[def.wall] || FACADES.tan, n = f.wins;
     if (n && f.kind !== 'curtain' && !def.large) {

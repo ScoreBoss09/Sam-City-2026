@@ -35,6 +35,7 @@ const LAYOUTS = {
   shack(def) {
     const l = empty(), D = def.d * TILE;
     l.furniture.push({ t: 'strawbed', x: -0.85, z: -D / 2 + 1.3, r: 0 }, { t: 'stool', x: 1.0, z: 0.5, r: 3 }, { t: 'chest', x: 1.1, z: -1.15, r: 1 });
+    l.furniture.push({ t: 'picture', x: 1.0, z: -D / 2 + 0.36, r: 0 });
     l.beds.push({ x: -0.85, z: -D / 2 + 1.3, ax: 0.3, az: 0.4 }); l.idle.push({ x: 0.3, z: 0.6 }); return l;
   },
   hut(def) {
@@ -47,6 +48,7 @@ const LAYOUTS = {
     const l = empty(), W = def.w * TILE, D = def.d * TILE;
     for (let i = 0; i < def.beds; i++) { const x = -2.7 + i * 1.8, z = -D / 2 + 1.6; l.furniture.push({ t: 'strawbed', x, z, r: 0 }); l.beds.push({ x, z, ax: x, az: z + 2.0 }); }
     l.furniture.push({ t: 'hearth', x: W / 2 - 0.6, z: 0.4, r: 3 }, { t: 'table', x: -0.6, z: 1.6, r: 0 }, { t: 'chair', x: -1.8, z: 1.6, r: 1 }, { t: 'chair', x: 0.6, z: 1.6, r: 3 }, { t: 'chest', x: -W / 2 + 0.6, z: 0.2, r: 1 }, { t: 'barrel', x: -W / 2 + 0.6, z: -0.9, r: 0 });
+    l.furniture.push({ t: 'rug', x: -0.6, z: 1.6, r: 0 }, { t: 'picture', x: W / 2 - 0.36, z: -1.6, r: 3 });
     l.idle.push({ x: -1.0, z: 2.8 }, { x: 1.4, z: 0.4 }); return l;
   },
   shed(def) {
@@ -60,6 +62,7 @@ const LAYOUTS = {
     l.work.push({ x: -0.8, z: -D / 2 + 2.0 }, { x: 0.8, z: -D / 2 + 2.0 });
     for (const [x, z] of [[-3.6, 0.4], [-3.6, 3.4], [2.6, 3.4], [2.4, 0.4]]) { l.furniture.push({ t: 'table', x, z, r: 0 }, { t: 'chair', x: x - 1.15, z, r: 1 }, { t: 'chair', x: x + 1.15, z, r: 3 }); }
     for (const x of [-1.2, 0, 1.2]) l.furniture.push({ t: 'stool', x, z: -D / 2 + 2.4, r: 2 });
+    l.furniture.push({ t: 'dartboard', x: -W / 2 + 0.36, z: 2.0, r: 1 }, { t: 'picture', x: -2.4, z: -D / 2 + 0.36, r: 0 }, { t: 'picture', x: 2.4, z: -D / 2 + 0.36, r: 0 }, { t: 'clock', x: W / 2 - 0.5, z: 3.6, r: 3 });
     l.idle.push({ x: 0.6, z: 1.6 }, { x: -2, z: 2 }); l.visit.push({ x: 0.6, z: 1.6 }); return l;
   },
   school(def) {
@@ -81,6 +84,7 @@ const LAYOUTS = {
       l.furniture.push({ t: 'bed', x, z, r: 0 }); l.beds.push({ x, z, ax: x + (i < 3 ? 0 : 1.6), az: i < 3 ? z + 2.0 : z });
     }
     l.furniture.push({ t: 'sofa', x: 3.0, z: -0.1, r: 3 }, { t: 'tv', x: -3.4, z: -0.1, r: 1 }, { t: 'table', x: 0.6, z: 1.4, r: 0 }, { t: 'chair', x: -0.55, z: 1.4, r: 1 }, { t: 'chair', x: 1.75, z: 1.4, r: 3 }, { t: 'counter', x: W / 2 - 0.7, z: 2.4, r: 3 }, { t: 'plant', x: -W / 2 + 0.6, z: D / 2 - 0.7, r: 0 });
+    l.furniture.push({ t: 'rug', x: 0.6, z: 1.4, r: 0 }, { t: 'picture', x: -1.2, z: -D / 2 + 0.36, r: 0 }, { t: 'picture', x: 1.2, z: -D / 2 + 0.36, r: 0 }, { t: 'lamp', x: 3.4, z: -0.95, r: 0 });
     l.idle.push({ x: 0.6, z: 2.6 }, { x: -1, z: 0.5 }, { x: 1.6, z: 0 });
     return l;
   },
