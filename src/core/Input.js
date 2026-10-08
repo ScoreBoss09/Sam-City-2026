@@ -3,7 +3,7 @@ export class Input {
   constructor(canvas) {
     this.keys = new Set(); this.pressed = new Set(); this.released = new Set(); this.mouse = { x: 0, y: 0, dx: 0, dy: 0, left: false, right: false, middle: false, wheel: 0, down: false, up: false };
     this.canvas = canvas; this.locked = false; this.blocked = false;
-    this.padActive = false; this.virt = new Set(); this.pad = { connected: false, lx: 0, ly: 0, rx: 0, ry: 0, prev: [], down: [], hitB: [], mode: 'menu', zoomAcc: 0 };
+    this.padActive = false; this.padEnabled = true; this.virt = new Set(); this.pad = { connected: false, lx: 0, ly: 0, rx: 0, ry: 0, prev: [], down: [], hitB: [], mode: 'menu', zoomAcc: 0 };
     window.addEventListener('mousemove', () => { this.padActive = false; }); window.addEventListener('keydown', () => { this.padActive = false; });
     window.addEventListener('keydown', (e) => {
       if (e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
@@ -22,10 +22,16 @@ export class Input {
   }
   /** Gamepad -> the same virtual keys / mouse the rest of the game already understands. mode: 'sim' | 'god' | 'menu'. */
   pollPad(dt, mode) {
-    const P = this.pad, list = navigator.getGamepads ? navigator.getGamepads() : []; let gp = null; for (const p of list) if (p && p.connected) { gp = p; break; }
+    const P = this.pad, list = this.padEnabled && navigator.getGamepads ? navigator.getGamepads() : [];
+    // Prefer a proper game controller ("standard" layout). Other devices (wheels, joysticks, some headsets/keyboards) are ignored.
+    let gp = null; for (const p of list) if (p && p.connected && p.mapping === 'standard') { gp = p; break; }
     const want = new Set(); P.connected = !!gp; P.mode = mode;
     if (gp) {
-      const dz = (v) => (Math.abs(v) < 0.2 ? 0 : (v - Math.sign(v) * 0.2) / 0.8), ax = (i) => dz(gp.axes[i] || 0), bt = (i) => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.5));
+      // Calibrate: remember each axis's resting value and any button that is already held when the pad is first seen,
+      // so a stick or trigger that never returns to centre cannot spin the camera or cycle menus forever.
+      if (!P.base || P.baseId !== gp.id + gp.index) { P.baseId = gp.id + gp.index; P.base = gp.axes.map((v) => (Math.abs(v) > 0.3 ? v : 0)); P.stuck = gp.buttons.map((b) => !!(b && (b.pressed || b.value > 0.5))); P.prev = []; }
+      const dz = (v) => (Math.abs(v) < 0.25 ? 0 : (v - Math.sign(v) * 0.25) / 0.75), ax = (i) => dz((gp.axes[i] || 0) - (P.base[i] || 0));
+      const bt = (i) => { const b = gp.buttons[i], on = !!(b && (b.pressed || b.value > 0.5)); if (P.stuck[i]) { if (!on) P.stuck[i] = false; return false; } return on; };
       const cur = []; for (let i = 0; i < 17; i++) cur.push(bt(i)); P.hitB = cur.map((v, i) => v && !P.prev[i]); P.relB = cur.map((v, i) => !v && !!P.prev[i]); P.prev = cur; P.down = cur;
       P.lx = ax(0); P.ly = ax(1); P.rx = ax(2); P.ry = ax(3);
       if (cur.some(Boolean) || Math.hypot(P.lx, P.ly) > 0.4 || Math.hypot(P.rx, P.ry) > 0.4) { this.padActive = true; if (cur.some(Boolean) && this.onActivity) this.onActivity(); }
@@ -43,7 +49,7 @@ export class Input {
           if (cur[10]) want.add('ShiftLeft');
         } else { if (cur[0]) want.add('KeyE'); if (cur[1]) want.add('Escape'); if (cur[12] && false) want.add('KeyI'); }
       }
-    } else { P.lx = P.ly = P.rx = P.ry = 0; P.hitB = []; P.relB = []; P.down = []; }
+    } else { P.lx = P.ly = P.rx = P.ry = 0; P.hitB = []; P.relB = []; P.down = []; P.base = null; if (this.padActive && !gp) this.padActive = false; }
     for (const k of want) if (!this.virt.has(k)) { if (!this.keys.has(k)) this.pressed.add(k); this.keys.add(k); }
     for (const k of this.virt) if (!want.has(k)) { this.keys.delete(k); this.released.add(k); }
     this.virt = want;

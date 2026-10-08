@@ -116,3 +116,4 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 .stepdots { display: flex; align-items: center; gap: 5px; } .stepdots span { width: 10px; height: 10px; border: 2px solid #5a6a86; background: transparent; } .stepdots span.d { background: #7be08f; border-color: #7be08f; } .stepdots span.c { background: #ffd23f; border-color: #ffd23f; }
 .stepdots em { margin-left: 6px; font-style: normal; font-size: 10px; color: #8d9bb3; }
 #workgame { top: auto !important; bottom: 28px; }
+#c-pad { margin-top: 6px; background: transparent; border: 1px solid #3a4a66; color: #8d9bb3; font: 11px 'Courier New', monospace; cursor: pointer; padding: 2px 6px; } #c-pad:hover { color: #fff; }

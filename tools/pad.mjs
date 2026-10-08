@@ -4,7 +4,7 @@ const S = '/tmp/claude-0/-home-user-Sam-City-2026/6309cccc-23e7-5301-8e65-4b7cab
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const p = await b.newPage({ viewport: { width: 1280, height: 760 } });
 const logs = []; p.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.stack)); p.on('console', (m) => { if (m.type() === 'error' && !/404/.test(m.text())) logs.push(m.text()); });
-await p.addInitScript(() => { const btn = () => ({ pressed: false, value: 0 }); window.__pad = { connected: true, id: 'fake', axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, btn) }; navigator.getGamepads = () => [window.__pad]; });
+await p.addInitScript(() => { const btn = () => ({ pressed: false, value: 0 }); window.__pad = { connected: true, mapping: 'standard', index: 0, id: 'fake', axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, btn) }; navigator.getGamepads = () => [window.__pad]; });
 await p.goto('http://localhost:8123/index.html?scale=0.5&noraids'); await p.waitForTimeout(900);
 const ev = (f, a) => p.evaluate(f, a);
 const press = async (i, ms = 120) => { await ev((i) => { window.__pad.buttons[i] = { pressed: true, value: 1 }; }, i); await p.waitForTimeout(ms); await ev((i) => { window.__pad.buttons[i] = { pressed: false, value: 0 }; }, i); await p.waitForTimeout(120); };

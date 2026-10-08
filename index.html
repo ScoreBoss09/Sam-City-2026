@@ -33,7 +33,7 @@
   <div id="clockbox" class="panel hidden">
     <div id="c-date">MAY 2004</div><div id="c-time">09:00</div>
     <div id="c-speed"><button data-s="0">II</button><button data-s="1">1x</button><button data-s="2">2x</button><button data-s="4">4x</button></div>
-    <div id="c-mode"></div>
+    <div id="c-mode"></div><button id="c-pad" title="Controller on/off">🎮 controller: on</button>
   </div>
 
   <div id="minimap" class="hidden"><canvas width="200" height="200"></canvas><div class="mm-hint">M: map</div></div>
@@ -70,6 +70,7 @@
       <button id="btn-new">New Game</button>
       <button id="btn-demo">Demo City (sandbox)</button>
       <label class="opt"><input type="checkbox" id="opt-sound" checked> Sound effects</label>
+      <label class="opt"><input type="checkbox" id="opt-pad" checked> Use a game controller (untick if the view spins on its own)</label>
       <label class="opt"><input type="checkbox" id="opt-raids" checked> Occasional raids (weapons appear in the story)</label>
       <div class="how">
         <b>Sim mode</b> WASD move · Shift sprint · mouse look (click to capture) · V first/third person · E interact (hold to work)<br>
