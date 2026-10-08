@@ -15,7 +15,7 @@ export class ToolRack {
     add(new THREE.BoxGeometry(1.0, 0.7, 0.8), wood, 3.1, 0.35, 0.3); add(new THREE.BoxGeometry(1.1, 0.08, 0.9), dark, 3.1, 0.72, 0.3);
     const board = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.5), new THREE.MeshBasicMaterial({ map: signTex('TOOL RACK') })); board.position.set(0, 2.2, 0.1); this.group.add(board);
     const glow = add(new THREE.CylinderGeometry(2.8, 2.8, 0.05, 20), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.18, depthWrite: false }), 0.4, 0.07, 0.5);
-    glow.castShadow = false; glow.receiveShadow = false;
+    glow.castShadow = false; glow.receiveShadow = false; this.glow = glow; glow.visible = false;
     ORDER.forEach((id, i) => {
       const p = makeProp(id), wrap = new THREE.Group(); p.scale.setScalar(1.7); wrap.add(p); const px = -1.75 + i * 0.7; wrap.position.set(px, id === 'rod' ? 1.0 : 1.0, 0.18); wrap.rotation.z = 0.05 * (i % 2 ? 1 : -1);
       p.traverse((o) => { if (o.isMesh) { o.castShadow = true; } }); this.group.add(wrap);
@@ -27,7 +27,15 @@ export class ToolRack {
   take(it) { it.taken = true; it.mesh.visible = false; }
   takenIds() { return this.items.filter((i) => i.taken).map((i) => i.id); }
   get untaken() { return this.items.filter((i) => !i.taken); }
-  update(t) { const g = this.group.children[this.group.children.length - 1]; void g; void t; }
+  /** The yellow glow only shows when Sam actually needs the rack: the current goal is a tool, or Sam just tried to work without one. */
+  update() {
+    const g = this.game, gl = this.glow; if (!gl) return; let want = false;
+    if (this.untaken.length && g.mode === 'sim') {
+      const o = g.story.currentObjective, t = o && o.target ? o.target(g) : null;
+      want = (t && Math.hypot(t.x - this.x, t.z - this.z) < 4) || (g.player.needToolT || 0) > g.elapsed;
+    }
+    gl.visible = want; if (want) gl.material.opacity = 0.12 + (Math.sin(g.elapsed * 4) + 1) * 0.08;
+  }
 }
 function signTex(text) {
   const c = document.createElement('canvas'); c.width = 128; c.height = 32; const x = c.getContext('2d'); x.fillStyle = '#4a3018'; x.fillRect(0, 0, 128, 32); x.strokeStyle = '#e8c987'; x.lineWidth = 2; x.strokeRect(2, 2, 124, 28);

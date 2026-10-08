@@ -29,6 +29,8 @@ export class Decor {
     const sc2 = document.createElement('canvas'); sc2.width = sc2.height = 32; const cx = sc2.getContext('2d'), gr = cx.createRadialGradient(16, 16, 2, 16, 16, 15); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = gr; cx.fillRect(0, 0, 32, 32);
     this.smokeTex = new THREE.CanvasTexture(sc2); this.puffs = []; this.puffT = 0;
     for (let i = 0; i < 90; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.smokeTex, transparent: true, depthWrite: false, opacity: 0, color: 0xdddddd })); sp.visible = false; sp.renderOrder = 5; sc.add(sp); this.puffs.push({ sp, life: 0, max: 1, vx: 0, vz: 0 }); }
+    // pools of warm light under the street lamps nearest the camera at night
+    this.lampLights = []; for (let i = 0; i < 5; i++) { const L = new THREE.PointLight(0xffd890, 0, 13, 1.6); L.position.y = 3.9; sc.add(L); this.lampLights.push(L); } this.lampPos = [];
     // campfire light
     this.fireLight = new THREE.PointLight(0xff9a40, 0, 26, 1.4); sc.add(this.fireLight);
     const mark = () => { this.dirty = true; this.timer = 0.25; };
@@ -48,6 +50,8 @@ export class Decor {
       for (const b of g.buildings.list) { if (b.state !== 'done' || !b.smoke || !this.smokeActive(b)) continue; if (g.mode === 'sim' && Math.hypot(b.cx - g.player.x, b.cz - g.player.z) > 90) continue; const p = this.puffs.find((q) => q.life <= 0); if (!p) break; const [x, z] = b.toWorld(b.smoke.lx, b.smoke.lz); p.sp.position.set(x, b.smoke.ly, z); p.life = p.max = 3.5 + Math.random() * 1.5; p.vx = wind + (Math.random() - 0.5) * 0.4; p.vz = (Math.random() - 0.5) * 0.4; p.sp.visible = true; p.s0 = b.def.park === 'camp' ? 0.8 : 1.1; }
     }
     for (const p of this.puffs) { if (p.life <= 0) continue; p.life -= dt; const k = 1 - p.life / p.max; p.sp.position.x += p.vx * dt; p.sp.position.z += p.vz * dt; p.sp.position.y += (1.2 + k) * dt; const sz = p.s0 * (1 + k * 2.6); p.sp.scale.set(sz, sz, 1); p.sp.material.opacity = Math.sin(Math.min(1, k * 1.2) * Math.PI) * 0.26; if (p.life <= 0) p.sp.visible = false; }
+    { const n = this.nightLevel || 0, f0 = g.mode === 'sim' ? g.player : g.god.target, near = n > 0.05 ? this.lampPos.map((l) => [l, (l.x - f0.x) ** 2 + (l.z - f0.z) ** 2]).sort((a, b) => a[1] - b[1]).slice(0, this.lampLights.length) : [];
+      this.lampLights.forEach((L, i) => { const e = near[i]; if (e && e[1] < 60 * 60) { L.position.x = e[0].x; L.position.z = e[0].z; L.intensity = 9 * n; } else L.intensity = 0; }); }
     // campfire light on the camp nearest the viewer
     let best = null, bd = 1e9; const f = g.mode === 'sim' ? g.player : { x: g.god.target.x, z: g.god.target.z };
     for (const b of g.buildings.list) if (b.state === 'done' && b.def.park === 'camp') { const d = Math.hypot(b.cx - f.x, b.cz - f.z); if (d < bd) { bd = d; best = b; } }
@@ -55,7 +59,7 @@ export class Decor {
   }
   rebuild() {
     this.dirty = false; const w = this.game.world, m = new THREE.Matrix4(), c = new THREE.Color(), q = new THREE.Quaternion();
-    let nl = 0, nt = 0, nb = 0; const free = (x, z) => w.isLand(x, z) && !w.road[w.idx(x, z)] && !w.occ[w.idx(x, z)];
+    let nl = 0, nt = 0, nb = 0; this.lampPos = []; const free = (x, z) => w.isLand(x, z) && !w.road[w.idx(x, z)] && !w.occ[w.idx(x, z)];
     const roadAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] > 0, paved = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] === 2;
     for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) {
       const i = w.idx(x, z);
@@ -66,7 +70,7 @@ export class Decor {
           const px = (x + 0.5) * TILE + (n && s ? side * 2.1 : 0), pz = (z + 0.5) * TILE + (e && wv ? side * 2.1 : 0);
           if (free(Math.floor(px / TILE), Math.floor(pz / TILE)) || true) {
             const ox = Math.floor(px / TILE), oz = Math.floor(pz / TILE);
-            if (w.inBounds(ox, oz) && !w.occ[w.idx(ox, oz)] && nl < 400) { m.makeTranslation(px, 2.1, pz); this.pole.setMatrixAt(nl, m); const hx = n && s ? -side * 0.3 : 0, hz = e && wv ? -side * 0.3 : 0; q.setFromEuler(new THREE.Euler(0, n && s ? Math.PI / 2 : 0, 0)); m.compose(new THREE.Vector3(px + hx, 4.2, pz + hz), q, new THREE.Vector3(1, 1, 1)); this.head.setMatrixAt(nl, m); nl++; }
+            if (w.inBounds(ox, oz) && !w.occ[w.idx(ox, oz)] && nl < 400) { m.makeTranslation(px, 2.1, pz); this.pole.setMatrixAt(nl, m); const hx = n && s ? -side * 0.3 : 0, hz = e && wv ? -side * 0.3 : 0; q.setFromEuler(new THREE.Euler(0, n && s ? Math.PI / 2 : 0, 0)); m.compose(new THREE.Vector3(px + hx, 4.2, pz + hz), q, new THREE.Vector3(1, 1, 1)); this.head.setMatrixAt(nl, m); this.lampPos.push({ x: px + hx, z: pz + hz }); nl++; }
           }
         }
         continue;

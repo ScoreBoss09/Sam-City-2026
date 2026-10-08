@@ -154,3 +154,4 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 .cu.has { opacity: 1; border-style: solid; } .cu .ic { grid-row: span 2; font-size: 22px; align-self: center; } .cu b { font-size: 13px; } .cu small { font-size: 11px; color: #6a5a3a; }
 #journal .hint { font-size: 11px; color: #6a5a3a; margin-top: 8px; }
 @media (max-width: 600px) { .jstats, .cus { grid-template-columns: 1fr 1fr; } }
+#toast, #prompt, #query, #countdown, .wg, #sitelabels { pointer-events: none; }

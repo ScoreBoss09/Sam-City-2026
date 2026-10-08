@@ -250,7 +250,7 @@ export class Player {
     const g = this.game, inp = g.input; let nt = this.findTarget();
     // once a job is started Sam locks on to it until it is finished, Sam walks off, or it drifts out of reach
     if (this.lock) { const L = this.lock; if (!this.stillValid(L) || this.distTo(L) > 4.2 || performance.now() - (this.lockT || 0) > 2500 || Math.hypot(this.x - this.lockPos.x, this.z - this.lockPos.z) > 0.9) this.lock = null; else nt = L; }
-    this.target = nt; const t = nt; this.placeRing(t);
+    this.target = nt; const t = nt; this.placeRing(t); if (t && t.kind === 'info' && /Tool Rack/.test(t.text)) this.needToolT = g.elapsed + 10;
     if (!t || !t.work) g.workgame.stop();
     g.ui.setPrompt(t ? t.text + (t.work ? '' : t.hold ? '  (hold E)' : t.kind === 'info' ? '' : '') : null, t && t.hold ? this.hold : -1, t && t.kind === 'info');
     if (!t) { this.hold = 0; return; }
