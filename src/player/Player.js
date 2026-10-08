@@ -81,6 +81,7 @@ export class Player {
       if (this.speed > 0.05) {
         this.heading += clamp(angleDiff(this.heading, Math.atan2(this.dirx, this.dirz)), -13 * rawDt, 13 * rawDt);
         const ox = this.x, oz = this.z; this.tryMove(this.dirx * this.speed * rawDt, this.dirz * this.speed * rawDt); this.dist = Math.hypot(this.x - ox, this.z - oz); this.moved = this.dist > 0.0005;
+        if (this.speed > 6 && this.moved && (this.dustT = (this.dustT || 0) - rawDt) <= 0) { this.dustT = 0.22; g.particles.burst(this.x, 0.1, this.z, g.world.road[g.world.idx(...g.world.tileOf(this.x, this.z))] ? 0xa88a62 : 0x8a9a62, 3, 0.4, 0.8, 0.07); }
       } else this.dist = 0;
       if (inp.hit('KeyG') && this.emoteT <= 0) this.emoteT = 2.2;
       if (this.weapon && inp.hit('KeyF') && !(this.swingT > 0)) { this.swingT = 0.6; this.swingHit = false; }
