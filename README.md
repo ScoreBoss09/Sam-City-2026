@@ -16,7 +16,7 @@ python3 -m http.server 8000
 `?scale=0.75` gives a crisper render (default 0.6 = chunky pixel look), `?post=0` turns the pixel-art outline pass off, `?auto` skips the title screen, `?auto&demo` (or the **Demo City** button) builds a lively sandbox town. Progress autosaves in the browser; use **Continue** on the title screen.
 
 ## Controls
-**Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact (hold E to chop, mine, pick, fish, dig paths, build or work), Q eat, F swing the club (raids only), G wave, M big map, TAB planning view.
+**Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact, Q eat, I backpack, R drop what you carry, H hide the help bar, F swing the club (raids only), G wave, M big map, TAB planning view.
 **Keyboard and mouse, planning view:** WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, F frame the island, 1-7 tools, R rotate the ghost, Esc cancel, TAB back to Sam. P pauses; the clock buttons set 1x/2x/4x.
 
 **Controller (Xbox/PlayStation layout, plug it in and press any button):**
@@ -24,17 +24,23 @@ python3 -m http.server 8000
 |---|---|---|
 | Left stick | walk | move the map (the yellow cursor is the centre of the screen) |
 | Right stick | look | rotate (left/right) and zoom (up/down) |
-| A / Cross | interact, hold to work | place, or hold and move to paint paths |
+| A / Cross | interact, tap in the green to work | place, or hold and move to paint paths |
 | B / Circle | wave | cancel tool |
 | X / Square, RT | swing the club | frame the island |
 | Y / Triangle | eat | rotate the building |
 | LB / L1 | sprint | previous tool |
 | RB / R1 | first/third person | next tool |
-| D-pad | | up/down: pick a building, left/right: building tab |
+| D-pad | up: backpack, down: drop | up/down: pick a building, left/right: building tab |
 | Start | planning view / Sam | planning view / Sam |
 | Back / Select | pause | pause |
 | R3 | big map | |
 Menus and the terminal: D-pad or stick to move, A to press, B to close.
+
+## Working (the timing bar)
+Chopping, mining, digging, picking, fishing and building show a timing bar. Tap E (A) when the white marker is in the green; gold is perfect and perfects in a row build a combo. Holding E still works, just slowly.
+
+## Backpack
+Sam carries up to 12 things in a backpack (I to open). Gathered goods go in it; press E at a building site to deliver what it needs, E at the Stockyard to store everything (or, with an empty pack, to pack what the sites need). R drops the pack on the ground as a pile you can pick up again.
 
 ## How a new game starts
 The island is empty: just the Supply Lift, the forest and a tool rack. The game opens in the planning view and nothing happens until you order it.

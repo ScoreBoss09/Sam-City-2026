@@ -115,3 +115,4 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 #obj-text { font-size: 16px; line-height: 1.35; color: #fff; font-weight: bold; margin: 2px 0 6px; }
 .stepdots { display: flex; align-items: center; gap: 5px; } .stepdots span { width: 10px; height: 10px; border: 2px solid #5a6a86; background: transparent; } .stepdots span.d { background: #7be08f; border-color: #7be08f; } .stepdots span.c { background: #ffd23f; border-color: #ffd23f; }
 .stepdots em { margin-left: 6px; font-style: normal; font-size: 10px; color: #8d9bb3; }
+#workgame { top: auto !important; bottom: 28px; }
