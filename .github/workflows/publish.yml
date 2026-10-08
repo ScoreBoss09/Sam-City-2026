@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Assemble the game (no build step: plain files)
+      - name: Assemble the game (plain files, no build step)
         run: |
           mkdir -p site
           cp -r index.html css src vendor site/
