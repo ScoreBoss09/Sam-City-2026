@@ -129,13 +129,31 @@ function buildExterior0(def, uid = 1) {
     const geo = new THREE.BoxGeometry(lw, 2.45, 0.06); geo.translate(-side * lw / 2, 1.25, 0);
     const leaf = new THREE.Mesh(geo, dmat); leaf.position.set(door + side * (dw / 2 - 0.02), 0.15, hingeZ); leaf.rotation.y = -side * (single ? 1.5 : 1.25); leaf.castShadow = true; g.add(leaf);
   }
+  // striped shop awning over the door
+  if (def.shopping || def.dining) {
+    const cols2 = { chippy: [0x2a6aa8, 0xffffff], bakery: [0xd98a3a, 0xf4ecd9], newsagent: [0x2a7a3a, 0xf4ecd9], video: [0x2a3a8a, 0xf1c40f], bookies: [0x2a6a3a, 0xf4ecd9], tavern: [0x7a2a2a, 0xe8d8a8] }[def.id] || [0xc0392b, 0xf4ecd9];
+    const aw = Math.min(W - 0.6, dw + 1.6), n = 6;
+    for (let i = 0; i < n; i++) { const m = box(g, aw / n, 0.08, 1.15, cols2[i % 2], door - aw / 2 + (i + 0.5) * aw / n, 2.62, D / 2 + 0.55); m.rotation.x = 0.22; }
+  }
   // sign above the door
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture(def.name) }));
   sign.position.set(door, Math.min(2.95, H - 0.4), D / 2 + 0.02); g.add(sign);
   // roof
   roof.position.y = H;
   const rc = def.roofColor || 0x666666;
-  if (def.roof === 'gable' || def.roof === 'thatch') {
+  if (def.roof === 'church') {
+    const p = new THREE.Mesh(prism(W + 0.6, 3.6, D + 0.6), roofMaterial(rc, 'slate')); p.castShadow = true; roof.add(p);
+    const tw = 3.2, tx = -W / 2 + tw / 2 + 0.2, tz = D / 2 - tw / 2 - 0.2, sm = facadeMaterial('stone');
+    const tower = new THREE.Mesh(wallGeo(tw, 7, tw), sm); tower.position.set(tx, 3.5, tz); tower.castShadow = true; roof.add(tower);
+    for (const [ox, oz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(roof, 0.5, 0.7, 0.5, 0x8a867c, tx + ox * (tw / 2 - 0.25), 7, tz + oz * (tw / 2 - 0.25));
+    box(roof, 1.0, 1.5, 0.08, 0x1a1a1a, tx, 4.6, tz + tw / 2 + 0.01);                       // belfry opening
+    const clock = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.08, 16), stdMat(0xf4f0e0, { emissive: 0xfff0c0, emissiveIntensity: 0.3 })); clock.rotation.x = Math.PI / 2; clock.position.set(tx, 2.6, tz + tw / 2 + 0.05); roof.add(clock);
+    box(roof, 0.06, 0.45, 0.04, 0x1a1a1a, tx, 2.6, tz + tw / 2 + 0.1); box(roof, 0.35, 0.06, 0.04, 0x1a1a1a, tx + 0.15, 2.6, tz + tw / 2 + 0.1);
+    const sp = new THREE.Mesh(new THREE.ConeGeometry(tw * 0.62, 5.5, 4), roofMaterial(0x3a424c, 'slate')); sp.rotation.y = Math.PI / 4; sp.position.set(tx, 7 + 2.75, tz); sp.castShadow = true; roof.add(sp);
+    box(roof, 0.12, 1.2, 0.12, 0xd8c070, tx, 12.4, tz); box(roof, 0.6, 0.12, 0.12, 0xd8c070, tx, 12.9, tz);
+    // stained glass on the front gable
+    const sg = new THREE.Mesh(new THREE.CircleGeometry(1.0, 12), new THREE.MeshStandardMaterial({ color: 0x8a4ab8, emissive: 0x5a2a88, emissiveIntensity: 0.6 })); sg.position.set(W * 0.18, 1.3, D / 2 + 0.33); roof.add(sg);
+  } else if (def.roof === 'gable' || def.roof === 'thatch') {
     const thatch = def.roof === 'thatch', alongZ = D >= W, ov = thatch ? 1.5 : 0.9, rh = thatch ? 1.5 + Math.min(W, D) * 0.34 : 1.0 + Math.min(W, D) * 0.28;
     const kind = thatch ? 'thatch' : (rc < 0x555566 ? 'slate' : 'tiles');
     const p = new THREE.Mesh(prism(alongZ ? W + ov : D + ov, rh, alongZ ? D + ov : W + ov), roofMaterial(rc, kind));
@@ -192,6 +210,14 @@ function buildPark(def, uid) {
     return buildWell(def, g, roof, cols);
   } else if (def.park === 'postbox') {
     return buildPostbox(def, g, roof, cols);
+  } else if (def.park === 'phonebox') {
+    return buildPhonebox(def, g, roof, cols);
+  } else if (def.park === 'busstop') {
+    return buildBusStop(def, g, roof, cols);
+  } else if (def.park === 'bandstand') {
+    return buildBandstand(def, g, roof, cols, tree);
+  } else if (def.park === 'allotment') {
+    return buildAllotment(def, g, roof, cols, rnd);
   } else { // ball field
     const dirt = new THREE.Mesh(new THREE.BoxGeometry(W * 0.62, 0.05, W * 0.62), stdMat(0xc79a62)); dirt.rotation.y = Math.PI / 4; dirt.position.set(0, 0.11, 1.0); g.add(dirt);
     const inner = new THREE.Mesh(new THREE.BoxGeometry(W * 0.38, 0.06, W * 0.38), stdMat(0x6aa64f)); inner.rotation.y = Math.PI / 4; inner.position.set(0, 0.12, 1.0); g.add(inner);
@@ -211,7 +237,33 @@ function buildLift(def) {
   for (const x of [-W / 2 + 0.6, W / 2 - 0.6]) { box(g, 1.0, 7, 1.0, 0x59616d, x, 0, D / 2 - 1); cols.push({ cx: x, cz: D / 2 - 1, sx: 1, sz: 1 }); box(g, 0.5, 0.5, 0.5, 0xffa500, x, 7, D / 2 - 1, { emissive: 0xffa500, emissiveIntensity: 1.4 }); }
   box(g, W - 1, 0.7, 0.7, 0x59616d, 0, 6.4, D / 2 - 1);
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.2), new THREE.MeshBasicMaterial({ map: signTexture('THE LIFT - STAFF ONLY', '#3a1010') })); sign.position.set(0, 5.6, D / 2 - 0.62); g.add(sign);
-  return { group: g, roof, colliders: cols, height: 11 };
+  // gantry + the goods cage that comes down with deliveries
+  box(g, W - 2, 0.6, 0.8, 0x2e343c, 0, 11.4, 0.5); for (const x of [-W / 2 + 1.2, W / 2 - 1.2]) { box(g, 0.6, 11.4, 0.6, 0x2e343c, x, 0, 0.5); cols.push({ cx: x, cz: 0.5, sx: 0.6, sz: 0.6 }); }
+  const cage = new THREE.Group(); cage.userData.keep = true; g.add(cage); const REST = 9.6; cage.position.set(0, REST, 0.5);
+  const cm = (w, h, d, c, x, y, z, o) => { const m = new THREE.Mesh(unit, stdMat(c, o)); m.scale.set(w, h, d); m.position.set(x, y + h / 2, z); m.castShadow = true; cage.add(m); return m; };
+  cm(5.2, 0.2, 5.2, 0x3a4048, 0, 0, 0); for (const [x, z] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) cm(0.14, 2.6, 0.14, 0xf1c40f, x, 0.2, z); cm(5.2, 0.16, 5.2, 0x3a4048, 0, 2.8, 0);
+  for (const z of [-2.5, 2.5]) cm(5.2, 0.08, 0.06, 0xf1c40f, 0, 1.3, z);
+  const lamp = cm(0.3, 0.2, 0.3, 0xff8a1a, 0, 2.96, 0, { emissive: 0xff6a1a, emissiveIntensity: 0.2 });
+  const crates = new THREE.Group(); cage.add(crates);
+  const cable = new THREE.Mesh(unit, stdMat(0x1a1a1a)); cable.userData.keep = true; g.add(cable);
+  // intercom post outside the platform: Sam can order goods here
+  const ix = W / 2 + 0.9, iz = D / 2 - 0.4; box(g, 0.14, 1.3, 0.14, 0x59616d, ix, 0, iz); box(g, 0.45, 0.6, 0.25, 0xf1c40f, ix, 1.2, iz); box(g, 0.3, 0.2, 0.03, 0x1a1a1a, ix, 1.45, iz + 0.13); box(g, 0.12, 0.12, 0.04, 0xc0392b, ix, 1.28, iz + 0.13, { emissive: 0xc0392b, emissiveIntensity: 0.8 });
+  const anim = { t: -1, load: null, onLand: null };
+  const deliver = (colors, onLand) => { anim.t = 0; anim.onLand = onLand; crates.clear(); colors.slice(0, 9).forEach((c, i) => { const m = new THREE.Mesh(unit, stdMat(c)); m.scale.set(0.9, 0.8, 0.9); m.position.set(-1.1 + (i % 3) * 1.1, 0.6 + Math.floor(i / 9) * 0.8, -1.1 + Math.floor(i / 3) * 1.1); m.castShadow = true; crates.add(m); }); };
+  const update = (dt) => {
+    let y = REST;
+    if (anim.t >= 0) {
+      anim.t += dt; const T = anim.t;
+      if (T < 3) y = REST - (REST - 0.2) * (1 - Math.cos(Math.min(1, T / 3) * Math.PI)) / 2;
+      else if (T < 5) { y = 0.2; if (anim.onLand) { const f = anim.onLand; anim.onLand = null; f(); crates.clear(); } }
+      else if (T < 8) y = 0.2 + (REST - 0.2) * (1 - Math.cos(Math.min(1, (T - 5) / 3) * Math.PI)) / 2;
+      else anim.t = -1;
+      lamp.material.emissiveIntensity = anim.t >= 0 && Math.sin(T * 10) > 0 ? 1.6 : 0.2;
+    }
+    cage.position.y = y; const top = 11.4, len = Math.max(0.1, top - (y + 2.96)); cable.scale.set(0.08, len, 0.08); cable.position.set(0, y + 2.96 + len / 2, 0.5);
+  };
+  update(0);
+  return { group: g, roof, colliders: cols, height: 11, update, everyFrame: true, deliver, hatch: { x: ix, z: iz + 0.9 }, busy: () => anim.t >= 0 };
 }
 
 function buildTunnel(def) {
@@ -313,6 +365,59 @@ function buildPostbox(def, g, roof, cols) {
   const flag = new THREE.Group(); flag.position.set(0.5, 1.0, 0); const pole = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.05), stdMat(0x333333)); pole.position.y = 0.3; const f = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.3), stdMat(0xffd23f)); f.position.set(0, 0.55, 0.15); flag.add(pole, f); g.add(flag);
   flag.userData.keep = true; g.userData.flag = flag;
   cols.push({ cx: 0, cz: 0, sx: 1.0, sz: 1.0 }); return { group: g, roof, colliders: cols, height: 1.8, flag };
+}
+/** The red K6 telephone box. */
+function buildPhonebox(def, g, roof, cols) {
+  g.clear(); const pave = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 3.2), stdMat(0xa29a8a)); pave.position.y = 0.05; pave.receiveShadow = true; g.add(pave);
+  const red = 0xc0241e, glass = { color: 0x9fd0e8 };
+  box(g, 1.1, 0.15, 1.1, red, 0, 0.1, 0);
+  for (const [x, z] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) box(g, 0.14, 2.3, 0.14, red, x, 0.25, z);
+  for (const [x, z, sx, sz] of [[0, 0.5, 0.86, 0.04], [0, -0.5, 0.86, 0.04], [0.5, 0, 0.04, 0.86], [-0.5, 0, 0.04, 0.86]]) {
+    box(g, sx, 1.8, sz, 0x9fd0e8, x, 0.45, z, { transparent: true, opacity: 0.55, roughness: 0.2 });
+    for (let k = 0; k < 5; k++) box(g, sx || 0.05, 0.05, sz || 0.05, red, x, 0.45 + k * 0.42, z);
+  }
+  box(g, 1.15, 0.32, 1.15, red, 0, 2.55, 0); box(g, 1.0, 0.18, 1.0, red, 0, 2.87, 0);
+  const top = new THREE.Mesh(new THREE.SphereGeometry(0.62, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2), stdMat(red)); top.scale.y = 0.4; top.position.y = 3.02; g.add(top);
+  for (const [x, z, r] of [[0, 0.585, 0], [0, -0.585, Math.PI], [0.585, 0, Math.PI / 2], [-0.585, 0, -Math.PI / 2]]) { const t = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.2), new THREE.MeshBasicMaterial({ map: signTexture('TELEPHONE', '#1a1a1a') })); t.position.set(x, 2.71, z); t.rotation.y = r; g.add(t); }
+  box(g, 0.3, 0.4, 0.2, 0x1a1a1a, 0, 1.2, -0.38);
+  cols.push({ cx: 0, cz: 0, sx: 1.15, sz: 1.15 }); return { group: g, roof, colliders: cols, height: 3.2 };
+}
+function buildBusStop(def, g, roof, cols) {
+  g.clear(); const pave = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.1, 3.4), stdMat(0xa29a8a)); pave.position.y = 0.05; pave.receiveShadow = true; g.add(pave);
+  box(g, 3.0, 2.2, 0.06, 0x9fd0e8, 0, 0.1, -1.3, { transparent: true, opacity: 0.45, roughness: 0.2 });
+  for (const x of [-1.5, 1.5]) { box(g, 0.1, 2.4, 0.1, 0x2a5a3a, x, 0.1, -1.3); box(g, 0.06, 2.2, 1.2, 0x9fd0e8, x, 0.1, -0.7, { transparent: true, opacity: 0.45 }); }
+  box(g, 3.3, 0.12, 1.6, 0x2a5a3a, 0, 2.5, -0.75); box(g, 2.4, 0.08, 0.45, 0x8a5a33, 0, 0.5, -0.9); box(g, 0.08, 0.5, 0.3, 0x333, -1.0, 0, -0.9); box(g, 0.08, 0.5, 0.3, 0x333, 1.0, 0, -0.9);
+  box(g, 0.8, 0.4, 0.02, 0x1a1a1a, 0.6, 1.4, -1.25); box(g, 0.5, 0.3, 0.02, 0xf1c40f, -0.6, 1.0, -1.25);          // graffiti + timetable
+  box(g, 0.08, 2.7, 0.08, 0x666, 1.6, 0.1, 1.2); const s = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.05, 14), stdMat(0xc0241e)); s.rotation.x = Math.PI / 2; s.position.set(1.6, 2.65, 1.2); g.add(s);
+  const bus = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.14), new THREE.MeshBasicMaterial({ map: signTexture('BUS', '#1a3a8a') })); bus.position.set(1.6, 2.65, 1.23); g.add(bus);
+  cols.push({ cx: 0, cz: -1.3, sx: 3.0, sz: 0.2 }, { cx: -1.5, cz: -0.7, sx: 0.2, sz: 1.2 }, { cx: 1.5, cz: -0.7, sx: 0.2, sz: 1.2 }); return { group: g, roof, colliders: cols, height: 2.7 };
+}
+function buildBandstand(def, g, roof, cols, tree) {
+  box(g, 1.0, 0.04, 3.0, 0xcdb58a, 0, 0.1, 2.6);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.7, 0.7, 8), stdMat(0xd8d0c0)); base.position.y = 0.35; base.castShadow = true; base.receiveShadow = true; g.add(base);
+  const deck = new THREE.Mesh(new THREE.CylinderGeometry(2.55, 2.55, 0.06, 8), stdMat(0x8a5a33)); deck.position.y = 0.72; g.add(deck);
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + Math.PI / 8; box(g, 0.14, 2.6, 0.14, 0xf4f4f0, Math.cos(a) * 2.35, 0.72, Math.sin(a) * 2.35); if (i !== 2) { const r = box(g, 1.75, 0.08, 0.06, 0xf4f4f0, Math.cos(a + Math.PI / 8) * 2.18, 1.4, Math.sin(a + Math.PI / 8) * 2.18); r.rotation.y = -(a + Math.PI / 8) + Math.PI / 2; } }
+  const rf = new THREE.Mesh(new THREE.ConeGeometry(3.0, 1.6, 8), stdMat(0x2a6a4a, { flatShading: true })); rf.position.y = 3.3 + 0.8; rf.rotation.y = Math.PI / 8; rf.castShadow = true; g.add(rf);
+  const trim = new THREE.Mesh(new THREE.CylinderGeometry(3.0, 3.0, 0.25, 8), stdMat(0xf4f4f0)); trim.position.y = 3.32; trim.rotation.y = Math.PI / 8; g.add(trim);
+  box(g, 0.1, 0.6, 0.1, 0xd8c070, 0, 4.8, 0);
+  for (const x of [-0.8, 0.6]) { box(g, 0.5, 0.05, 0.5, 0x333, x, 1.6, -0.4); box(g, 0.04, 0.9, 0.04, 0x333, x, 0.75, -0.4); }    // music stands
+  for (const [x, z] of [[-2.9, 2.6], [2.9, 2.6]]) { box(g, 2.0, 0.08, 0.5, 0x8a5a33, x, 0.45, z); box(g, 2.0, 0.45, 0.08, 0x8a5a33, x, 0.5, z - 0.22); }
+  tree(-3.2, -3.2, 0.8); tree(3.2, -3.2, 0.8);
+  cols.push({ cx: 0, cz: 0, sx: 4.6, sz: 4.6 }); return { group: g, roof, colliders: cols, height: 4.2 };
+}
+function buildAllotment(def, g, roof, cols, rnd) {
+  g.clear(); const W = def.w * TILE, D = def.d * TILE;
+  const grass = new THREE.Mesh(new THREE.BoxGeometry(W - 0.3, 0.1, D - 0.3), stdMat(0x5e8a3e)); grass.position.y = 0.03; grass.receiveShadow = true; g.add(grass);
+  const greens = [0x4a8a2a, 0x6aa63a, 0x3a7a3a, 0x8aa64a];
+  for (let i = 0; i < 4; i++) {
+    const x = -W / 2 + 1.3 + (i % 2) * 2.7, z = -D / 2 + 1.4 + Math.floor(i / 2) * 3.0; box(g, 2.3, 0.18, 2.4, 0x5a4026, x, 0, z);
+    for (let k = 0; k < 4; k++) for (let j = 0; j < 4; j++) { const h = 0.25 + rnd() * 0.35; box(g, 0.32, h, 0.32, greens[(i + k) % 4], x - 0.85 + j * 0.56, 0.18, z - 0.85 + k * 0.56); }
+    if (i === 1) for (const cx of [-0.6, 0, 0.6]) box(g, 0.04, 1.6, 0.04, 0x9a7a4a, x + cx, 0.18, z - 1.0);
+  }
+  box(g, 1.6, 1.9, 1.3, 0x5a6a4a, W / 2 - 1.1, 0, D / 2 - 0.9); const rf = new THREE.Mesh(prism(1.9, 0.6, 1.6), stdMat(0x3a3a3a)); rf.position.set(W / 2 - 1.1, 1.9, D / 2 - 0.9); rf.rotation.y = Math.PI / 2; g.add(rf);
+  const butt = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.9, 10), stdMat(0x2a4a2a)); butt.position.set(W / 2 - 2.3, 0.45, D / 2 - 0.6); g.add(butt);
+  box(g, 0.6, 0.06, 0.3, 0x6a4a2a, -W / 2 + 0.8, 0.5, D / 2 - 0.6); box(g, 0.06, 0.5, 0.25, 0x333, -W / 2 + 0.55, 0, D / 2 - 0.6); box(g, 0.06, 0.5, 0.25, 0x333, -W / 2 + 1.05, 0, D / 2 - 0.6);
+  cols.push({ cx: W / 2 - 1.1, cz: D / 2 - 0.9, sx: 1.6, sz: 1.3 }); return { group: g, roof, colliders: cols, height: 2.5 };
 }
 function buildWell(def, g, roof, cols) {
   g.clear(); const dirt = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.9, 0.1, 10), stdMat(0x8a8272)); dirt.position.y = 0.04; g.add(dirt);

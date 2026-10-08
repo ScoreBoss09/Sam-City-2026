@@ -28,6 +28,15 @@ export class BuildingManager {
   }
   byDef(id, doneOnly = true) { return this.list.filter((b) => b.id === id && (!doneOnly || b.state === 'done')); }
   count(id, doneOnly = true) { return this.byDef(id, doneOnly).length; }
+  /** Places people go shopping / eat out (any finished building flagged shopping / dining). */
+  shops() { return this.list.filter((b) => b.state === 'done' && b.def.shopping && b.spots.visit && b.spots.visit.length); }
+  diners() { return this.list.filter((b) => b.state === 'done' && b.def.dining); }
+  /** Village-wide happiness from parks, the church, the pub... (each extra copy of the same thing counts half as much). */
+  townJoy() {
+    if (this._joyT && this.game.elapsed - this._joyT < 2) return this._joy; const seen = {}; let j = 0;
+    for (const b of this.list) if (b.state === 'done' && b.def.joy) { const n = seen[b.id] = (seen[b.id] || 0) + 1; j += b.def.joy / n; }
+    this._joyT = this.game.elapsed || 0.001; return (this._joy = Math.min(0.4, j));
+  }
 
   /** Find a valid orientation for the cursor tile; returns the best candidate even when invalid (for the ghost). */
   evaluate(id, cx, cz, prefRot = 0) {
@@ -109,16 +118,19 @@ export class BuildingManager {
     // seats (chairs, sofas, benches) so sims can sit
     b.spots.seat = []; const head = (r) => (b.rot + r) * Math.PI / 2;
     const addSeat = (lx, lz, r, kind) => { const [x, z] = b.toWorld(lx, lz); b.spots.seat.push({ x, z, heading: head(r), kind, taken: null, b }); };
-    const layoutKind = ['house', 'hut', 'shack', 'cabin', 'tavern', 'apartments'].includes(def.layout) ? 'dining' : (['clinic', 'townhall', 'police'].includes(def.layout) ? 'waiting' : 'desk');
+    const layoutKind = ['house', 'hut', 'shack', 'cabin', 'tavern', 'apartments', 'chippy'].includes(def.layout) ? 'dining' : (['clinic', 'townhall', 'police', 'hall', 'bookies', 'postoffice'].includes(def.layout) ? 'waiting' : 'desk');
     for (const f of L.furniture) {
       const rr = (f.r || 0) * Math.PI / 2, c = Math.round(Math.cos(rr)), sn = Math.round(Math.sin(rr));
-      if (f.t === 'chair' || f.t === 'stool') addSeat(f.x, f.z, f.r || 0, f.t === 'stool' && def.layout === 'tavern' ? 'dining' : layoutKind);
+      if (f.t === 'chair' || f.t === 'stool') addSeat(f.x, f.z, f.r || 0, f.t === 'stool' && (def.layout === 'tavern' || def.layout === 'chippy') ? 'dining' : layoutKind);
+      else if (f.t === 'pew') for (const o of [-1, 0, 1]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'pew');
       else if (f.t === 'sofa') for (const o of [-0.55, 0.55]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'sofa');
       else if (f.t === 'bench') for (const o of [-0.5, 0.5]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'waiting');
     }
     if (def.park === 'park') addSeat(1.4, 0.35, 0, 'bench');
     if (def.park === 'camp') for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4, lx = Math.cos(a) * 2.5, lz = Math.sin(a) * 2.5; const [x, z] = b.toWorld(lx, lz); const [cx0, cz0] = b.toWorld(0, 0); b.spots.seat.push({ x, z, heading: Math.atan2(cx0 - x, cz0 - z), kind: 'bench', taken: null, b }); }
     if (def.park === 'plaza') { addSeat(-3.8, 0.3, 0, 'bench'); addSeat(3.8, 0.3, 0, 'bench'); }
+    if (def.park === 'bandstand') { addSeat(-2.9, 2.6, 0, 'bench'); addSeat(2.9, 2.6, 0, 'bench'); }
+    if (def.park === 'busstop') addSeat(0, -0.9, 0, 'bench');
     if (def.park === 'camp') { b.spots.idle = [[3.0, 0], [-3.0, 0], [0, 3.0], [0, -3.0]].map(([lx, lz]) => { const [x, z] = b.toWorld(lx, lz); return { x, z, b }; }); }
     else if (def.park === 'well') { b.spots.idle = [[1.4, 1.2], [-1.4, 1.2]].map(([lx, lz]) => { const [x, z] = b.toWorld(lx, lz); return { x, z, b }; }); }
     else if (def.park) { b.spots.idle = [0.2, -0.2].map((o, i) => { const [x, z] = b.toWorld((i ? 1.4 : -1.4), 0.4 + o); return { x, z, b }; }); }
@@ -163,7 +175,7 @@ export class BuildingManager {
     }
     // warm interior light follows the player indoors
     this._acc = (this._acc || 0) + dt; this.t = (this.t || 0) + dt; const tick = this._acc > 0.25; if (tick) this._acc = 0;
-    for (const b of this.list) if (b.ext && b.ext.update && b.state === 'done') { if (b.def.park === 'camp' || tick) b.ext.update(dt, this.t, this.game.economy.stock, b); }
+    for (const b of this.list) if (b.ext && b.ext.update && b.state === 'done') { if (b.def.park === 'camp' || b.ext.everyFrame || tick) b.ext.update(dt, this.t, this.game.economy.stock, b); }
     const L = this.interiorLight;
     if (inside) { L.position.set(inside.cx, 2.6, inside.cz); L.intensity = 38; } else L.intensity = 0;
   }

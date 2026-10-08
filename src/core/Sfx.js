@@ -38,6 +38,12 @@ export const Sfx = {
       case 'done': [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.18, { type: 'square', vol: 0.12, delay: i * 0.09 })); break;
       case 'ui': this.tone(740, 0.04, { type: 'square', vol: 0.08 }); break;
       case 'deny': this.tone(200, 0.12, { type: 'square', vol: 0.1 }); this.tone(150, 0.14, { type: 'square', vol: 0.1, delay: 0.1 }); break;
+      case 'jump': this.tone(300, 0.14, { type: 'square', vol: 0.09, slide: 500 }); break;
+      case 'ring': for (let i = 0; i < 4; i++) { this.tone(440, 0.18, { type: 'sine', vol: 0.12, delay: i * 0.5 }); this.tone(480, 0.18, { type: 'sine', vol: 0.12, delay: i * 0.5 }); } break;
+      case 'bell': [392, 330, 294, 262].forEach((f, i) => this.tone(f, 0.9, { type: 'sine', vol: 0.16, delay: i * 0.55 })); break;
+      case 'lift': this.tone(80, 1.6, { type: 'sawtooth', vol: 0.08, slide: 30 }); this.noise(1.4, { freq: 300, vol: 0.12, type: 'lowpass' }); this.tone(880, 0.2, { type: 'square', vol: 0.06, delay: 1.5 }); break;
+      case 'cash': this.tone(1568, 0.08, { type: 'square', vol: 0.1 }); this.tone(2093, 0.18, { type: 'square', vol: 0.1, delay: 0.08 }); break;
+      case 'horse': for (let i = 0; i < 8; i++) this.noise(0.04, { freq: 600, q: 1, vol: 0.35, delay: i * 0.13 + (i % 2) * 0.05 }); break;
       default: break;
     }
   },

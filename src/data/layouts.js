@@ -163,6 +163,59 @@ const LAYOUTS = {
   },
 };
 
+Object.assign(LAYOUTS, {
+  kiosk(def) {
+    const l = empty(); l.furniture.push({ t: 'counter', x: 0.3, z: -0.6, r: 0 }, { t: 'shelf', x: -0.6, z: -1.55, r: 0 });
+    l.work.push({ x: 0.3, z: -1.25 }); l.visit.push({ x: 0, z: 0.5 }); l.idle.push({ x: -0.6, z: 0.8 }); return l;
+  },
+  bakery(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'oven', x: -W / 2 + 1.4, z: -D / 2 + 0.9, r: 0 }, { t: 'workbench', x: 1.6, z: -D / 2 + 0.8, r: 0 }, { t: 'counter', x: 0.6, z: 0.2, r: 0 }, { t: 'shelf', x: -W / 2 + 0.5, z: 1.4, r: 1 }, { t: 'barrel', x: W / 2 - 0.6, z: -0.6, r: 0 });
+    l.work.push({ x: -W / 2 + 1.4, z: -D / 2 + 2.1 }, { x: 0.6, z: -0.7 }); l.visit.push({ x: 0.4, z: 1.4 }, { x: 1.8, z: 1.8 }); l.idle.push({ x: -0.6, z: 2.2 }); return l;
+  },
+  chippy(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'fryer', x: 0.4, z: -D / 2 + 0.75, r: 0 }, { t: 'counter', x: 0.4, z: -0.5, r: 0 });
+    l.work.push({ x: -0.4, z: -D / 2 + 1.7 }, { x: 1.3, z: -D / 2 + 1.7 });
+    for (const [x, z] of [[-2.2, 1.6]]) l.furniture.push({ t: 'table', x, z, r: 0 }, { t: 'chair', x, z: z + 1.0, r: 2 }, { t: 'chair', x: x + 1.1, z, r: 3 });
+    l.furniture.push({ t: 'stool', x: 1.6, z: 1.8, r: 2 }, { t: 'stool', x: 2.4, z: 1.8, r: 2 });
+    l.visit.push({ x: 0.4, z: 0.6 }, { x: 1.4, z: 0.7 }); l.idle.push({ x: 0, z: 2.6 }); return l;
+  },
+  launderette(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    for (let i = 0; i < 6; i++) l.furniture.push({ t: 'washer', x: -W / 2 + 0.9 + i * 0.95, z: -D / 2 + 0.7, r: 0 });
+    l.furniture.push({ t: 'counter', x: W / 2 - 1.6, z: 0.6, r: 1 }, { t: 'bench', x: -1.3, z: 1.6, r: 0 });
+    l.work.push({ x: W / 2 - 0.6, z: 0.6 }); l.visit.push({ x: -1.6, z: -0.6 }, { x: 0.4, z: -0.6 }); l.idle.push({ x: 0.5, z: 2.4 }); return l;
+  },
+  video(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'vhs', x: -1.2, z: -D / 2 + 0.5, r: 0 }, { t: 'vhs', x: 1.2, z: -D / 2 + 0.5, r: 0 }, { t: 'vhs', x: -W / 2 + 0.5, z: 0.4, r: 1 }, { t: 'counter', x: 1.4, z: 1.2, r: 1 }, { t: 'tv', x: W / 2 - 0.5, z: -0.6, r: 3 });
+    l.work.push({ x: 2.4, z: 1.2 }); l.visit.push({ x: -1.2, z: -0.6 }, { x: 0.8, z: -0.6 }, { x: -0.6, z: 0.9 }); l.idle.push({ x: 0, z: 2.4 }); return l;
+  },
+  bookies(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'reception', x: 0, z: -D / 2 + 1.0, r: 0 }, { t: 'tv', x: -W / 2 + 0.5, z: -0.4, r: 1 }, { t: 'tv', x: -W / 2 + 0.5, z: 1.2, r: 1 }, { t: 'table', x: 1.4, z: 1.2, r: 0 }, { t: 'stool', x: 0.4, z: 1.2, r: 1 }, { t: 'stool', x: 2.4, z: 1.2, r: 3 });
+    l.work.push({ x: 0, z: -D / 2 + 0.3 }); l.visit.push({ x: -0.8, z: 0.2 }, { x: -1.4, z: 1.4 }); l.idle.push({ x: 0.4, z: 2.4 }); return l;
+  },
+  postoffice(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'reception', x: 0, z: -D / 2 + 1.2, r: 0 }, { t: 'shelf', x: -W / 2 + 0.5, z: 0.6, r: 1 }, { t: 'bench', x: 1.6, z: 1.8, r: 0 }, { t: 'plant', x: W / 2 - 0.6, z: 0.2, r: 0 });
+    l.work.push({ x: -0.8, z: -D / 2 + 0.4 }, { x: 0.8, z: -D / 2 + 0.4 }); l.visit.push({ x: -0.6, z: -0.2 }, { x: -0.6, z: 0.8 }, { x: -0.6, z: 1.8 }); l.idle.push({ x: 0, z: 2.6 }); return l;
+  },
+  hall(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'table', x: -3.6, z: -D / 2 + 1.2, r: 0 }, { t: 'table', x: -2.0, z: -D / 2 + 1.2, r: 0 }, { t: 'counter', x: 3.6, z: -D / 2 + 0.7, r: 0 }, { t: 'board', x: 0, z: -D / 2 + 0.2, r: 0 });
+    for (const x of [-3.6, -1.2, 1.2, 3.6]) l.furniture.push({ t: 'chair', x, z: 1.2, r: 2 }, { t: 'chair', x, z: 2.4, r: 2 });
+    l.work.push({ x: 3.6, z: -D / 2 + 1.6 }); l.visit.push({ x: 0, z: -0.4 }); l.idle.push({ x: 0, z: 0.2 }, { x: -2, z: 0 }); return l;
+  },
+  church(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'altar', x: 0, z: -D / 2 + 1.0, r: 0 }, { t: 'plant', x: -2, z: -D / 2 + 0.8, r: 0 }, { t: 'plant', x: 2, z: -D / 2 + 0.8, r: 0 });
+    for (const z of [-1.6, 0.2, 2.0, 3.8]) for (const x of [-2.9, 2.9]) l.furniture.push({ t: 'pew', x, z, r: 2 });
+    l.work.push({ x: 0, z: -D / 2 + 2.0 }); l.idle.push({ x: 0, z: 1 }); l.visit.push({ x: 0, z: 0.5 }); return l;
+  },
+});
+
 export function layoutFor(def) {
   const fn = LAYOUTS[def.layout]; const l = fn ? fn(def) : empty();
   const need = Object.values(def.jobs || {}).reduce((a, b) => a + b, 0); fillWork(def, l, need);

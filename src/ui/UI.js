@@ -15,7 +15,7 @@ const TOOLS = [
 /** All DOM. In Unity: UI Toolkit / uGUI screens driven by the same game-state getters. */
 export class UI {
   constructor(game) {
-    this.game = game; this.modalOpen = false; this.mouseOverCanvas = true; this.terminalTab = 'permits'; this.buildTab = 'Homes'; this.terminalB = null; this.dialogue = null; this.acc = 0; this.hoverTimer = 0;
+    this.game = game; this.adult = true; this.modalOpen = false; this.mouseOverCanvas = true; this.terminalTab = 'permits'; this.buildTab = 'Homes'; this.terminalB = null; this.dialogue = null; this.acc = 0; this.hoverTimer = 0;
     const canvas = $('view'); canvas.addEventListener('mouseenter', () => (this.mouseOverCanvas = true)); canvas.addEventListener('mouseleave', () => (this.mouseOverCanvas = false));
     // toolbox
     $('toolbox').innerHTML = TOOLS.map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('');
@@ -66,7 +66,7 @@ export class UI {
     const list = this.padItems(); if (list.length && (P.hitB[12] || P.hitB[13])) { const i = list.indexOf(g.god.tool.sub), n = list[(i + (P.hitB[13] ? 1 : -1) + list.length + (i < 0 ? 1 : 0)) % list.length]; g.god.setTool(g.god.tool.id, n); this.openSub(g.god.tool.id); }
     if (g.god.tool.id === 'build' && (P.hitB[14] || P.hitB[15])) { const tabs = TOOL_MENUS.build.map(([n]) => n), i = tabs.indexOf(this.buildTab); this.buildTab = tabs[(i + (P.hitB[15] ? 1 : -1) + tabs.length) % tabs.length]; g.god.setTool('build', null); this.openSub('build'); }
   }
-  padItems() { const t = this.game.god.tool.id; if (t === 'build') return (TOOL_MENUS.build.find(([n]) => n === this.buildTab) || TOOL_MENUS.build[0])[1]; if (t === 'park' || t === 'util') return TOOL_MENUS[t]; if (t === 'road') return ['dirt', 'paved']; if (t === 'zone') return ['res', 'com', 'ind', 'none']; return []; }
+  padItems() { const t = this.game.god.tool.id, vis = (l) => l.filter((k) => this.game.economy.visible(k)); if (t === 'build') return vis((TOOL_MENUS.build.find(([n]) => n === this.buildTab) || TOOL_MENUS.build[0])[1]); if (t === 'park' || t === 'util') return vis(TOOL_MENUS[t]); if (t === 'road') return ['dirt', 'paved']; if (t === 'zone') return ['res', 'com', 'ind', 'none']; return []; }
   clearPadFocus() { if (this._pfOn) { document.querySelectorAll('.padfocus').forEach((b) => b.classList.remove('padfocus')); this._pfOn = false; } if (this.padScope()) this._pfOn = true; }
 
   // ---------- toolbox ----------
@@ -80,12 +80,15 @@ export class UI {
     let list = TOOL_MENUS[id], tabs = '';
     if (id === 'build') { tabs = TOOL_MENUS.build.map(([n]) => `<button class="subtab ${n === this.buildTab ? 'on' : ''}" data-tab="${n}">${n}</button>`).join(''); list = (TOOL_MENUS.build.find(([n]) => n === this.buildTab) || TOOL_MENUS.build[0])[1]; }
     if (!list) { sm.classList.add('hidden'); return; }
-    const pop = g.population.count();
-    sm.innerHTML = (tabs ? `<div class="tabrow">${tabs}</div>` : '') + list.map((k) => {
+    const pop = g.population.count(), next = g.economy.nextMilestone(); list = list.filter((k) => g.economy.visible(k));
+    const more = next ? `<div class="sub locked teaser">🔒 More to come…<small>new buildings at ${next} residents</small></div>` : '';
+    sm.innerHTML = (tabs ? `<div class="tabrow">${tabs}</div>` : '') + (list.length ? '' : '<div class="sub locked teaser">Nothing here yet<small>grow the village</small></div>') + list.map((k) => {
       const d = BUILDINGS[k], un = g.economy.isUnlocked(k), p = g.economy.permits[k], mats = Object.entries(d.mat).map(([m, n]) => n + ' ' + m).join(', ');
       const status = un ? mats : (p === 'pending' ? 'permit pending…' : pop < d.permit.pop ? `needs ${d.permit.pop} residents` : `permit £${d.permit.cost} (Postbox form)`);
       return `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${un ? '' : 'locked'}" data-s="${k}">${d.name}<small>${status}</small></button>`;
-    }).join(''); sm.classList.remove('hidden');
+    }).join('') + more; sm.classList.remove('hidden'); this.subOpen = id;
+  }
+  refreshSub() { const sm = $('submenu'); if (this.subOpen && sm && !sm.classList.contains('hidden') && this.game.mode === 'god') this.openSub(this.subOpen);
   }
   setHover(text) { const h = $('hover'); h.textContent = text; h.classList.remove('hidden'); this.hoverTimer = 0.2; }
 
@@ -146,7 +149,7 @@ export class UI {
   closeDialogue() { if (!this.dialogue) return; this.dialogue.sim.frozen = false; this.dialogue.sim.talkingToPlayer = false; this.dialogue.sim.moodBoost += 0.1; this.dialogue = null; this.modalOpen = false; this.hide('dialogue'); }
 
   // ---------- terminal ----------
-  openTerminal(b, mode = 'computer') { this.terminalB = b; this.termMode = mode; this.terminalTab = mode === 'post' ? 'letters' : (this.terminalTab === 'letters' ? 'permits' : this.terminalTab); this.modalOpen = true; this.game.input.unlock(); if (mode === 'post') this.game.flags.postRead = true; else this.game.flags.terminalOpened = true; this.renderTerminal(); this.show('terminal'); $('terminal').classList.toggle('post', mode === 'post'); }
+  openTerminal(b, mode = 'computer') { this.terminalB = b; this.termMode = mode; this.terminalTab = mode === 'post' ? 'letters' : mode === 'hatch' ? 'materials' : (this.terminalTab === 'letters' ? 'permits' : this.terminalTab); this.modalOpen = true; this.game.input.unlock(); if (mode === 'post') this.game.flags.postRead = true; else this.game.flags.terminalOpened = true; this.renderTerminal(); this.show('terminal'); $('terminal').classList.toggle('post', mode === 'post'); }
   closeTerminal() { this.terminalB = null; this.modalOpen = false; this.hide('terminal'); }
 
   // ---------- journal ----------
@@ -180,16 +183,16 @@ export class UI {
   }
   renderTerminal() {
     const g = this.game, e = g.economy, tab = this.terminalTab, T = $('terminal');
-    const post = this.termMode === 'post';
-    const tabs = post ? [['letters', `Letters${g.mail.unread() ? ' (' + g.mail.unread() + ' new)' : ''}`], ['permits', 'Permit forms'], ['materials', 'Order form'], ['report', 'Accounts']] : [['permits', 'Permits'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
+    const post = this.termMode === 'post', hatch = this.termMode === 'hatch';
+    const tabs = hatch ? [['materials', 'Lift order form']] : post ? [['letters', `Letters${g.mail.unread() ? ' (' + g.mail.unread() + ' new)' : ''}`], ['permits', 'Permit forms'], ['materials', 'Order form'], ['report', 'Accounts']] : [['permits', 'Permits'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
     let body = '';
     if (tab === 'letters') {
       const L = g.mail.letters; body = L.length ? L.map((l, i) => `<div class="letter ${l.read ? '' : 'new'} ${l.kind}"><div class="lh"><b>${l.title}</b><span>${l.date}</span></div><div class="lf">From: ${l.from}</div><div class="lb">${l.body.replace(/\n/g, '<br>')}</div></div>`).join('') : '<div class="note">The box is empty.</div>';
       setTimeout(() => { g.mail.markRead(); }, 0);
     }
     if (tab === 'permits') {
-      const list = ALL_BUILDABLE.slice().sort((a, b) => BUILDINGS[a].permit.pop - BUILDINGS[b].permit.pop || BUILDINGS[a].permit.cost - BUILDINGS[b].permit.cost);
-      body = `<div class="note">Settlement: <b>${tierOf(g.population.count())}</b> · ${g.population.count()} residents. Bigger towns unlock bigger buildings.</div><table><tr><th>Building</th><th>Needs</th><th>Fee</th><th></th></tr>` + list.map((k) => {
+      const list = ALL_BUILDABLE.filter((k) => e.visible(k)).sort((a, b) => (e.permits[a] === 'approved') - (e.permits[b] === 'approved') || BUILDINGS[a].permit.pop - BUILDINGS[b].permit.pop || BUILDINGS[a].permit.cost - BUILDINGS[b].permit.cost), nx = e.nextMilestone();
+      body = `<div class="note">Settlement: <b>${tierOf(g.population.count())}</b> · ${g.population.count()} residents. ${nx ? `The Council will consider new kinds of building at <b>${nx} residents</b>.` : 'Every permit is open to you.'}</div><table><tr><th>Building</th><th>Needs</th><th>Fee</th><th></th></tr>` + list.map((k) => {
         const d = BUILDINGS[k], p = e.permits[k], mats = Object.entries(d.mat).map(([m, n]) => `${n} ${m}`).join(', ');
         const btn = p === 'approved' ? '<span class="st">APPROVED</span>' : p === 'pending' ? '<span class="st">PENDING…</span>' : `<button data-act="permit" data-id="${k}" ${g.population.count() < d.permit.pop || e.funds < d.permit.cost ? 'disabled' : ''}>Request</button>`;
         return `<tr><td>${d.name}<br><small>${d.blurb}</small></td><td><small>${mats}<br>${d.permit.pop ? 'needs ' + d.permit.pop + ' residents' : ''}</small></td><td>${fmtMoney(d.permit.cost)}</td><td>${btn}</td></tr>`;
@@ -197,8 +200,8 @@ export class UI {
     } else if (tab === 'materials') {
       body = `<div>Stockyard: ${Object.keys(MATERIALS).map((m) => `${MATERIALS[m].name} <b>${Math.floor(e.stock[m])}</b>`).join(' · ')}</div><div class="note">Gather what you can yourself or with workers. The Lift trader buys surplus at about half price and sells at a premium; a truck brings purchases to the Stockyard.</div>
         <table><tr><th>Goods</th><th>Buy price</th><th colspan="3">Buy</th><th colspan="2">Sell</th></tr>` +
-        Object.entries(MATERIALS).map(([m, d]) => `<tr><td>${d.name}</td><td>${fmtMoney(Math.round(d.price * 1.4))}</td>${[5, 20].map((q) => `<td><button data-act="order" data-m="${m}" data-q="${q}" ${e.funds < Math.round(d.price * 1.4) * q ? 'disabled' : ''}>×${q} (${fmtMoney(Math.round(d.price * 1.4) * q)})</button></td>`).join('')}<td></td>${[5, 20].map((q) => `<td><button data-act="sell" data-m="${m}" data-q="${q}" ${e.stock[m] < q ? 'disabled' : ''}>×${q}</button></td>`).join('')}</tr>`).join('') +
-        `</table><div class="note">${g.depot ? 'Deliveries drive along roads from the Lift to the Stockyard.' : 'No Stockyard! Goods will be held at the dock.'} Orders in transit: ${e.orders.length}</div>`;
+        Object.entries(MATERIALS).map(([m, d]) => `<tr><td>${d.name}</td><td>${fmtMoney(e.buyPrice(m))}</td>${[5, 20].map((q) => `<td><button data-act="order" data-m="${m}" data-q="${q}" ${e.funds < e.buyPrice(m) * q ? 'disabled' : ''}>×${q} (${fmtMoney(e.buyPrice(m) * q)})</button></td>`).join('')}<td></td>${[5, 20].map((q) => `<td><button data-act="sell" data-m="${m}" data-q="${q}" ${e.stock[m] < q ? 'disabled' : ''}>×${q}</button></td>`).join('')}</tr>`).join('') +
+        `</table><div class="note">Goods come down the Lift in the cage. ${g.depot ? 'A truck takes them along the roads to the Stockyard (no road: they wait on the Lift dock).' : 'No Stockyard yet, so they wait on the Lift dock for you to carry.'} ${g.buildings.count('postoffice') ? 'Post Office discount: 20% off. ' : ''}Orders on the way: ${e.orders.length + g.logistics.queue.length}</div>`;
     } else if (tab === 'residents') {
       const P = g.population, vac = P.vacancies();
       body = `<div>Residents <b>${P.count()}</b> · employed ${P.employed()} · free beds ${P.freeBeds()} · open jobs ${vac.length} · food in stock ${Math.floor(e.stock.food)}</div>
@@ -213,7 +216,7 @@ export class UI {
     } else if (tab === 'notes') {
       const pg = g.story.pages; body = pg.length ? pg.map((p) => `<div class="page">${p}</div>`).join('') : '<div class="note">No notes yet. Talk to residents regularly — some of them know more than they should.</div>';
     }
-    T.innerHTML = `<div class="win"><h2><span>${post ? '✉ THE POST · SAM CITY' : 'SAM CITY - PLANNING TERMINAL'}</span><button data-act="close">Close [Esc]</button></h2><div class="tabs">${tabs.map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}<span style="margin-left:auto">Funds: <b>${fmtMoney(e.funds)}</b></span></div>${body}</div>`;
+    T.innerHTML = `<div class="win"><h2><span>${hatch ? '☎ LIFT INTERCOM · "Dave speaking"' : post ? '✉ THE POST · SAM CITY' : 'SAM CITY - PLANNING TERMINAL'}</span><button data-act="close">Close [Esc]</button></h2><div class="tabs">${tabs.map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}<span style="margin-left:auto">Funds: <b>${fmtMoney(e.funds)}</b></span></div>${body}</div>`;
   }
   terminalClick(e) {
     const b = e.target.closest('button'); if (!b) return; const g = this.game, a = b.dataset.act; let r = null;

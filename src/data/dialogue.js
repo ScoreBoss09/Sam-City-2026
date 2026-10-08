@@ -52,6 +52,9 @@ export const REASON = {
 };
 
 export const WORK = {
+  baker: ['Up at four every morning. The bread won\'t bake itself.', 'Fresh loaves, iced buns, Cornish pasties. Help yourself. Well, pay first.', 'Flour gets everywhere. I sneeze dough.'],
+  fryer: ['Cod, chips, mushy peas. The holy trinity.', 'Salt and vinegar? Course you do.', 'The fryer\'s hotter than the sun. I\'ve got no eyebrows left.'],
+  vicar: ['Sunday service at ten. There\'s tea after. That\'s the real draw.', 'I pray for this village every night. Some nights harder than others.', 'Bless you, Sam. Have you thought about the church roof fund?'],
   builder: ['Give me timber and a plan and I\'ll give you a building.', 'Mind your head round the scaffolding.', 'Bit of rain and the whole site goes to mud.', 'Measure twice, cut once. That\'s the motto.', 'I\'ve built more cabins than I\'ve had hot dinners.', 'If the Stockyard runs dry, we just stand about. Keep it stocked!', 'Paths first, then foundations. That\'s how my old gaffer taught me.'],
   lumberjack: ['Forest\'s thinning near the path. Plenty further in, mind.', 'Nothing like the smell of fresh-cut timber.', 'My back\'s killing me. Worth it for the wages.', 'Timber! Sorry, habit.', 'A good swing is all in the hips.', 'The trees here grow back suspiciously quickly.', 'I name every tree before I chop it. Is that odd?'],
   forager: ['Good crop of blackberries this week.', 'Mind the thorns. Learnt that the hard way.', 'The bushes grow back, thank goodness.', 'Purple fingers, every single day.', 'I eat one for every three I pick. Don\'t tell anyone.', 'The best berries are always just out of reach.'],
@@ -90,6 +93,7 @@ export const FAMILY = ['My mum still writes every week. Well, I think it\'s ever
   'My dad was a {job2}. I swore I\'d never be one. Look at me now.', 'Never married. Came close once. She preferred his moustache.'];
 
 export const GOSSIP = {
+  pub: ['Pub quiz on Thursday. {a} knows every capital city and nothing else.', 'The Red Lion\'s darts team lost again. {a} blamed the lighting.'],
   couple: ['Have you heard? {a} and {b} are walking out together. Ooh!', '{a} and {b}, eh? Saw it coming a mile off.', 'Between you and me, {a} is smitten with {b}.'],
   friends: ['{a} and {b} are thick as thieves these days.', '{a} and {b} were laughing about something by the campfire all evening.'],
   newcomer: ['There\'s a new face: {a}. Arrived on the Lift. Seems nice enough.', 'Have you met {a} yet? Only just got here.'],

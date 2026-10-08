@@ -31,6 +31,9 @@ export const ROLES = {
   doctor:      { name: 'Doctor',           wage: 90, shirt: 0xf4f4f4, pants: 0x77b6c9, accessory: 'coat' },
   guard:       { name: 'Constable',        wage: 60, shirt: 0x24366b, pants: 0x1b2340, accessory: 'uniform', hat: 'police' },
   engineer:    { name: 'Engineer',         wage: 70, shirt: 0xd9732b, pants: 0x3a3a3a, accessory: 'overalls', hat: { type: 'beanie', color: 0xd9732b } },
+  baker:       { name: 'Baker',            wage: 40, shirt: 0xf2efe6, pants: 0x8a8a8a, accessory: 'apron', hat: { type: 'beanie', color: 0xf4f4f4 } },
+  fryer:       { name: 'Chip Fryer',       wage: 38, shirt: 0xf4f4f4, pants: 0x2d3340, accessory: 'apron' },
+  vicar:       { name: 'Vicar',            wage: 35, shirt: 0x1a1a1a, pants: 0x1a1a1a, accessory: 'coat' },
 };
 
 // What gatherers do. node = resource kind they walk to; mat = what they bring back to the Stockyard.
@@ -94,12 +97,12 @@ export const BUILDINGS = {
     blurb: 'Fields of crops: the most reliable food supply.',
   },
   tavern: {
-    name: 'Tavern', cat: 'com', w: 3, d: 3, floors: 2, wall: 'tudor', roof: 'gable', roofColor: 0x7a5a44,
+    name: 'The Red Lion', dining: true, income: 90, joy: 0.04, cat: 'com', w: 3, d: 3, floors: 2, wall: 'tudor', roof: 'gable', roofColor: 0x7a5a44,
     mat: { timber: 18, stone: 12 }, work: 50, jobs: { publican: 2 }, layout: 'tavern', permit: { cost: 600, pop: 12 }, tab: 'Food',
-    blurb: 'Hot meals, a warm fire and good company. Raises mood.',
+    blurb: 'The pub. Hot meals, warm beer, a dartboard and good company. Raises mood.',
   },
   shop: {
-    name: 'General Store', cat: 'com', w: 2, d: 2, floors: 1, wall: 'tudor', roof: 'gable', roofColor: 0x7a4a37,
+    name: 'General Store', shopping: true, income: 70, cat: 'com', w: 2, d: 2, floors: 1, wall: 'tudor', roof: 'gable', roofColor: 0x7a4a37,
     mat: { timber: 8, brick: 6, stone: 2 }, work: 28, jobs: { shopkeeper: 2 }, layout: 'shop', permit: { cost: 900, pop: 15 }, tab: 'Commerce',
     blurb: 'Residents shop here. Brings in tax income.',
   },
@@ -116,7 +119,7 @@ export const BUILDINGS = {
   },
   contractor: {
     name: "Builders' Yard", cat: 'civic', w: 3, d: 2, floors: 1, wall: 'timber', roof: 'gable', roofColor: 0x8a6444,
-    mat: { timber: 12, stone: 4 }, work: 30, jobs: { builder: 4 }, layout: 'contractor', permit: { cost: 250, pop: 5 }, tab: 'Industry',
+    mat: { timber: 12, stone: 4 }, work: 30, jobs: { builder: 4 }, layout: 'contractor', permit: { cost: 250, pop: 3 }, tab: 'Industry',
     blurb: 'Hire builders so you do not have to do all the labour yourself.',
   },
   brickworks: {
@@ -140,7 +143,7 @@ export const BUILDINGS = {
     blurb: 'Stores gathered and delivered goods. Builders collect from here.',
   },
   campfire: {
-    name: 'Campfire', cat: 'park', w: 2, d: 2, floors: 0, park: 'camp', needsRoad: false,
+    name: 'Campfire', joy: 0.03, cat: 'park', w: 2, d: 2, floors: 0, park: 'camp', needsRoad: false,
     mat: { timber: 4 }, work: 6, permit: { cost: 0, pop: 0 }, tab: 'Civic',
     blurb: 'Warmth, light, and a place to share a meal.',
   },
@@ -155,12 +158,12 @@ export const BUILDINGS = {
     blurb: 'Clean water. Residents are happier with a well nearby.',
   },
   school: {
-    name: 'Schoolhouse', cat: 'civic', w: 3, d: 2, floors: 1, wall: 'brick', roof: 'gable', roofColor: 0x8a5040,
+    name: 'Schoolhouse', joy: 0.02, cat: 'civic', w: 3, d: 2, floors: 1, wall: 'brick', roof: 'gable', roofColor: 0x8a5040,
     mat: { timber: 10, brick: 12 }, work: 44, jobs: { teacher: 1 }, layout: 'school', permit: { cost: 1200, pop: 20 }, tab: 'Civic',
     blurb: 'Children learn here during the day.',
   },
   townhall: {
-    name: 'Town Hall', cat: 'civic', w: 3, d: 3, floors: 2, wall: 'civic', roof: 'dome', roofColor: 0x3a6ea5,
+    name: 'Town Hall', income: 90, joy: 0.03, cat: 'civic', w: 3, d: 3, floors: 2, wall: 'civic', roof: 'dome', roofColor: 0x3a6ea5,
     mat: { stone: 14, timber: 12, brick: 14, glass: 4 }, work: 80, jobs: { clerk: 2 }, layout: 'townhall', permit: { cost: 2000, pop: 25 }, tab: 'Civic',
     blurb: 'More planning terminals and clerks.',
   },
@@ -175,12 +178,12 @@ export const BUILDINGS = {
     blurb: 'Keeps the peace. Three constables.',
   },
   office: {
-    name: 'Office Block', cat: 'com', w: 3, d: 3, floors: 3, wall: 'grey', roof: 'flatac', roofColor: 0x6b7078,
+    name: 'Office Block', income: 90, cat: 'com', w: 3, d: 3, floors: 3, wall: 'grey', roof: 'flatac', roofColor: 0x6b7078,
     mat: { brick: 16, steel: 6, glass: 10 }, work: 62, jobs: { clerk: 6 }, layout: 'office', permit: { cost: 4000, pop: 45 }, tab: 'Commerce',
     blurb: 'Desk jobs for six clerks.',
   },
   factory: {
-    name: 'Factory', cat: 'ind', w: 4, d: 3, floors: 1, wall: 'industrial', roof: 'factory', roofColor: 0x5b6068,
+    name: 'Factory', income: 100, cat: 'ind', w: 4, d: 3, floors: 1, wall: 'industrial', roof: 'factory', roofColor: 0x5b6068,
     mat: { brick: 18, steel: 10, timber: 6 }, work: 72, jobs: { factory: 8 }, layout: 'factory', permit: { cost: 3500, pop: 40 }, tab: 'Industry',
     blurb: 'Heavy industry. Eight jobs, lots of tax.',
   },
@@ -195,26 +198,110 @@ export const BUILDINGS = {
     blurb: 'Piped water for the whole town.',
   },
   hotel: {
-    name: 'Grand Hotel', cat: 'com', w: 3, d: 3, floors: 8, wall: 'brick', roof: 'flat', roofColor: 0x6b7078, large: true,
+    name: 'Grand Hotel', income: 90, cat: 'com', w: 3, d: 3, floors: 8, wall: 'brick', roof: 'flat', roofColor: 0x6b7078, large: true,
     mat: { brick: 24, steel: 30, glass: 20 }, work: 150, jobs: { clerk: 10 }, layout: 'lobby', permit: { cost: 12000, pop: 50 }, tab: 'Commerce',
     blurb: 'A landmark of the skyline.',
   },
   skyscraper: {
-    name: 'Sam Tower', cat: 'com', w: 3, d: 3, floors: 12, wall: 'glass', roof: 'spire', roofColor: 0x4a525c, large: true,
+    name: 'Sam Tower', income: 90, cat: 'com', w: 3, d: 3, floors: 12, wall: 'glass', roof: 'spire', roofColor: 0x4a525c, large: true,
     mat: { steel: 60, glass: 40, brick: 20 }, work: 220, jobs: { clerk: 16 }, layout: 'lobby', permit: { cost: 20000, pop: 65 }, tab: 'Commerce',
     blurb: 'The tallest building in town.',
   },
   park: {
-    name: 'Pocket Park', cat: 'park', w: 2, d: 2, floors: 0, park: 'park', needsRoad: false,
+    name: 'Pocket Park', joy: 0.05, cat: 'park', w: 2, d: 2, floors: 0, park: 'park', needsRoad: false,
     mat: { timber: 2 }, work: 8, permit: { cost: 150, pop: 6 }, tab: 'Parks', blurb: 'Trees, benches, happy residents.',
   },
   plaza: {
-    name: 'Fountain Plaza', cat: 'park', w: 3, d: 3, floors: 0, park: 'plaza', needsRoad: false,
+    name: 'Fountain Plaza', joy: 0.07, cat: 'park', w: 3, d: 3, floors: 0, park: 'plaza', needsRoad: false,
     mat: { stone: 10 }, work: 16, permit: { cost: 700, pop: 20 }, tab: 'Parks', blurb: 'A fountain and room to socialise.',
   },
   ballfield: {
-    name: 'Ball Field', cat: 'park', w: 4, d: 4, floors: 0, park: 'field', needsRoad: false,
-    mat: { timber: 6 }, work: 22, permit: { cost: 1200, pop: 25 }, tab: 'Parks', blurb: 'Weekend rounders and cricket.',
+    name: 'Cricket Green', joy: 0.06, cat: 'park', w: 4, d: 4, floors: 0, park: 'field', needsRoad: false,
+    mat: { timber: 6 }, work: 22, permit: { cost: 1200, pop: 25 }, tab: 'Parks', blurb: 'Sunday cricket, rounders, and a man in white trousers who takes it far too seriously.',
+  },
+
+  // ----- more homes -----
+  bungalow: {
+    name: 'Bungalow', cat: 'res', w: 2, d: 2, floors: 1, wall: 'tan', roof: 'gable', roofColor: 0x8a4a3a,
+    mat: { timber: 6, brick: 8 }, work: 30, beds: 3, layout: 'house', permit: { cost: 350, pop: 10 }, tab: 'Homes',
+    blurb: 'Pebble-dashed, net curtains, a gnome. Sleeps 3. Nobody under 60 has ever chosen one.',
+  },
+  semi: {
+    name: 'Semi-Detached', cat: 'res', w: 2, d: 2, floors: 2, wall: 'brick', roof: 'gable', roofColor: 0x7a3a2a,
+    mat: { timber: 8, brick: 12, glass: 2 }, work: 44, beds: 5, layout: 'house', permit: { cost: 1100, pop: 22 }, tab: 'Homes',
+    blurb: 'Half a house, one shared wall, and you can hear everything. Everything. Sleeps 5.',
+  },
+  flats: {
+    name: 'Council Flats', cat: 'res', w: 3, d: 3, floors: 3, wall: 'grey', roof: 'flat', roofColor: 0x5b6068,
+    mat: { brick: 18, stone: 8, steel: 4, glass: 4 }, work: 70, beds: 9, layout: 'apartments', permit: { cost: 2600, pop: 34 }, tab: 'Homes',
+    blurb: 'Concrete, a lift that smells of wee, and a fantastic view. Sleeps 9.',
+  },
+  // ----- food & shops -----
+  allotment: {
+    name: 'Allotment', cat: 'park', w: 2, d: 2, floors: 0, park: 'allotment', needsRoad: false, produce: { food: 0.6 }, joy: 0.02,
+    mat: { timber: 3 }, work: 6, permit: { cost: 60, pop: 3 }, tab: 'Food',
+    blurb: 'Veg beds and a shed full of old men hiding from their wives. Grows a little food by itself.',
+  },
+  bakery: {
+    name: 'Bakery', cat: 'com', w: 2, d: 2, floors: 1, wall: 'tudor', roof: 'gable', roofColor: 0x8a5a3a, shopping: true, produce: { food: 1.2 }, income: 40,
+    mat: { timber: 8, stone: 6 }, work: 28, jobs: { baker: 2 }, layout: 'bakery', permit: { cost: 350, pop: 7 }, tab: 'Food',
+    blurb: 'Bakers turn out bread, pasties and iced buns. Makes food every hour someone is working.',
+  },
+  chippy: {
+    name: 'Chip Shop', cat: 'com', w: 2, d: 2, floors: 1, wall: 'white', roof: 'flat', roofColor: 0x2a6aa8, shopping: true, dining: true, income: 80, joy: 0.03,
+    mat: { timber: 6, brick: 8, glass: 2 }, work: 30, jobs: { fryer: 2 }, layout: 'chippy', permit: { cost: 450, pop: 10 }, tab: 'Food',
+    blurb: 'Cod, chips, mushy peas, and a battered sausage of questionable origin. People eat here.',
+  },
+  newsagent: {
+    name: 'Newsagent', cat: 'com', w: 1, d: 1, floors: 1, wall: 'brick', roof: 'flat', roofColor: 0x3a5a3a, shopping: true, income: 45,
+    mat: { timber: 4, brick: 4 }, work: 14, jobs: { shopkeeper: 1 }, layout: 'kiosk', permit: { cost: 150, pop: 5 }, tab: 'Commerce',
+    blurb: 'Papers, fags, penny sweets and a top shelf everybody pretends not to look at.',
+  },
+  launderette: {
+    name: 'Launderette', cat: 'com', w: 2, d: 2, floors: 1, wall: 'white', roof: 'flat', roofColor: 0x6b7078, shopping: true, income: 60,
+    mat: { brick: 10, steel: 3, glass: 2 }, work: 34, jobs: { shopkeeper: 1 }, layout: 'launderette', permit: { cost: 900, pop: 20 }, tab: 'Commerce',
+    blurb: 'Rows of washing machines and one bloke in his boxers waiting for his jeans.',
+  },
+  video: {
+    name: 'Blockbusted Video', cat: 'com', w: 2, d: 2, floors: 1, wall: 'grey', roof: 'flat', roofColor: 0x2a3a8a, shopping: true, income: 70, joy: 0.02,
+    mat: { brick: 10, glass: 3, timber: 4 }, work: 34, jobs: { shopkeeper: 1 }, layout: 'video', permit: { cost: 1000, pop: 24 }, tab: 'Commerce',
+    blurb: 'VHS rentals. Be kind, rewind. There is a curtained room at the back that nobody discusses.',
+  },
+  bookies: {
+    name: 'Bookies', cat: 'com', w: 2, d: 2, floors: 1, wall: 'tan', roof: 'flat', roofColor: 0x2a6a3a, shopping: true, income: 120,
+    mat: { brick: 10, glass: 2 }, work: 32, jobs: { clerk: 1 }, layout: 'bookies', permit: { cost: 1400, pop: 28 }, tab: 'Commerce',
+    blurb: 'Little pens, big losses. Sam can have a flutter on the horses here (E).',
+  },
+  postoffice: {
+    name: 'Post Office', cat: 'civic', w: 2, d: 2, floors: 1, wall: 'brick', roof: 'gable', roofColor: 0x6a3a2a, shopping: true, income: 50,
+    mat: { brick: 10, timber: 6, glass: 2 }, work: 34, jobs: { clerk: 2 }, layout: 'postoffice', permit: { cost: 800, pop: 16 }, tab: 'Commerce',
+    blurb: 'Pensions, stamps and a queue. Lift orders get 20% cheaper with a Post Office in town.',
+  },
+  // ----- community -----
+  villagehall: {
+    name: 'Village Hall', cat: 'civic', w: 3, d: 2, floors: 1, wall: 'brick', roof: 'gable', roofColor: 0x5a6a80, joy: 0.05,
+    mat: { brick: 12, timber: 10 }, work: 40, jobs: { clerk: 1 }, layout: 'hall', permit: { cost: 800, pop: 14 }, tab: 'Civic',
+    blurb: 'Jumble sales, aerobics, the WI. The village fête is held here once it exists.',
+  },
+  church: {
+    name: "St Sam's Church", cat: 'civic', w: 3, d: 3, floors: 2, wall: 'stone', roof: 'church', roofColor: 0x4a525c, joy: 0.08,
+    mat: { stone: 24, timber: 12, glass: 4 }, work: 80, jobs: { vicar: 1 }, layout: 'church', permit: { cost: 1600, pop: 20 }, tab: 'Civic',
+    blurb: 'Bells, pews and a vicar who has seen things. Big mood boost for the whole village.',
+  },
+  phonebox: {
+    name: 'Phone Box', cat: 'park', w: 1, d: 1, floors: 0, park: 'phonebox', joy: 0.01,
+    mat: { steel: 1, glass: 1, timber: 1 }, work: 6, permit: { cost: 80, pop: 4 }, tab: 'Parks',
+    blurb: 'A red K6 telephone box. Smells of wee, full of cards. Sam can make a call (E).',
+  },
+  busstop: {
+    name: 'Bus Shelter', cat: 'park', w: 1, d: 1, floors: 0, park: 'busstop', joy: 0.01,
+    mat: { timber: 3, glass: 1 }, work: 6, permit: { cost: 120, pop: 8 }, tab: 'Parks',
+    blurb: 'Teenagers, graffiti and a timetable that is pure fiction. Brings more visitors.',
+  },
+  bandstand: {
+    name: 'Bandstand', cat: 'park', w: 2, d: 2, floors: 0, park: 'bandstand', needsRoad: false, joy: 0.06,
+    mat: { timber: 8, stone: 4 }, work: 16, permit: { cost: 600, pop: 18 }, tab: 'Parks',
+    blurb: 'A brass band plays on summer evenings. Badly. Everyone loves it.',
   },
   // Story / world pieces (cannot be built by the player)
   surveyor: {
@@ -234,13 +321,13 @@ export const BUILDINGS = {
 
 export const TOOL_MENUS = {
   build: [
-    ['Homes', ['shack', 'hut', 'cabin', 'cottage', 'townhouse', 'apartments']],
-    ['Food', ['forager', 'fisher', 'farm', 'tavern']],
+    ['Homes', ['shack', 'hut', 'cabin', 'bungalow', 'cottage', 'semi', 'townhouse', 'flats', 'apartments']],
+    ['Food', ['forager', 'allotment', 'fisher', 'bakery', 'farm', 'chippy', 'tavern']],
     ['Industry', ['lumbercamp', 'quarry', 'contractor', 'brickworks', 'glassworks', 'foundry', 'factory']],
-    ['Civic', ['stockyard', 'postbox', 'surveyor', 'school', 'townhall', 'clinic', 'police']],
-    ['Commerce', ['shop', 'office', 'hotel', 'skyscraper']],
+    ['Civic', ['stockyard', 'postbox', 'surveyor', 'villagehall', 'postoffice', 'school', 'church', 'townhall', 'clinic', 'police']],
+    ['Commerce', ['newsagent', 'shop', 'launderette', 'video', 'bookies', 'office', 'hotel', 'skyscraper']],
   ],
-  park: ['campfire', 'park', 'plaza', 'ballfield'],
+  park: ['campfire', 'phonebox', 'park', 'busstop', 'bandstand', 'plaza', 'ballfield'],
   util: ['well', 'power', 'water'],
 };
 export const ALL_BUILDABLE = [...TOOL_MENUS.build.flatMap(([, l]) => l), ...TOOL_MENUS.park, ...TOOL_MENUS.util];

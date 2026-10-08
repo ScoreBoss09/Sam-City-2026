@@ -137,6 +137,7 @@ export class Population {
   fire(s) { if (s.workplace) { const i = s.workplace.workers.indexOf(s); if (i >= 0) s.workplace.workers.splice(i, 1); s.workplace.workers.forEach((w, k) => (w.workSpot = k)); } s.workplace = null; s.role = null; s.abortJob(); }
 
   onBuildingDone(b) {
+    if (this.game.started && !b.def.special) for (const s of this.sims) { if (s.hidden || s.sitting || s.chat || s.kind === 'security' || s.kind === 'raider' || Math.hypot(s.x - b.cx, s.z - b.cz) > 22) continue; s.emote = { upper: Math.random() < 0.6 ? 'cheer' : 'clap', t: 2.4 }; s.faceGoal = Math.atan2(b.cx - s.x, b.cz - s.z); s.moodBoost += 0.04; }
     for (const s of this.residents()) { if (!s.home) this.assignHome(s); if (!s.workplace) this.assignJob(s); }
     for (const s of this.adults()) if (s.partner && s.home !== s.partner.home) this.moveIn(s, s.partner);
   }
@@ -162,9 +163,9 @@ export class Population {
       if (can && this.sims.length < this.simCap) { this.arrive(); if (this.invites > 0) this.invites--; }
     }
     if (this.visitorTimer <= 0) {
-      this.visitorTimer = 50 + Math.random() * 40;
+      this.visitorTimer = (50 + Math.random() * 40) / (1 + 0.5 * Math.min(2, g.buildings.count('busstop')));
       const vis = this.sims.filter((s) => s.kind === 'visitor').length;
-      if (vis < 3 && g.clock.hour > 8 && g.clock.hour < 18 && this.sims.length < this.simCap && g.buildings.count('shop') + g.buildings.list.filter((b) => b.def.park).length > 0)
+      if (vis < 3 && g.clock.hour > 8 && g.clock.hour < 18 && this.sims.length < this.simCap && g.buildings.shops().length + g.buildings.list.filter((b) => b.def.park).length > 0)
         this.spawnAtLift({ ...(() => { const P = this.makePerson({ kind: 'visitor' }); return { name: P.name, look: P.look, gender: P.gender, age: P.age, first: P.first, surname: P.surname }; })(), kind: 'visitor', actor: 1 });
     }
     // unemployment drift & emigration

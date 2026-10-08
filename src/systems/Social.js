@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { pick, angleDiff } from '../util.js';
+import { A } from '../data/humour.js';
 
 const CHAT_LINES = ['Nice weather.', 'Did you hear?', 'No way!', 'Really?', 'Lovely!', 'Busy day...', 'Cup of tea?', 'You don\'t say!', 'Ooh, go on then.', 'Mustn\'t grumble.', 'Typical!', 'Bless him.', 'Cheeky!',
   'Have you seen the new cabin?', 'My knees, honestly.', 'Same again tomorrow.', 'Blimey.', 'She never!', 'Fancy that.', 'Proper job.', 'Not bad, you?', 'Put the kettle on.', 'Mind you...', 'I said to him, I said...',
@@ -62,7 +63,8 @@ export class Social {
       const c = s.chat; if (!c) continue;
       if (!c.partner || c.partner.remove || !c.partner.chat) { s.chat = null; continue; }
       c.t -= dt; c.turn -= dt; c.laugh = Math.max(0, c.laugh - dt);
-      if (c.turn <= 0) { c.speaker = !c.speaker; c.turn = 1.6 + Math.random() * 2.6; if (c.speaker) { if (s.partner === c.partner && Math.random() < 0.4) this.say(s, pick(['Love you', 'Darling', '♥', 'Missed you']), 2); else if (Math.random() < 0.22) { c.laugh = 1.6; c.partner.chat.laugh = 1.6; this.say(s, pick(['Ha ha!', 'Ha!', 'Good one!']), 1.8); } else this.say(s, pick(CHAT_LINES), 2.2); } }
+      if (c.turn <= 0) { c.speaker = !c.speaker; c.turn = 1.6 + Math.random() * 2.6; if (c.speaker) { if (s.partner === c.partner && Math.random() < 0.4) this.say(s, pick(['Love you', 'Darling', '♥', 'Missed you']), 2); else if (Math.random() < 0.22) { c.laugh = 1.6; c.partner.chat.laugh = 1.6; this.say(s, pick(['Ha ha!', 'Ha!', 'Good one!']), 1.8); }
+        else { const adult = g.ui.adult && s.kind !== 'child' && c.partner.kind !== 'child' && Math.random() < 0.45; this.say(s, pick(adult ? A.CHAT : CHAT_LINES), 2.2); if (Math.random() < 0.2) s.emote = { upper: pick(['shrug', 'facepalm', 'think', 'point', 'clap']), t: 1.6 }; } } }
       if (c.t <= 0) this.endChat(s);
     }
     // look for new chats
@@ -94,8 +96,8 @@ export class Social {
       const d = Math.hypot(p.x - s.x, p.z - s.z);
       if (d < 5 && g.clock.hour - s.greeted > 1.5 || (s.greeted > g.clock.hour + 5)) {
         s.greeted = g.clock.hour;
-        const t = s.trait; s.emote = { upper: t === 'cheerful' ? 'wave' : (t === 'grumpy' ? 'idle' : 'nod'), t: 1.9 };
-        s.glanceTarget = { x: p.x, z: p.z, y: 1.6 }; s.glanceT = 2.5; this.say(s, pick(GREET[t] || GREET.cheerful), 2.2);
+        const t = s.trait; s.emote = { upper: t === 'cheerful' ? 'wave' : (t === 'grumpy' ? (g.ui.adult && s.kind !== 'child' && Math.random() < 0.2 ? 'vsign' : 'idle') : 'nod'), t: 1.9 };
+        s.glanceTarget = { x: p.x, z: p.z, y: 1.6 }; s.glanceT = 2.5; this.say(s, pick(g.ui.adult && s.kind !== 'child' && Math.random() < 0.4 ? A.SOCIAL_GREET[t] || A.SOCIAL_GREET.cheerful : GREET[t] || GREET.cheerful), 2.2);
       }
     }
   }

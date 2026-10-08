@@ -27,7 +27,7 @@ await p.screenshot({ path: S + 'r9_spill.png' });
 // lift at shift change with clues -> escape
 await ev(() => { const g = window.__game; g.workgame.stop && g.workgame.stop(); g.player.lock = null; g.clock.hour = 10; g.player.teleport(g.lift.cx, g.lift.cz); });
 await p.waitForTimeout(1500); console.log('daytime countdown', await ev(() => document.getElementById('countdown').textContent));
-await ev(() => { const g = window.__game; g.clock.hour = 2.5; g.story.clues = 3; }); await p.waitForTimeout(3800);
+await ev(() => { const g = window.__game; g.clock.hour = 2.5; g.story.clues = 3; }); await p.waitForTimeout(9000);
 console.log('escape?', await ev(() => !!window.__game.ending), await ev(() => (document.querySelector('#ending, .ending') || {}).textContent || ''));
 await p.screenshot({ path: S + 'r9_escape.png' });
 console.log(logs.join('\n')); await b.close();
