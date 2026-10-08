@@ -1,5 +1,5 @@
 import { ROLES } from '../data/buildings.js';
-import { MALE, FEMALE, SURNAMES, SKINS, HAIRS, GREY_HAIRS, TOPS_M, TOPS_F, PANTS, TRAITS, BUILDS, ADULT_BUILD_WEIGHTS } from '../data/people.js';
+import { MALE, FEMALE, SURNAMES, SKINS, HAIRS, GREY_HAIRS, TOPS_M, TOPS_F, PANTS, TRAITS, BUILDS, ADULT_BUILD_WEIGHTS, pickSkin } from '../data/people.js';
 import { HAIR_STYLES_M, HAIR_STYLES_F } from '../render/SimRig.js';
 import { Sim } from '../sim/Sim.js';
 import { pick, clamp } from '../util.js';
@@ -32,7 +32,7 @@ export class Population {
     const buildName = child ? 'child' : elder ? 'elderly' : this.weighted(ADULT_BUILD_WEIGHTS), bd = BUILDS[buildName];
     const r = role && ROLES[role], tops = g === 'f' ? TOPS_F : TOPS_M;
     const L = {
-      gender: g, buildName, body: bd.body, h: bd.h * (0.97 + rnd() * 0.06), w: bd.w * (0.97 + rnd() * 0.06), skin: pick(SKINS), hair: elder ? pick(GREY_HAIRS) : pick(HAIRS),
+      gender: g, buildName, body: bd.body, h: bd.h * (0.97 + rnd() * 0.06), w: bd.w * (0.97 + rnd() * 0.06), skin: pickSkin(rnd), hair: elder ? pick(GREY_HAIRS) : pick(HAIRS),
       hairStyle: pick(g === 'f' ? HAIR_STYLES_F : HAIR_STYLES_M), shirt: r && r.shirt ? r.shirt : (child ? pick([0xe05a4a, 0x4a9ad0, 0xf0c040, 0x6ab04a, 0xd070b0]) : pick(tops)), pants: r && r.pants ? r.pants : pick(PANTS),
       longSleeve: rnd() < 0.5, shorts: false, skirt: false, dress: false, glasses: rnd() < (elder ? 0.45 : 0.18), backpack: false, hat: null, accessory: null, facial: null, cane: elder && rnd() < 0.4,
     };

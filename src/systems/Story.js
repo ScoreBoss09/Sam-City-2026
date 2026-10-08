@@ -23,6 +23,13 @@ export class Story {
     // stage 4 simply adds a quiet note to the terminal once three crumpled pages have been found.
   }
 
+  /** A small oddity in conversation, more likely as the story advances (or null). */
+  slipLine() { const tier = Math.min(this.stage, SLIPS.length - 1), p = [0, 0.2, 0.35, 0.55, 0.65][this.stage] || 0; if (tier > 0 && Math.random() < p) { const t = Math.random() < 0.6 ? tier : 1 + Math.floor(Math.random() * tier); return pick(SLIPS[Math.min(t, SLIPS.length - 1)]); } return null; }
+  /** Sometimes a resident slips Sam one of the crumpled pages. */
+  pageFor(sim) {
+    if (this.stage >= 2 && !sim.gaveClue && sim.talkCount >= 2 && this.clues < 3 && sim.kind === 'resident' && sim.age >= 18 && Math.random() < 0.5) { sim.gaveClue = true; const page = SCRIPT_PAGES[this.clues]; this.clues++; this.pages.push(page); this.game.ui.toast('Sam pockets a crumpled page.', 2200); return page; }
+    return null;
+  }
   /** Returns { text, page? } for a conversation with a sim. */
   dialogue(sim) {
     const g = this.game; sim.talkCount++;

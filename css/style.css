@@ -133,3 +133,10 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 #terminal .letter.new { border-left: 5px solid #c0241e; } #terminal .letter .lh { display: flex; justify-content: space-between; } #terminal .letter .lh span, #terminal .letter .lf { font-size: 12px; color: #7a6a4a; }
 #terminal .letter .lb { margin-top: 6px; line-height: 1.5; font-size: 14px; } #terminal .letter.report .lb { font-family: 'Courier New', monospace; font-size: 13px; }
 #minimap { bottom: 168px !important; } #messages { bottom: 380px !important; }
+
+#dialogue { width: 620px; max-width: calc(100vw - 32px); }
+#d-text { min-height: 54px; } #d-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+.dchoice { text-align: left; background: #172235; border: 2px solid #3a4a66; color: #e6ecf5; font: 13px 'Courier New', monospace; padding: 6px 8px; cursor: pointer; }
+.dchoice span { display: inline-block; width: 18px; color: #ffd23f; font-weight: bold; } .dchoice.sel, .dchoice:hover { border-color: #ffd23f; background: #22324c; }
+#d-hint { font-size: 10px; color: #8d9bb3; margin-top: 6px; text-align: right; }
+#h-favours { font-size: 11px; color: #ffd23f; margin: 2px 0 4px; } #h-favours b { color: #fff; }

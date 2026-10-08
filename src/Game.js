@@ -20,6 +20,8 @@ import { WorkGame } from './ui/WorkGame.js';
 import { Particles } from './render/Particles.js';
 import { Piles } from './systems/Piles.js';
 import { Mail } from './systems/Mail.js';
+import { Talk } from './systems/Talk.js';
+import { Favours } from './systems/Favours.js';
 import { Weather } from './render/Weather.js';
 import { Wildlife } from './render/Wildlife.js';
 import { SiteLabels } from './render/SiteLabels.js';
@@ -50,7 +52,7 @@ export class Game {
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
     this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.raids = new Raids(this); this.planner = new Planner(this); this.social = new Social(this);
-    this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.mail = new Mail(this); this.weather = new Weather(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
+    this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.mail = new Mail(this); this.talk = new Talk(this); this.favours = new Favours(this); this.weather = new Weather(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
     // objective beacon
     this.beacon = new THREE.Group(); const bm = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.9, depthTest: false });
@@ -87,9 +89,10 @@ export class Game {
     this.ui.renderObjectives(); this.ui.toast('Welcome! Start with the objective on the right. Nothing gets built until you order it here.', 5500);
   }
   startDialogue(sim) {
-    const res = this.story.dialogue(sim); sim.frozen = true; sim.talkingToPlayer = true; if (sim.chat) this.social.endChat(sim); sim.heading = Math.atan2(this.player.x - sim.x, this.player.z - sim.z); this.player.heading = Math.atan2(sim.x - this.player.x, sim.z - this.player.z);
-    this.ui.openDialogue(sim, res);
+    sim.frozen = true; sim.talkingToPlayer = true; if (sim.chat) this.social.endChat(sim); sim.heading = Math.atan2(this.player.x - sim.x, this.player.z - sim.z); this.player.heading = Math.atan2(sim.x - this.player.x, sim.z - this.player.z);
+    this.ui.openDialogue(sim, { text: this.talk.greet(sim) });
   }
+
   demo() { generateDemo(this); }
   save() { return SaveGame.save(this); }
   loadSave() { const d = SaveGame.load(); if (!d) return false; try { SaveGame.restore(this, d); this.ui.toast('Game loaded', 2000); return true; } catch (e) { console.error('load failed', e); return false; } }
@@ -111,7 +114,7 @@ export class Game {
     inp.pollPad(dt, !this.started || ui.modalOpen ? 'menu' : this.mode); ui.padUpdate(inp, dt);
     if (!this.started) { this.render(dt); inp.endFrame(); return; }
     // modal / toggles
-    if (ui.dialogue && (inp.hit('KeyE') || inp.hit('Space') || inp.mouse.down)) ui.advanceDialogue();
+    if (ui.dialogue) ui.dialogueKeys(inp);
     if (ui.terminalB && inp.hit('Escape')) ui.closeTerminal();
     if (ui.invOpen && (inp.hit('Escape') || inp.hit('KeyI'))) ui.closeInventory();
     if (ui.dialogue && inp.padHit(1)) ui.closeDialogue();
@@ -127,7 +130,7 @@ export class Game {
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
     this.player.update(gdt, dt);
     for (const s of this.population.sims) s.sync(dt); this.social.render(dt);
-    this.buildings.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt); this.resources.animate(dt); this.mail.update(); this.weather.update(dt); if (this.wildlife) this.wildlife.update(dt);
+    this.buildings.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt); this.resources.animate(dt); this.mail.update(); this.weather.update(dt); if (this.started) this.favours.update(dt * this.clock.speed); if (this.wildlife) this.wildlife.update(dt);
 
     // camera
     let focus;
