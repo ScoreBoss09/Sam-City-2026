@@ -40,6 +40,7 @@ export class GodControls {
         if (inp.down('ShiftLeft') || inp.mouse.middle) { this.yaw -= inp.mouse.dx * 0.005; this.pitch = clamp(this.pitch + inp.mouse.dy * 0.004, 0.45, 1.5); }
         else { const k = this.dist * 0.0022; this.target.x -= (inp.mouse.dx * c + inp.mouse.dy * s) * k; this.target.z -= (-inp.mouse.dx * s + inp.mouse.dy * c) * k; }
       }
+      if (inp.hit('KeyF')) { this.target.set(80, 0, 82); this.dist = 215; this.pitch = 1.3; this.yaw = 0; }
       if (inp.hit('KeyR')) this.prefRot = (this.prefRot + 1) % 4;
       if (inp.hit('Escape')) this.setTool('pan');
       const hs = { Digit1: ['bulldoze'], Digit2: ['road'], Digit3: ['zone', 'res'], Digit4: ['build'], Digit5: ['park'], Digit6: ['util'], Digit7: ['query'] };

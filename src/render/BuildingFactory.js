@@ -163,7 +163,9 @@ function buildLift(def) {
 function buildTunnel(def) {
   const W = def.w * TILE, D = def.d * TILE, g = new THREE.Group(), roof = new THREE.Group(), cols = [];
   box(g, W, 0.3, D, 0x55595f, 0, -0.16, 0);
-  box(g, W + 4, 8, 6.5, 0x3f5f3a, 0, 0, -D / 2 + 3.25);                            // hill
+  box(g, W + 4, 6, 6.5, 0x56704a, 0, 0, -D / 2 + 3.25); box(g, W + 1, 3, 5.2, 0x45603f, 0, 6, -D / 2 + 3.0); box(g, W - 3, 2, 4, 0x6f8a58, 0, 9, -D / 2 + 2.8);
+  for (const [tx, tz, s] of [[-5, -5, 1], [4, -4.5, 1.2], [0, -5.5, 0.9], [7, -2, 0.8], [-7, -2.5, 1]]) { box(g, 0.3, 1.2, 0.3, 0x5a3b22, tx, 5.5, tz); const cn = new THREE.Mesh(new THREE.ConeGeometry(1.3 * s, 3 * s, 6), stdMat(0x2f6a3a, { flatShading: true })); cn.position.set(tx, 8.5 * 1, tz); cn.position.y = 7.4 + 1.5 * s; g.add(cn); }
+  // hill
   box(g, 1.2, 6, 1.4, 0xbfc2c7, -3, 0, -0.9); box(g, 1.2, 6, 1.4, 0xbfc2c7, 3, 0, -0.9); box(g, 7.4, 1.4, 1.4, 0xbfc2c7, 0, 5.6, -0.9);
   box(g, 4.8, 5.6, 0.4, 0x050505, 0, 0, -1.4);                                      // dark mouth
   cols.push({ cx: 0, cz: -D / 2 + 3.25, sx: W + 4, sz: 6.5 }, { cx: 0, cz: -1.6, sx: 7.4, sz: 3 });

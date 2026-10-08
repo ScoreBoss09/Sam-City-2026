@@ -30,32 +30,34 @@ export class World {
   buildingAt(x, z) { return this.inBounds(x, z) ? this.buildings.get(this.occ[this.idx(x, z)]) || null : null; }
 
   generate() {
-    const rnd = mulberry32(2004);
     const h = (x, z) => { const s = Math.sin(x * 12.9898 + z * 78.233 + 4.1) * 43758.5453; return s - Math.floor(s); };
+    let land = new Uint8Array(N);
     for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) {
-      const nx = x - (MAP - 1) / 2, nz = z - (MAP - 1) / 2;
-      const half = 17.2 + (h(x * 0.5, z * 0.5) - 0.5) * 2.2;
-      // rounded square
+      const nx = x - (MAP - 1) / 2, nz = z - (MAP - 1) / 2, half = 17.2 + (h(x * 0.5, z * 0.5) - 0.5) * 2.2;
       const qx = Math.max(Math.abs(nx) - (half - 5), 0), qz = Math.max(Math.abs(nz) - (half - 5), 0);
-      const inside = Math.hypot(qx, qz) < 5.2 + (h(x, z) - 0.5) * 1.4;
-      const land = inside && Math.abs(nx) < half && Math.abs(nz) < half;
-      const i = this.idx(x, z);
-      if (!land) { this.terrain[i] = T.WATER; continue; }
-      const edge = half - Math.max(Math.abs(nx), Math.abs(nz));
-      let t = T.LAND;
-      // forest on north & east rims, beach on south & west
-      if (edge < 3.2 + h(x, z) * 1.8 && (nz < -4 || nx > 4) && !(nz > 4)) t = T.FOREST;
-      else if (edge < 2.2 && (nz > 4 || nx < -4)) t = T.SAND;
-      this.terrain[i] = t;
+      land[this.idx(x, z)] = Math.hypot(qx, qz) < 5.2 + (h(x, z) - 0.5) * 1.4 && Math.abs(nx) < half && Math.abs(nz) < half ? 1 : 0;
     }
-    // pond (south-east)
+    // majority filter: removes isolated tiles and ragged one-tile spikes along the coast
+    for (let pass = 0; pass < 2; pass++) {
+      const nl = land.slice();
+      for (let z = 1; z < MAP - 1; z++) for (let x = 1; x < MAP - 1; x++) {
+        let n = 0; for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if ((dx || dz) && land[this.idx(x + dx, z + dz)]) n++;
+        const i = this.idx(x, z); if (land[i] && n <= 3) nl[i] = 0; else if (!land[i] && n >= 5) nl[i] = 1;
+      }
+      land = nl;
+    }
     for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) {
-      if (Math.hypot(x - 29, z - 30) < 2.4 && this.terrain[this.idx(x, z)] !== T.WATER) this.terrain[this.idx(x, z)] = T.WATER;
+      const i = this.idx(x, z); if (!land[i]) { this.terrain[i] = T.WATER; continue; }
+      const nx = x - (MAP - 1) / 2, nz = z - (MAP - 1) / 2;
+      let d = 99; for (let dz = -4; dz <= 4; dz++) for (let dx = -4; dx <= 4; dx++) { const X = x + dx, Z = z + dz; if (X < 0 || Z < 0 || X >= MAP || Z >= MAP || !land[this.idx(X, Z)]) d = Math.min(d, Math.max(Math.abs(dx), Math.abs(dz))); }
+      let t = T.LAND;
+      if (d <= 2 + Math.floor(h(x, z) * 2) && (nz < -4 || nx > 4) && !(nz > 4)) t = T.FOREST;
+      else if (d <= 2 && (nz > 2 || nx < -4)) t = T.SAND;
+      this.terrain[i] = t;
     }
     // clearings for the Lift (north) and Service Tunnel (east)
     this.clear(15, 20, 1, 7); this.clear(30, 38, 17, 23);
-    // guarantee a corridor of land from lift to tunnel so the story is always playable
-    for (let z = 1; z <= 24; z++) for (let x = 15; x <= 24; x++) if (this.terrain[this.idx(x, z)] === T.WATER && z >= 2) this.terrain[this.idx(x, z)] = T.LAND;
+    for (let z = 2; z <= 24; z++) for (let x = 15; x <= 24; x++) if (this.terrain[this.idx(x, z)] === T.WATER) this.terrain[this.idx(x, z)] = T.LAND;
   }
   clear(x0, x1, z0, z1) {
     for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {

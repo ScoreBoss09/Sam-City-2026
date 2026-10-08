@@ -32,7 +32,7 @@ export class UI {
     const god = mode === 'god';
     ['toolbox'].forEach((i) => $(i).classList.toggle('hidden', !god)); if (!god) this.hide('submenu', 'hover');
     $('crosshair').classList.toggle('hidden', god); $('simhud').classList.toggle('hidden', god); $('stock').classList.remove('hidden');
-    $('help').classList.remove('hidden'); $('help').textContent = god ? 'GOD MODE · TAB: control Sam · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · Esc cancel tool' : 'SIM MODE · TAB: planning view · WASD move · Shift sprint · V camera · E interact (hold to work) · click to capture mouse';
+    $('help').classList.remove('hidden'); $('help').textContent = god ? 'GOD MODE · TAB: control Sam · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SIM MODE · TAB: planning view · WASD move · Shift sprint · V camera · E interact (hold to work) · G wave · click to capture mouse';
     $('c-mode').textContent = god ? 'PLANNING VIEW' : 'SAM (' + (this.game.player.third ? '3rd' : '1st') + ' person)';
     if (god) this.game.input.unlock();
   }
