@@ -1,0 +1,173 @@
+import * as THREE from 'three';
+import { TILE } from '../config.js';
+import { ROLES, MATERIALS } from '../data/buildings.js';
+import { makeSimModel, animateWalk } from '../render/SimModel.js';
+import { clamp } from '../util.js';
+
+const R = 0.4;
+
+/** Sam: the playable sim. First/third person, interactions, carrying, sleeping, sedation. */
+export class Player {
+  constructor(game) {
+    this.game = game; this.x = 0; this.z = 0; this.heading = 0; this.yaw = 0; this.pitch = -0.1; this.third = true; this.camDist = 5; this.energy = 100;
+    this.carry = null; this.sleeping = false; this.sedated = 0; this.walkPhase = 0; this.moved = false; this.target = null; this.hold = 0; this.working = false; this.frozen = false;
+    this.mesh = makeSimModel({ shirt: 0xe8772e, pants: 0x2d3a55, skin: 0xe0b48f, hair: 0x3b2a1a, hat: 0xe8772e }); game.scene.add(this.mesh);
+    this.marker = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 4), new THREE.MeshBasicMaterial({ color: 0xffd23f })); this.marker.rotation.x = Math.PI; game.scene.add(this.marker);
+  }
+  teleport(x, z, heading) { this.x = x; this.z = z; if (heading !== undefined) { this.heading = heading; this.yaw = heading; } }
+
+  headPos() { return [this.x, 1.65, this.z]; }
+
+  update(dt, rawDt) {
+    const g = this.game, inp = g.input, sim = g.mode === 'sim' && !g.ui.modalOpen && !g.ending;
+    this.moved = false; this.working = false;
+    if (this.sedated > 0) { this.sedated -= rawDt; if (this.sedated <= 0) this.wakeFromSedation(); }
+    // look
+    if (sim && !this.sleeping && this.sedated <= 0) {
+      this.yaw -= inp.mouse.dx * 0.0025; this.pitch = clamp(this.pitch - inp.mouse.dy * 0.0025, -1.3, 1.2);
+      if (inp.down('ArrowLeft')) this.yaw += 2 * rawDt; if (inp.down('ArrowRight')) this.yaw -= 2 * rawDt;
+      if (inp.down('ArrowUp')) this.pitch = clamp(this.pitch + 1.2 * rawDt, -1.3, 1.2); if (inp.down('ArrowDown')) this.pitch = clamp(this.pitch - 1.2 * rawDt, -1.3, 1.2);
+      if (inp.hit('KeyV')) this.third = !this.third;
+      if (inp.mouse.wheel && this.third) this.camDist = clamp(this.camDist + inp.mouse.wheel * 0.6, 2.5, 9);
+      // move
+      let fx = 0, fz = 0; if (inp.down('KeyW')) fz += 1; if (inp.down('KeyS')) fz -= 1; if (inp.down('KeyA')) fx -= 1; if (inp.down('KeyD')) fx += 1;
+      if (fx || fz) {
+        const l = Math.hypot(fx, fz); fx /= l; fz /= l; const sp = (inp.down('ShiftLeft') || inp.down('ShiftRight')) ? 7.2 : 4.4;
+        // camera yaw: forward = (-sin yaw, -cos yaw)? we define forward as (sin(yaw+PI)...) -> use yaw so that yaw=0 looks toward -z
+        const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
+        const dx = (-sy * fz + cy * fx) * sp * rawDt, dz = (-cy * fz - sy * fx) * sp * rawDt;
+        this.tryMove(dx, dz); this.moved = true; this.heading = Math.atan2(dx, dz); this.hold = 0;
+        if (this.sleeping) this.wake();
+      }
+      this.interact(rawDt);
+    }
+    // needs (game seconds)
+    this.energy = Math.max(0, this.energy - dt * (100 / (18 * 10)));
+    if (this.energy <= 0 && !this.sleeping && this.sedated <= 0) this.collapse();
+    this.syncMesh(rawDt);
+  }
+  tryMove(dx, dz) {
+    const w = this.game.world;
+    if (!w.collides(this.x + dx, this.z, R)) this.x += dx;
+    if (!w.collides(this.x, this.z + dz, R)) this.z += dz;
+  }
+
+  // ---------- interaction ----------
+  findTarget() {
+    const g = this.game, px = this.x, pz = this.z, B = g.buildings.list; let best = null, bd = 1e9;
+    const consider = (t, d) => { if (d < bd) { bd = d; best = t; } };
+    const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
+    for (const s of g.population.sims) {
+      if (s.pose === 'sleep' || (s.inside && s.inside !== g.buildings.playerInside && !s.inside.def.open)) continue;
+      const dx = s.x - px, dz = s.z - pz, d = Math.hypot(dx, dz); if (d > 2.6) continue;
+      if (!this.third && d > 0.8 && (dx * fx + dz * fz) / d < 0.3) continue;
+      consider({ kind: 'sim', sim: s, text: `Talk to ${s.name} (${s.roleName})`, hold: false }, d - 0.5);
+    }
+    const inside = g.buildings.playerInside;
+    for (const b of B) {
+      if (b.state === 'done') {
+        for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: 'Use computer terminal', hold: false }, d); }
+        for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.carry ? 'Return crate to depot' : 'Take a crate from stock', hold: false }, d); }
+        if (b === g.starterHome && b.spots.bed[0]) { const s = b.spots.bed[0], d = Math.hypot(s.x - px, s.z - pz); if (d < 2.6) consider({ kind: 'bed', b, spot: s, text: 'Sleep in your bed', hold: false }, d); }
+        if (b.def.jobs && b.id !== 'contractor') {
+          const roles = Object.keys(b.def.jobs); const role = roles[0];
+          for (const t of b.spots.work) {
+            const d = Math.hypot(t.x - px, t.z - pz); if (d > 1.6) continue;
+            const manned = g.population.sims.some((s) => s.inside === b && Math.hypot(s.x - t.x, s.z - t.z) < 1.2);
+            if (!manned) consider({ kind: 'work', b, role, text: `Work a shift as ${ROLES[role].name}  (hold E, earns city funds)`, hold: true }, d + 0.3);
+          }
+        }
+      } else if (b.state === 'site') {
+        const dx = Math.max(b.x0 * TILE - px, 0, px - (b.x0 + b.w) * TILE), dz = Math.max(b.z0 * TILE - pz, 0, pz - (b.z0 + b.d) * TILE), d = Math.hypot(dx, dz);
+        if (d < 2.2) {
+          const needs = Object.keys(b.need).some((m) => g.buildings.missing(b, m) > 0 || (b.need[m] - (b.have[m] || 0)) > 0);
+          let text, hold = false;
+          if (this.carry && b.need[this.carry.mat] - (b.have[this.carry.mat] || 0) > 0) text = `Deliver ${this.carry.qty} ${MATERIALS[this.carry.mat].name}`;
+          else if (g.construction.workable(b)) { text = `Build ${b.def.name}  (hold E)  ${Math.round(b.progress * 100)}%`; hold = true; }
+          else text = `${b.def.name}: waiting for materials (${Math.round(g.buildings.supply(b) * 100)}% delivered)`;
+          consider({ kind: 'site', b, text, hold, passive: !text.startsWith('Deliver') && !hold }, d + 0.2);
+        }
+      }
+    }
+    return best;
+  }
+  interact(rawDt) {
+    const g = this.game, inp = g.input; this.target = this.findTarget(); const t = this.target;
+    g.ui.setPrompt(t ? t.text : null, t && t.hold ? this.hold : -1);
+    if (!t) { this.hold = 0; return; }
+    const e = inp.hit('KeyE'), held = inp.down('KeyE');
+    if (t.kind === 'sim' && e) g.startDialogue(t.sim);
+    else if (t.kind === 'terminal' && e) g.ui.openTerminal(t.b);
+    else if (t.kind === 'depot' && e) this.useDepot();
+    else if (t.kind === 'bed' && e) this.trySleep(t.spot);
+    else if (t.kind === 'site') {
+      if (e && this.carry && t.b.need[this.carry.mat] - (t.b.have[this.carry.mat] || 0) > 0) { g.buildings.deliver(t.b, this.carry.mat, this.carry.qty); g.ui.toast(`Delivered ${this.carry.qty} ${MATERIALS[this.carry.mat].name}`); this.carry = null; }
+      else if (held && t.hold) { this.working = true; this.faceTo(t.b.cx, t.b.cz); g.buildings.addWork(t.b, rawDt * g.clock.speed * 1.0); this.hold = t.b.progress; }
+    } else if (t.kind === 'work') {
+      if (held) { this.working = true; const wage = 12; g.economy.earn(wage * rawDt); this.hold = (this.hold + rawDt * 0.2) % 1; } else this.hold = 0;
+    }
+    if (!held && t.kind !== 'site') this.hold = 0;
+  }
+  faceTo(x, z) { this.heading = Math.atan2(x - this.x, z - this.z); }
+  useDepot() {
+    const g = this.game;
+    if (this.carry) { g.economy.stock[this.carry.mat] += this.carry.qty; const s = g.construction.sites.find((s) => s.reserved[this.carry.mat] > 0); if (s) s.reserved[this.carry.mat] = Math.max(0, s.reserved[this.carry.mat] - this.carry.qty); g.ui.toast('Crate returned'); this.carry = null; return; }
+    const n = g.construction.nextMaterialFor(4);
+    if (!n) { g.ui.toast(g.construction.sites.length ? 'Depot is out of the materials your sites need. Order more at a terminal.' : 'No construction sites need materials.'); return; }
+    g.economy.stock[n.mat] -= n.qty; n.site.reserved[n.mat] = (n.site.reserved[n.mat] || 0) + n.qty; this.carry = { mat: n.mat, qty: n.qty, site: n.site };
+    g.ui.toast(`Picked up ${n.qty} ${MATERIALS[n.mat].name} for ${n.site.def.name}`);
+  }
+  trySleep(spot) {
+    const g = this.game, h = g.clock.hour;
+    if (!(h >= 20 || h < 6 || this.energy < 35)) { g.ui.toast('Too early to sleep. (After 20:00, or when you are tired.)'); return; }
+    this.sleeping = true; this.sleepSpot = spot; this.x = spot.x; this.z = spot.z; this.heading = spot.rotY; g.clock.sleepBoost = 8; g.ui.fade(0.55, 'Zzz...');
+  }
+  wake() {
+    if (!this.sleeping) return; this.sleeping = false; this.game.clock.sleepBoost = 0; this.game.ui.fade(0);
+    if (this.sleepSpot) { this.x = this.sleepSpot.ax; this.z = this.sleepSpot.az; }
+  }
+  collapse() {
+    const g = this.game; g.ui.toast('You collapse from exhaustion...'); this.sedate('exhaustion');
+  }
+  /** Sedation: screen fades, then Sam wakes in hospital or the town square. */
+  sedate(reason = '') {
+    if (this.sedated > 0) return; const g = this.game;
+    this.sedated = 3.2; this.carry && (this.carry = null); g.ui.fade(1, reason === 'exhaustion' ? '' : 'You feel a sharp sting... everything goes soft.'); if (this.sleeping) { this.sleeping = false; g.clock.sleepBoost = 0; }
+  }
+  wakeFromSedation() {
+    const g = this.game, hosp = g.buildings.byDef('clinic')[0];
+    let x, z;
+    if (hosp && hosp.spots.bed[0]) { x = hosp.spots.bed[0].ax; z = hosp.spots.bed[0].az; g.messages.push('Hospital', 'Dr. on duty: "You collapsed, Sam. Rest up. Nothing to see here."', 'warn'); }
+    else { x = g.plaza.x; z = g.plaza.z; g.messages.push('Planning Office', 'Sam, you wandered off. You were found near the edge and brought back to the square. Easy now.', 'warn'); }
+    this.teleport(x, z); this.energy = Math.max(this.energy, 70); g.ui.fade(0); g.security.reset();
+  }
+
+  // ---------- visuals ----------
+  syncMesh(dt) {
+    const g = this.game, m = this.mesh, godView = g.mode === 'god';
+    m.visible = !(g.mode === 'sim' && !this.third && !this.sleeping);
+    m.position.set(this.x, 0, this.z); m.rotation.y = this.heading; const u = m.userData;
+    if (this.sleeping) { u.body.rotation.x = -Math.PI / 2; u.body.position.set(0, 0.72, 0.9); animateWalk(m, 0, 0); }
+    else if (this.sedated > 0) { u.body.rotation.x = -Math.PI / 2; u.body.position.set(0, 0.12, 0.9); }
+    else {
+      u.body.rotation.x = 0; u.body.position.set(0, 0, 0);
+      if (this.moved) { this.walkPhase += dt * (g.input.down('ShiftLeft') ? 12 : 8); animateWalk(m, this.walkPhase, 1); }
+      else if (this.working) { this.walkPhase += dt * 9; u.armR.rotation.x = -1.2 + Math.sin(this.walkPhase) * 0.6; u.armL.rotation.x = 0; u.legL.rotation.x = u.legR.rotation.x = 0; }
+      else animateWalk(m, 0, 0);
+    }
+    if (this.carry) { if (!this.crate) { this.crate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), new THREE.MeshStandardMaterial({ color: MATERIALS[this.carry.mat].color })); this.crate.position.set(0, 1.15, 0.42); u.body.add(this.crate); } this.crate.material.color.setHex(MATERIALS[this.carry.mat].color); }
+    else if (this.crate) { this.crate.parent.remove(this.crate); this.crate = null; }
+    this.marker.visible = godView; this.marker.position.set(this.x, 5.2 + Math.sin(performance.now() / 300) * 0.4, this.z); this.marker.rotation.y += dt * 2;
+  }
+
+  /** Camera for sim mode (first/third person). */
+  placeCamera(cam) {
+    const w = this.game.world, [hx, hy, hz] = this.headPos();
+    const fx = -Math.sin(this.yaw) * Math.cos(this.pitch), fy = Math.sin(this.pitch), fz = -Math.cos(this.yaw) * Math.cos(this.pitch);
+    if (this.sleeping || this.sedated > 0) { cam.position.set(this.x, 1.2, this.z); cam.lookAt(this.x - Math.sin(this.heading) * 0, 4, this.z + 0.001); return; }
+    if (!this.third) { cam.position.set(hx, hy, hz); cam.lookAt(hx + fx, hy + fy, hz + fz); return; }
+    let d = this.camDist; const tx = hx + 0, ty = 1.7, tz = hz;
+    while (d > 0.6) { const cx = tx - fx * d, cz = tz - fz * d, cy = ty - fy * d + 0.4; if (cy < 0.3) { d -= 0.3; continue; } if (!w.collides(cx, cz, 0.25)) break; d -= 0.3; }
+    cam.position.set(tx - fx * d, Math.max(0.4, ty - fy * d + 0.4), tz - fz * d); cam.lookAt(tx, ty, tz);
+  }
+}

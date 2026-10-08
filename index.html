@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sam City</title>
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="view"></canvas>
+
+  <div id="hud-info" class="panel hidden">
+    <div class="title">Sam City</div>
+    <div class="row"><span>Population</span><b id="h-pop">0</b></div>
+    <div class="row"><span>Funds</span><b id="h-funds">$0</b></div>
+    <div class="row"><span>Month</span><b id="h-month">MAY</b></div>
+    <div class="row"><span>Year</span><b id="h-year">2004</b></div>
+    <div class="row small"><span>Sims</span><b id="h-sims">0/0</b></div>
+  </div>
+
+  <div id="stock" class="panel hidden"></div>
+
+  <div id="objectives" class="panel hidden"><div class="ttl">OBJECTIVE</div><div id="obj-text"></div><div id="obj-list"></div></div>
+  <div id="messages"></div>
+
+  <div id="toolbox" class="panel hidden"></div>
+  <div id="submenu" class="panel hidden"></div>
+  <div id="hover" class="hidden"></div>
+
+  <div id="clockbox" class="panel hidden">
+    <div id="c-date">MAY 2004</div><div id="c-time">09:00</div>
+    <div id="c-speed"><button data-s="0">II</button><button data-s="1">1x</button><button data-s="2">2x</button><button data-s="4">4x</button></div>
+    <div id="c-mode"></div>
+  </div>
+
+  <div id="crosshair" class="hidden"></div>
+  <div id="prompt" class="hidden"><div id="prompt-text"></div><div id="prompt-bar"><div></div></div></div>
+  <div id="simhud" class="panel hidden"><div class="row"><span>Energy</span><div class="bar"><div id="b-energy"></div></div></div><div class="row"><span>Carrying</span><b id="h-carry">nothing</b></div></div>
+  <div id="help" class="hidden"></div>
+
+  <div id="dialogue" class="panel hidden"><div id="d-name"></div><div id="d-text"></div><div id="d-hint">[E] continue</div></div>
+  <div id="terminal" class="hidden"></div>
+  <div id="query" class="panel hidden"></div>
+  <div id="toast" class="hidden"></div>
+  <div id="fade"><div id="fade-text"></div></div>
+  <div id="ending" class="hidden"></div>
+
+  <div id="title" class="screen">
+    <div class="box">
+      <h1>SAM CITY</h1>
+      <p class="tag">Build a city. Work in it. Question the sky.</p>
+      <button id="btn-new">New Game</button>
+      <button id="btn-continue" class="hidden">Continue</button>
+      <div class="how">
+        <b>Sim mode</b> WASD move · Shift sprint · mouse look (click to capture) · V first/third person · E interact (hold to work)<br>
+        <b>God mode</b> TAB toggles · WASD pan · Q/E rotate · wheel zoom · right-drag pan · Shift+right-drag tilt · R rotate ghost · 1-7 tools
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
