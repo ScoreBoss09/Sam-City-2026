@@ -16,6 +16,9 @@ import { Security } from './systems/Security.js';
 import { Raids } from './systems/Raids.js';
 import { RoadPlans } from './systems/RoadPlans.js';
 import { Minimap } from './ui/Minimap.js';
+import { WorkGame } from './ui/WorkGame.js';
+import { Particles } from './render/Particles.js';
+import { Piles } from './systems/Piles.js';
 import { SiteLabels } from './render/SiteLabels.js';
 import { ToolRack } from './systems/Tools.js';
 import { Planner } from './systems/Planner.js';
@@ -44,7 +47,7 @@ export class Game {
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
     this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.raids = new Raids(this); this.planner = new Planner(this); this.social = new Social(this);
-    this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
+    this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
     // objective beacon
     this.beacon = new THREE.Group(); const bm = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.9, depthTest: false });
@@ -107,6 +110,7 @@ export class Game {
     // modal / toggles
     if (ui.dialogue && (inp.hit('KeyE') || inp.hit('Space') || inp.mouse.down)) ui.advanceDialogue();
     if (ui.terminalB && inp.hit('Escape')) ui.closeTerminal();
+    if (ui.invOpen && (inp.hit('Escape') || inp.hit('KeyI'))) ui.closeInventory();
     if (ui.dialogue && inp.padHit(1)) ui.closeDialogue();
     if (!ui.modalOpen && !this.ending && inp.hit('Tab')) this.setMode(this.mode === 'god' ? 'sim' : 'god');
     if (inp.hit('KeyP') && !ui.modalOpen) this.clock.speed = this.clock.speed ? 0 : 1;
@@ -120,11 +124,11 @@ export class Game {
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
     this.player.update(gdt, dt);
     for (const s of this.population.sims) s.sync(dt); this.social.render(dt);
-    this.buildings.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt);
+    this.buildings.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt);
 
     // camera
     let focus;
-    if (this.mode === 'god') { this.god.update(dt, inp, true); focus = this.god.target; }
+    if (this.mode === 'god') { this.god.update(dt, inp, true); focus = this.god.target; if (this.player.cut && this.player.cut.size) this.player.cutaway(null); }
     else { this.god.update(dt, inp, false); this.god.grid.visible = false; this.god.ghost.visible = false; this.god.tileBox.visible = false; this.player.placeCamera(this.camera); focus = { x: this.player.x, z: this.player.z }; }
     { const o = this.story.currentObjective, t = o && o.target ? o.target(this) : null; const p = this.player;
       if (t && this.started) { const near = this.mode === 'sim' && Math.hypot(t.x - p.x, t.z - p.z) < 7; this.beacon.visible = !near; const k = this.mode === 'god' ? this.god.dist / 40 : 1; this.beacon.position.set(t.x, 0, t.z); this.beacon.userData.cone.position.y = 5 + Math.sin(this.elapsed * 3) * 0.5; this.beacon.userData.cone.scale.setScalar(Math.max(1, k)); } else this.beacon.visible = false; }

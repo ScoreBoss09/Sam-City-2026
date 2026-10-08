@@ -9,7 +9,7 @@ export class SiteLabels {
     for (const b of g.buildings.list) {
       if (b.state !== 'site') { if (b.label) { g.scene.remove(b.label); b.label.material.map.dispose(); b.label = null; } continue; }
       const miss = Object.keys(b.need).map((m) => [m, Math.max(0, b.need[m] - (b.have[m] || 0))]).filter(([, n]) => n > 0);
-      const l1 = b.def.name, l2 = miss.length ? 'Needs ' + miss.map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ') : (g.player.tools.has('hammer') ? 'Ready: hold E to build' : 'Ready to build (needs the Hammer)'), pct = Math.round(b.progress * 100);
+      const l1 = b.def.name, l2 = miss.length ? 'Needs ' + miss.map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ') : (g.player.tools.has('hammer') ? 'Ready: tap E to build' : 'Ready to build (needs the Hammer)'), pct = Math.round(b.progress * 100);
       const sig = l1 + l2 + pct + god + g.input.padActive;
       if (!b.label) { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); s.renderOrder = 30; b.label = s; b.labelCv = c; g.scene.add(s); }
       if (b.labelSig !== sig) {

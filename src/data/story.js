@@ -70,36 +70,36 @@ const hasB = (g, id, state) => g.buildings.list.some((b) => b.id === id && (!sta
 const nearestTree = (g) => { let best = null, bd = 1e9; for (const t of g.terrain.trees) { if (!t.alive) continue; const d = Math.hypot(t.x - g.player.x, t.z - g.player.z); if (d < bd) { bd = d; best = t; } } return best && { x: best.x, z: best.z }; };
 const siteOf = (g, id) => { const b = g.buildings.list.find((q) => q.id === id && q.state === 'site'); return b && { x: b.cx, z: b.cz }; };
 const siteFull = (g, id) => g.buildings.list.some((b) => b.id === id && (b.state === 'done' || (b.state === 'site' && Object.keys(b.need).every((m) => (b.have[m] || 0) >= b.need[m]))));
-const haulTarget = (g, id) => (g.player.carry ? siteOf(g, id) : (nearestTree(g)));
+const haulTarget = (g, id) => (g.player.invTotal() >= 4 ? siteOf(g, id) : (nearestTree(g)));
 const nearestPlan = (g) => { let best = null, bd = 1e9; for (const p of g.roadPlans.plans.values()) { const d = Math.hypot(p.cx - g.player.x, p.cz - g.player.z); if (d < bd) { bd = d; best = p; } } return best && { x: best.cx, z: best.cz }; };
 const rackTarget = (g) => { const u = g.tools.untaken[0]; return u ? { x: u.x, z: u.z } : null; };
 
 export const OBJECTIVES = [
   obj('plan', '1. Plan your camp (planning view)', [
-    step('Choose the ROADS tool on the left and drag a dirt path away from the Supply Lift.', (g) => g.roadPlans.count + (g.flags.pathsBuilt || 0) >= 3, (g) => ({ x: g.lift.doorOut.x, z: g.lift.doorOut.z + 6 })),
-    step('BUILDINGS > Civic > Stockyard: click a spot beside the path to order it.', (g) => hasB(g, 'stockyard')),
-    step('BUILDINGS > Homes > Wooden Hut: order one beside the path too.', (g) => hasB(g, 'hut')),
+    step('Click ROADS (left), then drag a dirt path away from the Supply Lift.', (g) => g.roadPlans.count + (g.flags.pathsBuilt || 0) >= 3, (g) => ({ x: g.lift.doorOut.x, z: g.lift.doorOut.z + 6 })),
+    step('Click BUILDINGS, the Civic tab, then Stockyard. Click beside your path to order it.', (g) => hasB(g, 'stockyard')),
+    step('Now order a Wooden Hut (BUILDINGS, Homes) beside the path.', (g) => hasB(g, 'hut')),
   ]),
   obj('tools', '2. Become Sam and pick up tools', [
-    step('Press TAB (or Start) to step into Sam\'s shoes.', (g) => g.flags.sawSim),
-    step('Walk to the TOOL RACK by the Lift (the glowing yellow spot) and pick up the Axe (E).', (g) => g.player.tools.has('axe'), rackTarget),
+    step('Press TAB to step into Sam\'s shoes.', (g) => g.flags.sawSim),
+    step('Walk to the glowing Tool Rack (yellow star on your map) and pick up the Axe with E.', (g) => g.player.tools.has('axe'), rackTarget),
     step('Pick up the Hammer.', (g) => g.player.tools.has('hammer'), rackTarget),
     step('Pick up the Shovel.', (g) => g.player.tools.has('shovel'), rackTarget),
   ]),
   obj('dig', '3. Dig the path', [
-    step('Walk onto the staked path tiles and hold E to dig each one.', (g) => (g.flags.pathsBuilt || 0) >= 3 || (g.roadPlans.count === 0 && (g.flags.pathsBuilt || 0) >= 1), nearestPlan),
+    step('Stand on a staked path tile and tap E when the marker is in the green to dig it.', (g) => (g.flags.pathsBuilt || 0) >= 3 || (g.roadPlans.count === 0 && (g.flags.pathsBuilt || 0) >= 1), nearestPlan),
   ]),
   obj('yard', '4. Raise the Stockyard', [
-    step('Chop trees (hold E at a tree) and carry the timber to the Stockyard site (E). It needs 10.', (g) => siteFull(g, 'stockyard'), (g) => haulTarget(g, 'stockyard')),
-    step('Hold E at the Stockyard site to build it.', (g) => hasB(g, 'stockyard', 'done'), (g) => siteOf(g, 'stockyard')),
+    step('Chop trees: tap E in the green. Then take the timber to the Stockyard site and press E to deliver (it needs 10).', (g) => siteFull(g, 'stockyard'), (g) => haulTarget(g, 'stockyard')),
+    step('Build the Stockyard: stand by the site and tap E in the green.', (g) => hasB(g, 'stockyard', 'done'), (g) => siteOf(g, 'stockyard')),
   ]),
   obj('hut', '5. A roof for Sam', [
-    step('Bring 8 timber to the Hut site (chop trees, or take a crate from the Stockyard pile with E).', (g) => siteFull(g, 'hut'), (g) => (g.player.carry ? siteOf(g, 'hut') : (g.depot ? { x: g.depot.doorOut.x, z: g.depot.doorOut.z } : nearestTree(g)))),
-    step('Hold E at the Hut site to build it. This will be Sam\'s home.', (g) => hasB(g, 'hut', 'done'), (g) => siteOf(g, 'hut')),
+    step('Bring 8 timber to the Hut site. Chop more, or press E at the Stockyard to pack what the site needs.', (g) => siteFull(g, 'hut'), (g) => (g.player.invTotal() ? siteOf(g, 'hut') : (g.depot ? { x: g.depot.doorOut.x, z: g.depot.doorOut.z } : nearestTree(g)))),
+    step('Build the Hut (tap E in the green). It will be Sam\'s home.', (g) => hasB(g, 'hut', 'done'), (g) => siteOf(g, 'hut')),
   ]),
   obj('eat', '6. Eat something', [
     step('Pick up the Basket from the Tool Rack.', (g) => g.player.tools.has('basket'), rackTarget),
-    step('Hold E on berry bushes to pick food, then press Q (or Y on a controller) to eat. Or eat at the Stockyard.', (g) => (g.flags.ate || 0) >= 1),
+    step('Pick berries from a bush (tap E), then press Q to eat.', (g) => (g.flags.ate || 0) >= 1),
   ]),
   obj('office', '7. The Surveyor\'s Hut', [
     step('Planning view: BUILDINGS > Civic > Surveyor\'s Hut. Order it beside the path.', (g) => hasB(g, 'surveyor')),

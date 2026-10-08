@@ -82,3 +82,36 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 #howto h3 { color: #ffd23f; margin: 0 0 6px; font-size: 15px; } #howto p { font-size: 13px; line-height: 1.45; margin: 0; } #howto .tag { margin: 10px 0 14px; }
 @media (max-width: 760px) { #howto .cols { flex-direction: column; } }
 #howto { background: rgba(6,11,20,.82); z-index: 40; }
+
+/* ---- work minigame ---- */
+#workgame { position: absolute; left: 50%; top: 70%; transform: translateX(-50%); width: 360px; background: rgba(14,26,43,.92); border: 2px solid #ffd23f; padding: 8px 12px 10px; z-index: 12; box-shadow: 0 4px 18px rgba(0,0,0,.5); }
+#workgame .wg-top { display: flex; justify-content: space-between; font: bold 13px 'Courier New', monospace; color: #ffd23f; letter-spacing: 2px; margin-bottom: 6px; } #wg-label { color: #cdd6e4; letter-spacing: 0; font-weight: normal; }
+#workgame .wg-bar { position: relative; height: 22px; background: #2a3346; border: 2px solid #0b1220; overflow: hidden; }
+#wg-good { position: absolute; top: 0; bottom: 0; background: #3f9a54; } #wg-perfect { position: absolute; top: 0; bottom: 0; background: #ffd23f; box-shadow: 0 0 8px #ffd23f; }
+#wg-cursor { position: absolute; top: -3px; bottom: -3px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 0 1px #000, 0 0 6px #fff; }
+#workgame .wg-progbar { height: 6px; background: #223; margin-top: 6px; } #wg-prog { height: 100%; width: 0; background: #7be08f; transition: width .12s; }
+#wg-hint { font-size: 10px; color: #8d9bb3; margin-top: 4px; text-align: center; }
+.wg-pop { position: absolute; left: 0; right: 0; top: -30px; text-align: center; font: bold 20px 'Courier New', monospace; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+.wg-pop.perfect { color: #ffd23f; animation: wgpop .5s; } .wg-pop.good { color: #7be08f; animation: wgpop .4s; } .wg-pop.miss { color: #ff7a6b; } .wg-pop.unit { color: #fff; animation: wgpop .5s; }
+@keyframes wgpop { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
+#workgame.hit-perfect { animation: wgshake .25s; border-color: #fff; } #workgame.hit-miss { animation: wgshake .2s; border-color: #ff7a6b; }
+@keyframes wgshake { 25% { transform: translateX(calc(-50% - 4px)); } 75% { transform: translateX(calc(-50% + 4px)); } }
+/* ---- inventory ---- */
+#inventory { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 460px; z-index: 30; padding: 14px 16px; }
+#inventory h2 { margin: 0 0 8px; font-size: 18px; color: #ffd23f; letter-spacing: 3px; display: flex; justify-content: space-between; align-items: center; }
+#inventory .slots { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 6px 0 12px; }
+#inventory .slot { border: 2px solid #3a4a66; background: #172235; height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #cdd6e4; text-align: center; }
+#inventory .slot.has { border-color: #c9b98a; color: #fff; } #inventory .slot .ic { font-size: 22px; line-height: 1; } #inventory .slot.empty { opacity: .35; }
+#inventory .row2 { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #2a3346; } #inventory .row2 .nm { flex: 1; }
+#inventory button { background: #1f4f8f; border: 2px solid #8fb4e8; color: #fff; font: bold 12px 'Courier New', monospace; padding: 4px 10px; cursor: pointer; }
+#inventory .cap { height: 8px; background: #223; margin: 4px 0 10px; } #inventory .cap > div { height: 100%; background: #e8b44a; }
+#inventory .hint { font-size: 11px; color: #8d9bb3; margin-top: 8px; }
+
+.bar.wide { width: 100%; margin: 2px 0 3px; } #b-pack { background: #e8b44a; height: 100%; width: 0; }
+#h-pack { font-size: 11px; color: #cdd6e4; margin-bottom: 4px; } #simhud .keys { font-size: 10px; color: #8d9bb3; border-top: 1px solid #2a3346; padding-top: 4px; }
+#prompt.info { border-color: #8d9bb3; } #prompt.info #prompt-text::before { content: "" !important; }
+
+#objectives { width: 330px; } #obj-title { font-size: 12px; color: #ffd23f !important; letter-spacing: 1px; text-transform: uppercase; }
+#obj-text { font-size: 16px; line-height: 1.35; color: #fff; font-weight: bold; margin: 2px 0 6px; }
+.stepdots { display: flex; align-items: center; gap: 5px; } .stepdots span { width: 10px; height: 10px; border: 2px solid #5a6a86; background: transparent; } .stepdots span.d { background: #7be08f; border-color: #7be08f; } .stepdots span.c { background: #ffd23f; border-color: #ffd23f; }
+.stepdots em { margin-left: 6px; font-style: normal; font-size: 10px; color: #8d9bb3; }

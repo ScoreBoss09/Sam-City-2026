@@ -19,7 +19,7 @@ export function serialize(g) {
       home: s.home ? g.buildings.list.indexOf(s.home) : -1, work: s.workplace ? g.buildings.list.indexOf(s.workplace) : -1, role: s.role, partner: s.partner ? idOf.get(s.partner) : -1, parents: s.parents.map((p) => idOf.get(p)).filter((i) => i !== undefined), coupleDay: s.coupleDay || 0,
       rel: [...s.rel.entries()].map(([id, v]) => { const o = g.population.sims.find((q) => q.id === id); return o && idOf.has(o) ? [idOf.get(o), Math.round(v)] : null; }).filter(Boolean) })),
     raids: g.raids.serialize(), roadPlans: g.roadPlans.serialize(), toolsTaken: g.tools.takenIds(),
-    player: { x: g.player.x, z: g.player.z, heading: g.player.heading, yaw: g.player.yaw, energy: g.player.energy, hunger: g.player.hunger, tools: [...g.player.tools], carry: g.player.carry && { mat: g.player.carry.mat, qty: g.player.carry.qty } },
+    player: { x: g.player.x, z: g.player.z, heading: g.player.heading, yaw: g.player.yaw, energy: g.player.energy, hunger: g.player.hunger, tools: [...g.player.tools], inv: g.player.inv }, piles: g.piles.serialize(),
   };
 }
 export function save(g) { if (g.demoMode || g.ending || !g.started) return false; try { localStorage.setItem(KEY, JSON.stringify(serialize(g))); return true; } catch (e) { return false; } }
@@ -62,6 +62,6 @@ export function restore(g, d) {
     if (s.partner >= 0) { sim.partner = sims[s.partner]; sim.single = false; } sim.parents = s.parents.map((j) => sims[j]);
     for (const [j, v] of s.rel) sim.rel.set(sims[j].id, v);
   });
-  const p = d.player; g.player.teleport(p.x, p.z, p.heading); g.player.yaw = p.yaw; g.player.energy = p.energy; g.player.carry = p.carry;
+  const p = d.player; g.player.teleport(p.x, p.z, p.heading); g.player.yaw = p.yaw; g.player.energy = p.energy; g.player.inv = p.inv || (p.carry ? { [p.carry.mat]: p.carry.qty } : {}); g.piles.load(d.piles);
   g.flags.loaded = true;
 }
