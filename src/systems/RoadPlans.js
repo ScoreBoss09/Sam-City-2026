@@ -37,7 +37,7 @@ export class RoadPlans {
     const g = this.game, w = g.world; if (this.plans.get(this.key(p.x, p.z)) !== p) return true;
     if (p.type === 2 && !p.paid) { if (g.economy.stock.stone < 1) return false; g.economy.stock.stone -= 1; p.paid = true; }
     p.progress += dt / WORK[p.type]; p.tile.scale.y = 1 + p.progress * 2; p.tile.material.opacity = 0.55 + p.progress * 0.35;
-    if (p.progress >= 1) { let felled = 0; for (const t of g.terrain.trees) if (t.alive && t.tx === p.x && t.tz === p.z) { g.terrain.killTree(t); felled++; } if (felled && g.depot) g.economy.add('timber', felled); this.drop(p); w.addRoad(p.x, p.z, p.type); g.flags.pathsBuilt = (g.flags.pathsBuilt || 0) + 1; return true; }
+    if (p.progress >= 1) { let felled = 0; for (const t of g.terrain.trees) if (t.alive && t.tx === p.x && t.tz === p.z) { g.terrain.removeTree(t); felled++; } if (felled && g.depot) g.economy.add('timber', felled); this.drop(p); w.addRoad(p.x, p.z, p.type); g.flags.pathsBuilt = (g.flags.pathsBuilt || 0) + 1; return true; }
     return false;
   }
   /** Nearest unclaimed plan for a builder sim (paved ones only if there is stone). */

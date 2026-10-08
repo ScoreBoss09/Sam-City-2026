@@ -246,15 +246,18 @@ export class Player {
     if (t.b) { const b = t.b, dx = Math.max(b.x0 * TILE - this.x, 0, this.x - (b.x0 + b.w) * TILE), dz = Math.max(b.z0 * TILE - this.z, 0, this.z - (b.z0 + b.d) * TILE); return Math.hypot(dx, dz); }
     return 0;
   }
-  stillValid(t) { if (t.kind === 'gather') return t.node.kind === 'tree' ? t.node.alive : (t.node.infinite || t.node.amount >= 1); if (t.kind === 'site') return t.b.state === 'site'; if (t.kind === 'road') return this.game.roadPlans.has(t.plan.x, t.plan.z); return true; }
+  stillValid(t) { if (t.kind === 'site' && t.work) return t.b.state === 'site' && this.game.construction.workable(t.b); if (t.kind === 'gather') return t.node.kind === 'tree' ? t.node.alive : (t.node.infinite || t.node.amount >= 1); if (t.kind === 'site') return t.b.state === 'site'; if (t.kind === 'road') return this.game.roadPlans.has(t.plan.x, t.plan.z); return true; }
 
   /** Timing minigame: every tap is graded; holding the button works slowly on its own. */
   doWork(t, dt, tap, held) {
-    const g = this.game, wg = g.workgame; wg.start(t.work, this.targetKey(t));
+    const g = this.game, wg = g.workgame;
+    if (t.kind === 'site' && !g.construction.workable(t.b)) { wg.stop(); this.lock = null; return; }   // out of materials: nothing to hammer
+    wg.start(t.work, this.targetKey(t));
     if (tap || held) { this.lockT = performance.now(); if (this.lock !== t) { this.lock = t; this.lockPos = { x: this.x, z: this.z }; } }
     const fx = t.node ? t.node.x : t.b ? t.b.cx : t.plan.cx, fz = t.node ? t.node.z : t.b ? t.b.cz : t.plan.cz; let value = 0;
     if (tap) {
       const r = wg.press(); value = r.q === 'none' ? 0 : r.fish ? (r.q === 'miss' ? 0 : 1.2) * r.mult : STROKE[r.q] * r.mult;
+      if (r.q === 'perfect' && wg.combo >= 3) this.chainSpill(wg.combo, t);
       if (t.node) { if (t.nk === 'tree') { g.terrain.hitTree(t.node); g.terrain.fallFrom = { x: this.x, z: this.z }; } else g.resources.shake(t.node); } this.strikeT = 0.5; this.faceTo(fx, fz); if (r.q === 'perfect') this.shake = 0.25;
       const hx = this.x + (fx - this.x) * 0.6, hz = this.z + (fz - this.z) * 0.6; g.particles.burst(hx, t.work === 'build' ? 0.8 : 1.0, hz, t.nk === 'berry' ? (Math.random() < 0.5 ? 0xc0243a : 0x7a2a8a) : t.nk === 'field' ? 0xe0c050 : CHIP[t.work], r.q === 'perfect' ? 14 : r.q === 'good' ? 8 : 3, 1, 3.2);
     }
@@ -287,6 +290,12 @@ export class Player {
   }
   sitOn(seat, b) { seat.taken = 'player'; this.seat = Object.assign(seat, { b }); this.prevPos = { x: this.x, z: this.z }; this.x = seat.x; this.z = seat.z; this.heading = seat.heading; Sfx.play('ui'); this.game.workgame.stop(); this.lock = null; }
   standUp() { const s = this.seat; if (!s) return; s.taken = null; this.seat = null; this.x = s.x + Math.sin(s.heading) * 0.8; this.z = s.z + Math.cos(s.heading) * 0.8; this.unstick(); }
+  /** A hot chain of golds spills over: the nearest unfinished sites get a little progress for free. */
+  chainSpill(combo, t) {
+    const g = this.game, frac = 0.003 * Math.min(combo, 10), sites = g.buildings.list.filter((b) => b.state === 'site' && b !== t.b).sort((a, c) => Math.hypot(a.cx - this.x, a.cz - this.z) - Math.hypot(c.cx - this.x, c.cz - this.z)).slice(0, 2);
+    let any = false; for (const s of sites) { if (Math.hypot(s.cx - this.x, s.cz - this.z) > 80) continue; const got = g.buildings.bonusWork(s, frac); if (got > 0) { any = true; g.particles.burst(s.cx, 2.5, s.cz, 0xffd23f, 10, 1.5, 3, 0.1); } }
+    if (any && performance.now() - (this.spillMsgT || 0) > 4000) { this.spillMsgT = performance.now(); g.ui.toast(`🔥 Chain x${combo}! The buzz spreads: nearby building sites get a little done too.`, 2600); }
+  }
   finished(b) { const g = this.game; Sfx.play('done'); g.particles.burst(b.cx, 3, b.cz, 0xffd23f, 30, 2.5, 5, 0.16); g.ui.toast(`${b.def.name} finished!`, 2800); }
   faceTo(x, z) { this.heading = Math.atan2(x - this.x, z - this.z); }
   takePile(p) {

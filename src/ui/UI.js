@@ -240,7 +240,7 @@ export class UI {
 
   showEnding() {
     const e = $('ending'); e.classList.remove('hidden');
-    e.innerHTML = `<div class="box"><h1>OUTSIDE</h1><p class="tag">The tunnel opens onto a hillside — real wind, real sun, no cue cards.<br>Sam City was a set. You were the star.<br><br>Thanks for playing this prototype.</p><button id="btn-keep">Keep playing in the set</button></div>`;
+    e.innerHTML = `<div class="box"><h1>OUTSIDE</h1><p class="tag">The Lift climbs for a long time. The doors open onto a car park under a real sky: real wind, real rain, no cue cards.<br>Sam City was a set. You were the star.<br><br>Thanks for playing this prototype.</p><button id="btn-keep">Keep playing in the set</button></div>`;
     $('btn-keep').onclick = () => { e.classList.add('hidden'); this.game.ending = false; this.game.flags.escaped = true; this.game.player.teleport(this.game.plaza.x, this.game.plaza.z); this.fade(0); };
   }
 

@@ -41,9 +41,10 @@ export function restore(g, d) {
   // buildings
   const made = []; g.starterHome = null; g.flags.noStarter = true;
   for (const s of d.buildings) {
+    if (s.id === 'tunnel') continue;   // older saves: the tunnel is gone
     const b = B.place(s.id, s.x0, s.z0, s.rot, { instant: s.state === 'done' });
     if (s.state !== 'done') { b.progress = s.progress; b.have = s.have || {}; B.refreshSite(b); }
-    if (s.id === 'lift') g.lift = b; if (s.id === 'tunnel') g.tunnel = b; if (s.id === 'surveyor') g.surveyor = b; if (s.starter) { g.starterHome = b; b.reservedForPlayer = true; if (b.spots.bed[0]) b.spots.bed[0].taken = 'player'; }
+    if (s.id === 'lift') g.lift = b; if (s.id === 'surveyor') g.surveyor = b; if (s.starter) { g.starterHome = b; b.reservedForPlayer = true; if (b.spots.bed[0]) b.spots.bed[0].taken = 'player'; }
     made.push(b);
   }
   delete g.flags.noStarter; g.security.guards = []; g.security.init(); g.raids.reset(); g.raids.load(d.raids); g.mail.load(d.post); g.curios.load(d.curios);

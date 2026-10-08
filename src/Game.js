@@ -72,9 +72,8 @@ export class Game {
     const B = this.buildings;
     // The island starts empty: only the Supply Lift and the Service Tunnel exist. Everything else is ordered in god mode and built by hand.
     this.lift = B.place('lift', 18, 2, 0, { instant: true });
-    this.tunnel = B.place('tunnel', 34, 19, 3, { instant: true });
     const d = this.lift.doorOut; this.plaza = { x: d.x, z: d.z + 8 };
-    for (const t of this.terrain.trees) if (t.alive && Math.hypot(t.x - this.lift.trigger.x, t.z - this.lift.trigger.z) < 13) this.terrain.killTree(t);   // the Lift yard is kept clear
+    for (const t of this.terrain.trees) if (t.alive && Math.hypot(t.x - this.lift.trigger.x, t.z - this.lift.trigger.z) < 14) this.terrain.removeTree(t);   // the Lift yard is kept clear
     this.tools.build(d.x + 8, d.z + 13);
     this.security.init(); this.wildlife = new Wildlife(this); this.curios = new Curios(this);
     this.player.teleport(d.x + 2, d.z + 17, 0); this.player.yaw = Math.PI;

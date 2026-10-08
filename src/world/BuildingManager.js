@@ -81,11 +81,16 @@ export class BuildingManager {
   addWork(b, amount) {
     if (b.state !== 'site') return;
     const cap = this.supply(b); const before = b.progress;
-    b.progress = Math.min(cap, b.progress + amount / Math.max(1, b.def.work));
+    b.progress = Math.max(b.progress, Math.min(cap, b.progress + amount / Math.max(1, b.def.work)));
     if (b.progress !== before) this.refreshSite(b);
     if (b.progress >= 0.999 && cap >= 0.999) this.finish(b);
   }
 
+  /** Chain bonus from Sam's minigame: a little progress even without materials (never completes a site that lacks them). */
+  bonusWork(b, frac) {
+    if (b.state !== 'site') return 0; const before = b.progress; b.progress = Math.max(b.progress, Math.min(Math.max(0.92, this.supply(b)), b.progress + frac)); this.refreshSite(b);
+    if (b.progress >= 0.999 && this.supply(b) >= 0.999) this.finish(b); return b.progress - before;
+  }
   finish(b) {
     if (b.siteVis) { this.scene.remove(b.siteVis.group); b.siteVis = null; }
     const def = b.def, ext = buildExterior(def, b.uid); b.ext = ext;

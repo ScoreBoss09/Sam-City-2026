@@ -3,7 +3,7 @@
 
 export const SCRIPT_PAGES = [
   'Running order, day 412 — "SAM walks to the Town Hall. Nobody mentions the Lift. If SAM looks up for more than five seconds, bring in some cloud."',
-  'Staff notice — "The east tunnel is CLOSED, utility access only. Gate guards change over between 02:00 and 04:00. The gate is unmanned in that window. Nobody tells SAM."',
+  'Staff notice — "Lift crew change over between 02:00 and 04:00. The platform is unmanned in that window. Nobody tells SAM."',
   'Contingency sheet — "If SAM reaches the edge of the set: sedate, return to hospital or town square, resume the day as normal."',
 ];
 
@@ -55,11 +55,11 @@ export const SLIPS = [
   ],
   [
     'You ever look up at night and feel the sky\'s a bit... close?',
-    'They don\'t like anyone going near the east tunnel. Take my word.',
+    'They don\'t like anyone going near the Lift at night. Take my word.',
     'Strange thing: the Lift never seems to go back up with anyone in it.',
   ],
   [
-    'Go at night, when the gate guards change over. I never said that.',
+    'Go at night, when the Lift crew change over. I never said that.',
     'Take care of yourself, Sam. You\'ve been good to us.',
   ],
 ];

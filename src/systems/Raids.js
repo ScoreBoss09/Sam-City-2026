@@ -40,7 +40,7 @@ export class Raids {
 
   /** A sandy shore tile away from the gates, joined by land to the Stockyard. */
   landing() {
-    const g = this.game, w = g.world, c = [], gates = [g.lift.doorOut, g.tunnel.doorOut], tgt = (g.depot || g.townhall || g.lift).doorTile;
+    const g = this.game, w = g.world, c = [], gates = [g.lift.doorOut], tgt = (g.depot || g.townhall || g.lift).doorTile;
     for (let z = 1; z < MAP - 1; z++) for (let x = 1; x < MAP - 1; x++) {
       const i = w.idx(x, z); if (w.terrain[i] !== T.SAND || w.road[i] || w.occ[i]) continue;
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (w.terrain[w.idx(x + dx, z + dz)] === T.WATER) { c.push({ x, z, dx, dz }); break; }
