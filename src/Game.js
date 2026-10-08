@@ -20,6 +20,7 @@ import { Decor } from './render/Decor.js';
 import { Traffic } from './systems/Traffic.js';
 import { Harbor } from './render/Harbor.js';
 import { generateDemo } from './systems/Demo.js';
+import { Post } from './render/Post.js';
 import { Player } from './player/Player.js';
 import { GodControls } from './player/GodControls.js';
 import { UI } from './ui/UI.js';
@@ -30,7 +31,8 @@ export class Game {
   constructor(canvas, opts = {}) {
     this.canvas = canvas; this.flags = {}; this.mode = 'sim'; this.ending = false; this.fps = 60; this.glitch = 0; this.started = false; this.renderScale = opts.scale || 0.6;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-    this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.post = new Post(this.renderer, { enabled: opts.post !== false });
+    this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.2, 700);
     this.input = new Input(canvas); this.clock = new Clock(); this.messages = new Messages();
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
@@ -87,6 +89,7 @@ export class Game {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setPixelRatio(1); this.renderer.setSize(Math.max(320, Math.floor(w * this.renderScale)), Math.max(200, Math.floor(h * this.renderScale)), false);
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
+    const sz = new THREE.Vector2(); this.renderer.getSize(sz); this.post.setSize(sz.x, sz.y);
   }
 
   update(raw) {
@@ -117,7 +120,7 @@ export class Game {
     this.elapsed += dt; this.terrain.update(dt, this.mode === 'god'); this.atmosphere.hideDome = this.mode === 'god'; this.atmosphere.update(dt, this.clock, focus, this.story, 0); this.decor.update(dt); this.decor.setNight(this.atmosphere.night); this.traffic.setNight(this.atmosphere.night); this.harbor.update(dt, this.elapsed);
     this.render(dt); inp.endFrame();
   }
-  render() { if (!this.skipRender) this.renderer.render(this.scene, this.camera); }
+  render() { if (!this.skipRender) this.post.render(this.scene, this.camera); }
   /** Test/automation helper: run the simulation without rendering. */
   advance(seconds, step = 0.1) { this.skipRender = true; for (let t = 0; t < seconds; t += step) this.update(step); this.skipRender = false; }
   run() { const loop = (t) => { const raw = (t - this.last) / 1000; this.last = t; try { this.update(raw); } catch (e) { console.error(e); } requestAnimationFrame(loop); }; requestAnimationFrame(loop); }

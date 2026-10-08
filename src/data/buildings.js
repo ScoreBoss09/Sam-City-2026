@@ -53,7 +53,7 @@ export const BUILDINGS = {
     blurb: 'A rough one-room home with straw beds. Sleeps 2.',
   },
   cabin: {
-    name: 'Log Cabin', cat: 'res', w: 2, d: 2, floors: 1, wall: 'logs', roof: 'gable', roofColor: 0x6b4a2a,
+    name: 'Log Cabin', cat: 'res', w: 2, d: 2, floors: 1, wall: 'logs', roof: 'gable', roofColor: 0x9a6a40,
     mat: { timber: 12, stone: 4 }, work: 24, beds: 4, layout: 'cabin', permit: { cost: 200, pop: 6 }, tab: 'Homes',
     blurb: 'Sturdy cabin with a hearth. Sleeps 4.',
   },
@@ -63,7 +63,7 @@ export const BUILDINGS = {
     blurb: 'A proper English cottage. Sleeps 4.',
   },
   townhouse: {
-    name: 'Brick Townhouse', cat: 'res', w: 2, d: 2, floors: 2, wall: 'brick', roof: 'gable', roofColor: 0x3e4a5c,
+    name: 'Brick Townhouse', cat: 'res', w: 2, d: 2, floors: 2, wall: 'brick', roof: 'gable', roofColor: 0x5a6a80,
     mat: { timber: 8, brick: 10 }, work: 40, beds: 5, layout: 'house', permit: { cost: 1500, pop: 30 }, tab: 'Homes',
     blurb: 'Two-storey family home. Sleeps 5.',
   },
@@ -89,7 +89,7 @@ export const BUILDINGS = {
     blurb: 'Fields of crops: the most reliable food supply.',
   },
   tavern: {
-    name: 'Tavern', cat: 'com', w: 3, d: 3, floors: 2, wall: 'tudor', roof: 'gable', roofColor: 0x4a3a2e,
+    name: 'Tavern', cat: 'com', w: 3, d: 3, floors: 2, wall: 'tudor', roof: 'gable', roofColor: 0x7a5a44,
     mat: { timber: 18, stone: 12 }, work: 50, jobs: { publican: 2 }, layout: 'tavern', permit: { cost: 600, pop: 12 }, tab: 'Food',
     blurb: 'Hot meals, a warm fire and good company. Raises mood.',
   },
@@ -110,7 +110,7 @@ export const BUILDINGS = {
     blurb: 'Quarrymen break rocks into building stone.',
   },
   contractor: {
-    name: "Builders' Yard", cat: 'civic', w: 3, d: 2, floors: 1, wall: 'timber', roof: 'gable', roofColor: 0x5a4030,
+    name: "Builders' Yard", cat: 'civic', w: 3, d: 2, floors: 1, wall: 'timber', roof: 'gable', roofColor: 0x8a6444,
     mat: { timber: 12, stone: 4 }, work: 30, jobs: { builder: 4 }, layout: 'contractor', permit: { cost: 250, pop: 5 }, tab: 'Industry',
     blurb: 'Hire builders so you do not have to do all the labour yourself.',
   },
@@ -145,7 +145,7 @@ export const BUILDINGS = {
     blurb: 'Clean water. Residents are happier with a well nearby.',
   },
   school: {
-    name: 'Schoolhouse', cat: 'civic', w: 3, d: 2, floors: 1, wall: 'brick', roof: 'gable', roofColor: 0x5a3a2a,
+    name: 'Schoolhouse', cat: 'civic', w: 3, d: 2, floors: 1, wall: 'brick', roof: 'gable', roofColor: 0x8a5040,
     mat: { timber: 10, brick: 12 }, work: 44, jobs: { teacher: 1 }, layout: 'school', permit: { cost: 1200, pop: 20 }, tab: 'Civic',
     blurb: 'Children learn here during the day.',
   },

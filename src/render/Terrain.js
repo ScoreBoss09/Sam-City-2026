@@ -6,6 +6,7 @@ import { mulberry32 } from '../util.js';
 
 const PX = 16;
 const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
+const vn = (x, z, sc) => { const gx = x / sc, gz = z / sc, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz, a = hash(ix, iz), b = hash(ix + 1, iz), c = hash(ix, iz + 1), d = hash(ix + 1, iz + 1), u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; };
 const rgb = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
 
 export class Terrain {
@@ -49,7 +50,12 @@ export class Terrain {
     const roadAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] > 0, pavedAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] === 2;
     const N = roadAt(tx, tz - 1), S = roadAt(tx, tz + 1), E = roadAt(tx + 1, tz), W = roadAt(tx - 1, tz);
     let base, amt = 18;
-    if (t === T.WATER) { this.ctx.clearRect(tx * PX, tz * PX, PX, PX); return; }
+    if (t === T.WATER) {
+      this.ctx.clearRect(tx * PX, tz * PX, PX, PX);
+      const land = (x, z) => w.inBounds(x, z) && w.terrain[w.idx(x, z)] !== T.WATER, L = land(tx - 1, tz), R = land(tx + 1, tz), U = land(tx, tz - 1), Dn = land(tx, tz + 1);
+      if (L || R || U || Dn) { const fi = this.ctx.createImageData(PX, PX), fd = fi.data; for (let py = 0; py < PX; py++) for (let px = 0; px < PX; px++) { const dist = Math.min(L ? px : 99, R ? PX - 1 - px : 99, U ? py : 99, Dn ? PX - 1 - py : 99); if (dist > 4) continue; const h2 = hash(tx * 16 + px * 1.7, tz * 16 + py * 2.3); if (dist < 1 || (dist < 3 && h2 > 0.45) || (dist < 5 && h2 > 0.82)) { const o = (py * PX + px) * 4; const pale = dist < 2; fd[o] = pale ? 236 : 150; fd[o + 1] = pale ? 246 : 205; fd[o + 2] = pale ? 252 : 235; fd[o + 3] = 255; } } this.ctx.putImageData(fi, tx * PX, tz * PX); }
+      return;
+    }
     base = t === T.FOREST ? rgb(0x2f5d2c) : t === T.SAND ? rgb(0xd9c28a) : rgb(0x5d9a48);
     const rs = w.res[i] ? w.nodeSeeds[w.res[i] - 1] : null; if (rs && rs.kind === 'clay') base = rgb(0xb0794a);
     if (rs && rs.kind === 'ore') base = rgb(0x6d6a60);
@@ -79,10 +85,11 @@ export class Terrain {
         const sN = pavedAt(tx, tz - 1) && py < 3, sS = pavedAt(tx, tz + 1) && py > PX - 4, sW = pavedAt(tx - 1, tz) && px < 3, sE = pavedAt(tx + 1, tz) && px > PX - 4;
         if (sN || sS || sW || sE) { c = rgb(0xb9b6ab); a = 10; }
         else if (t === T.LAND && hash(tx * 16 + px, tz * 16 + py) > 0.93) { c = rgb(0x4a8a3a); a = 6; }
-        else if (t === T.LAND && hash(tx * 31 + px * 7, tz * 29 + py * 3) > 0.9975) { c = [rgb(0xf4e04a), rgb(0xf08aa8), rgb(0xffffff)][(tx + tz + px) % 3]; a = 0; }
+        else if (t === T.LAND && hash(tx * 31 + px * 7, tz * 29 + py * 3) > 0.9992) { c = [rgb(0xf4e04a), rgb(0xf08aa8), rgb(0xffffff)][(tx + tz + px) % 3]; a = 0; }
       }
-      const n = (hash(tx * PX + px + 3.1, tz * PX + py + 9.7) - 0.5) * a;
-      d[o] = c[0] + n; d[o + 1] = c[1] + n; d[o + 2] = c[2] + n; d[o + 3] = 255;
+      let n = (hash(tx * PX + px + 3.1, tz * PX + py + 9.7) - 0.5) * a;
+      if (!isRoad && (t === T.LAND || t === T.FOREST)) { const patch = vn(tx * PX + px, tz * PX + py, 22) * 0.6 + vn(tx * PX + px, tz * PX + py, 7) * 0.4; n += (patch - 0.5) * 34; const tuft = hash(Math.floor((tx * PX + px) / 2) + 11, tz * PX + py * 1.3 + 5); if (t === T.LAND && tuft > 0.965 && py % 3 !== 0) n -= 26; }
+      d[o] = c[0] + n; d[o + 1] = c[1] + n * 1.05; d[o + 2] = c[2] + n * 0.8; d[o + 3] = 255;
     }
     this.ctx.putImageData(img, tx * PX, tz * PX);
   }

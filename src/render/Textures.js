@@ -101,7 +101,7 @@ const roofCache = {};
 export function roofMaterial(color, kind = 'tiles') {
   const k = color + kind; if (roofCache[k]) return roofCache[k];
   const c = mk(32, 32), ctx = c.getContext('2d'), rnd = mulberry32(color + kind.length);
-  noiseFill(ctx, 32, 32, '#d8d8d8', 14, rnd);
+  noiseFill(ctx, 32, 32, '#f0f0f0', 14, rnd);
   if (kind === 'tiles' || kind === 'slate') { for (let y = 0; y < 32; y += 4) { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(0, y, 32, 1); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(0, y + 1, 32, 1); for (let x = (y / 4) % 2 ? 0 : 4; x < 32; x += 8) { ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x, y, 1, 4); } } }
   else if (kind === 'thatch') { ctx.fillStyle = 'rgba(0,0,0,.2)'; for (let i = 0; i < 70; i++) ctx.fillRect(rnd() * 32 | 0, (rnd() * 30 | 0), 1, 3 + (rnd() * 4 | 0)); ctx.fillStyle = 'rgba(255,255,230,.22)'; for (let i = 0; i < 50; i++) ctx.fillRect(rnd() * 32 | 0, (rnd() * 30 | 0), 1, 3 + (rnd() * 4 | 0)); for (let y = 0; y < 32; y += 8) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(0, y, 32, 1); } }
   else { ctx.fillStyle = 'rgba(0,0,0,.15)'; for (let i = 0; i < 90; i++) ctx.fillRect(rnd() * 32 | 0, rnd() * 32 | 0, 1 + (rnd() * 2 | 0), 1); }

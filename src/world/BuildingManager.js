@@ -4,6 +4,11 @@ import { BUILDINGS } from '../data/buildings.js';
 import { doorOffset, layoutFor } from '../data/layouts.js';
 import { buildExterior, buildSite, buildInterior, furnitureColliders } from '../render/BuildingFactory.js';
 
+let _contact = null;
+function contactMat() {
+  if (_contact) return _contact; const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const g = x.createRadialGradient(32, 32, 10, 32, 32, 32); g.addColorStop(0, 'rgba(0,0,0,0.85)'); g.addColorStop(0.62, 'rgba(0,0,0,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  return (_contact = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.55, depthWrite: false }));
+}
 const COS = [1, 0, -1, 0], SIN = [0, 1, 0, -1];
 
 /** Footprint, door and local->world transform for a def placed at tile (x0,z0) with rotation rot. */
@@ -86,6 +91,7 @@ export class BuildingManager {
     const def = b.def, ext = buildExterior(def, b.uid); b.ext = ext;
     ext.group.position.set(b.cx, 0, b.cz); ext.group.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.group);
     ext.roof.position.add(new THREE.Vector3(b.cx, 0, b.cz)); ext.roof.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.roof);
+    if (!def.park && !def.special) { const W = def.w * TILE, D = def.d * TILE; const dec = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 5), contactMat()); dec.rotation.x = -Math.PI / 2; dec.position.y = 0.045; dec.renderOrder = 1; ext.group.add(dec); }
     ext.group.traverse((o) => { if (o.isMesh) o.matrixAutoUpdate = true; });
     b.state = 'done'; b.progress = 1; b.layout = layoutFor(def);
     const odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2 }; };

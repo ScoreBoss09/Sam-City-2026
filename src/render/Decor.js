@@ -37,9 +37,9 @@ export class Decor {
     const g = this.game, wind = 0.6; this.puffT -= dt;
     if (this.puffT <= 0) {
       this.puffT = 0.35;
-      for (const b of g.buildings.list) { if (b.state !== 'done' || !b.smoke || !this.smokeActive(b)) continue; if (g.mode === 'sim' && Math.hypot(b.cx - g.player.x, b.cz - g.player.z) > 90) continue; const p = this.puffs.find((q) => q.life <= 0); if (!p) break; const [x, z] = b.toWorld(b.smoke.lx, b.smoke.lz); p.sp.position.set(x, b.smoke.ly, z); p.life = p.max = 3.5 + Math.random() * 1.5; p.vx = wind + (Math.random() - 0.5) * 0.4; p.vz = (Math.random() - 0.5) * 0.4; p.sp.visible = true; p.s0 = b.def.park === 'camp' ? 0.9 : 1.4; }
+      for (const b of g.buildings.list) { if (b.state !== 'done' || !b.smoke || !this.smokeActive(b)) continue; if (g.mode === 'sim' && Math.hypot(b.cx - g.player.x, b.cz - g.player.z) > 90) continue; const p = this.puffs.find((q) => q.life <= 0); if (!p) break; const [x, z] = b.toWorld(b.smoke.lx, b.smoke.lz); p.sp.position.set(x, b.smoke.ly, z); p.life = p.max = 3.5 + Math.random() * 1.5; p.vx = wind + (Math.random() - 0.5) * 0.4; p.vz = (Math.random() - 0.5) * 0.4; p.sp.visible = true; p.s0 = b.def.park === 'camp' ? 0.8 : 1.1; }
     }
-    for (const p of this.puffs) { if (p.life <= 0) continue; p.life -= dt; const k = 1 - p.life / p.max; p.sp.position.x += p.vx * dt; p.sp.position.z += p.vz * dt; p.sp.position.y += (1.2 + k) * dt; const sz = p.s0 * (1 + k * 2.6); p.sp.scale.set(sz, sz, 1); p.sp.material.opacity = Math.sin(Math.min(1, k * 1.2) * Math.PI) * 0.38; if (p.life <= 0) p.sp.visible = false; }
+    for (const p of this.puffs) { if (p.life <= 0) continue; p.life -= dt; const k = 1 - p.life / p.max; p.sp.position.x += p.vx * dt; p.sp.position.z += p.vz * dt; p.sp.position.y += (1.2 + k) * dt; const sz = p.s0 * (1 + k * 2.6); p.sp.scale.set(sz, sz, 1); p.sp.material.opacity = Math.sin(Math.min(1, k * 1.2) * Math.PI) * 0.26; if (p.life <= 0) p.sp.visible = false; }
     // campfire light on the camp nearest the viewer
     let best = null, bd = 1e9; const f = g.mode === 'sim' ? g.player : { x: g.god.target.x, z: g.god.target.z };
     for (const b of g.buildings.list) if (b.state === 'done' && b.def.park === 'camp') { const d = Math.hypot(b.cx - f.x, b.cz - f.z); if (d < bd) { bd = d; best = b; } }
