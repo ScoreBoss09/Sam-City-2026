@@ -36,7 +36,7 @@ export class Security {
     this.cool -= dt;
     for (const b of [g.lift, g.tunnel]) {
       const d = Math.hypot(p.x - b.trigger.x, p.z - b.trigger.z), tun = b.id === 'tunnel';
-      const warnR = tun ? 15 : 9, killR = tun ? 4.2 : 5;
+      const warnR = tun ? 15 : 7, killR = tun ? 4.2 : 4.5;
       if (d < warnR && !this.warned[b.id]) {
         this.warned[b.id] = true; g.flags.guardsOut = true;
         g.messages.push(tun ? 'Gate Guard' : 'Lift Guard', tun ? 'Restricted area! Turn back, Sam. That corridor is closed.' : 'Staff only beyond this point, Sam. Please step back.', 'warn'); g.ui.toast('RESTRICTED AREA AHEAD');

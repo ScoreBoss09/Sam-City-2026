@@ -13,7 +13,7 @@ jobs:
       - name: Assemble the game (plain files, no build step)
         run: |
           mkdir -p site
-          cp -r index.html css src vendor site/
+          cp -r index.html css src vendor play.bat play.sh README.md site/
           touch site/.nojekyll
           (cd site && zip -qr ../SamCity-playable.zip .)
       - name: Publish to GitHub Pages branch (play in the browser)
