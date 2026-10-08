@@ -16,3 +16,9 @@
 | Sim-cap governor (`Population.update`) | Keep; raise/lower cap from smoothed frame time, add animation LOD |
 
 Notes: 1 tile = 4 m, 3.2 m per storey. Pixel look = low-res render texture with point filtering and flat-shaded low-poly; replace the procedural facade textures with authored 64x52 ones. Sims are ~7 boxes; use skinned models plus GPU instancing. Interiors are built lazily near Sam; use pooled prefabs/additive scenes. `tools/*.mjs` scenarios drive `window.__game` and can be ported to Play Mode tests.
+
+Additions since the first prototype
+- `Resources.js` (gatherable nodes) -> `ResourceNode` MonoBehaviours + a spatial index; trees become GPU-instanced prefabs with a per-tile "alive count".
+- Needs/relationships live on `Sim.js` and `Social.js` (hunger, mood, affinity map, couples, children, ageing): port as plain C# classes with the same tick rates.
+- `Post.js` (outline + grade + dither) -> a URP Renderer Feature using depth-laplacian outlines; render at low resolution into a RenderTexture with point filtering.
+- `Save.js` writes a JSON snapshot (terrain, roads, buildings, nodes, citizens by value); keep the schema and use `JsonUtility`/Newtonsoft.

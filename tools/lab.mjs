@@ -8,11 +8,10 @@ await p.goto('http://localhost:8123/index.html?auto&scale=1'); await p.waitForTi
 await p.evaluate(async () => {
   const g = window.__game; g.clock.speed = 0; g.clock.hour = 11;
   const { Sim } = await import('/src/sim/Sim.js'); const { ROLES } = await import('/src/data/buildings.js');
-  const items = [['stand', 'idle', 'cheerful', {}], ['walk', 'idle', 'cheerful', {}], ['walk', 'carry', 'busy', {}], ['stand', 'wave', 'cheerful', {}], ['crouch', 'hammer', 'busy', { hat: { type: 'hard' }, accessory: 'vest' }],
-    ['stand', 'talk', 'cheerful', { hairStyle: 'long' }], ['sit', 'type', 'shy', { glasses: true, accessory: 'tie' }], ['stand', 'clipboard', 'grumpy', { accessory: 'coat' }], ['stand', 'guard', 'grumpy', { hat: { type: 'police' }, accessory: 'uniform' }],
-    ['stand', 'phone', 'busy', { hairStyle: 'afro' }], ['sit', 'eat', 'cheerful', { skirt: true, hairStyle: 'pony' }], ['lie', 'sleep', 'shy', {}]];
+  const items = [['stand', 'chop', 'busy', { hat: { type: 'beanie', color: 0x5a4a32 }, accessory: 'jumper' }], ['stand', 'mine', 'busy', { hat: { type: 'flat' }, accessory: 'waistcoat' }], ['crouch', 'harvest', 'cheerful', { hat: { type: 'sun' }, accessory: 'overalls', gender: 'f' }], ['crouch', 'dig', 'grumpy', { accessory: 'apron' }], ['stand', 'fish', 'shy', { hat: { type: 'beanie', color: 0x24366b }, accessory: 'jumper' }], ['walk', 'carry', 'busy', {}],
+    ['stand', 'tidy', 'cheerful', { accessory: 'apron', gender: 'f', hairStyle: 'bun' }], ['stand', 'clipboard', 'grumpy', { accessory: 'cardigan', glasses: true, gender: 'f' }], ['stand', 'play', 'cheerful', {}], ['walk', 'idle', 'shy', {}], ['stand', 'wave', 'cheerful', { gender: 'f', dress: true }], ['stand', 'idle', 'grumpy', { accessory: 'waistcoat', hat: { type: 'bowler' } }]];
   window.lab = items.map(([lower, upper, trait, look], i) => {
-    const s = new Sim(g, { name: 'L' + i, trait, x: 70 + (i % 6) * 2.2, z: 80 + Math.floor(i / 6) * 4, heading: 0, look: { shirt: [0x4a7bd1, 0xd1584a, 0x56a86b, 0xd9b34a, 0x8a5ac7][i % 5], hairStyle: ['short', 'long', 'bun', 'afro', 'side', 'pony'][i % 6], ...look } });
+    const P = g.population.makePerson({ gender: look.gender || (i % 2 ? 'f' : 'm'), age: 30 }); const s = new Sim(g, { name: 'L' + i, trait, x: 70 + (i % 6) * 2.2, z: 80 + Math.floor(i / 6) * 4, heading: 0, look: { ...P.look, ...look }, gender: P.gender });
     s.decideAnim = () => ({ lower, upper, speaking: true }); s.moved = lower === 'walk'; s.vel = lower === 'walk' ? 1.9 : 0; s.dist = 0.03; s.hidden = false; s.updateLook = () => {}; g.population.sims.push(s); return s;
   });
   g.player.teleport(60, 60); g.setMode('sim'); g.player.placeCamera = (cam) => { cam.position.set(76.5, 2.2, 88); cam.lookAt(76.5, 1.0, 82); };

@@ -1,34 +1,34 @@
 # Sam City
 
-A SimCity-style city builder where **you are also one of the sims**. Switch between a top-down planning view ("god mode") and a fully walkable 3D world (first/third person). Nothing is built by magic: materials are ordered at in-world computer terminals, delivered by truck from the Lift, hauled and assembled by builder sims, or by you when nobody else has the job. Underneath it all, something is off about the sky...
+Build a town from a single wooden hut, and live in it. You are **Sam**, one of the townsfolk: switch between a top-down planning view and a fully walkable 3D world (first or third person). Nothing is built by magic. Timber is felled, stone is quarried, bricks are fired, food is foraged and farmed, and every building is hauled together and built by hand, by builders or by you. Everyone eats, sleeps, makes friends, falls in love, starts families and grows up.
 
-Playable prototype (Three.js, no build step), structured as a data-driven reference for a Unity port: see `docs/UNITY_PORT.md`.
+Playable prototype (Three.js, no build step), structured as a data-driven reference for a future Unity port (`docs/UNITY_PORT.md`).
 
 ## Run
 ```
 python3 -m http.server 8000
 # open http://localhost:8000/index.html
 ```
-`?scale=0.75` gives a crisper render (default 0.6 = chunky pixel look); `?auto` skips the title screen; `?auto&demo` (or the **Demo City** button) generates a lively sandbox town.
+`?scale=0.75` gives a crisper render (default 0.6 = chunky pixel look), `?post=0` turns the pixel-art outline pass off, `?auto` skips the title screen, `?auto&demo` (or the **Demo City** button) builds a lively sandbox town. Progress autosaves in the browser; use **Continue** on the title screen.
 
 ## Controls
-**Sim mode:** WASD move, Shift sprint, mouse look (click view to capture) or arrow keys, V first/third person, E interact (hold E to build or work a shift), TAB switch to god mode.
-**God mode:** WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, 1-7 tools (bulldoze, roads, zones, buildings, parks, utilities, query), R rotate ghost, Esc cancel, TAB back to Sam. F frames the whole island, G waves (sim mode). P pauses; clock buttons set 1x/2x/4x.
+**Sim mode:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact (hold E to chop, mine, harvest, fish, build or work a shift), G wave, TAB planning view.
+**Planning view:** WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, F frame the island, 1-7 tools (bulldoze, roads, zones, buildings, parks, utilities, query), R rotate the ghost, Esc cancel, TAB back to Sam. P pauses; the clock buttons set 1x/2x/4x.
 
-## The loop
-1. Town Hall terminal: request **permits**, order **materials** (a truck drives from the Lift to the Supply Depot).
-2. God mode: place roads and buildings (they auto-face the road). They appear as **construction sites**.
-3. Builders (hired via a Builders' Yard) haul crates and build; or you do: take a crate at the depot (E), deliver to the site (E), hold E to build.
-4. Sims arrive via the Lift when there are free beds and jobs; they sleep in their own homes, work 8-17 (builders 7-18), and wander in the evening. Terminals can invite residents.
-5. Talk to people (they slip out of character). Build two Large buildings and the dome appears. Collect three script pages, then reach the Service Tunnel during the 02:00-04:00 guard rotation. Anywhere else near the Lift/tunnel, guards sedate you and you wake in hospital (or the town square).
+## How the town grows
+1. **Camp** (0 residents): Sam has a hut, a campfire, a Stockyard and a Surveyor's Hut with a planning terminal. Chop trees at the forest edge, store timber in the Stockyard, place a Wooden Hut and build it (carry timber to the site, hold E).
+2. Settlers arrive through the Supply Lift when there are free beds, work and food. Place a Forager's Hut and a Campfire so people can eat; request permits at the terminal for more.
+3. **Hamlet** (6) → **Village** (15) → **Town** (30) → **City** (60): each tier unlocks new buildings (Log Cabins, Quarry, Farm, Tavern, Brickworks, Stone Cottages, School, Town Hall, Glassworks, Foundry, Hospital, Power, Hotel, Tower...). Roads start as dirt tracks and can be paved once the village is big enough.
+4. Gatherers work raw resources (forest, rocks, iron ore, clay pits, berry bushes, fields, the sea and beach) and carry them to the Stockyard. You can trade surplus with the Lift for money, or buy goods at a premium.
+5. Citizens get hungry (meals at home, the campfire or the tavern; workers pack lunch), sleep in their own beds, chat, become friends, couple up and move in together, have children who go to school and grow up. Mood affects whether people stay.
 
-The sim cap (shown in the HUD) adapts to frame rate.
+There is more going on in Sam City than a town. You will have to explore to find out.
 
-## Life & animation
-Citizens are articulated rigs (elbows, knees, neck, blinking face with smiles/frowns, hairstyles, hats, clothing and role uniforms) driven by a procedural animator with ~35 behaviours: walk/run with real stride, carrying crates, hammering/sawing, typing, reading, eating, watching TV, sleeping, clipboard rounds, guarding, machine levers, shop browsing, and idle fidgets that depend on personality (stretching, yawning, checking a watch, crossed arms, phone, scratching, humming). They sit on chairs, sofas and benches, chat in pairs with gestures and speech bubbles, glance at passers-by, greet Sam (wave/nod/grunt by personality), keep moods that colour posture and expression, and a few have dogs. As the story advances the "actors" start glancing at the camera and glitching. Ambient traffic, street lamps, trees, a harbour with cranes and boats, and seagulls round it out.
+## Life & look
+Citizens are English men, women, children and elders in a range of heights and builds, each with a face, hairstyle, hat and clothes, driven by a procedural animator with ~40 behaviours (walking, running, carrying, chopping, mining, harvesting, fishing, digging, hammering, typing, reading, eating, sleeping, gesturing, fidgeting, waving) and speech bubbles. The renderer draws to a low-res target and adds a pixel-art outline, colour grade and dithered palette (`src/render/Post.js`). Day/night, moonlight, campfire light, chimney smoke, clouds and their shadows, harbour boats, seagulls, traffic and dogs add life.
 
 ## Layout
-`src/data` pure data (buildings, layouts, story, names) · `src/world` grid, A*, building lifecycle · `src/systems` economy, logistics, construction, population, story, security · `src/sim` NPC state machine · `src/player` Sam + god controls · `src/render` textures/meshes · `src/ui/UI.js` DOM · `tools/` headless Playwright scenarios (`window.__game`).
+`src/data` pure data (buildings, layouts, story, names) · `src/world` grid, A*, building lifecycle · `src/systems` economy, resources, logistics, construction, population, social, story, security · `src/sim` NPC state machine · `src/player` Sam + planning tools · `src/render` textures, meshes, rig/animator, post-process · `src/ui/UI.js` DOM · `src/core` input, clock, save · `tools/` headless Playwright scenarios (`window.__game`).
 
 ## Limits / roadmap
-Single-storey interiors (towers have one lobby floor), instant roads, no save/load, guards use sedative darts only (no player weapon yet), no audio.
+Single-storey interiors (towers have one lobby floor), no audio, no player weapon (guards use sedative darts), simple weather-free skies.

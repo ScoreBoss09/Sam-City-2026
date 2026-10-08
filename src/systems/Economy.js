@@ -7,7 +7,7 @@ export class Economy extends Emitter {
   constructor(game) {
     super(); this.game = game; this.funds = START_FUNDS; this.stock = { timber: 24, stone: 6, brick: 0, steel: 0, glass: 0, food: 16 };
     this.permits = {}; for (const id of Object.keys(BUILDINGS)) { const d = BUILDINGS[id]; this.permits[id] = d.special || (d.permit && d.permit.cost === 0 && d.permit.pop === 0) ? 'approved' : 'locked'; }
-    this.orders = []; this.lastReport = null; this.foodWarned = -1; this.gathered = 0;
+    this.orders = []; this.pending = []; this.lastReport = null; this.foodWarned = -1; this.gathered = 0;
   }
   spend(n) { if (this.funds < n) return false; this.funds -= n; return true; }
   earn(n) { this.funds += n; }
@@ -23,7 +23,7 @@ export class Economy extends Emitter {
     this.permits[id] = 'pending';
     g.messages.push('Planning Office', `Permit request for ${def.name} received. Processing...`);
     g.flags.permitRequested = true;
-    setTimeout(() => { if (this.permits[id] === 'pending') { this.permits[id] = 'approved'; g.messages.push('Planning Office', `${def.name} APPROVED. It is now in your build menu.`, 'good'); this.emit('permits'); } }, 4000 / Math.max(1, g.clock.speed));
+    this.pending.push({ id, t: 5 });
     return { ok: true, msg: 'Request sent.' };
   }
 
@@ -41,6 +41,8 @@ export class Economy extends Emitter {
     return { ok: true, msg: `Sold for ${pay}` };
   }
   update(dt) {
+    for (const q of this.pending) { q.t -= dt; if (q.t <= 0 && this.permits[q.id] === 'pending') { this.permits[q.id] = 'approved'; this.game.messages.push('Planning Office', `${BUILDINGS[q.id].name} APPROVED. It is now in your build menu.`, 'good'); this.emit('permits'); } }
+    this.pending = this.pending.filter((q) => q.t > 0);
     for (const o of this.orders) { o.eta -= dt; if (o.eta <= 0 && !o.sent) { o.sent = true; this.game.logistics.dispatch(o); } }
     this.orders = this.orders.filter((o) => !o.done);
   }

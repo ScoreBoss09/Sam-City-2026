@@ -17,6 +17,6 @@ export class Clock extends Emitter {
   }
   get hhmm() { const h = Math.floor(this.hour), m = Math.floor((this.hour - h) * 60); return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'); }
   get isNight() { return this.hour < 5.5 || this.hour >= 19.5; }
-  serialize() { return { hour: this.hour, day: this.day, month: this.month, year: this.year }; }
+  serialize() { return { hour: this.hour, day: this.day, month: this.month, year: this.year, totalDays: this.totalDays }; }
   load(s) { Object.assign(this, s); }
 }

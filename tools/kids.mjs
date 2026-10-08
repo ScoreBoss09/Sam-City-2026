@@ -1,0 +1,11 @@
+import { chromium } from '/tmp/claude-0/-home-user-Sam-City-2026/6309cccc-23e7-5301-8e65-4b7cab65a79b/scratchpad/node_modules/playwright-core/index.mjs';
+const S = '/tmp/claude-0/-home-user-Sam-City-2026/6309cccc-23e7-5301-8e65-4b7cab65a79b/scratchpad/';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 1100, height: 650 } });
+const logs = []; p.on('console', (m) => { if (!/GPU stall|404/.test(m.text())) logs.push(m.type() + ': ' + m.text()); }); p.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.stack));
+await p.goto('http://localhost:8123/index.html?auto&demo&scale=0.6'); await p.waitForTimeout(800);
+console.log(await p.evaluate(() => { const g = window.__game, P = g.population; g.clock.speed = 1; const a = P.adults().find((s) => s.home && s.gender === 'm'), o = P.adults().find((s) => s !== a && s.home && s.gender === 'f');
+  g.social.startCouple(a, o); P.rehome(o, a.home); P.spawnChild(a, o); const kid = P.sims.find((s) => s.kind === 'child' && s.parents[0] === a); window.kid = kid; g.clock.hour = 10; g.advance(60);
+  return JSON.stringify({ a: a.name, o: o.name, partner: a.partner === o, kid: kid && [kid.name, kid.age, kid.activity, kid.sitting && kid.sitting.kind], school: g.buildings.byDef('school').length }); }));
+console.log(await p.evaluate(() => { const g = window.__game, k = window.kid; if (!k) return 'no kid'; g.clock.hour = 9.2; g.advance(40); const r1 = [k.activity, k.sitting && k.sitting.kind, k.inside && k.inside.id]; g.clock.hour = 16; g.advance(30); const r2 = [k.activity, Math.round(k.x), Math.round(k.z)]; g.population.growUp(k); g.advance(5); return JSON.stringify({ school: r1, play: r2, grown: [k.kind, k.age, k.workplace && k.workplace.id, k.look.buildName] }); }));
+console.log(logs.join('\n')); await b.close();

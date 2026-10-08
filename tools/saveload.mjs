@@ -1,0 +1,15 @@
+import { chromium } from '/tmp/claude-0/-home-user-Sam-City-2026/6309cccc-23e7-5301-8e65-4b7cab65a79b/scratchpad/node_modules/playwright-core/index.mjs';
+const S = '/tmp/claude-0/-home-user-Sam-City-2026/6309cccc-23e7-5301-8e65-4b7cab65a79b/scratchpad/';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const ctx = await b.newContext({ viewport: { width: 1000, height: 600 } }); const p = await ctx.newPage();
+const logs = []; p.on('console', (m) => { if (!/GPU stall|404/.test(m.text())) logs.push(m.type() + ': ' + m.text()); }); p.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.stack));
+await p.goto('http://localhost:8123/index.html?scale=0.4'); await p.waitForTimeout(600); await p.click('#btn-new'); await p.waitForTimeout(300);
+const snap = () => p.evaluate(() => { const g = window.__game, w = g.world; return JSON.stringify({ b: g.buildings.list.map((b) => b.id + ':' + b.state).sort().join(','), pop: g.population.count(), roads: Array.from(w.road).filter(Boolean).length, trees: g.terrain.trees.filter((t) => t.alive).length, food: Math.floor(g.economy.stock.food), t: g.clock.totalDays + '/' + g.clock.hhmm, funds: Math.round(g.economy.funds), couples: g.population.adults().filter((s) => s.partner).length, home: g.population.residents().filter((s) => s.home).length }); });
+await p.evaluate(() => { const g = window.__game, B = g.buildings, w = g.world; g.clock.speed = 1; for (let x = 12; x <= 28; x++) w.addRoad(x, 21, 1); for (let z = 15; z <= 21; z++) w.addRoad(19, z, 1);
+  const put = (id) => { for (let z = 6; z < 36; z++) for (let x = 4; x < 38; x++) { const r = B.evaluate(id, x, z, 0); if (r.ok) return B.place(id, r.x0, r.z0, r.rot, { instant: true }); } };
+  put('hut'); put('hut'); put('forager'); const s = put('hut') ; g.population.invites = 6; g.population.timer = 0; g.advance(200); for (let i = 0; i < 30; i++) g.terrain.chopTree(g.terrain.trees[i]); const site = B.place('hut', 30, 30, 0); site.have.timber = 3; B.refreshSite(site); g.save(); });
+const before = await snap(); console.log('before', before);
+await p.reload(); await p.waitForTimeout(700); console.log('continue visible', await p.evaluate(() => !document.getElementById('btn-continue').classList.contains('hidden')));
+await p.click('#btn-continue'); await p.waitForTimeout(500); const after = await snap(); console.log('after ', after); console.log('MATCH', before === after);
+await p.evaluate(() => window.__game.advance(60)); console.log('runs ok', await snap());
+console.log(logs.join('\n')); await b.close();

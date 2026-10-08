@@ -142,6 +142,8 @@ export class Terrain {
     this.foliage.castShadow = true; this.scene.add(this.foliage, this.trunks, this.stumps);
   }
   setTree(k, f) { const t = this.trees[k], m = this._m, s = t.s * f; m.makeScale(s, s, s).setPosition(t.x, 1.2 * s + 1.4 * s, t.z); this.foliage.setMatrixAt(k, m); m.makeScale(s, s, s).setPosition(t.x, 0.6 * s, t.z); this.trunks.setMatrixAt(k, m); this.foliage.instanceMatrix.needsUpdate = this.trunks.instanceMatrix.needsUpdate = true; }
+  /** Used when restoring a saved game: remove a felled tree without touching terrain events. */
+  killTree(t) { t.alive = false; t.amount = 0; this.setTree(t.idx, 0.0001); this._m.makeTranslation(t.x, 0.22, t.z); this.stumps.setMatrixAt(this.stumpN++, this._m); this.stumps.count = this.stumpN; this.stumps.instanceMatrix.needsUpdate = true; const k = t.tz * MAP + t.tx; this.treeAlive.set(k, Math.max(0, (this.treeAlive.get(k) || 1) - 1)); }
   /** One chop: shrink the tree; when it is felled leave a stump, and clear the forest tile when empty. */
   chopTree(t) {
     t.amount--; if (t.amount > 0) { this.setTree(t.idx, 0.55 + 0.15 * t.amount); return false; }

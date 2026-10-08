@@ -45,7 +45,9 @@ export class Population {
     if (!r && !child) { const h = rnd(); if (elder && g === 'm' && h < 0.5) L.hat = { type: pick(['flat', 'bowler']), color: pick([0x5a5a4a, 0x7a6a4a, 0x3a3a3a]) }; else if (elder && g === 'f' && h < 0.25) L.hat = { type: 'bonnet' }; else if (h < 0.12) L.hat = { type: pick(['cap', 'beanie', 'flat']), color: pick(tops) }; }
     if (!r && !child && rnd() < 0.08) L.backpack = true;
     if (kind === 'visitor') { L.backpack = true; L.hat = { type: 'sun' }; L.shorts = g === 'm'; L.skirt = g === 'f'; L.accessory = null; L.shirt = pick([0xf2c94c, 0xeb5757, 0x56ccf2, 0x6fcf97]); }
-    const nm = this.uniqueName(g); if (surname) { this.names.delete(nm.name); nm.last = surname; nm.name = nm.first + ' ' + surname; this.names.add(nm.name); }
+    let nm;
+    if (surname) { const pool = g === 'f' ? FEMALE : MALE; let first = pick(pool); for (let i = 0; i < 60 && this.names.has(first + ' ' + surname); i++) first = pick(pool); nm = { first, last: surname, name: first + ' ' + surname }; this.names.add(nm.name); }
+    else nm = this.uniqueName(g);
     return { look: L, gender: g, age: a, first: nm.first, surname: nm.last, name: nm.name, buildName };
   }
   spawnAtLift(opts) {

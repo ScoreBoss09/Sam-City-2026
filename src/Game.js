@@ -21,6 +21,7 @@ import { Traffic } from './systems/Traffic.js';
 import { Harbor } from './render/Harbor.js';
 import { generateDemo } from './systems/Demo.js';
 import { Post } from './render/Post.js';
+import * as SaveGame from './core/Save.js';
 import { Player } from './player/Player.js';
 import { GodControls } from './player/GodControls.js';
 import { UI } from './ui/UI.js';
@@ -84,6 +85,8 @@ export class Game {
     this.ui.openDialogue(sim, res);
   }
   demo() { generateDemo(this); }
+  save() { return SaveGame.save(this); }
+  loadSave() { const d = SaveGame.load(); if (!d) return false; try { SaveGame.restore(this, d); this.ui.toast('Game loaded', 2000); return true; } catch (e) { console.error('load failed', e); return false; } }
   escape() {
     if (this.ending) return; this.ending = true; this.ui.fade(1, ''); this.input.unlock(); this.messages.push('Sam (thought)', 'The gate is open. Keep walking.', 'story');
     setTimeout(() => { this.ui.fade(0); this.ui.showEnding(); }, 2500);
@@ -106,7 +109,7 @@ export class Game {
     if (!ui.modalOpen && !this.ending && inp.hit('Tab')) this.setMode(this.mode === 'god' ? 'sim' : 'god');
     if (inp.hit('KeyP') && !ui.modalOpen) this.clock.speed = this.clock.speed ? 0 : 1;
     if (!ui.modalOpen) { if (inp.hit('Digit0')) this.clock.speed = 0; }
-    if (this.glitch > 0) this.glitch -= dt;
+    this.saveT = (this.saveT || 0) + dt; if (this.saveT > 45) { this.saveT = 0; this.save(); }
 
     const gdt = this.clock.tick(dt) * (ui.modalOpen && this.mode === 'sim' ? 1 : 1);
     const steps = Math.min(40, Math.max(1, Math.ceil(gdt / 0.1))), sdt = gdt / steps;
