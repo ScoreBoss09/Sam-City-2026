@@ -23,14 +23,20 @@ const SEAT_UPPER = { desk: 'type', sofa: 'watch', bench: 'idle', dining: 'eat', 
 export class Sim {
   constructor(game, o) {
     this.game = game; this.id = nextId++;
-    Object.assign(this, { name: 'Citizen', kind: 'resident', trait: 'cheerful', look: {}, talkCount: 0 }, o);
+    Object.assign(this, { name: 'Citizen', kind: 'resident', trait: 'cheerful', look: {}, talkCount: 0, gender: 'm', age: 30 }, o);
     const base = STYLES[this.trait] || STYLES.cheerful, v = () => 0.92 + Math.random() * 0.16;
-    this.style = { ...base, speed: base.speed * v(), stride: 0.92 + Math.random() * 0.16 };
+    this.style = { ...base, speed: base.speed * v(), stride: 0.92 + Math.random() * 0.16, sway: 1 };
+    const bn = (this.look && this.look.buildName) || 'average', st = this.style;
+    if (bn === 'heavy') { st.speed *= 0.86; st.sway = 1.9; st.bounce *= 0.6; st.stride *= 0.9; st.slouch += 0.1; }
+    else if (bn === 'stocky') { st.speed *= 0.94; st.sway = 1.4; st.bounce *= 0.8; }
+    else if (bn === 'elderly') { st.speed *= 0.7; st.slouch += 0.5; st.bounce *= 0.5; st.stride *= 0.8; st.swing *= 0.6; }
+    else if (bn === 'child') { st.speed *= 1.12; st.stride *= 0.62; st.bounce *= 1.6; st.swing *= 1.2; }
+    else if (bn === 'tall') { st.stride *= 1.1; } else if (bn === 'short') st.stride *= 0.9; else if (bn === 'athletic') st.speed *= 1.06;
     this.x = o.x ?? 0; this.z = o.z ?? 0; this.heading = o.heading ?? 0; this.inside = o.inside || null; this.path = []; this.moved = false; this.phase = 0; this.activity = ''; this.timer = 0;
     this.home = null; this.workplace = null; this.role = null; this.workSpot = 0; this.carry = null; this.job = null; this.pose = 'stand'; this.frozen = false;
     this.vel = 0; this.dest = null; this.glide = null; this.sitting = null; this.chat = null; this.emote = null; this.mood = this.style.mood; this.moodBoost = 0;
     this.lookYaw = 0; this.lookPitch = 0; this.glanceT = 2 + Math.random() * 4; this.glanceTarget = null; this.greeted = -999; this.chatCool = 10 + Math.random() * 30; this.bag = false; this.lowDetail = false;
-    this.rig = createRig(this.look); this.mesh = this.rig.root; this.anim = new Animator(this.rig, { trait: this.trait, bounce: this.style.bounce, slouch: this.style.slouch, swing: this.style.swing, stride: this.style.stride, fidget: this.style.fidget });
+    this.rig = createRig(this.look); this.mesh = this.rig.root; this.anim = new Animator(this.rig, { trait: this.trait, bounce: this.style.bounce, slouch: this.style.slouch, swing: this.style.swing, stride: this.style.stride, fidget: this.style.fidget, sway: this.style.sway });
     game.scene.add(this.mesh); this.sync(0.016, true);
     if (this.kind === 'resident' && Math.random() < 0.16) this.dog = new Dog(game, this);
   }
@@ -261,7 +267,7 @@ export class Sim {
     this.updateLook(dt);
     const a = this.decideAnim(), carryCol = this.carry ? ({ timber: 0xb5834a, brick: 0xa8442f, steel: 0x7b8794, glass: 0x7ec8e3 }[this.carry.mat]) : undefined;
     this.anim.update(dt, { ...a, dist: this.moved ? (this.dist || 0) : 0, speed: this.vel, run: this.hurry && this.vel > 2.3, turning: this.turning && !this.moved, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: this.mood, tired: this.tired, crateColor: carryCol,
-      prop: this.bag && a.lower === 'walk' ? { handR: 'bag' } : undefined, lean: this.vel > 0.5 ? 0 : 0 });
+      prop: this.bag && a.lower === 'walk' ? { handR: 'bag' } : (this.look.cane && !this.sitting && this.pose !== 'sleep' && (a.upper === 'idle') ? { handR: 'cane' } : undefined), lean: this.vel > 0.5 ? 0 : 0 });
     this.working = false;
     const castNear = d < 24; if (castNear !== this.castOn) { this.castOn = castNear; for (const p of this.rig.parts) p.castShadow = castNear; }
   }
@@ -283,7 +289,7 @@ export class Sim {
     const k = Math.min(1, dt * 5); this.lookYaw += (ty - this.lookYaw) * k; this.lookPitch += (tp - this.lookPitch) * k;
   }
   rebuildMesh() {
-    this.game.scene.remove(this.mesh); this.rig = createRig(this.look); this.mesh = this.rig.root; this.anim = new Animator(this.rig, { trait: this.trait, bounce: this.style.bounce, slouch: this.style.slouch, swing: this.style.swing, stride: this.style.stride, fidget: this.style.fidget });
+    this.game.scene.remove(this.mesh); this.rig = createRig(this.look); this.mesh = this.rig.root; this.anim = new Animator(this.rig, { trait: this.trait, bounce: this.style.bounce, slouch: this.style.slouch, swing: this.style.swing, stride: this.style.stride, fidget: this.style.fidget, sway: this.style.sway });
     this.game.scene.add(this.mesh); this.lowDetail = null; this.sync(0.016, true);
   }
   dispose() { this.standUp(); this.game.scene.remove(this.mesh); if (this.dog) this.dog.dispose(); }

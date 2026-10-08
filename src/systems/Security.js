@@ -11,7 +11,7 @@ export class Security {
     const g = this.game;
     const mk = (b, lx, lz, name) => {
       const [x, z] = b.toWorld(lx, lz);
-      const s = new Sim(g, { name, kind: 'security', x, z, heading: 0, look: { shirt: 0x24366b, pants: 0x1b2340, hair: 0x111111, skin: 0xc68e63, hairStyle: 'short', hat: { type: 'police' }, accessory: 'uniform', glasses: false }, trait: 'busy' });
+      const s = new Sim(g, { name, kind: 'security', x, z, heading: 0, look: { gender: 'm', buildName: 'athletic', body: { sw: 1.14, td: 1.02, hip: 0.97, lt: 1.1, belly: 0 }, h: 1.04, w: 1.04, shirt: 0x24366b, pants: 0x1b2340, hair: 0x111111, skin: 0xe0b48f, hairStyle: 'crop', hat: { type: 'police' }, accessory: 'uniform', glasses: false }, trait: 'busy' });
       s.post = { x, z }; s.zone = b.id; s.activity = 'guard'; g.population.sims.push(s); this.guards.push(s);
     };
     mk(g.tunnel, -4.6, 4.2, 'Gate Guard'); mk(g.tunnel, 4.0, 4.8, 'Gate Guard'); mk(g.lift, -7, g.lift.def.d * 2 + 1.4, 'Lift Guard'); mk(g.lift, 7, g.lift.def.d * 2 + 1.4, 'Lift Guard');

@@ -53,7 +53,7 @@ export class Animator {
       T[I.TLX] = -sl * A; T[I.TRX] = -sr * A;
       T[I.KL] = 0.08 + Math.max(0, cl) * (0.85 + run * 0.5); T[I.KR] = 0.08 + Math.max(0, cr) * (0.85 + run * 0.5);
       T[I.AL] = -T[I.TLX] * 0.45 - T[I.KL] * 0.35; T[I.AR] = -T[I.TRX] * 0.45 - T[I.KR] * 0.35;
-      T[I.HY] = -0.015 - (Math.abs(Math.cos(ph)) * 0.04 + run * 0.03) * st.bounce; T[I.HR] = sl * 0.05; T[I.HYAW] = sl * 0.12; T[I.SPY] = -sl * 0.16;
+      T[I.HY] = -0.015 - (Math.abs(Math.cos(ph)) * 0.04 + run * 0.03) * st.bounce; T[I.HR] = sl * 0.05 * (st.sway || 1); T[I.HYAW] = sl * 0.12; T[I.SPY] = -sl * 0.16;
       T[I.SPX] = 0.04 + run * 0.2 + slouch * 0.12 + (o.lean || 0); T[I.HZ] = 0;
       const sw = (0.5 + run * 0.5) * st.swing * clamp(amt, 0.6, 1.3);
       T[I.SLX] = sl * sw; T[I.SRX] = sr * sw; T[I.ELL] = -(0.18 + run * 1.0 + Math.max(0, -sl) * 0.2); T[I.ERR] = -(0.18 + run * 1.0 + Math.max(0, -sr) * 0.2);
