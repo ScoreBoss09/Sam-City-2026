@@ -13,6 +13,23 @@ export class Wildlife {
     for (let z = 1; z < MAP - 1; z++) for (let x = 1; x < MAP - 1; x++) { if (w.terrain[w.idx(x, z)] !== T.LAND) continue; let f = 0; for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (w.terrain[w.idx(x + dx, z + dz)] === T.FOREST) f++; if (f) spots.push([x, z]); }
     this.spots = spots;
     for (let i = 0; i < 10; i++) this.spawn('rabbit'); for (let i = 0; i < 4; i++) this.spawn('deer');
+    // butterflies (day) and fireflies (night) drift around wherever the camera is
+    this.flies = []; const wing = new THREE.PlaneGeometry(0.16, 0.12); wing.translate(0.08, 0, 0); const cols = [0xffffff, 0xf2e35a, 0xff9a3c, 0x8ab4ff, 0xe86aa0];
+    for (let i = 0; i < 18; i++) { const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: cols[i % cols.length], side: THREE.DoubleSide }); const l = new THREE.Mesh(wing, m), r = new THREE.Mesh(wing, m); r.scale.x = -1; g.add(l, r); g.userData = { l, r, ph: Math.random() * 6, ox: (Math.random() - 0.5) * 50, oz: (Math.random() - 0.5) * 50, sp: 0.5 + Math.random() * 0.6 }; g.visible = false; game.scene.add(g); this.flies.push(g); }
+    const N = 60, pos = new Float32Array(N * 3); this.ffOff = Array.from({ length: N }, () => [(Math.random() - 0.5) * 60, 0.4 + Math.random() * 2.2, (Math.random() - 0.5) * 60, Math.random() * 6]);
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    this.fireflies = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xd8ff6a, size: 0.25, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); this.fireflies.frustumCulled = false; game.scene.add(this.fireflies);
+  }
+  insects(dt) {
+    const g = this.game, cam = g.camera.position, night = g.atmosphere.night || 0, rain = g.atmosphere.rain || 0, sim = g.mode === 'sim'; this.t += dt;
+    const day = sim && night < 0.3 && rain < 0.3;
+    for (const f of this.flies) {
+      f.visible = day; if (!day) continue; const u = f.userData; u.ph += dt * 18; const flap = Math.sin(u.ph) * 0.9; u.l.rotation.y = flap; u.r.rotation.y = -flap;
+      u.ox += Math.sin(this.t * u.sp + u.ph * 0.01) * dt * 1.4; u.oz += Math.cos(this.t * u.sp * 0.8 + 1) * dt * 1.4; if (Math.abs(u.ox) > 30) u.ox *= -0.9; if (Math.abs(u.oz) > 30) u.oz *= -0.9;
+      f.position.set(cam.x + u.ox, 0.6 + Math.abs(Math.sin(this.t * u.sp * 2 + u.ph * 0.05)) * 1.2, cam.z + u.oz); f.rotation.y = this.t * u.sp;
+    }
+    const k = sim ? Math.max(0, night - 0.3) * (1 - rain) : 0; this.fireflies.material.opacity = Math.min(0.95, k * 1.6); this.fireflies.visible = k > 0.02;
+    if (this.fireflies.visible) { const p = this.fireflies.geometry.attributes.position.array; this.ffOff.forEach((o, i) => { o[3] += dt; p[i * 3] = cam.x + o[0] + Math.sin(o[3] * 0.7) * 1.5; p[i * 3 + 1] = o[1] + Math.sin(o[3] * 1.3) * 0.4; p[i * 3 + 2] = cam.z + o[2] + Math.cos(o[3] * 0.6) * 1.5; }); this.fireflies.geometry.attributes.position.needsUpdate = true; this.fireflies.material.size = 0.18 + Math.abs(Math.sin(this.t * 3)) * 0.12; }
   }
   spawn(kind) {
     if (!this.spots.length) return; const [tx, tz] = this.spots[Math.floor(Math.random() * this.spots.length)], g = new THREE.Group(), legs = [];
@@ -31,6 +48,7 @@ export class Wildlife {
     a.tx = a.x; a.tz = a.z; g.position.set(a.x, 0, a.z); this.game.scene.add(g); this.list.push(a);
   }
   update(dt) {
+    this.insects(dt);
     const g = this.game, w = g.world, speedK = Math.max(0, g.clock.speed); if (!speedK) return; dt *= Math.min(2, speedK);
     const night = g.atmosphere.night || 0;
     for (const a of this.list) {
