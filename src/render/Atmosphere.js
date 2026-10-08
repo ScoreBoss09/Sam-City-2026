@@ -56,7 +56,7 @@ export class Atmosphere {
     for (const m of this.cloudMats) m.color.copy(C(0xffffff)).lerp(C(0xf0a070), Math.min(1, dusk * 0.6)).lerp(C(0x1a2340), this.night); this.clouds.visible = !this.hideDome;
     // dome
     const a = story.domeAlpha, flick = glitch > 0 ? (Math.random() > 0.5 ? 0.4 : 0) : 0;
-    this.dome.material.opacity = a * (0.012 + this.night * 0.015); this.wire.material.opacity = a * (0.015 + this.night * 0.05);
+    this.dome.material.opacity = a * (0.012 + this.night * 0.015); this.wire.material.opacity = a * (0.008 + this.night * 0.03);
     this.dome.visible = this.wire.visible = a > 0.01 && !this.hideDome;
   }
 }

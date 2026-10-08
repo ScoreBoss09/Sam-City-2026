@@ -48,7 +48,7 @@ export class Economy extends Emitter {
   }
   deliverToDepot(o) { this.stock[o.mat] += o.qty; o.done = true; this.emit('stock'); this.game.messages.push('Logistics', `Delivered ${o.qty} ${MATERIALS[o.mat].name} to the Stockyard.`, 'good'); }
   /** A citizen eats one portion. */
-  eatPortion() { if (this.stock.food >= 1) { this.stock.food -= 1; return true; } return false; }
+  eatPortion() { if (this.stock.food >= 0.5) { this.stock.food -= 0.5; return true; } return false; }
   hourly() {
     const g = this.game, pop = g.population.count();
     if (pop > 0 && this.stock.food < Math.max(2, pop * 0.5) && g.clock.day !== this.foodWarned) { this.foodWarned = g.clock.day; g.messages.push('Stockyard', this.stock.food <= 0 ? 'The Stockyard has NO food left! People will go hungry.' : 'Food is running low in the Stockyard.', 'warn'); }
