@@ -16,7 +16,7 @@ python3 -m http.server 8000
 `?scale=0.75` gives a crisper render (default 0.6 = chunky pixel look), `?post=0` turns the pixel-art outline pass off, `?auto` skips the title screen, `?auto&demo` (or the **Demo City** button) builds a lively sandbox town. Progress autosaves in the browser; use **Continue** on the title screen.
 
 ## Controls
-**Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact, Q eat, I backpack, R drop what you carry, H hide the help bar, F swing the club (raids only), G wave, M big map, TAB planning view.
+**Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact, Q eat, I backpack, R drop what you carry, J journal, H hide the help bar, F swing the club (raids only), G wave, M big map, TAB planning view.
 **Keyboard and mouse, planning view:** WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, F frame the island, 1-7 tools, R rotate the ghost, Esc cancel, TAB back to Sam. P pauses; the clock buttons set 1x/2x/4x.
 
 **Controller (Xbox/PlayStation layout, plug it in and press any button):**
@@ -38,6 +38,14 @@ Menus and the terminal: D-pad or stick to move, A to press, B to close.
 
 ## Working (the timing bar)
 Chopping, mining, digging, picking, fishing and building show a timing bar. Tap E (A) when the white marker is in the green; gold is perfect and perfects in a row build a combo. Holding E still works, just slowly.
+
+## Things to do besides building
+- **Talk to everyone** (E): six topics each, their own life stories, gossip about the town, advice, and favours (a yellow ! means someone needs something fetched).
+- **Fish** from the beach facing the sea: wait for the BITE, then tap E. Catch streaks shrink the window.
+- **Cook** at a campfire with 2 food for a full belly and extra energy, or just sit by the fire to rest.
+- **Curios**: 14 odd little things glint on the ground around the island. Your journal (J) keeps them, with your friends and records.
+- **Village fête** every few days at a park or the campfire: bunting, stalls, a tune, and a happier town.
+- **Post**: the red Postbox brings monthly accounts, permit replies, the local paper and notes from neighbours.
 
 ## Backpack
 Sam carries up to 12 things in a backpack (I to open). Gathered goods go in it; press E at a building site to deliver what it needs, E at the Stockyard to store everything (or, with an empty pack, to pack what the sites need). R drops the pack on the ground as a pile you can pick up again.
