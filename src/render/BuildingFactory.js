@@ -243,7 +243,7 @@ function buildPark(def, uid) {
     box(g, W - 1, 0.04, D - 1, 0xc9bda3, 0, 0.1, 0);
     const basin = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 0.7, 14), stdMat(0xb9b4a8)); basin.position.y = 0.4; basin.castShadow = true; g.add(basin);
     const water = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.1, 14), stdMat(0x4aa3dc, { emissive: 0x1a5a99, emissiveIntensity: 0.4 })); water.position.y = 0.72; g.add(water);
-    box(g, 0.5, 1.8, 0.5, 0xd6d0c0, 0, 0.7, 0); cols.push({ cx: 0, cz: 0, sx: 5.2, sz: 5.2 });
+    box(g, 0.5, 1.8, 0.5, 0xd6d0c0, 0, 0.7, 0); cols.push({ cx: 0, cz: 0, sx: 5.2, sz: 5.2, h: 0.9 });
     tree(-W / 2 + 1.1, -D / 2 + 1.1, 1.0); tree(W / 2 - 1.1, -D / 2 + 1.1, 1.0); tree(-W / 2 + 1.1, D / 2 - 1.1, 1.0); tree(W / 2 - 1.1, D / 2 - 1.1, 1.0);
     box(g, 2, 0.1, 0.5, 0x8a5a33, -3.8, 0.45, 0.2); box(g, 2, 0.1, 0.5, 0x8a5a33, 3.8, 0.45, 0.2);
   } else if (def.park === 'camp') {
@@ -477,7 +477,7 @@ function buildStockyard(def) {
   for (let x = -W / 2 + 0.2; x <= W / 2 - 0.1; x += 2) { post(x, -D / 2 + 0.15); if (Math.abs(x - off) > 1.6) post(x, D / 2 - 0.15); }
   for (let z = -D / 2 + 0.2; z <= D / 2 - 0.1; z += 2) { post(-W / 2 + 0.15, z); post(W / 2 - 0.15, z); }
   for (const y of [0.6, 1.2]) { box(g, W, 0.1, 0.1, 0x7a5a38, 0, y, -D / 2 + 0.15); box(g, W / 2 + off - 1.2, 0.1, 0.1, 0x7a5a38, -W / 4 + off / 2 - 0.6 - 0.0, y, D / 2 - 0.15).position.x = (-W / 2 + (off - 1.2)) / 2; box(g, W / 2 - off - 1.2, 0.1, 0.1, 0x7a5a38, 0, y, D / 2 - 0.15).position.x = ((off + 1.2) + W / 2) / 2; box(g, 0.1, 0.1, D, 0x7a5a38, -W / 2 + 0.15, y, 0); box(g, 0.1, 0.1, D, 0x7a5a38, W / 2 - 0.15, y, 0); }
-  cols.push({ cx: 0, cz: -D / 2 + 0.15, sx: W, sz: 0.3 }, { cx: -W / 2 + 0.15, cz: 0, sx: 0.3, sz: D }, { cx: W / 2 - 0.15, cz: 0, sx: 0.3, sz: D }, { cx: (-W / 2 + (off - 1.2)) / 2, cz: D / 2 - 0.15, sx: off - 1.2 + W / 2, sz: 0.3 }, { cx: ((off + 1.2) + W / 2) / 2, cz: D / 2 - 0.15, sx: W / 2 - off - 1.2, sz: 0.3 });
+  cols.push({ cx: 0, cz: -D / 2 + 0.15, sx: W, sz: 0.3, h: 1.3 }, { cx: -W / 2 + 0.15, cz: 0, sx: 0.3, sz: D, h: 1.3 }, { cx: W / 2 - 0.15, cz: 0, sx: 0.3, sz: D, h: 1.3 }, { cx: (-W / 2 + (off - 1.2)) / 2, cz: D / 2 - 0.15, sx: off - 1.2 + W / 2, sz: 0.3, h: 1.3 }, { cx: ((off + 1.2) + W / 2) / 2, cz: D / 2 - 0.15, sx: W / 2 - off - 1.2, sz: 0.3, h: 1.3 });
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: signTexture('Stockyard', '#3a2a14') })); sign.position.set(off, 1.9, D / 2 - 0.1); box(g, 0.12, 2.0, 0.12, 0x5a3b22, off - 1.3, 0, D / 2 - 0.1); box(g, 0.12, 2.0, 0.12, 0x5a3b22, off + 1.3, 0, D / 2 - 0.1); g.add(sign);
   // dynamic piles
   const piles = new THREE.Group(); piles.userData.keep = true; g.add(piles); const groups = {}; const mk = (mat, fn, n, x0, z0) => { const gr = new THREE.Group(); gr.position.set(x0, 0.05, z0); piles.add(gr); groups[mat] = []; for (let i = 0; i < n; i++) { const m = fn(i); m.visible = false; gr.add(m); groups[mat].push(m); } };

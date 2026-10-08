@@ -16,14 +16,14 @@ python3 -m http.server 8000
 `?scale=0.75` gives a crisper render (default 0.6 = chunky pixel look), `?post=0` turns the pixel-art outline pass off, `?auto` skips the title screen, `?auto&demo` (or the **Demo City** button) builds a lively sandbox town. Progress autosaves in the browser; use **Continue** on the title screen.
 
 ## Controls
-**Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact, Q eat, I backpack, R drop what you carry, J journal, H hide the help bar, F swing the club (raids only), Space jump, 1-8 emotes (dance, cheer, shrug, facepalm, two fingers, air guitar, clap, think), G cycles emotes, M big map, TAB planning view.
+**Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact, Q eat, I backpack, R drop what you carry, J journal, H hide the help bar, F swing the club (raids only), C open/close a door, Space jump (high enough to clear a fence), 1-8 emotes (dance, cheer, shrug, facepalm, two fingers, air guitar, clap, think), G cycles emotes, M big map, TAB planning view.
 **Keyboard and mouse, planning view:** WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, F frame the island, 1-7 tools, R rotate the ghost, Esc cancel, TAB back to Sam. P pauses; the clock buttons set 1x/2x/4x.
 
 **Controller (Xbox/PlayStation layout, plug it in and press any button):**
 | Button | Sam | Planning view |
 |---|---|---|
 | Left stick | walk | move the map (the yellow cursor is the centre of the screen) |
-| Right stick | look | rotate (left/right) and zoom (up/down) |
+| Right stick | look | rotate (left/right) and zoom (up/down), smooth |
 | A / Cross | interact, tap in the green to work | place, or hold and move to paint paths |
 | B / Circle | emote (press again for the next one) | cancel tool |
 | X / Square, RT | swing the club | frame the island |
@@ -31,7 +31,7 @@ python3 -m http.server 8000
 | Y / Triangle | eat | rotate the building |
 | LB / L1 | sprint | previous tool |
 | RB / R1 | first/third person | next tool |
-| D-pad | up: backpack, down: drop | up/down: pick a building, left/right: building tab |
+| D-pad | up: backpack, down: drop, left: journal, right: open/close a door | up/down: pick a building, left/right: building tab |
 | Start | planning view / Sam | planning view / Sam |
 | Back / Select | pause | pause |
 | R3 | big map | |
@@ -46,7 +46,8 @@ Chopping, mining, digging, picking, fishing and building show a timing bar. Tap 
 - **Cook** at a campfire with 2 food for a full belly and extra energy, or just sit by the fire to rest.
 - **Curios**: 14 odd little things glint on the ground around the island. Your journal (J) keeps them, with your friends and records.
 - **Village fête** every few days at a park or the campfire: bunting, stalls, a tune, and a happier town.
-- **Post**: the red Postbox brings monthly accounts, permit replies, the local paper and notes from neighbours.
+- **Post**: the red Postbox brings monthly accounts, permit replies, the local paper and notes from neighbours. Its **Jobs** page shows every workplace, how many jobs are filled, who works where and who is looking for work.
+- **Doors** stay shut until Sam presses C (D-pad right). Villagers open them for themselves.
 - **Order supplies** on the yellow intercom post beside the Lift. The goods cage comes down with your crates; a truck takes them to the Stockyard, or they wait on the dock for you to carry. A Post Office knocks 20% off.
 - **Phone Box**: 10p for a random call. **Bookies**: £20 on a horse with a silly name. **The Red Lion**: sit down for a pint.
 - **Church** on Sunday mornings (bells), the **brass band** at the Bandstand in the evening, pub banter every night.

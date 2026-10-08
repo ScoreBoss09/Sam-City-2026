@@ -44,16 +44,18 @@ export class Input {
         if (cur[9]) want.add('Tab'); if (cur[8]) want.add('KeyP');
         if (mode === 'sim') {
           this.mouse.dx += P.rx * 1000 * dt; this.mouse.dy += P.ry * 800 * dt;
-          if (cur[0]) want.add('KeyE'); if (cur[2] || cur[7]) want.add('KeyF'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[11]) want.add('KeyM'); if (cur[12]) want.add('KeyI'); if (cur[13]) want.add('KeyR'); if (cur[14]) want.add('KeyJ'); if (cur[6]) want.add('Space');
+          if (cur[0]) want.add('KeyE'); if (cur[2] || cur[7]) want.add('KeyF'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[11]) want.add('KeyM'); if (cur[12]) want.add('KeyI'); if (cur[13]) want.add('KeyR'); if (cur[14]) want.add('KeyJ'); if (cur[6]) want.add('Space'); if (cur[15]) want.add('KeyC');
         } else if (mode === 'god') {
-          if (P.rx < -0.4) want.add('KeyQ'); if (P.rx > 0.4) want.add('KeyE'); if (cur[3]) want.add('KeyR'); if (cur[2]) want.add('KeyF'); if (cur[1]) want.add('Escape');
-          P.zoomAcc += (P.ry + (cur[6] ? -1 : 0) + (cur[7] ? 1 : 0)) * dt * 9; while (Math.abs(P.zoomAcc) >= 1) { this.mouse.wheel += Math.sign(P.zoomAcc); P.zoomAcc -= Math.sign(P.zoomAcc); }
+          if (cur[3]) want.add('KeyR'); if (cur[2]) want.add('KeyF'); if (cur[1]) want.add('Escape');
+          // smooth analogue rotate / zoom (read by GodControls) instead of key taps and wheel clicks
+          const dz = (v) => (Math.abs(v) < 0.22 ? 0 : (v - Math.sign(v) * 0.22) / 0.78);
+          P.turn = dz(P.rx); P.zoom = dz(P.ry) + (cur[6] ? -1 : 0) + (cur[7] ? 1 : 0);
           this.mouse.x = 0.5; this.mouse.y = 0.5; const a = cur[0], was = !!this.padLeft;
           if (a && !was) this.mouse.down = true; if (!a && was) this.mouse.up = true; this.mouse.left = a; this.padLeft = a;
           if (cur[10]) want.add('ShiftLeft');
         } else { if (cur[0]) want.add('KeyE'); if (cur[1]) want.add('Escape'); if (cur[12] && false) want.add('KeyI'); }
       }
-    } else { P.lx = P.ly = P.rx = P.ry = 0; P.hitB = []; P.relB = []; P.down = []; P.base = null; if (this.padActive && !gp) this.padActive = false; }
+    } else { P.lx = P.ly = P.rx = P.ry = 0; P.turn = P.zoom = 0; P.hitB = []; P.relB = []; P.down = []; P.base = null; if (this.padActive && !gp) this.padActive = false; }
     for (const k of want) if (!this.virt.has(k)) { if (!this.keys.has(k)) this.pressed.add(k); this.keys.add(k); }
     for (const k of this.virt) if (!want.has(k)) { this.keys.delete(k); this.released.add(k); }
     this.virt = want;

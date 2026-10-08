@@ -48,7 +48,7 @@ export class UI {
 
   // ---------- controller ----------
   /** Swap keyboard hints for controller buttons while a pad is in use. */
-  keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, 'A').replace(/\bF\b/g, 'X').replace(/\bQ\b/g, 'Y').replace(/\bTAB\b/g, 'START').replace(/\bV\b/g, 'RB').replace(/\bG\b/g, 'B').replace(/\bR\b/g, 'D-pad ↓'); }
+  keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, 'A').replace(/\bF\b/g, 'X').replace(/\bQ\b/g, 'Y').replace(/\bTAB\b/g, 'START').replace(/\bV\b/g, 'RB').replace(/\bG\b/g, 'B').replace(/\bR\b/g, 'D-pad ↓').replace(/\bC\b/g, 'D-pad →'); }
   padScope() { if (!this.game.started) return $('title'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); if (this.invOpen) return $('inventory'); if (this.journalOpen) return $('journal'); return null; }
   padUpdate(inp, dt) {
     const P = inp.pad, g = this.game; if (!inp.padActive || !P.connected) { this.clearPadFocus(); return; }
@@ -188,7 +188,7 @@ export class UI {
   renderTerminal() {
     const g = this.game, e = g.economy, tab = this.terminalTab, T = $('terminal');
     const post = this.termMode === 'post', hatch = this.termMode === 'hatch';
-    const tabs = hatch ? [['materials', 'Lift order form']] : post ? [['letters', `Letters${g.mail.unread() ? ' (' + g.mail.unread() + ' new)' : ''}`], ['permits', 'Permit forms'], ['materials', 'Order form'], ['report', 'Accounts']] : [['permits', 'Permits'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
+    const tabs = hatch ? [['materials', 'Lift order form']] : post ? [['letters', `Letters${g.mail.unread() ? ' (' + g.mail.unread() + ' new)' : ''}`], ['jobs', 'Jobs'], ['permits', 'Permit forms'], ['materials', 'Order form'], ['report', 'Accounts']] : [['permits', 'Permits'], ['jobs', 'Jobs'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
     let body = '';
     if (tab === 'letters') {
       const L = g.mail.letters; body = L.length ? L.map((l, i) => `<div class="letter ${l.read ? '' : 'new'} ${l.kind}"><div class="lh"><b>${l.title}</b><span>${l.date}</span></div><div class="lf">From: ${l.from}</div><div class="lb">${l.body.replace(/\n/g, '<br>')}</div></div>`).join('') : '<div class="note">The box is empty.</div>';
@@ -206,6 +206,13 @@ export class UI {
         <table><tr><th>Goods</th><th>Buy price</th><th colspan="3">Buy</th><th colspan="2">Sell</th></tr>` +
         Object.entries(MATERIALS).map(([m, d]) => `<tr><td>${d.name}</td><td>${fmtMoney(e.buyPrice(m))}</td>${[5, 20].map((q) => `<td><button data-act="order" data-m="${m}" data-q="${q}" ${e.funds < e.buyPrice(m) * q ? 'disabled' : ''}>×${q} (${fmtMoney(e.buyPrice(m) * q)})</button></td>`).join('')}<td></td>${[5, 20].map((q) => `<td><button data-act="sell" data-m="${m}" data-q="${q}" ${e.stock[m] < q ? 'disabled' : ''}>×${q}</button></td>`).join('')}</tr>`).join('') +
         `</table><div class="note">Goods come down the Lift in the cage. ${g.depot ? 'A truck takes them along the roads to the Stockyard (no road: they wait on the Lift dock).' : 'No Stockyard yet, so they wait on the Lift dock for you to carry.'} ${g.buildings.count('postoffice') ? 'Post Office discount: 20% off. ' : ''}Orders on the way: ${e.orders.length + g.logistics.queue.length}</div>`;
+    } else if (tab === 'jobs') {
+      const P = g.population, res = P.residents(), adults = res.filter((q) => P.canWork(q)), idle = adults.filter((q) => !q.workplace), vac = P.vacancies();
+      const kids = res.filter((q) => q.kind === 'child').length, retired = res.filter((q) => q.kind === 'resident' && q.age >= 66).length;
+      const places = g.buildings.list.filter((b) => b.state === 'done' && b.def.jobs);
+      body = `<div class="jobsum"><span>Working age <b>${adults.length}</b></span><span>In work <b>${adults.length - idle.length}</b></span><span>Out of work <b class="${idle.length ? 'bad' : ''}">${idle.length}</b></span><span>Empty jobs <b>${vac.length}</b></span><span>Children ${kids} · Retired ${retired}</span></div>`
+        + (places.length ? `<table><tr><th>Workplace</th><th>Job</th><th>Filled</th><th>Who</th></tr>` + places.map((b) => Object.entries(b.def.jobs).map(([r, n]) => { const w = b.workers.filter((q) => q.role === r); return `<tr><td>${b.def.name}</td><td>${ROLES[r].name} <small>£${ROLES[r].wage}</small></td><td class="${w.length < n ? 'bad' : 'ok'}">${w.length}/${n}</td><td><small>${w.map((q) => q.first).join(', ') || '—'}</small></td></tr>`; }).join('')).join('') + '</table>' : '<div class="note">No workplaces yet. A Lumber Camp, Forager\'s Hut or Builders\' Yard gives people jobs.</div>')
+        + `<div class="note">${idle.length ? `Looking for work: ${idle.map((q) => q.name).join(', ')}. ${vac.length ? 'They\'ll be taken on shortly.' : 'Build more workplaces to give them jobs.'}` : vac.length ? `${vac.length} empty job${vac.length > 1 ? 's' : ''}: newcomers arrive through the Lift to fill them when there are free beds and food.` : 'Everyone who can work has a job.'} Builders get first pick of new arrivals while there are sites to build.</div>`;
     } else if (tab === 'residents') {
       const P = g.population, vac = P.vacancies();
       body = `<div>Residents <b>${P.count()}</b> · employed ${P.employed()} · free beds ${P.freeBeds()} · open jobs ${vac.length} · food in stock ${Math.floor(e.stock.food)}</div>

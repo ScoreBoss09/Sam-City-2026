@@ -109,7 +109,7 @@ export class BuildingManager {
     if (!def.park && !def.special) { const W = def.w * TILE, D = def.d * TILE; const dec = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 5), contactMat()); dec.rotation.x = -Math.PI / 2; dec.position.y = 0.045; dec.renderOrder = 1; ext.group.add(dec); }
     ext.group.traverse((o) => { if (o.isMesh) o.matrixAutoUpdate = true; });
     b.state = 'done'; b.progress = 1; b.layout = layoutFor(def);
-    const odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2 }; };
+    const odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h }; };
     b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout).map(conv));
     if (def.id === 'lift' || def.id === 'tunnel') b.colliders = ext.colliders.map(conv);
     this.world.addColliders(b); b.nav = undefined;
@@ -159,6 +159,12 @@ export class BuildingManager {
     this.world.events.emit('building:removed', b);
   }
 
+  /** World-space box of a building's front doorway (what a closed door blocks). */
+  doorRect(b) {
+    if (b.doorRectC) return b.doorRectC; const def = b.def, D = def.d * TILE, off = b.geo.off, hw = 1.0, pts = [[off - hw, D / 2 - 0.42], [off + hw, D / 2 - 0.42], [off - hw, D / 2 + 0.05], [off + hw, D / 2 + 0.05]].map(([x, z]) => b.toWorld(x, z));
+    return (b.doorRectC = { minx: Math.min(...pts.map((p) => p[0])), maxx: Math.max(...pts.map((p) => p[0])), minz: Math.min(...pts.map((p) => p[1])), maxz: Math.max(...pts.map((p) => p[1])) });
+  }
+  doorRectHas(b, x, z, r) { const q = this.doorRect(b), cx = Math.max(q.minx, Math.min(x, q.maxx)), cz = Math.max(q.minz, Math.min(z, q.maxz)); return (x - cx) ** 2 + (z - cz) ** 2 < r * r; }
   /** Indoor route between two points inside a finished building that walks around the furniture (0.5 m grid A*, then smoothed). */
   navPath(b, x0, z0, x1, z1) {
     const n = this.navGrid(b); if (!n) return [{ x: x1, z: z1 }];
@@ -207,7 +213,8 @@ export class BuildingManager {
     for (const b of this.list) {
       const D = b.ext && b.ext.doors; if (!D || !D.length || b.state !== 'done') continue;
       if (Math.hypot(cam.x - b.cx, cam.z - b.cz) > 90) continue;
-      const dp = b.doorPos; let want = sim && Math.hypot(pl.x - dp.x, pl.z - dp.z) < 2.8;
+      const dp = b.doorPos; if (b.doorHeld && Math.hypot(pl.x - dp.x, pl.z - dp.z) > 10) b.doorHeld = false;   // Sam wandered off: it swings shut
+      let want = !!b.doorHeld || (sim && b.doorK > 0 && this.doorRectHas(b, pl.x, pl.z, 0.55));
       if (!want) for (const q of sims) { if (!q.hidden && Math.abs(q.x - dp.x) < 2.6 && Math.abs(q.z - dp.z) < 2.6) { want = true; break; } }
       const k = b.doorK || 0, nk = Math.max(0, Math.min(1, k + (want ? 4 : -2.2) * dt));
       if (nk !== k) { if (k === 0 && nk > 0 && sim && Math.hypot(pl.x - dp.x, pl.z - dp.z) < 14) Sfx.play('door'); b.doorK = nk; const e = nk * nk * (3 - 2 * nk); for (const d of D) d.pivot.rotation.y = d.open * e; }
