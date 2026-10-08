@@ -15,8 +15,8 @@ const TOOLS = [
 /** All DOM. In Unity: UI Toolkit / uGUI screens driven by the same game-state getters. */
 export class UI {
   constructor(game) {
-    this.game = game; this.adult = true; this.modalOpen = false; this.mouseOverCanvas = true; this.terminalTab = 'permits'; this.buildTab = 'Homes'; this.terminalB = null; this.dialogue = null; this.acc = 0; this.hoverTimer = 0;
-    const canvas = $('view'); canvas.addEventListener('mouseenter', () => (this.mouseOverCanvas = true)); canvas.addEventListener('mouseleave', () => (this.mouseOverCanvas = false));
+    this.game = game; this.adult = true; this.terminalTab = 'permits'; this.buildTab = 'Homes'; this.terminalB = null; this.dialogue = null; this.acc = 0; this.hoverTimer = 0;
+
     // toolbox
     $('toolbox').innerHTML = TOOLS.map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('');
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
@@ -28,6 +28,10 @@ export class UI {
     $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
     this.refreshTools(); this.renderObjectives();
   }
+  /** A window is open (talking, the post, the backpack, the journal, the how-to card): worked out fresh each time so it can't get stuck. */
+  get modalOpen() { return !!(this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
+  set modalOpen(v) { /* derived; kept so old callers stay harmless */ }
+  get mouseOverCanvas() { return this.game.input.overCanvas !== false; }
   show(...ids) { for (const i of ids) $(i).classList.remove('hidden'); }
   hide(...ids) { for (const i of ids) $(i).classList.add('hidden'); }
 

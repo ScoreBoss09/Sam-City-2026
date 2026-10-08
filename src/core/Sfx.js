@@ -38,6 +38,7 @@ export const Sfx = {
       case 'done': [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.18, { type: 'square', vol: 0.12, delay: i * 0.09 })); break;
       case 'ui': this.tone(740, 0.04, { type: 'square', vol: 0.08 }); break;
       case 'deny': this.tone(200, 0.12, { type: 'square', vol: 0.1 }); this.tone(150, 0.14, { type: 'square', vol: 0.1, delay: 0.1 }); break;
+      case 'door': this.noise(0.25, { freq: 700, q: 6, vol: 0.06 }); this.tone(190, 0.22, { type: 'triangle', vol: 0.04, slide: 60 }); break;
       case 'jump': this.tone(300, 0.14, { type: 'square', vol: 0.09, slide: 500 }); break;
       case 'ring': for (let i = 0; i < 4; i++) { this.tone(440, 0.18, { type: 'sine', vol: 0.12, delay: i * 0.5 }); this.tone(480, 0.18, { type: 'sine', vol: 0.12, delay: i * 0.5 }); } break;
       case 'bell': [392, 330, 294, 262].forEach((f, i) => this.tone(f, 0.9, { type: 'sine', vol: 0.16, delay: i * 0.55 })); break;

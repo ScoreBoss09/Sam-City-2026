@@ -18,7 +18,11 @@ export class Input {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('wheel', (e) => { this.mouse.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
     document.addEventListener('mousemove', (e) => { if (document.pointerLockElement === canvas) { /* handled above */ } });
-    document.addEventListener('pointerlockchange', () => { this.locked = document.pointerLockElement === canvas; });
+    document.addEventListener('pointerlockchange', () => { this.locked = document.pointerLockElement === canvas; this.overCanvas = true; });
+    // is the cursor over the 3D view (not a HUD panel)? Re-checked on every move, so it can never get stuck
+    this.overCanvas = true; window.addEventListener('mousemove', (e) => { this.overCanvas = e.target === canvas; }, true);
+    canvas.addEventListener('mousedown', () => { this.overCanvas = true; }, true);
+    window.addEventListener('blur', () => { this.mouse.left = this.mouse.right = this.mouse.middle = false; this.drag = false; });
   }
   /** Gamepad -> the same virtual keys / mouse the rest of the game already understands. mode: 'sim' | 'god' | 'menu'. */
   pollPad(dt, mode) {

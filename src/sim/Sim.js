@@ -58,7 +58,7 @@ export class Sim {
     let sx = this.x, sz = this.z;
     if (this.inside && this.inside !== dest.b) {
       const b = this.inside;
-      if (!b.def.open) wp.push({ x: b.doorIn.x, z: b.doorIn.z }, { x: b.doorPos.x, z: b.doorPos.z, exit: true });
+      if (!b.def.open) wp.push(...this.game.buildings.navPath(b, this.x, this.z, b.doorIn.x, b.doorIn.z), { x: b.doorPos.x, z: b.doorPos.z, exit: true });
       sx = b.doorOut.x; sz = b.doorOut.z; wp.push({ x: sx, z: sz, exit: true });
     }
     if (dest.b && dest.b !== this.inside && !dest.b.def.park) {
@@ -66,9 +66,9 @@ export class Sim {
       if (!t) return false;
       for (let i = 1; i < t.length; i++) wp.push({ x: (t[i][0] + 0.5) * TILE, z: (t[i][1] + 0.5) * TILE });
       wp.push({ x: b.doorOut.x, z: b.doorOut.z }, { x: b.doorPos.x, z: b.doorPos.z, enter: b }, { x: b.doorIn.x, z: b.doorIn.z });
-      if (dest.x !== undefined) wp.push({ x: dest.x, z: dest.z });
+      if (dest.x !== undefined) wp.push(...this.game.buildings.navPath(b, b.doorIn.x, b.doorIn.z, dest.x, dest.z));
     } else if (dest.b && dest.b === this.inside) {
-      wp.push({ x: dest.x, z: dest.z });
+      wp.push(...this.game.buildings.navPath(dest.b, this.x, this.z, dest.x, dest.z));
     } else {
       const t = w.findPath(Math.floor(sx / TILE), Math.floor(sz / TILE), Math.floor(dest.x / TILE), Math.floor(dest.z / TILE));
       if (!t) return false;

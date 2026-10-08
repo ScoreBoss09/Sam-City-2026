@@ -132,7 +132,7 @@ export class Game {
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
     this.player.update(gdt, dt);
     for (const s of this.population.sims) s.sync(dt); this.social.render(dt);
-    this.buildings.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt); this.resources.animate(dt); this.mail.update(); this.weather.update(dt); if (this.started) this.favours.update(dt * this.clock.speed); if (this.curios) this.curios.update(dt); if (this.started) this.events.update(dt); if (this.wildlife) this.wildlife.update(dt);
+    this.buildings.update(dt); this.tools.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt); this.resources.animate(dt); this.mail.update(); this.weather.update(dt); if (this.started) this.favours.update(dt * this.clock.speed); if (this.curios) this.curios.update(dt); if (this.started) this.events.update(dt); if (this.wildlife) this.wildlife.update(dt);
 
     // camera
     let focus;

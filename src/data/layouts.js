@@ -1,5 +1,6 @@
 import { TILE, WALL_T } from '../config.js';
 import { BUILDINGS } from './buildings.js';
+import { FURN } from '../render/Furniture.js';
 
 /**
  * Interior layouts in building-local space (origin = footprint centre, +z = front/door side).
@@ -57,7 +58,7 @@ const LAYOUTS = {
     const l = empty(), W = def.w * TILE, D = def.d * TILE;
     l.furniture.push({ t: 'bar', x: 0, z: -D / 2 + 1.2, r: 0 }, { t: 'hearth', x: W / 2 - 0.6, z: 0.5, r: 3 }, { t: 'barrel', x: -W / 2 + 0.7, z: -D / 2 + 0.8, r: 0 }, { t: 'barrel', x: W / 2 - 0.7, z: -D / 2 + 0.8, r: 0 });
     l.work.push({ x: -0.8, z: -D / 2 + 2.0 }, { x: 0.8, z: -D / 2 + 2.0 });
-    for (const [x, z] of [[-3.6, 0.4], [-3.6, 3.4], [2.2, 3.4], [-0.2, 3.4]]) { l.furniture.push({ t: 'table', x, z, r: 0 }, { t: 'chair', x: x - 1.15, z, r: 1 }, { t: 'chair', x: x + 1.15, z, r: 3 }); }
+    for (const [x, z] of [[-3.6, 0.4], [-3.6, 3.4], [2.6, 3.4], [2.4, 0.4]]) { l.furniture.push({ t: 'table', x, z, r: 0 }, { t: 'chair', x: x - 1.15, z, r: 1 }, { t: 'chair', x: x + 1.15, z, r: 3 }); }
     for (const x of [-1.2, 0, 1.2]) l.furniture.push({ t: 'stool', x, z: -D / 2 + 2.4, r: 2 });
     l.idle.push({ x: 0.6, z: 1.6 }, { x: -2, z: 2 }); l.visit.push({ x: 0.6, z: 1.6 }); return l;
   },
@@ -177,7 +178,7 @@ Object.assign(LAYOUTS, {
     const l = empty(), W = def.w * TILE, D = def.d * TILE;
     l.furniture.push({ t: 'fryer', x: 0.4, z: -D / 2 + 0.75, r: 0 }, { t: 'counter', x: 0.4, z: -0.5, r: 0 });
     l.work.push({ x: -0.4, z: -D / 2 + 1.7 }, { x: 1.3, z: -D / 2 + 1.7 });
-    for (const [x, z] of [[-2.2, 1.6]]) l.furniture.push({ t: 'table', x, z, r: 0 }, { t: 'chair', x, z: z + 1.0, r: 2 }, { t: 'chair', x: x + 1.1, z, r: 3 });
+    for (const [x, z] of [[-2.6, -0.4]]) l.furniture.push({ t: 'table', x, z, r: 0 }, { t: 'chair', x, z: z + 1.0, r: 2 }, { t: 'chair', x: x + 1.1, z, r: 3 });
     l.furniture.push({ t: 'stool', x: 1.6, z: 1.8, r: 2 }, { t: 'stool', x: 2.4, z: 1.8, r: 2 });
     l.visit.push({ x: 0.4, z: 0.6 }, { x: 1.4, z: 0.7 }); l.idle.push({ x: 0, z: 2.6 }); return l;
   },
@@ -216,9 +217,26 @@ Object.assign(LAYOUTS, {
   },
 });
 
+/** Move any standing spot that ended up inside solid furniture (or the doorway) to the nearest clear bit of floor. */
+function unclutter(def, l) {
+  const W = def.w * TILE, D = def.d * TILE, door = doorOffset(def.w), M = 0.38, rects = [];
+  for (const f of l.furniture) { const d = FURN[f.t]; if (!d || !d.solid) continue; let [sx, sz] = d.s; if ((f.r || 0) % 2) [sx, sz] = [sz, sx]; rects.push([f.x - sx / 2, f.x + sx / 2, f.z - sz / 2, f.z + sz / 2]); }
+  const lim = [-W / 2 + WALL_T + 0.45, W / 2 - WALL_T - 0.45, -D / 2 + WALL_T + 0.45, D / 2 - WALL_T - 0.45];
+  const bad = (x, z, used) => x < lim[0] || x > lim[1] || z < lim[2] || z > lim[3] || rects.some((r) => x > r[0] - M && x < r[1] + M && z > r[2] - M && z < r[3] + M) || (Math.abs(x - door) < 0.9 && z > D / 2 - 1.6) || used.some((u) => Math.hypot(u.x - x, u.z - z) < 0.7);
+  const used = [];
+  for (const list of [l.work, l.visit, l.idle]) for (const p of list) {
+    if (bad(p.x, p.z, used)) { let best = null; for (let r = 0.3; r < 4.5 && !best; r += 0.3) for (let a = 0; a < 16 && !best; a++) { const x = p.x + Math.cos(a / 16 * Math.PI * 2) * r, z = p.z + Math.sin(a / 16 * Math.PI * 2) * r; if (!bad(x, z, used)) best = { x, z }; } if (best) { p.x = best.x; p.z = best.z; } }
+    used.push(p);
+  }
+  for (const b of l.beds) if (b.ax !== undefined && rects.some((r) => b.ax > r[0] - 0.2 && b.ax < r[1] + 0.2 && b.az > r[2] - 0.2 && b.az < r[3] + 0.2) && !(Math.abs(b.ax - b.x) < 0.01 && Math.abs(b.az - b.z) < 0.01)) {
+    for (let r = 0.3; r < 3; r += 0.3) { let done = false; for (let a = 0; a < 16; a++) { const x = b.ax + Math.cos(a / 16 * Math.PI * 2) * r, z = b.az + Math.sin(a / 16 * Math.PI * 2) * r; if (!bad(x, z, [])) { b.ax = x; b.az = z; done = true; break; } } if (done) break; }
+  }
+}
+
 export function layoutFor(def) {
   const fn = LAYOUTS[def.layout]; const l = fn ? fn(def) : empty();
   const need = Object.values(def.jobs || {}).reduce((a, b) => a + b, 0); fillWork(def, l, need);
   if (!l.idle.length) l.idle.push({ x: 0, z: 1.5 });
+  if (def.layout && def.layout !== 'none' && def.layout !== 'yard') unclutter(def, l);
   return l;
 }

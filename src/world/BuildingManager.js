@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TILE, WALL_T } from '../config.js';
 import { BUILDINGS } from '../data/buildings.js';
 import { doorOffset, layoutFor } from '../data/layouts.js';
+import { Sfx } from '../core/Sfx.js';
 import { buildExterior, buildSite, buildInterior, furnitureColliders } from '../render/BuildingFactory.js';
 
 let _contact = null;
@@ -111,7 +112,7 @@ export class BuildingManager {
     const odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2 }; };
     b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout).map(conv));
     if (def.id === 'lift' || def.id === 'tunnel') b.colliders = ext.colliders.map(conv);
-    this.world.addColliders(b);
+    this.world.addColliders(b); b.nav = undefined;
     const L = b.layout, tw = (p) => { const [x, z] = b.toWorld(p.x, p.z); return { x, z, b }; };
     b.spots.bed = L.beds.map((p) => { const [x, z] = b.toWorld(p.x, p.z), [ax, az] = b.toWorld(p.ax, p.az); return { x, z, ax, az, b, rotY: b.rot * Math.PI / 2, taken: null }; });
     b.spots.work = L.work.map(tw); b.spots.idle = L.idle.map(tw); b.spots.visit = L.visit.map(tw); b.spots.pickup = L.pickup.map(tw); b.spots.terminal = L.terminals.map(tw);
@@ -158,6 +159,34 @@ export class BuildingManager {
     this.world.events.emit('building:removed', b);
   }
 
+  /** Indoor route between two points inside a finished building that walks around the furniture (0.5 m grid A*, then smoothed). */
+  navPath(b, x0, z0, x1, z1) {
+    const n = this.navGrid(b); if (!n) return [{ x: x1, z: z1 }];
+    const { W, H, ox, oz, C, free } = n, cell = (x, z) => [Math.max(0, Math.min(W - 1, Math.floor((x - ox) / C))), Math.max(0, Math.min(H - 1, Math.floor((z - oz) / C)))];
+    const near = (cx, cz) => { if (free[cz * W + cx]) return [cx, cz]; for (let r = 1; r < 6; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) { const x = cx + dx, z = cz + dz; if (x >= 0 && z >= 0 && x < W && z < H && free[z * W + x]) return [x, z]; } return null; };
+    const a = near(...cell(x0, z0)), g = near(...cell(x1, z1)); if (!a || !g) return [{ x: x1, z: z1 }];
+    const ctr = (x, z) => ({ x: ox + (x + 0.5) * C, z: oz + (z + 0.5) * C });
+    const los = (p, q) => { const L = Math.hypot(q.x - p.x, q.z - p.z), st = Math.max(1, Math.ceil(L / (C * 0.4))); for (let i = 1; i < st; i++) { const t = i / st, [cx, cz] = cell(p.x + (q.x - p.x) * t, p.z + (q.z - p.z) * t); if (!free[cz * W + cx]) return false; } return true; };
+    if (los({ x: x0, z: z0 }, { x: x1, z: z1 })) return [{ x: x1, z: z1 }];
+    const N = W * H, gs = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), open = [a[1] * W + a[0]], goal = g[1] * W + g[0], closed = new Uint8Array(N); gs[open[0]] = 0;
+    const h = (i) => Math.hypot(i % W - g[0], Math.floor(i / W) - g[1]);
+    while (open.length) {
+      let bi = 0; for (let i = 1; i < open.length; i++) if (gs[open[i]] + h(open[i]) < gs[open[bi]] + h(open[bi])) bi = i;
+      const c = open.splice(bi, 1)[0]; if (c === goal) break; closed[c] = 1; const cx = c % W, cz = Math.floor(c / W);
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dz) continue; const x = cx + dx, z = cz + dz; if (x < 0 || z < 0 || x >= W || z >= H) continue; const i = z * W + x; if (!free[i] || closed[i]) continue; if (dx && dz && (!free[cz * W + x] || !free[z * W + cx])) continue; const ng = gs[c] + (dx && dz ? 1.414 : 1); if (ng < gs[i]) { gs[i] = ng; from[i] = c; if (!open.includes(i)) open.push(i); } }
+    }
+    if (from[goal] < 0 && goal !== open[0]) return [{ x: x1, z: z1 }];
+    const cells = []; for (let i = goal; i >= 0 && i !== a[1] * W + a[0]; i = from[i]) cells.unshift(ctr(i % W, Math.floor(i / W)));
+    cells.push({ x: x1, z: z1 }); const out = []; let cur = { x: x0, z: z0 }, k = 0;
+    while (k < cells.length) { let j = cells.length - 1; while (j > k && !los(cur, cells[j])) j--; out.push(cells[j]); cur = cells[j]; k = j + 1; }
+    return out;
+  }
+  navGrid(b) {
+    if (b.nav !== undefined) return b.nav; if (b.def.open || b.def.park || !b.colliders) return (b.nav = null);
+    const C = 0.5, ox = b.x0 * TILE, oz = b.z0 * TILE, W = Math.round(b.w * TILE / C), H = Math.round(b.d * TILE / C), free = new Uint8Array(W * H), R = 0.28;
+    for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) { const px = ox + (x + 0.5) * C, pz = oz + (z + 0.5) * C; let ok = true; for (const c of b.colliders) if (px > c.minx - R && px < c.maxx + R && pz > c.minz - R && pz < c.maxz + R) { ok = false; break; } free[z * W + x] = ok ? 1 : 0; }
+    return (b.nav = { W, H, ox, oz, C, free });
+  }
   /** Which finished building contains world point (x,z)? Used for roof cut-away and sim visibility. */
   buildingAtPoint(x, z) {
     const b = this.world.buildingAt(Math.floor(x / TILE), Math.floor(z / TILE)); return b && b.state === 'done' && !b.def.park ? b : null;
@@ -173,10 +202,20 @@ export class BuildingManager {
       if (near && !b.interior) { b.interior = buildInterior(b); b.interior.position.set(b.cx, 0, b.cz); b.interior.rotation.y = b.rot * Math.PI / 2; this.scene.add(b.interior); }
       if (b.interior) b.interior.visible = !!near;
     }
+    // doors swing open when anyone is close, then shut behind them
+    const cam = g.camera.position, sims = g.population.sims;
+    for (const b of this.list) {
+      const D = b.ext && b.ext.doors; if (!D || !D.length || b.state !== 'done') continue;
+      if (Math.hypot(cam.x - b.cx, cam.z - b.cz) > 90) continue;
+      const dp = b.doorPos; let want = sim && Math.hypot(pl.x - dp.x, pl.z - dp.z) < 2.8;
+      if (!want) for (const q of sims) { if (!q.hidden && Math.abs(q.x - dp.x) < 2.6 && Math.abs(q.z - dp.z) < 2.6) { want = true; break; } }
+      const k = b.doorK || 0, nk = Math.max(0, Math.min(1, k + (want ? 4 : -2.2) * dt));
+      if (nk !== k) { if (k === 0 && nk > 0 && sim && Math.hypot(pl.x - dp.x, pl.z - dp.z) < 14) Sfx.play('door'); b.doorK = nk; const e = nk * nk * (3 - 2 * nk); for (const d of D) d.pivot.rotation.y = d.open * e; }
+    }
     // warm interior light follows the player indoors
     this._acc = (this._acc || 0) + dt; this.t = (this.t || 0) + dt; const tick = this._acc > 0.25; if (tick) this._acc = 0;
     for (const b of this.list) if (b.ext && b.ext.update && b.state === 'done') { if (b.def.park === 'camp' || b.ext.everyFrame || tick) b.ext.update(dt, this.t, this.game.economy.stock, b); }
     const L = this.interiorLight;
-    if (inside) { L.position.set(inside.cx, 2.6, inside.cz); L.intensity = 38; } else L.intensity = 0;
+    if (inside && !inside.def.open) { L.position.set(inside.cx, 2.6, inside.cz); L.intensity = 38; } else L.intensity = 0;
   }
 }
