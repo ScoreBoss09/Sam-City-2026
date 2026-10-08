@@ -12,7 +12,7 @@ const R = 0.4;
 export class Player {
   constructor(game) {
     this.game = game; this.x = 0; this.z = 0; this.heading = 0; this.yaw = 0; this.pitch = -0.1; this.third = true; this.camDist = 5; this.energy = 100;
-    this.carry = null; this.sleeping = false; this.sedated = 0; this.walkPhase = 0; this.moved = false; this.target = null; this.hold = 0; this.working = false; this.frozen = false;
+    this.carry = null; this.weapon = null; this.down = 0; this.swingT = 0; this.sleeping = false; this.sedated = 0; this.walkPhase = 0; this.moved = false; this.target = null; this.hold = 0; this.working = false; this.frozen = false;
     this.rig = createRig({ shirt: 0xe8772e, pants: 0x2d3a55, skin: 0xe0b48f, hair: 0x3b2a1a, hairStyle: 'side', hat: { type: 'cap', color: 0xe8772e }, longSleeve: false, accessory: null }); this.mesh = this.rig.root;
     this.anim = new Animator(this.rig, { trait: 'cheerful', bounce: 1.1, swing: 1.1 }); this.speed = 0; this.dirx = 0; this.dirz = 0; this.emoteT = 0; this.lookYaw = 0; this.lookPitch = 0; this.dist = 0; game.scene.add(this.mesh);
     this.marker = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 4), new THREE.MeshBasicMaterial({ color: 0xffd23f })); this.marker.rotation.x = Math.PI; game.scene.add(this.marker);
@@ -25,8 +25,9 @@ export class Player {
     const g = this.game, inp = g.input, sim = g.mode === 'sim' && !g.ui.modalOpen && !g.ending;
     this.moved = false; this.working = false; this.dist = 0; if (this.emoteT > 0) this.emoteT -= rawDt;
     if (this.sedated > 0) { this.sedated -= rawDt; if (this.sedated <= 0) this.wakeFromSedation(); }
+    if (this.down > 0) this.down -= rawDt; if (this.swingT > 0) this.swingT -= rawDt; if (this.swingT <= 0 && this.swingHit) this.swingHit = false;
     // look
-    if (sim && !this.sleeping && this.sedated <= 0) {
+    if (sim && !this.sleeping && this.sedated <= 0 && !(this.down > 0)) {
       this.yaw -= inp.mouse.dx * 0.0025; this.pitch = clamp(this.pitch - inp.mouse.dy * 0.0025, -1.3, 1.2);
       if (inp.down('ArrowLeft')) this.yaw += 2 * rawDt; if (inp.down('ArrowRight')) this.yaw -= 2 * rawDt;
       if (inp.down('ArrowUp')) this.pitch = clamp(this.pitch + 1.2 * rawDt, -1.3, 1.2); if (inp.down('ArrowDown')) this.pitch = clamp(this.pitch - 1.2 * rawDt, -1.3, 1.2);
@@ -45,12 +46,27 @@ export class Player {
         const ox = this.x, oz = this.z; this.tryMove(this.dirx * this.speed * rawDt, this.dirz * this.speed * rawDt); this.dist = Math.hypot(this.x - ox, this.z - oz); this.moved = this.dist > 0.0005;
       } else this.dist = 0;
       if (inp.hit('KeyG') && this.emoteT <= 0) this.emoteT = 2.2;
+      if (this.weapon && inp.hit('KeyF') && !(this.swingT > 0)) { this.swingT = 0.6; this.swingHit = false; }
+      if (this.swingT > 0.3 && !this.swingHit && this.weapon) { this.swingHit = true; this.strike(); }
       this.interact(rawDt);
     }
     // needs (game seconds)
     this.energy = Math.max(0, this.energy - dt * (100 / (18 * 10)));
     if (this.energy <= 0 && !this.sleeping && this.sedated <= 0) this.collapse();
     this.syncMesh(rawDt);
+  }
+  /** Swing the club: stuns raiders in front of Sam (two clean hits put one down). */
+  strike() {
+    const g = this.game; if (!g.raids || !g.raids.alert) return; const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
+    for (const r of g.raids.raiders) {
+      if (r.captured || r.remove) continue; const dx = r.x - this.x, dz = r.z - this.z, d = Math.hypot(dx, dz);
+      if (d < 2.5 && (d < 0.7 || (dx * fx + dz * fz) / d > 0.2)) { g.raids.hit(r, 1); r.atkT = 0; r.path = []; g.social.say(r, 'Argh!', 1.4); }
+    }
+  }
+  /** Knocked flat by a raider for a couple of seconds. */
+  stagger(sec = 2.2) {
+    if (this.sedated > 0 || this.down > 0) return; const g = this.game; this.down = sec; this.swingT = 0; this.energy = Math.max(0, this.energy - 10);
+    if (this.carry) { g.economy.add(this.carry.mat, this.carry.qty); this.carry = null; g.ui.toast('You are knocked to the ground! (the load is returned to stock)'); } else g.ui.toast('You are knocked to the ground!');
   }
   tryMove(dx, dz) {
     const w = this.game.world;
@@ -64,11 +80,13 @@ export class Player {
     const consider = (t, d) => { if (d < bd) { bd = d; best = t; } };
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
     for (const s of g.population.sims) {
+      if (s.kind === 'raider') continue;
       if (s.pose === 'sleep' || (s.inside && s.inside !== g.buildings.playerInside && !s.inside.def.open)) continue;
       const dx = s.x - px, dz = s.z - pz, d = Math.hypot(dx, dz); if (d > 2.6) continue;
       if (!this.third && d > 0.8 && (dx * fx + dz * fz) / d < 0.3) continue;
       consider({ kind: 'sim', sim: s, text: `Talk to ${s.name} (${s.roleName})`, hold: false }, d - 0.5);
     }
+    if (g.raids.pickup && !this.weapon) { const q = g.raids.pickup, d = Math.hypot(q.x - px, q.z - pz); if (d < 2.6) consider({ kind: 'weapon', text: 'Take the militia club  (F to swing)', hold: false }, d - 1); }
     const inside = g.buildings.playerInside;
     for (const b of B) {
       if (b.state === 'done') {
@@ -124,6 +142,7 @@ export class Player {
     else if (t.kind === 'gather') this.doGather(t, rawDt, held);
     else if (t.kind === 'depot' && e) this.useDepot();
     else if (t.kind === 'bed' && e) this.trySleep(t.spot);
+    else if (t.kind === 'weapon' && e) { if (g.raids.take()) { this.weapon = 'club'; g.ui.toast('You take the club. Press F to swing it.', 3200); } }
     else if (t.kind === 'site') {
       if (e && this.carry && t.b.need[this.carry.mat] - (t.b.have[this.carry.mat] || 0) > 0) { g.buildings.deliver(t.b, this.carry.mat, this.carry.qty); g.ui.toast(`Delivered ${this.carry.qty} ${MATERIALS[this.carry.mat].name}`); this.carry = null; }
       else if (held && t.hold) { this.working = true; this.faceTo(t.b.cx, t.b.cz); g.buildings.addWork(t.b, rawDt * Math.max(1, g.clock.speed)); this.hold = t.b.progress; }
@@ -182,11 +201,11 @@ export class Player {
     m.visible = !(g.mode === 'sim' && !this.third && !this.sleeping);
     m.position.set(this.x, 0, this.z); m.rotation.y = this.heading;
     // look where the camera aims
-    const aim = Math.atan2(-Math.sin(this.yaw), -Math.cos(this.yaw)), ty = this.sleeping || this.sedated > 0 ? 0 : clamp(angleDiff(this.heading, aim), -1.1, 1.1), tp = -this.pitch * 0.8;
+    const aim = Math.atan2(-Math.sin(this.yaw), -Math.cos(this.yaw)), ty = this.sleeping || this.sedated > 0 || this.down > 0 ? 0 : clamp(angleDiff(this.heading, aim), -1.1, 1.1), tp = -this.pitch * 0.8;
     const k = Math.min(1, dt * 8); this.lookYaw += (ty - this.lookYaw) * k; this.lookPitch += (tp - this.lookPitch) * k;
     let lower = 'stand', upper = 'idle', t = this.target;
     if (this.sleeping) { lower = 'lie'; upper = 'sleep'; }
-    else if (this.sedated > 0) { lower = 'lie'; upper = 'sedated'; }
+    else if (this.sedated > 0 || this.down > 0) { lower = 'lie'; upper = 'sedated'; }
     else {
       if (this.speed > 0.3 && this.moved) lower = 'walk';
       if (this.working && t && t.kind === 'gather') { upper = t.upper; lower = ['harvest', 'dig'].includes(upper) ? 'crouch' : 'stand'; }
@@ -196,9 +215,10 @@ export class Player {
       else if (g.ui.terminalB) upper = 'type';
       else if (g.ui.dialogue) upper = 'listen';
       if (this.emoteT > 0 && !this.carry && lower !== 'crouch') upper = 'wave';
+      if (this.swingT > 0) upper = 'strike';
     }
     const carryCol = this.carry ? MATERIALS[this.carry.mat].color : undefined;
-    this.anim.update(dt, { lower, upper, dist: this.dist, speed: this.speed, run: this.speed > 5.6, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: 0.25, tired: this.energy < 25, crateColor: carryCol, speaking: g.ui.dialogue ? false : undefined });
+    this.anim.update(dt, { lower, upper, dist: this.dist, speed: this.speed, run: this.speed > 5.6, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: 0.25, tired: this.energy < 25, crateColor: carryCol, speaking: g.ui.dialogue ? false : undefined, prop: this.weapon && !this.sleeping && this.sedated <= 0 ? { handR: 'club' } : undefined });
     this.marker.visible = godView; this.marker.position.set(this.x, 5.2 + Math.sin(performance.now() / 300) * 0.4, this.z); this.marker.rotation.y += dt * 2;
   }
 
@@ -206,7 +226,7 @@ export class Player {
   placeCamera(cam) {
     const w = this.game.world, [hx, hy, hz] = this.headPos();
     const fx = -Math.sin(this.yaw) * Math.cos(this.pitch), fy = Math.sin(this.pitch), fz = -Math.cos(this.yaw) * Math.cos(this.pitch);
-    if (this.sleeping || this.sedated > 0) { cam.position.set(this.x, 1.2, this.z); cam.lookAt(this.x - Math.sin(this.heading) * 0, 4, this.z + 0.001); return; }
+    if (this.sleeping || this.sedated > 0 || this.down > 0) { cam.position.set(this.x, 1.2, this.z); cam.lookAt(this.x - Math.sin(this.heading) * 0, 4, this.z + 0.001); return; }
     if (!this.third) { cam.position.set(hx, hy, hz); cam.lookAt(hx + fx, hy + fy, hz + fz); return; }
     let d = this.camDist; const tx = hx + 0, ty = 1.7, tz = hz;
     while (d > 0.6) { const cx = tx - fx * d, cz = tz - fz * d, cy = ty - fy * d + 0.4; if (cy < 0.3) { d -= 0.3; continue; } if (!w.collides(cx, cz, 0.25)) break; d -= 0.3; }

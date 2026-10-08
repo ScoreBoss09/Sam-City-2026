@@ -114,6 +114,7 @@ export function createRig(look = {}) {
     if (h.type === 'police') hd.box(0.35, 0.1, 0.35, 0, 0.38, 0, 0x1b2340).box(0.3, 0.025, 0.16, 0, 0.33, 0.2, 0x0e1428).box(0.07, 0.05, 0.01, 0, 0.38, 0.18, 0xf1c40f);
     if (h.type === 'sun') hd.box(0.34, 0.07, 0.34, 0, 0.36, 0, 0xe9d9a0).box(0.62, 0.02, 0.62, 0, 0.33, 0, 0xe9d9a0);
     if (h.type === 'bonnet') hd.box(0.35, 0.1, 0.35, 0, 0.36, -0.02, 0xf2eadb).box(0.36, 0.16, 0.08, 0, 0.26, -0.14, 0xf2eadb);
+    if (h.type === 'mask') hd.box(0.345, 0.37, 0.335, 0, 0.17, 0, 0x1c1c20).box(0.23, 0.07, 0.01, 0, 0.2, 0.172, L.skin).box(0.035, 0.05, 0.014, -0.07, 0.2, 0.18, 0x111111).box(0.035, 0.05, 0.014, 0.07, 0.2, 0.18, 0x111111);
     if (h.type === 'chef') hd.box(0.3, 0.2, 0.3, 0, 0.45, 0, 0xffffff);
   }
   if (L.glasses) hd.box(0.28, 0.02, 0.01, 0, 0.21, 0.162, 0x222222).box(0.095, 0.075, 0.01, -0.075, 0.2, 0.163, 0x6a8fb5).box(0.095, 0.075, 0.01, 0.075, 0.2, 0.163, 0x6a8fb5);
@@ -170,6 +171,8 @@ const PROPS = {
   basket: () => { const g = new THREE.Group(); pbox(g, 0.34, 0.2, 0.26, 0xb98a4a, 0, -0.1, 0); pbox(g, 0.2, 0.08, 0.16, 0x7aa63a, 0, 0.02, 0); return g; },
   sickle: () => { const g = new THREE.Group(); pbox(g, 0.03, 0.2, 0.03, 0x8a5a33, 0, -0.04, 0.02); pbox(g, 0.03, 0.03, 0.22, 0xaeb4bc, 0, 0.08, 0.1); return g; },
   mug2: () => { const g = new THREE.Group(); pbox(g, 0.08, 0.12, 0.08, 0xc99a4a, 0, 0.0, 0); return g; },
+  club: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.62, 0.05, 0x6e4a2a, 0, -0.1, 0.03); pbox(g, 0.09, 0.2, 0.09, 0x5a3a20, 0, 0.18, 0.03); return g; },
+  pistol: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.12, 0.05, 0x2a2a2e, 0, -0.04, 0.02); pbox(g, 0.045, 0.05, 0.22, 0x3a3d44, 0, 0.04, 0.12); return g; },
   papers: () => { const g = new THREE.Group(); pbox(g, 0.22, 0.3, 0.02, 0xf6f6f0, 0, 0, 0); return g; },
 };
 /** Attach (or hide) a prop on a slot: 'handR' | 'handL' | 'chest'. */

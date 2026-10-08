@@ -67,11 +67,11 @@ export class Social {
     if (this.timer <= 0) {
       this.timer = 1.2;
       for (const s of sims) {
-        if (s.chat || s.sleeping || s.kind === 'security' || s.chatCool > 0 || s.frozen || s.job || s.carry || s.working) continue;
+        if (s.chat || s.sleeping || (s.kind === 'security' || s.kind === 'raider' || s.down > 0 || s.activity === 'shelter') || s.chatCool > 0 || s.frozen || s.job || s.carry || s.working) continue;
         if (!['leisure', 'visit', 'home'].includes(s.activity) && !(s.activity === 'work' && s.phase === 2)) continue;
         if (Math.random() > 0.35 * s.style.soc) continue;
         for (const o of sims) {
-          if (o === s || o.chat || o.sleeping || o.kind === 'security' || o.chatCool > 0 || o.frozen || o.job || o.carry || o.inside !== s.inside) continue;
+          if (o === s || o.chat || o.sleeping || (o.kind === 'security' || o.kind === 'raider' || o.down > 0 || o.activity === 'shelter') || o.chatCool > 0 || o.frozen || o.job || o.carry || o.inside !== s.inside) continue;
           if (!['leisure', 'visit', 'home'].includes(o.activity) && !(o.activity === 'work' && o.phase === 2)) continue;
           if (Math.hypot(o.x - s.x, o.z - s.z) < 3.0 && !s.sitting && !o.sitting) { this.startChat(s, o); break; }
         }
@@ -88,7 +88,7 @@ export class Social {
     // greet the player
     const p = g.player;
     if (g.mode === 'sim') for (const s of sims) {
-      if (s.sleeping || s.chat || s.frozen || s.kind === 'security' || s.emote) continue; if (s.inside && s.inside !== g.buildings.playerInside) continue;
+      if (s.sleeping || s.chat || s.frozen || (s.kind === 'security' || s.kind === 'raider' || s.down > 0 || s.activity === 'shelter') || s.emote) continue; if (s.inside && s.inside !== g.buildings.playerInside) continue;
       const d = Math.hypot(p.x - s.x, p.z - s.z);
       if (d < 5 && g.clock.hour - s.greeted > 1.5 || (s.greeted > g.clock.hour + 5)) {
         s.greeted = g.clock.hour;

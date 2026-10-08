@@ -64,6 +64,7 @@ export class UI {
     while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(() => { el.style.transition = 'opacity 1s'; el.style.opacity = 0; setTimeout(() => el.remove(), 1000); }, 7000);
   }
+  setAlert(text) { const a = $('alertbar'); if (!a) return; if (text) { a.textContent = text; a.classList.remove('hidden'); } else a.classList.add('hidden'); }
   toast(text, ms = 2600) { const t = $('toast'); t.textContent = text; t.classList.remove('hidden'); clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.add('hidden'), ms); }
   fade(a, text = '') { $('fade').style.opacity = a; $('fade-text').textContent = text; }
   setPrompt(text, hold) {

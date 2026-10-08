@@ -87,3 +87,11 @@ export const INTRO = [
   ['Planning Office', 'Welcome to Sam City, Sam. It is little more than a hut, a campfire and a lot of forest. Everything here will be built by hand.'],
   ['Planning Office', 'Gather timber, feed your people, and the town will grow. Press TAB for the planning view.'],
 ];
+
+// ---- raids: weapons exist in this world, but only as an occasional, uneasy fact of life ----
+export const RAIDER_LINES = ['Hand it over!', 'Nobody move!', 'Grab the crates!', 'Out of the way!', 'Take the lot!', 'Stay back, mate!'];
+export const RAIDER_SLIPS = ['Was that loud enough for the back row?', 'Just hit your mark, yeah?', 'Do we get paid extra for the pistol?', 'We were told the stockyard was unattended...', 'Remind me, which one of us is meant to win?'];
+export const ALERT_LINES = ['Get inside, quick!', 'Raiders on the beach!', 'Lock the door!', 'Keep your head down!', 'Someone fetch the guards!'];
+export const ALERT_SLIPS = ['Is this today? I thought it was Thursday.', 'Right, hide. That is in the notes, isn\'t it?', 'Funny, nobody ever really gets hurt here.', 'They always land at the same beach, have you noticed?'];
+export const DOWN_LINES = ['Ow...', 'Ugh, my head...', 'Not again...'];
+export const RAID_CALM_LINES = ['Well. That was exciting.', 'Is it over? Is it over?', 'I need a cup of tea after that.'];

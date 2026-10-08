@@ -104,6 +104,8 @@ export class Animator {
       case 'bag': T[I.SRX] = -0.1; T[I.ERR] = -0.5; props.handR = 'bag'; if (this.lower === 'walk') { T[I.SRX] = -0.15; } break;
       case 'broom': { const sw = Math.sin(ut * 2.2); T[I.SRX] = -0.8; T[I.ERR] = -0.7; T[I.SLX] = -0.9 + sw * 0.2; T[I.ELL] = -0.8; T[I.SPX] += 0.1; T[I.SPY] = sw * 0.25; props.handR = 'broom'; break; }
       case 'guard': T[I.SLX] = 0.35; T[I.SRX] = 0.35; T[I.ELL] = -0.5; T[I.ERR] = -0.5; T[I.SLZ] = 0.35; T[I.SRZ] = -0.35; T[I.SPX] -= 0.05; T[I.HDY] = Math.sin(t * 0.4) * 0.5; break;
+      case 'aim': T[I.SRX] = -1.5; T[I.ERR] = -0.05; T[I.SLX] = -1.3; T[I.ELL] = -0.9; T[I.SLZ] = 0.25; T[I.HDX] = -0.05; T[I.SPX] -= 0.04; props.handR = 'pistol'; break;
+      case 'strike': { const p = clamp(ut / 0.6, 0, 1), up = p < 0.4 ? p / 0.4 : Math.max(0, 1 - (p - 0.4) / 0.18); T[I.SRX] = -0.9 - up * 2.0; T[I.ERR] = -0.5 - up * 0.6; T[I.SLX] = -0.5 - up * 0.6; T[I.ELL] = -0.9; T[I.SPX] += 0.3 * (1 - up) - 0.2 * up; T[I.HDX] = 0.12; T[I.TLX] = -0.3; T[I.TRX] = 0.2; props.handR = 'club'; break; }
       case 'panel': { const tap = Math.max(0, Math.sin(ut * 4)); T[I.SRX] = -1.2 - tap * 0.15; T[I.ERR] = -0.5; T[I.SLX] = -0.3; T[I.ELL] = -0.7; T[I.HDX] = 0.1; T[I.HDY] = Math.sin(ut * 0.6) * 0.3; break; }
       case 'lever': { const s = Math.sin(ut * 1.8); T[I.SLX] = -1.0 + s * 0.4; T[I.SRX] = -1.0 - s * 0.4; T[I.ELL] = -0.8; T[I.ERR] = -0.8; T[I.SPX] += 0.12 + s * 0.08; break; }
       case 'tidy': { const s = Math.sin(ut * 1.5); T[I.SRX] = -0.85; T[I.ERR] = -0.8 + s * 0.2; T[I.SRY] = s * 0.35; T[I.SLX] = -0.6; T[I.ELL] = -1.1; T[I.SPX] += 0.1; T[I.HDX] = 0.2; T[I.HDY] = s * 0.2; break; }

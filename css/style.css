@@ -53,3 +53,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-f
 
 .tabrow { width: 100%; display: flex; gap: 4px; margin-bottom: 2px; } .subtab { background: #0f1d30; border: 2px solid #2d4262; color: var(--dim); padding: 3px 10px; font: 12px "Courier New", monospace; cursor: pointer; border-radius: 3px 3px 0 0; } .subtab.on { color: #fff; border-color: var(--ac); background: #213656; }
 #submenu { max-width: 760px; } #stock { width: 250px; }
+
+#alertbar { position: fixed; top: 54px; left: 50%; transform: translateX(-50%); padding: 6px 18px; background: rgba(150,20,20,.88); color: #fff; font: 700 13px 'Courier New', monospace; letter-spacing: .08em; border: 2px solid #ff6b5a; z-index: 30; animation: alertpulse 1.2s infinite; pointer-events: none; }
+@keyframes alertpulse { 50% { background: rgba(200,40,30,.92); } }
+.opt { display: block; margin: 10px 0 0; font-size: 12px; opacity: .85; cursor: pointer; }

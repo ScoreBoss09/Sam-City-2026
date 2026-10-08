@@ -23,11 +23,12 @@ export class Security {
     const g = this.game, p = g.player;
     // tunnel guards leave their post during rotation
     const duty = this.tunnelOnDuty();
-    for (const s of this.guards) if (s.zone === 'tunnel') { s.hidden = !duty; s.inside = !duty ? g.tunnel : null; if (duty && s.path.length === 0 && Math.hypot(s.x - s.post.x, s.z - s.post.z) > 0.5) s.goTo({ x: s.post.x, z: s.post.z }); }
+    for (const s of this.guards) if (s.zone === 'tunnel') { s.hidden = !duty; s.inside = !duty ? g.tunnel : null; if (duty && s.path.length === 0 && !s.engaged && Math.hypot(s.x - s.post.x, s.z - s.post.z) > 0.5) s.goTo({ x: s.post.x, z: s.post.z }); }
+    for (const s of this.guards) if (s.zone !== 'tunnel' && !s.engaged && s.path.length === 0 && s.sortied && Math.hypot(s.x - s.post.x, s.z - s.post.z) > 0.5) { s.sortied = false; s.goTo({ x: s.post.x, z: s.post.z }); }
     // darts
     for (const d of this.darts) {
       d.t += dt * 4; d.mesh.position.lerpVectors(d.from, d.to, Math.min(1, d.t));
-      if (d.t >= 1) { d.done = true; g.scene.remove(d.mesh); if (g.player.sedated <= 0) g.player.sedate('dart'); }
+      if (d.t >= 1) { d.done = true; g.scene.remove(d.mesh); if (d.onHit) d.onHit(); else if (g.player.sedated <= 0) g.player.sedate('dart'); }
     }
     this.darts = this.darts.filter((d) => !d.done);
     if (g.mode !== 'sim' || p.sedated > 0 || g.ending || p.sleeping) return;
@@ -48,6 +49,13 @@ export class Security {
         this.cool = 6;
       }
     }
+  }
+  /** Sedative dart at a raider (same visual as the one used on Sam). */
+  fireAt(guard, target) {
+    const g = this.game, m = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.5), new THREE.MeshBasicMaterial({ color: 0xffee55 }));
+    const from = new THREE.Vector3(guard.x, 1.3, guard.z), to = new THREE.Vector3(target.x, 1.2, target.z); m.position.copy(from); m.lookAt(to); g.scene.add(m);
+    guard.heading = Math.atan2(target.x - guard.x, target.z - guard.z); guard.fireT = 0.7; this.darts.push({ mesh: m, from, to, t: 0, onHit: () => g.raids.hit(target, 1) });
+    if (Math.random() < 0.4) g.social.say(guard, ['Stand down!', 'Sedative round!', 'Drop it!'][Math.floor(Math.random() * 3)], 1.8);
   }
   fire(guard, p) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.5), new THREE.MeshBasicMaterial({ color: 0xffee55 }));

@@ -27,6 +27,9 @@ There is more going on in Sam City than a town. You will have to explore to find
 ## Life & look
 Citizens are English men, women, children and elders in a range of heights and builds, each with a face, hairstyle, hat and clothes, driven by a procedural animator with ~40 behaviours (walking, running, carrying, chopping, mining, harvesting, fishing, digging, hammering, typing, reading, eating, sleeping, gesturing, fidgeting, waving) and speech bubbles. The renderer draws to a low-res target and adds a pixel-art outline, colour grade and dithered palette (`src/render/Post.js`). Day/night, moonlight, campfire light, chimney smoke, clouds and their shadows, harbour boats, seagulls, traffic and dogs add life.
 
+## Raids (optional, off with the title-screen tick box or `?noraids`)
+Weapons are part of the story, not the game. Once the town has 10 residents and a few days behind it, a small band occasionally lands from the sea, heads for the Stockyard and the food stores and shoves anyone in their way. Nobody is ever killed: victims are knocked down and get back up (faster with a Clinic). Citizens run indoors, the gate guards sedate raiders with darts near their posts, and a Police Station sends its officers after raiders anywhere. Sam can take a club from the Stockyard during a raid (E) and swing it with F; it is hung back up afterwards. Raiders caught are marched off and drop what they stole; the rest row away with it. Later raids carry pistols. The actors' lines slip now and then, as ever. Test with `window.__game.raids.trigger()` or `node tools/raid.mjs`.
+
 ## Optional pixel-art textures
 The game ships with generated textures. For richer walls, roofs, ground and water, build a local texture set from the "PNG - Pixel Art Textures" pack (its licence forbids redistribution, so the result is git-ignored and never committed):
 ```
@@ -46,4 +49,4 @@ Names the game looks up are listed in `tools/build_textures.py` (`wall_*`, `roof
 `src/data` pure data (buildings, layouts, story, names) · `src/world` grid, A*, building lifecycle · `src/systems` economy, resources, logistics, construction, population, social, story, security · `src/sim` NPC state machine · `src/player` Sam + planning tools · `src/render` textures, meshes, rig/animator, post-process · `src/ui/UI.js` DOM · `src/core` input, clock, save · `tools/` headless Playwright scenarios (`window.__game`).
 
 ## Limits / roadmap
-Single-storey interiors (towers have one lobby floor), no audio, no player weapon (guards use sedative darts), simple weather-free skies.
+Single-storey interiors (towers have one lobby floor), no audio, weapons only exist during raids, simple weather-free skies.

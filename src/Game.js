@@ -13,6 +13,7 @@ import { ConstructionSystem } from './systems/Construction.js';
 import { Population } from './systems/Population.js';
 import { Story } from './systems/Story.js';
 import { Security } from './systems/Security.js';
+import { Raids } from './systems/Raids.js';
 import { Planner } from './systems/Planner.js';
 import { Resources } from './systems/Resources.js';
 import { Social } from './systems/Social.js';
@@ -38,7 +39,7 @@ export class Game {
     this.input = new Input(canvas); this.clock = new Clock(); this.messages = new Messages();
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
     this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
-    this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.planner = new Planner(this); this.social = new Social(this);
+    this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.raids = new Raids(this); this.planner = new Planner(this); this.social = new Social(this);
     this.god = new GodControls(this); this.ui = new UI(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
     // objective beacon
@@ -113,7 +114,7 @@ export class Game {
 
     const gdt = this.clock.tick(dt) * (ui.modalOpen && this.mode === 'sim' ? 1 : 1);
     const steps = Math.min(40, Math.max(1, Math.ceil(gdt / 0.1))), sdt = gdt / steps;
-    if (gdt > 0) for (let i = 0; i < steps; i++) { this.economy.update(sdt); this.logistics.update(sdt); this.population.update(sdt); this.resources.update(sdt); this.social.update(sdt); this.traffic.update(sdt); this.planner.update(sdt); this.security.update(sdt); }
+    if (gdt > 0) for (let i = 0; i < steps; i++) { this.economy.update(sdt); this.logistics.update(sdt); this.population.update(sdt); this.resources.update(sdt); this.social.update(sdt); this.traffic.update(sdt); this.planner.update(sdt); this.raids.update(sdt); this.security.update(sdt); }
     else this.security.update(0);
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
     this.player.update(gdt, dt);

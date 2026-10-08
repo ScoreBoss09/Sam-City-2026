@@ -5,6 +5,7 @@ import { createRig } from '../render/SimRig.js';
 import { Animator } from '../render/Animator.js';
 import { pick, angleDiff } from '../util.js';
 import { Dog } from '../render/Dog.js';
+import { ALERT_LINES, DOWN_LINES } from '../data/story.js';
 
 let nextId = 1;
 const g_say = (s) => s.game.social && s.mesh.visible;
@@ -46,7 +47,7 @@ export class Sim {
     else if (bn === 'tall') { st.stride *= 1.1; } else if (bn === 'short') st.stride *= 0.9; else if (bn === 'athletic') st.speed *= 1.06;
   }
   get roleName() {
-    if (this.kind === 'child') return 'Child'; if (this.kind === 'resident' && this.age >= 66 && !this.role) return 'Retired'; return this.role ? ROLES[this.role].name : (this.kind === 'visitor' ? 'Visitor' : this.kind === 'security' ? 'Security' : 'Unemployed'); }
+    if (this.kind === 'child') return 'Child'; if (this.kind === 'resident' && this.age >= 66 && !this.role) return 'Retired'; return this.role ? ROLES[this.role].name : (this.kind === 'visitor' ? 'Visitor' : this.kind === 'security' ? 'Security' : this.kind === 'raider' ? 'Intruder' : 'Unemployed'); }
   get sleeping() { return this.pose === 'sleep'; }
 
   // ---------- navigation ----------
@@ -85,6 +86,7 @@ export class Sim {
   step(dt) {
     const prevX = this.x, prevZ = this.z; this.moved = false; this.turning = false;
     if (this.freezeT > 0) { this.freezeT -= dt; this.vel = 0; this.dist = 0; return; }
+    if (this.down > 0) { this.down -= dt; this.vel = 0; this.dist = 0; if (this.down <= 0) { this.down = 0; this.recovering = true; } return; }
     if (this.pose === 'sleep') { this.vel = 0; return; }
     if (this.glide && this.path.length && !this.sitting) this.glide = null;
     if (this.glide) { const k = Math.min(1, dt * 7); this.x += (this.glide.x - this.x) * k; this.z += (this.glide.z - this.z) * k; if (Math.hypot(this.glide.x - this.x, this.glide.z - this.z) < 0.02) this.glide = null; }
@@ -95,7 +97,7 @@ export class Sim {
     const p = this.path[0], dx = p.x - this.x, dz = p.z - this.z, d = Math.hypot(dx, dz), exact = p.enter || p.exit || this.path.length === 1;
     const want = Math.atan2(dx, dz), dh = angleDiff(this.heading, want), rate = 8;
     this.heading += Math.max(-rate * dt, Math.min(rate * dt, dh));
-    const hurry = this.hurry ? 1.55 : 1, max = this.style.speed * hurry * (this.carry ? 0.8 : 1) * (this.kind === 'security' ? 1.4 : 1);
+    const hurry = this.hurry || this.panic ? 1.55 : 1, max = this.style.speed * hurry * (this.carry ? 0.8 : 1) * (this.kind === 'security' ? 1.4 : 1) * (this.kind === 'raider' ? 1.1 : 1);
     let target = Math.abs(dh) > 1.1 ? 0.15 : max; if (this.path.length === 1) target = Math.min(target, Math.max(0.5, d * 1.6));
     this.vel += Math.max(-8 * dt, Math.min(5 * dt, target - this.vel));
     let move = this.vel * dt; if (Math.abs(dh) > 1.1) this.turning = true;
@@ -115,10 +117,13 @@ export class Sim {
   // ---------- life ----------
   mealWindow(h) { return (h >= 7 && h < 9) || (h >= 12 && h < 14) || (h >= 18 && h < 20); }
   wantActivity(h) {
-    if (this.kind === 'visitor') return 'visit';
+    const alert = this.game.raids && this.game.raids.alert;
+    if (this.kind === 'raider') return 'raid';
+    if (this.kind === 'visitor') return alert ? 'leave' : 'visit';
     if (this.kind === 'security') return 'guard';
     if (this.leaving) return 'leave';
     const night = h >= 22 || h < 6;
+    if (alert) { if (this.role === 'guard' && this.kind === 'resident') return 'defend'; if (!(night && this.home)) return 'shelter'; }
     if (this.activity === 'eat' && this.eating && !night) return 'eat';
     const onShift = this.activity === 'work' && this.workplace && h >= 12 && h < 14 && this.hunger < 70;
     if (!night && !onShift && this.eatCD <= 0 && (this.hunger >= 64 || (this.hunger >= 36 && this.mealWindow(h)))) return 'eat';
@@ -139,6 +144,7 @@ export class Sim {
     // mood drifts around the personality baseline
     this.moodBoost *= Math.exp(-dt * 0.02);
     this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + Math.min(0.2, this.friendCount() * 0.04);
+    if (this.down > 0) return;
     const want = this.wantActivity(h);
     if (want !== this.activity) { if (this.chat) g.social.endChat(this); this.endActivity(); this.activity = want; this.phase = 0; this.timer = 0; this.hurry = want === 'work' && h > (this.role === 'builder' ? 7.2 : 8.2) && this.trait !== 'shy' && Math.random() < 0.6; }
     if (this.chat) return;
@@ -153,13 +159,31 @@ export class Sim {
       case 'work': this.doWork(dt); break;
       case 'leisure': this.doLeisure(); break;
       case 'visit': this.doVisit(); break;
+      case 'shelter': this.doShelter(); break;
+      case 'raid': this.game.raids.drive(this, dt); break;
+      case 'defend': break;
       case 'leave': this.doLeave(); break;
       default: break;
     }
     if (this.hurry && this.activity !== 'work') this.hurry = false;
     if (this.hurry && this.phase === 2) this.hurry = false;
   }
+  doShelter() {
+    if (this.phase !== 0) return; const g = this.game; let b = this.home && this.home.state === 'done' ? this.home : null;
+    if (!b) { let bd = 1e9; for (const q of g.buildings.list) { if (q.state !== 'done' || q.def.open || q.def.park || !q.spots.idle.length || q.id === 'lift' || q.id === 'tunnel') continue; const d = Math.hypot(q.cx - this.x, q.cz - this.z); if (d < bd) { bd = d; b = q; } } }
+    this.panic = true; this.standUp();
+    if (!b) { this.phase = 2; return; } const i = pick(b.spots.idle); if (!this.goTo({ b, x: i.x, z: i.z })) this.phase = 2;
+    if (this.mesh.visible && Math.random() < 0.35) g.social.say(this, pick(ALERT_LINES), 2.2);
+  }
+  /** Knocked to the ground (not hurt for good): lies there, then gets back up a little shaken. */
+  knockDown(sec) {
+    if (this.down > 0 || this.kind === 'raider') return; const g = this.game;
+    if (g.buildings.count('clinic') > 0) sec *= 0.55;
+    this.abortJob(); this.standUp(); this.path = []; this.chat && g.social.endChat(this); this.carry = null; this.down = sec; this.moodBoost -= 0.25; this.packed = 0; this.eating = false; this.phase = 0;
+    if (this.mesh.visible) g.social.say(this, pick(DOWN_LINES), 2);
+  }
   endActivity() {
+    this.panic = false;
     if (this.pose === 'sleep') { this.pose = 'stand'; const s = this.bedSpot; if (s) { this.x = s.ax; this.z = s.az; } this.bedSpot = null; this.moodBoost -= 0.0; }
     this.standUp(); this.abortJob(); this.bag = false;
   }
@@ -318,6 +342,7 @@ export class Sim {
   decideAnim() {
     const g = this.game; let lower = 'stand', upper = 'idle', speaking = false;
     if (this.pose === 'sleep') return { lower: 'lie', upper: 'sleep' };
+    if (this.down > 0) return { lower: 'lie', upper: 'sedated' };
     if (this.sitting) { lower = 'sit'; upper = SEAT_UPPER[this.sitting.kind] || 'idle'; if (upper === 'type' && this.role === 'engineer') upper = 'type'; if (this.sitting.kind === 'bench' && this.mood < 0) upper = 'phone'; }
     else if (this.moved || this.vel > 0.15) lower = 'walk';
     else if (this.working) lower = 'crouch';
@@ -333,6 +358,8 @@ export class Sim {
     if (this.packed > 0) { upper = 'eat'; lower = 'stand'; }
     if (this.chat) { upper = this.chat.laugh > 0 ? 'laugh' : (this.chat.speaker ? 'talk' : 'listen'); speaking = this.chat.speaker; if (lower === 'walk') lower = 'stand'; }
     if (this.frozen) { upper = this.talkingToPlayer && this.game.ui.dialogue && this.game.ui.dialogue.shown < this.game.ui.dialogue.full.length ? 'talk' : 'listen'; lower = this.sitting ? 'sit' : 'stand'; speaking = upper === 'talk'; }
+    if (this.kind === 'raider') { if (this.atkT > 0) upper = this.weapon === 'pistol' ? 'aim' : 'strike'; else if (this.rstate === 'loot' && !this.moved) upper = 'carry'; }
+    if (this.kind === 'security' && this.fireT > 0) upper = 'aim';
     if (this.emote && this.emote.t > 0) upper = this.emote.upper;
     return { lower, upper, speaking };
   }
@@ -347,10 +374,11 @@ export class Sim {
     if (this.emote) { this.emote.t -= dt; if (this.emote.t <= 0) this.emote = null; }
     if (this.dog) this.dog.update(dt);
     if (this.freezeT > 0) dt = 0;
+    if (this.fireT > 0) this.fireT -= dt;
     this.updateLook(dt);
     const a = this.decideAnim(), carryCol = this.carry ? ({ timber: 0xb5834a, brick: 0xa8442f, steel: 0x7b8794, glass: 0x7ec8e3 }[this.carry.mat]) : undefined;
     this.anim.update(dt, { ...a, dist: this.moved ? (this.dist || 0) : 0, speed: this.vel, run: this.vel > 3.6 || (this.hurry && this.vel > 2.8), turning: this.turning && !this.moved, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: this.mood, tired: this.tired, crateColor: carryCol,
-      prop: this.bag && a.lower === 'walk' ? { handR: 'bag' } : (this.look.cane && !this.sitting && this.pose !== 'sleep' && (a.upper === 'idle') ? { handR: 'cane' } : undefined), lean: this.vel > 0.5 ? 0 : 0 });
+      prop: this.kind === 'raider' && this.down <= 0 ? { handR: this.weapon } : this.kind === 'security' && this.fireT > 0 ? { handR: 'pistol' } : this.bag && a.lower === 'walk' ? { handR: 'bag' } : (this.look.cane && !this.sitting && this.pose !== 'sleep' && (a.upper === 'idle') ? { handR: 'cane' } : undefined), lean: this.vel > 0.5 ? 0 : 0 });
     this.working = false;
     const castNear = d < 24; if (castNear !== this.castOn) { this.castOn = castNear; for (const p of this.rig.parts) p.castShadow = castNear; }
   }
