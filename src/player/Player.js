@@ -4,8 +4,9 @@ import { ROLES, MATERIALS } from '../data/buildings.js';
 import { T } from '../world/World.js';
 import { createRig } from '../render/SimRig.js';
 import { Animator } from '../render/Animator.js';
-import { clamp, angleDiff } from '../util.js';
+import { clamp, angleDiff, pick } from '../util.js';
 import { Sfx } from '../core/Sfx.js';
+import { PHONE_CALLS, PHONE_CALLS_CLEAN, HORSES, RACE_WIN, RACE_LOSE } from '../data/humour.js';
 
 const R = 0.4;
 export const TOOLS = { axe: 'Axe', pick: 'Pickaxe', shovel: 'Shovel', basket: 'Basket', rod: 'Fishing rod', hammer: 'Hammer' };
@@ -37,7 +38,31 @@ export class Player {
     r.visible = true; const pulse = 1 + Math.sin(performance.now() / 160) * 0.06; r.scale.set(s * pulse, s * pulse, 1); r.position.set(x, 0.08, z); r.material.color.setHex(t.work ? 0x7be08f : 0xffd23f);
   }
   teleport(x, z, heading) { if (this.seat) { this.seat.taken = null; this.seat = null; } this.x = x; this.z = z; if (heading !== undefined) { this.heading = heading; this.yaw = heading; } }
-  headPos() { return [this.x, 1.65, this.z]; }
+  headPos() { return [this.x, 1.65 + (this.jumpY || 0), this.z]; }
+  /** Play an emote (keys 1-8, G cycles). Some come with a cheeky line from Sam. */
+  emote(name) {
+    if (this.sleeping || this.sedated > 0) return; if (this.seat && ['dance', 'airguitar', 'wave'].includes(name)) name = 'cheer'; this.emoteName = name; this.emoteT = { dance: 4, airguitar: 3.5, clap: 2.4, think: 3, cheer: 2.2, shrug: 1.6, facepalm: 1.8, vsign: 1.6 }[name] || 2.2;
+    const g = this.game, near = g.population.sims.filter((s) => !s.hidden && s.kind !== 'security' && Math.hypot(s.x - this.x, s.z - this.z) < 7);
+    if (name === 'vsign' && near.length) { const s = near[0]; s.faceGoal = Math.atan2(this.x - s.x, this.z - s.z); s.emote = { upper: Math.random() < 0.5 ? 'vsign' : 'facepalm', t: 1.8 }; s.samRel = Math.max(0, (s.samRel || 0) - 1); if (s.mesh.visible) g.social.say(s, pick(g.ui.adult ? ['And the same to you, you cheeky sod!', 'Charming. Absolutely charming.', 'Oi! My nan does that better.', 'Up yours too, Sam.'] : ['Charming!', 'How rude!', 'Well, I never.']), 2.6); }
+    else if ((name === 'dance' || name === 'airguitar') && near.length) for (const s of near.slice(0, 3)) { if (s.chat || s.sitting || Math.random() < 0.3) continue; s.emote = { upper: Math.random() < 0.5 ? 'clap' : name === 'dance' ? 'dance' : 'cheer', t: 3 }; if (Math.random() < 0.5 && s.mesh.visible) g.social.say(s, pick(name === 'dance' ? ['Go on, Sam!', 'Bloody hell, it\'s Bez from the Happy Mondays.', 'Dad dancing alert!', 'You\'ve got moves like a shopping trolley.'] : ['Wonderwall! Do Wonderwall!', 'Is that Blur or Oasis?', 'Rock and roll, mate!']), 2.4); }
+    else if (name === 'facepalm' && near.length && Math.random() < 0.5 && near[0].mesh.visible) g.social.say(near[0], pick(['Bad day, love?', 'Cheer up, it might never happen.', 'That bad, eh?']), 2.2);
+  }
+  /** The red phone box: 10p for a random (often rude) call. */
+  phoneCall() {
+    const g = this.game; if (this.callT > 0) return; if (!g.economy.spend(0.1)) { g.ui.toast('You haven\'t got 10p. Skint.'); return; }
+    this.callT = 4; Sfx.play('ring'); const L = g.ui.adult ? PHONE_CALLS : PHONE_CALLS_CLEAN, [who, text] = pick(L); g.flags.calls = (g.flags.calls || 0) + 1;
+    setTimeout(() => { g.messages.push('☎ ' + who, text, ''); g.ui.toast('☎ ' + who + ': ' + text, 6000); }, 1800);
+  }
+  /** The Bookies: £20 on a horse. Odds are rubbish, as is tradition. */
+  placeBet() {
+    const g = this.game, stake = 20; if (this.betT > 0) return; if (!g.economy.spend(stake)) { g.ui.toast('The bookie laughs at your empty wallet.'); return; }
+    this.betT = 5; const h = pick(HORSES), odds = pick([2, 3, 4, 6, 10]), win = Math.random() < 0.85 / odds + 0.05; Sfx.play('horse'); g.ui.toast(`£${stake} on ${h} at ${odds}/1. They\'re off...`, 2600); this.emote('think');
+    setTimeout(() => {
+      if (win) { const w = stake * (odds + 1); g.economy.earn(w); Sfx.play('cash'); this.emote('cheer'); g.ui.toast(pick(RACE_WIN).replace('{h}', h).replace('{w}', w), 5000); }
+      else { this.emote(g.ui.adult && Math.random() < 0.4 ? 'vsign' : 'facepalm'); g.ui.toast(pick(RACE_LOSE).replace('{h}', h).replace('{s}', stake), 5000); }
+    }, 2800);
+  }
+  jump() { if (this.jumpT > 0 || this.seat || this.sleeping || this.sedated > 0 || this.down > 0) return; this.jumpT = 0.62; Sfx.play('jump'); }
 
   // ---------- backpack ----------
   invTotal() { let n = 0; for (const v of Object.values(this.inv)) n += v; return n; }
@@ -55,7 +80,9 @@ export class Player {
 
   update(dt, rawDt) {
     const g = this.game, inp = g.input, sim = g.mode === 'sim' && !g.ui.modalOpen && !g.ending;
-    this.moved = false; this.working = false; this.dist = 0; if (this.emoteT > 0) this.emoteT -= rawDt; if (this.strikeT > 0) this.strikeT -= rawDt; if (this.shake > 0) this.shake = Math.max(0, this.shake - rawDt * 1.5);
+    this.moved = false; this.working = false; this.dist = 0; if (this.emoteT > 0) this.emoteT -= rawDt;
+    if (this.callT > 0) this.callT -= rawDt; if (this.betT > 0) this.betT -= rawDt;
+    if (this.jumpT > 0) { this.jumpT = Math.max(0, this.jumpT - rawDt); const u = 1 - this.jumpT / 0.62; this.jumpY = Math.sin(u * Math.PI) * 0.75; } else this.jumpY = 0; if (this.strikeT > 0) this.strikeT -= rawDt; if (this.shake > 0) this.shake = Math.max(0, this.shake - rawDt * 1.5);
     if (this.sedated > 0) { this.sedated -= rawDt; if (this.sedated <= 0) this.wakeFromSedation(); }
     if (this.down > 0) this.down -= rawDt; if (this.swingT > 0) this.swingT -= rawDt; if (this.swingT <= 0 && this.swingHit) this.swingHit = false;
     this.unstick();
@@ -85,7 +112,10 @@ export class Player {
         const ox = this.x, oz = this.z; this.tryMove(this.dirx * this.speed * rawDt, this.dirz * this.speed * rawDt); this.dist = Math.hypot(this.x - ox, this.z - oz); this.moved = this.dist > 0.0005;
         if (this.speed > 6 && this.moved && (this.dustT = (this.dustT || 0) - rawDt) <= 0) { this.dustT = 0.22; g.particles.burst(this.x, 0.1, this.z, g.world.road[g.world.idx(...g.world.tileOf(this.x, this.z))] ? 0xa88a62 : 0x8a9a62, 3, 0.4, 0.8, 0.07); }
       } else this.dist = 0;
-      if (inp.hit('KeyG') && this.emoteT <= 0) this.emoteT = 2.2;
+      const EM = ['wave', 'dance', 'cheer', 'shrug', 'facepalm', 'vsign', 'airguitar', 'clap', 'think'];
+      if (inp.hit('KeyG')) { this.emoteIdx = ((this.emoteIdx ?? -1) + 1) % EM.length; this.emote(EM[this.emoteIdx]); }
+      for (let i = 1; i <= 8; i++) if (inp.hit('Digit' + i)) this.emote(EM[i]);
+      if (inp.hit('Space')) this.jump();
       if (this.weapon && inp.hit('KeyF') && !(this.swingT > 0)) { this.swingT = 0.6; this.swingHit = false; }
       if (this.swingT > 0.3 && !this.swingHit && this.weapon) { this.swingHit = true; this.strike(); }
       if (inp.hit('KeyQ')) this.eat();
@@ -154,6 +184,7 @@ export class Player {
     if (g.raids.pickup && !this.weapon) { const q = g.raids.pickup, d = Math.hypot(q.x - px, q.z - pz); if (d < 2.6) consider({ kind: 'weapon', text: 'Take the militia club  (F to swing)' }, d - 1); }
     for (const it of g.tools.items) { if (it.taken) continue; const d = Math.hypot(it.x - px, it.z - pz); if (d < 2.5) consider({ kind: 'tool', item: it, text: `Pick up the ${TOOLS[it.id]}` }, d - 2); }
     { const cu = g.curios && g.curios.near(px, pz, 2.2); if (cu) consider({ kind: 'curio', item: cu, text: `Pick up something shiny...` }, Math.hypot(cu.x - px, cu.z - pz) - 1.5); }
+    { const L = g.lift, h = L && L.ext && L.ext.hatch; if (h) { const [hx, hz] = L.toWorld(h.x, h.z), d = Math.hypot(hx - px, hz - pz); if (d < 2.2) consider({ kind: 'hatch', b: L, text: 'Order supplies on the Lift intercom' }, d - 1.0, hx, hz); } }
     for (const p of g.piles.list) { const d = Math.hypot(p.x - px, p.z - pz); if (d < 2.2) consider({ kind: 'pile', pile: p, text: full ? 'Your backpack is full' : `Pick up ${Object.entries(p.items).map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }, d - 1.2); }
     for (const b of B) if (b.state === 'done' && b.def.park === 'camp' && (this.inv.food || 0) >= 2 && this.hunger > 15) { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 4.5) consider({ kind: 'cook', b, text: 'Cook a hot meal on the fire (uses 2 food)' }, d - 2.5); }
     for (const b of B) if (b.state === 'done' && b.spots.seat && (b.def.open || b.def.park || b === g.buildings.playerInside)) for (const s of b.spots.seat) { if (s.taken) continue; const d = Math.hypot(s.x - px, s.z - pz); if (d < (b.def.park === 'camp' ? 2.2 : 1.4)) consider({ kind: 'seat', seat: s, b, text: b.def.park === 'camp' ? 'Sit by the fire' : 'Sit down' }, d + 0.3, s.x, s.z); }
@@ -163,6 +194,8 @@ export class Player {
     }
     for (const b of B) {
       if (b.state === 'done') {
+        if (b.id === 'phonebox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) consider({ kind: 'phone', b, text: 'Make a call (10p)' }, d - 0.8, b.cx, b.cz); }
+        if (b.id === 'bookies' && b.spots.visit[0]) { const v = b.spots.visit[0], d = Math.hypot(v.x - px, v.z - pz); if (d < 2.2) consider({ kind: 'bet', b, text: 'Have a flutter on the horses (£20)' }, d - 0.6, v.x, v.z); }
         if (b.id === 'postbox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) { const n = g.mail.unread(); consider({ kind: 'post', b, text: n ? `Check the post (✉ ${n} new)` : 'Check the post' }, d - 1.0, b.cx, b.cz); } }
         for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: 'Use computer terminal' }, d); }
         for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.invTotal() ? `Store ${this.invText()} in the Stockyard` : 'Take what the building sites need from the Stockyard' }, d); }
@@ -226,6 +259,9 @@ export class Player {
     if (t.kind === 'sim' && e) g.startDialogue(t.sim);
     else if (t.kind === 'terminal' && e) { Sfx.play('ui'); g.ui.openTerminal(t.b); }
     else if (t.kind === 'post' && e) { Sfx.play('ui'); g.ui.openTerminal(t.b, 'post'); }
+    else if (t.kind === 'hatch' && e) { Sfx.play('ui'); g.ui.openTerminal(t.b, 'hatch'); }
+    else if (t.kind === 'phone' && e) this.phoneCall();
+    else if (t.kind === 'bet' && e) this.placeBet();
     else if (t.kind === 'depot' && e) this.useDepot();
     else if (t.kind === 'bed' && e) this.trySleep(t.spot);
     else if (t.kind === 'tool' && e) { g.tools.take(t.item); this.tools.add(t.item.id); Sfx.play('pickup'); g.ui.toast(`You take the ${TOOLS[t.item.id]}. It goes on your belt.`, 2600); }
@@ -246,15 +282,18 @@ export class Player {
     if (t.b) { const b = t.b, dx = Math.max(b.x0 * TILE - this.x, 0, this.x - (b.x0 + b.w) * TILE), dz = Math.max(b.z0 * TILE - this.z, 0, this.z - (b.z0 + b.d) * TILE); return Math.hypot(dx, dz); }
     return 0;
   }
-  stillValid(t) { if (t.kind === 'gather') return t.node.kind === 'tree' ? t.node.alive : (t.node.infinite || t.node.amount >= 1); if (t.kind === 'site') return t.b.state === 'site'; if (t.kind === 'road') return this.game.roadPlans.has(t.plan.x, t.plan.z); return true; }
+  stillValid(t) { if (t.kind === 'site' && t.work) return t.b.state === 'site' && this.game.construction.workable(t.b); if (t.kind === 'gather') return t.node.kind === 'tree' ? t.node.alive : (t.node.infinite || t.node.amount >= 1); if (t.kind === 'site') return t.b.state === 'site'; if (t.kind === 'road') return this.game.roadPlans.has(t.plan.x, t.plan.z); return true; }
 
   /** Timing minigame: every tap is graded; holding the button works slowly on its own. */
   doWork(t, dt, tap, held) {
-    const g = this.game, wg = g.workgame; wg.start(t.work, this.targetKey(t));
+    const g = this.game, wg = g.workgame;
+    if (t.kind === 'site' && !g.construction.workable(t.b)) { wg.stop(); this.lock = null; return; }   // out of materials: nothing to hammer
+    wg.start(t.work, this.targetKey(t));
     if (tap || held) { this.lockT = performance.now(); if (this.lock !== t) { this.lock = t; this.lockPos = { x: this.x, z: this.z }; } }
     const fx = t.node ? t.node.x : t.b ? t.b.cx : t.plan.cx, fz = t.node ? t.node.z : t.b ? t.b.cz : t.plan.cz; let value = 0;
     if (tap) {
       const r = wg.press(); value = r.q === 'none' ? 0 : r.fish ? (r.q === 'miss' ? 0 : 1.2) * r.mult : STROKE[r.q] * r.mult;
+      if (r.q === 'perfect' && wg.combo >= 3) this.chainSpill(wg.combo, t);
       if (t.node) { if (t.nk === 'tree') { g.terrain.hitTree(t.node); g.terrain.fallFrom = { x: this.x, z: this.z }; } else g.resources.shake(t.node); } this.strikeT = 0.5; this.faceTo(fx, fz); if (r.q === 'perfect') this.shake = 0.25;
       const hx = this.x + (fx - this.x) * 0.6, hz = this.z + (fz - this.z) * 0.6; g.particles.burst(hx, t.work === 'build' ? 0.8 : 1.0, hz, t.nk === 'berry' ? (Math.random() < 0.5 ? 0xc0243a : 0x7a2a8a) : t.nk === 'field' ? 0xe0c050 : CHIP[t.work], r.q === 'perfect' ? 14 : r.q === 'good' ? 8 : 3, 1, 3.2);
     }
@@ -287,6 +326,12 @@ export class Player {
   }
   sitOn(seat, b) { seat.taken = 'player'; this.seat = Object.assign(seat, { b }); this.prevPos = { x: this.x, z: this.z }; this.x = seat.x; this.z = seat.z; this.heading = seat.heading; Sfx.play('ui'); this.game.workgame.stop(); this.lock = null; }
   standUp() { const s = this.seat; if (!s) return; s.taken = null; this.seat = null; this.x = s.x + Math.sin(s.heading) * 0.8; this.z = s.z + Math.cos(s.heading) * 0.8; this.unstick(); }
+  /** A hot chain of golds spills over: the nearest unfinished sites get a little progress for free. */
+  chainSpill(combo, t) {
+    const g = this.game, frac = 0.003 * Math.min(combo, 10), sites = g.buildings.list.filter((b) => b.state === 'site' && b !== t.b).sort((a, c) => Math.hypot(a.cx - this.x, a.cz - this.z) - Math.hypot(c.cx - this.x, c.cz - this.z)).slice(0, 2);
+    let any = false; for (const s of sites) { if (Math.hypot(s.cx - this.x, s.cz - this.z) > 80) continue; const got = g.buildings.bonusWork(s, frac); if (got > 0) { any = true; g.particles.burst(s.cx, 2.5, s.cz, 0xffd23f, 10, 1.5, 3, 0.1); } }
+    if (any && performance.now() - (this.spillMsgT || 0) > 4000) { this.spillMsgT = performance.now(); g.ui.toast(`🔥 Chain x${combo}! The buzz spreads: nearby building sites get a little done too.`, 2600); }
+  }
   finished(b) { const g = this.game; Sfx.play('done'); g.particles.burst(b.cx, 3, b.cz, 0xffd23f, 30, 2.5, 5, 0.16); g.ui.toast(`${b.def.name} finished!`, 2800); }
   faceTo(x, z) { this.heading = Math.atan2(x - this.x, z - this.z); }
   takePile(p) {
@@ -341,12 +386,12 @@ export class Player {
   syncMesh(dt) {
     const g = this.game, m = this.mesh, godView = g.mode === 'god'; this.rig.lod.visible = false;
     m.visible = !(g.mode === 'sim' && !this.third && !this.sleeping);
-    m.position.set(this.x, 0, this.z); m.rotation.y = this.heading;
+    m.position.set(this.x, this.jumpY || 0, this.z); m.rotation.y = this.heading;
     const aim = Math.atan2(-Math.sin(this.yaw), -Math.cos(this.yaw)), ty = this.sleeping || this.sedated > 0 || this.down > 0 ? 0 : clamp(angleDiff(this.heading, aim), -1.1, 1.1), tp = -this.pitch * 0.8;
     const k = Math.min(1, dt * 8); this.lookYaw += (ty - this.lookYaw) * k; this.lookPitch += (tp - this.lookPitch) * k;
     let lower = 'stand', upper = 'idle'; const t = this.target, carrying = this.invTotal() > 0;
     if (this.sleeping) { lower = 'lie'; upper = 'sleep'; }
-    else if (this.seat) { lower = 'sit'; upper = this.seat.b && this.seat.b.def.park === 'camp' ? 'watch' : 'idle'; }
+    else if (this.seat) { lower = 'sit'; const sb = this.seat.b; upper = sb && sb.def.park === 'camp' ? 'watch' : this.seat.kind === 'pew' ? 'pray' : sb && sb.def.dining && this.seat.kind === 'dining' ? 'drink' : this.seat.kind === 'sofa' ? 'watch' : 'idle'; if (this.emoteT > 0 && ['cheer', 'clap', 'think', 'facepalm', 'vsign', 'shrug'].includes(this.emoteName)) upper = this.emoteName; }
     else if (this.sedated > 0 || this.down > 0) { lower = 'lie'; upper = 'sedated'; }
     else {
       if (this.speed > 0.3 && this.moved) lower = 'walk';
@@ -358,7 +403,8 @@ export class Player {
       else if (carrying && this.invTotal() >= 6) upper = 'carry';
       else if (g.ui.terminalB) upper = 'type';
       else if (g.ui.dialogue) upper = 'listen';
-      if (this.emoteT > 0 && lower !== 'crouch') upper = 'wave';
+      if (this.emoteT > 0 && lower !== 'crouch') { upper = this.emoteName || 'wave'; if (this.moved && (upper === 'dance' || upper === 'airguitar')) upper = 'cheer'; }
+      if (this.jumpT > 0) { lower = 'jump'; if (!(this.emoteT > 0)) upper = 'jump'; }
       if (this.swingT > 0) upper = 'strike';
     }
     let big = null, bn = 0; for (const [mm, n] of Object.entries(this.inv)) if (n > bn) { bn = n; big = mm; }

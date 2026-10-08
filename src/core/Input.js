@@ -40,7 +40,7 @@ export class Input {
         if (cur[9]) want.add('Tab'); if (cur[8]) want.add('KeyP');
         if (mode === 'sim') {
           this.mouse.dx += P.rx * 1000 * dt; this.mouse.dy += P.ry * 800 * dt;
-          if (cur[0]) want.add('KeyE'); if (cur[2] || cur[7]) want.add('KeyF'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[11]) want.add('KeyM'); if (cur[12]) want.add('KeyI'); if (cur[13]) want.add('KeyR'); if (cur[14]) want.add('KeyJ');
+          if (cur[0]) want.add('KeyE'); if (cur[2] || cur[7]) want.add('KeyF'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[11]) want.add('KeyM'); if (cur[12]) want.add('KeyI'); if (cur[13]) want.add('KeyR'); if (cur[14]) want.add('KeyJ'); if (cur[6]) want.add('Space');
         } else if (mode === 'god') {
           if (P.rx < -0.4) want.add('KeyQ'); if (P.rx > 0.4) want.add('KeyE'); if (cur[3]) want.add('KeyR'); if (cur[2]) want.add('KeyF'); if (cur[1]) want.add('Escape');
           P.zoomAcc += (P.ry + (cur[6] ? -1 : 0) + (cur[7] ? 1 : 0)) * dt * 9; while (Math.abs(P.zoomAcc) >= 1) { this.mouse.wheel += Math.sign(P.zoomAcc); P.zoomAcc -= Math.sign(P.zoomAcc); }

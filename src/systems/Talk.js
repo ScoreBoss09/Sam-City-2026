@@ -1,4 +1,5 @@
 import * as D from '../data/dialogue.js';
+import { A } from '../data/humour.js';
 import { ROLES } from '../data/buildings.js';
 import { mulberry32, pick } from '../util.js';
 
@@ -10,6 +11,8 @@ const hashStr = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) 
  */
 export class Talk {
   constructor(game) { this.game = game; }
+  /** With adult humour on, half the time use the 18+ line bank instead (never for children). */
+  mix(base, extra, s) { return this.game.ui.adult && extra && extra.length && (!s || s.kind !== 'child') && Math.random() < 0.5 ? extra : base; }
   /** Stable personal details per townsperson, generated from their name. */
   persona(s) {
     if (s.persona) return s.persona; const r = mulberry32(hashStr(s.name || 'x'));
@@ -29,9 +32,10 @@ export class Talk {
   greet(s) {
     const g = this.game, h = g.clock.hour, rel = s.samRel || 0; let lines;
     if (s.kind === 'child') lines = D.GREET.child; else if (s.kind === 'visitor') lines = D.GREET.visitor;
-    else lines = rel >= 40 ? D.GREET.friend : rel >= 8 ? D.GREET.acquaintance : D.GREET.stranger;
+    else { const k = rel >= 40 ? 'friend' : rel >= 8 ? 'acquaintance' : 'stranger'; lines = this.mix(D.GREET[k], A.GREET[k], s); }
+    if (s.kind === 'visitor') lines = this.mix(lines, A.GREET.visitor, s);
     let t = this.fill(pick(lines), s);
-    if (s.kind !== 'child' && Math.random() < 0.5) { const extra = g.weather && g.weather.rain > 0.4 ? D.GREET.rain : (h >= 22 || h < 5) ? D.GREET.night : h < 11 ? D.GREET.morning : h >= 17 ? D.GREET.evening : null; if (extra) t += ' ' + pick(extra); }
+    if (s.kind !== 'child' && Math.random() < 0.5) { const k = g.weather && g.weather.rain > 0.4 ? 'rain' : (h >= 22 || h < 5) ? 'night' : h < 11 ? 'morning' : h >= 17 ? 'evening' : null; if (k) t += ' ' + pick(this.mix(D.GREET[k], A.GREET[k], s)); }
     return t;
   }
   reply(s, topic) {
@@ -42,27 +46,28 @@ export class Talk {
     else if (topic === 'how') {
       if (s.kind === 'child') text = pick(D.CHILD_TALK);
       else {
-        const m = s.mood ?? 0; text = pick(m > 0.35 ? D.MOOD.happy : m > -0.05 ? D.MOOD.content : m > -0.4 ? D.MOOD.fedup : D.MOOD.miserable);
+        const m = s.mood ?? 0, mk = m > 0.35 ? 'happy' : m > -0.05 ? 'content' : m > -0.4 ? 'fedup' : 'miserable'; text = pick(this.mix(D.MOOD[mk], A.MOOD[mk], s));
         const why = []; if (s.hunger > 65) why.push('hungry'); if (s.tired) why.push('tired'); if (!s.home && s.kind === 'resident') why.push('homeless');
         if (s.partner) why.push('partner'); else if (s.kind === 'resident' && s.friendCount && s.friendCount() === 0) why.push('lonely');
         if (s.arrivalDay !== undefined && g.clock.day - s.arrivalDay < 2) why.push('newcomer'); if (g.raids && g.raids.count && g.raids.state !== 'idle') why.push('raid');
         if (s.kind === 'resident' && s.age < 66) why.push(s.workplace ? 'work' : 'nowork');
-        if (why.length) text += ' ' + this.fill(pick(D.REASON[pick(why.slice(0, 2))]), s);
+        if (why.length) { const r = pick(why.slice(0, 2)); text += ' ' + this.fill(pick(this.mix(D.REASON[r], A.REASON[r], s)), s); }
       }
     } else if (topic === 'work') {
       const key = s.kind === 'child' ? 'child' : s.kind === 'visitor' ? 'visitor' : s.role && D.WORK[s.role] ? s.role : s.age >= 66 ? 'retired' : 'unemployed';
-      text = pick(D.WORK[key]); if (s.workplace && Math.random() < 0.4) text += ` I work at the ${s.workplace.def.name}, you know.`;
+      text = pick(this.mix(D.WORK[key] || D.WORK.unemployed, A.WORK[key], s)); if (s.workplace && Math.random() < 0.4) text += ` I work at the ${s.workplace.def.name}, you know.`;
     } else if (topic === 'news') {
       const slip = g.story.slipLine(); page = g.story.pageFor(s);
       text = slip && Math.random() < 0.6 ? slip : this.gossip(s);
       if (page) text += '  ...Here, take this. Found it in the bins behind the office. Didn\'t get it from me, alright?';
     } else if (topic === 'about') {
       if (s.kind === 'child') text = pick(['My favourite thing is ', 'I really like ']) + pick(['frogs!', 'climbing trees.', 'the campfire.', 'my teacher. Don\'t tell anyone.', 'jam sandwiches.', 'the seagulls. They\'re naughty.']);
-      else { text = this.fill(D.ABOUT[P.about], s) + ' ' + this.fill(pick(D.ABOUT2), s); if ((s.samRel || 0) > 15 && Math.random() < 0.6) text += ' ' + this.fill(D.FAMILY[P.fam], s); }
+      else { text = this.fill(D.ABOUT[P.about], s) + ' ' + this.fill(pick(this.mix(D.ABOUT2, A.ABOUT2, s)), s); if ((s.samRel || 0) > 15 && Math.random() < 0.6) text += ' ' + this.fill(D.FAMILY[P.fam], s); }
     } else if (topic === 'help') text = this.advice(s);
-    else if (topic === 'bye') text = pick(s.trait === 'grumpy' ? D.BYE_GRUMPY : s.trait === 'shy' ? D.BYE_SHY : D.BYE);
+    else if (topic === 'bye') text = pick(s.kind === 'child' ? D.BYE : s.trait === 'grumpy' ? this.mix(D.BYE_GRUMPY, A.BYE_GRUMPY, s) : s.trait === 'shy' ? D.BYE_SHY : this.mix(D.BYE, A.BYE, s));
     const o = topic === 'bye' ? '' : open, soft = /[,.]{0,1}\.\.\. $|, $|I suppose $/.test(o) || o === 'Ooh, ';
-    const body = soft && !/^I[ ']/.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text.charAt(0).toUpperCase() + text.slice(1);
+    const w0 = text.split(/[ ,.!?']/)[0], proper = /^I$/.test(w0) || D.TOWNS.some((t) => text.startsWith(t)) || /^(Sam|Mr|Mrs|Euro|Oasis|Blur|Noel|Del|Gazza|Ulrika|Gladiators|Teletext|Christmas|Sunday|Friday|Tuesday|Thursday)/.test(w0) || (s.first && w0 === s.first);
+    const body = soft && !proper ? text.charAt(0).toLowerCase() + text.slice(1) : text.charAt(0).toUpperCase() + text.slice(1);
     return { text: o + body, page };
   }
   gossip(s) {
@@ -78,8 +83,9 @@ export class Talk {
     if (g.weather && g.weather.rain > 0.3) opts.push(['rain', {}]);
     if (P.count() > 12) opts.push(['growing', {}]);
     if ((s.samRel || 0) > 10) opts.push(['sam', {}]);
+    if (g.buildings.count('tavern') && res.length) opts.push(['pub', { a: pick(res).first }]);
     opts.push(['quiet', {}]);
-    const [k, extra] = pick(opts); return this.fill(pick(D.GOSSIP[k]), s, extra);
+    const [k, extra] = pick(opts); return this.fill(pick(this.mix(D.GOSSIP[k] || A.GOSSIP[k], A.GOSSIP[k], s)), s, extra);
   }
   advice(s) {
     const g = this.game, B = g.buildings, E = g.economy, P = g.population, p = g.player, tips = [];
@@ -92,7 +98,7 @@ export class Talk {
     if (!B.count('contractor') && P.count() >= 4) tips.push(D.HELP.builders);
     if (p.hunger > 55) tips.push(D.HELP.hungrySam); if (p.energy < 35) tips.push(D.HELP.tiredSam);
     if (g.roadPlans.count) tips.push(D.HELP.roads); if (g.raids && g.raids.count) tips.push(D.HELP.raid);
-    tips.push(D.HELP.minigame, pick(D.HELP.generic));
+    tips.push(D.HELP.minigame, pick(this.mix(D.HELP.generic, A.HELP, s)));
     return g.ui.keyText(tips[Math.floor(Math.random() * Math.min(3, tips.length))]);
   }
 }

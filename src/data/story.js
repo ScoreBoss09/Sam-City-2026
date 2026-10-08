@@ -3,7 +3,7 @@
 
 export const SCRIPT_PAGES = [
   'Running order, day 412 — "SAM walks to the Town Hall. Nobody mentions the Lift. If SAM looks up for more than five seconds, bring in some cloud."',
-  'Staff notice — "The east tunnel is CLOSED, utility access only. Gate guards change over between 02:00 and 04:00. The gate is unmanned in that window. Nobody tells SAM."',
+  'Staff notice — "Lift crew change over between 02:00 and 04:00. The platform is unmanned in that window. Nobody tells SAM."',
   'Contingency sheet — "If SAM reaches the edge of the set: sedate, return to hospital or town square, resume the day as normal."',
 ];
 
@@ -55,11 +55,11 @@ export const SLIPS = [
   ],
   [
     'You ever look up at night and feel the sky\'s a bit... close?',
-    'They don\'t like anyone going near the east tunnel. Take my word.',
+    'They don\'t like anyone going near the Lift at night. Take my word.',
     'Strange thing: the Lift never seems to go back up with anyone in it.',
   ],
   [
-    'Go at night, when the gate guards change over. I never said that.',
+    'Go at night, when the Lift crew change over. I never said that.',
     'Take care of yourself, Sam. You\'ve been good to us.',
   ],
 ];
@@ -114,7 +114,7 @@ export const OBJECTIVES = [
   ]),
   obj('yard2', '10. Builders and lumber', [step('Post permit forms (Postbox) for a Lumber Camp and a Builders\' Yard, then build both.', (g) => g.buildings.count('lumbercamp') && g.buildings.count('contractor'), (g) => siteOf(g, 'lumbercamp') || siteOf(g, 'contractor'))]),
   obj('hamlet', '11. Grow the hamlet', [step('Reach 15 residents: build Log Cabins, a Quarry and a Farm.', (g) => g.population.count() >= 15 && g.buildings.count('quarry') && g.buildings.count('farm'), (g) => nearestSite(g))]),
-  obj('village', '12. A proper village', [step('Raise a Tavern and a Brickworks, then begin on Stone Cottages.', (g) => g.buildings.count('tavern') && g.buildings.count('brickworks') && g.buildings.count('cottage') >= 1, (g) => nearestSite(g))]),
+  obj('village', '12. A proper village', [step('Raise a pub (The Red Lion) and a Brickworks, then begin on Stone Cottages.', (g) => g.buildings.count('tavern') && g.buildings.count('brickworks') && g.buildings.count('cottage') >= 1, (g) => nearestSite(g))]),
   obj('town', '13. Become a town', [step('Reach 30 residents with a Town Hall and a Schoolhouse.', (g) => g.population.count() >= 30 && g.buildings.count('townhall') && g.buildings.count('school'), (g) => nearestSite(g))]),
   obj('city', '14. Become a city', [step('Grow to 60 residents with a Glassworks, a Foundry and a Hospital.', (g) => g.population.count() >= 60 && g.buildings.count('glassworks') && g.buildings.count('foundry') && g.buildings.count('clinic'), (g) => nearestSite(g))]),
   obj('landmark', '15. Crown the skyline', [step('Build the Grand Hotel or Sam Tower.', (g) => g.largeCount() >= 1, (g) => nearestSite(g))]),

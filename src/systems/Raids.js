@@ -3,9 +3,10 @@ import { MAP, TILE, DAY_SECONDS } from '../config.js';
 import { T } from '../world/World.js';
 import { Sim } from '../sim/Sim.js';
 import { pick, clamp } from '../util.js';
+import { A } from '../data/humour.js';
 import { RAIDER_LINES, RAIDER_SLIPS, ALERT_LINES, ALERT_SLIPS, DOWN_LINES, RAID_CALM_LINES } from '../data/story.js';
 
-const LOOT_TARGETS = ['stockyard', 'farm', 'forager', 'fisher', 'tavern', 'shop', 'lumbercamp', 'quarry'];
+const LOOT_TARGETS = ['stockyard', 'farm', 'forager', 'fisher', 'tavern', 'shop', 'lumbercamp', 'quarry', 'bakery', 'chippy', 'newsagent', 'allotment'];
 
 /**
  * Occasional raids. A small band lands from the sea, heads for the Stockyard and the food stores, shoves anyone in their way
@@ -40,7 +41,7 @@ export class Raids {
 
   /** A sandy shore tile away from the gates, joined by land to the Stockyard. */
   landing() {
-    const g = this.game, w = g.world, c = [], gates = [g.lift.doorOut, g.tunnel.doorOut], tgt = (g.depot || g.townhall || g.lift).doorTile;
+    const g = this.game, w = g.world, c = [], gates = [g.lift.doorOut], tgt = (g.depot || g.townhall || g.lift).doorTile;
     for (let z = 1; z < MAP - 1; z++) for (let x = 1; x < MAP - 1; x++) {
       const i = w.idx(x, z); if (w.terrain[i] !== T.SAND || w.road[i] || w.occ[i]) continue;
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (w.terrain[w.idx(x + dx, z + dz)] === T.WATER) { c.push({ x, z, dx, dz }); break; }
@@ -114,7 +115,7 @@ export class Raids {
   }
   bark() {
     const g = this.game, soc = g.social; const live = this.raiders.filter((r) => !r.captured && !r.remove && !r.down);
-    const r = pick(live.length ? live : [null]); if (r && r.mesh.visible) soc.say(r, g.story.stage >= 2 && Math.random() < 0.18 ? pick(RAIDER_SLIPS) : pick(RAIDER_LINES), 2.4);
+    const r = pick(live.length ? live : [null]); if (r && r.mesh.visible) soc.say(r, g.story.stage >= 2 && Math.random() < 0.18 ? pick(RAIDER_SLIPS) : pick(g.ui.adult && Math.random() < 0.5 ? A.RAIDER : RAIDER_LINES), 2.4);
     const cit = g.population.sims.filter((s) => (s.kind === 'resident' || s.kind === 'child') && s.mesh.visible && !s.sleeping && !s.down && !s.inside && s.activity === 'shelter');
     const c = cit.length ? pick(cit) : null; if (c) soc.say(c, g.story.stage >= 2 && Math.random() < 0.25 ? pick(ALERT_SLIPS) : pick(ALERT_LINES), 2.4);
   }

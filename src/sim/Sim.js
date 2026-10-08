@@ -16,7 +16,7 @@ const STYLES = {
   busy:     { speed: 3.3,  bounce: 1.0, slouch: 0.1, swing: 1.1, fidget: 0.9, soc: 0.4, mood: 0.0 },
 };
 const ROLE_UPPER = { publican: 'tidy', teacher: 'clipboard', brickmaker: 'idle', smith: 'idle', shopkeeper: 'tidy', doctor: 'clipboard', guard: 'guard', engineer: 'panel', factory: 'lever', clerk: 'clipboard', builder: 'idle' };
-const SEAT_UPPER = { desk: 'type', sofa: 'watch', bench: 'idle', dining: 'eat', waiting: 'read' };
+const SEAT_UPPER = { desk: 'type', sofa: 'watch', bench: 'idle', dining: 'eat', waiting: 'read', pew: 'pray' };
 
 /**
  * An NPC citizen ("actor"). Schedule-driven state machine (sleep -> home -> work -> leisure) with
@@ -143,13 +143,15 @@ export class Sim {
     if (this.mood < -0.6 && this.kind === 'resident' && !this.leaving) { this.sadT += dt; if (this.sadT > 220) { this.leaving = true; g.messages.push('Lift', `${this.name} has packed up and left for good.`, 'warn'); } } else this.sadT = Math.max(0, this.sadT - dt * 0.5);
     // mood drifts around the personality baseline
     this.moodBoost *= Math.exp(-dt * 0.02);
-    this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + Math.min(0.2, this.friendCount() * 0.04);
+    this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + Math.min(0.2, this.friendCount() * 0.04) + (this.kind !== 'visitor' ? g.buildings.townJoy() : 0);
     if (this.down > 0) return;
     const want = this.wantActivity(h);
     if (want !== this.activity) { if (this.chat) g.social.endChat(this); this.endActivity(); this.activity = want; this.phase = 0; this.timer = 0; this.hurry = want === 'work' && h > (this.role === 'builder' ? 7.2 : 8.2) && this.trait !== 'shy' && Math.random() < 0.6; }
     if (this.chat) return;
     // workers take a packed lunch where they stand
     if (this.activity === 'work' && !this.carry && h >= 12 && h < 14 && this.hunger >= 36 && this.packedDay !== g.clock.totalDays && this.eatCD <= 0 && g.economy.stock.food >= 1) { this.packed = 6; this.packedDay = g.clock.totalDays; }
+    // properly starving and nowhere to sit: wolf down a sandwich on the spot rather than leave town
+    if (this.hunger >= 93 && this.pose !== 'sleep' && !this.carry && !(this.eating && this.phase === 2 && !this.path.length) && !(this.packed > 0) && this.kind !== 'raider' && g.economy.stock.food >= 1) { this.packed = 4; this.eating = false; this.path = []; this.phase = 0; if (this.mesh.visible && Math.random() < 0.3) g.social.say(this, pick(g.ui.adult && this.kind !== 'child' ? ['Starving. Out the way.', 'Sod it, I\'m eating here.', 'Don\'t judge me.'] : ['So hungry...', 'Just a quick bite.']), 2); }
     if (this.packed > 0) { this.packed -= dt; this.working = false; if (this.packed <= 0) { if (g.economy.eatPortion()) { this.hunger = Math.max(0, this.hunger - 62); this.moodBoost += 0.04; } this.eatCD = 30; } return; }
     switch (this.activity) {
       case 'sleep': this.doSleep(); break;
@@ -185,7 +187,7 @@ export class Sim {
   endActivity() {
     this.panic = false;
     if (this.pose === 'sleep') { this.pose = 'stand'; const s = this.bedSpot; if (s) { this.x = s.ax; this.z = s.az; } this.bedSpot = null; this.moodBoost -= 0.0; }
-    this.standUp(); this.abortJob(); this.bag = false;
+    this.standUp(); this.abortJob(); this.bag = false; this.drinking = false; this.bandT = 0;
   }
   friendCount() { let n = 0; for (const v of this.rel.values()) if (v >= 35) n++; return n; }
   doEat(dt) {
@@ -193,12 +195,14 @@ export class Sim {
     if (this.phase === 0) {
       if (E.stock.food < 1) { this.noFood(); return; }
       const opts = [], seatsAt = (b, kind) => this.freeSeat(b, [kind]);
-      const home = this.home && this.home.state === 'done' ? this.home : null, taverns = g.buildings.byDef('tavern').filter((b) => seatsAt(b, 'dining').length), camps = g.buildings.list.filter((b) => b.def.park === 'camp' && b.state === 'done' && seatsAt(b, 'bench').length);
+      const home = this.home && this.home.state === 'done' ? this.home : null, taverns = g.buildings.diners().filter((b) => seatsAt(b, 'dining').length), camps = g.buildings.list.filter((b) => b.def.park === 'camp' && b.state === 'done' && seatsAt(b, 'bench').length);
       const meal = h < 9 || h >= 18;
       if (home && seatsAt(home, 'dining').length) for (let i = 0; i < (meal ? 4 : 2); i++) opts.push(['home', home, 'dining']);
       if (taverns.length) for (let i = 0; i < (meal ? 1 : 3); i++) opts.push(['tavern', pick(taverns), 'dining']);
       if (camps.length) for (let i = 0; i < 2; i++) opts.push(['camp', pick(camps), 'bench']);
       let ok = false;
+      if (this.hunger > 80) { for (const t of taverns) opts.push(['tavern', t, 'dining']); for (const c of camps) opts.push(['camp', c, 'bench']); }
+      if (this.hunger > 80 && opts.length) { const dd = (o) => Math.hypot(o[1].cx - this.x, o[1].cz - this.z); const best = opts.reduce((a, o) => (dd(o) < dd(a) ? o : a)); opts.length = 0; opts.push(best); }   // starving: nearest food wins
       if (opts.length) { const [kind, b, sk] = pick(opts), seat = pick(seatsAt(b, sk)); this.eatKind = kind; this.eatPlace = b; ok = this.goTo({ b, x: seat.x, z: seat.z, seat }); }
       else if (home) { const i = pick(home.spots.idle); this.eatKind = 'home'; this.eatPlace = home; ok = this.goTo({ b: home, x: i.x, z: i.z }); }
       if (!ok) { this.eatCD = 6; this.phase = 2; return; }
@@ -207,7 +211,7 @@ export class Sim {
       this.eatTimer -= dt; this.working = false;
       if (this.eatTimer <= 0) {
         this.eating = false; this.eatCD = 28 + Math.random() * 8;
-        if (E.eatPortion()) { this.hunger = Math.max(0, this.hunger - 72); this.moodBoost += 0.06 + (this.eatKind === 'tavern' ? 0.1 : 0) + (this.eatKind === 'camp' ? 0.05 : 0); if (this.eatKind === 'tavern') E.earn(2); }
+        if (E.eatPortion()) { this.hunger = Math.max(0, this.hunger - 72); this.moodBoost += 0.06 + (this.eatKind === 'tavern' ? 0.1 : 0) + (this.eatKind === 'camp' ? 0.05 : 0); if (this.eatKind === 'tavern') E.earn(3); }
         else this.noFood();
         this.phase = 0;
       }
@@ -240,19 +244,25 @@ export class Sim {
       const fe = this.game.events && this.game.events.fete;
       if (fe && Math.random() < 0.75) { const a = Math.random() * 6.28, r = 2.5 + Math.random() * 3.5; if (this.goTo({ x: fe.x + Math.cos(a) * r, z: fe.z + Math.sin(a) * r, face: Math.atan2(-Math.cos(a), -Math.sin(a)) })) { this.timer = 20 + Math.random() * 25; return; } }
       const g = this.game, opts = [];
-      const parks = g.buildings.list.filter((b) => b.def.park && b.state === 'done'), shops = g.buildings.byDef('shop');
+      const parks = g.buildings.list.filter((b) => b.def.park && b.state === 'done' && b.spots.idle.length), shops = g.buildings.shops(), h = g.clock.hour, adult = this.kind !== 'child';
+      const pubs = adult ? g.buildings.diners().filter((b) => this.freeSeat(b, ['dining']).length) : [], church = g.buildings.byDef('church')[0], band = g.buildings.byDef('bandstand')[0];
       if (parks.length) opts.push('park', 'park', 'bench'); if (shops.length) opts.push('shop', 'shop'); if (this.home && this.home.state === 'done') opts.push('home', 'sofa'); opts.push('street', 'street');
+      if (pubs.length && h >= 17) opts.push('pub', 'pub', 'pub'); if (church && g.clock.totalDays % 7 === 6 && h >= 9 && h < 12) opts.push('church', 'church', 'church', 'church'); if (band && h >= 16 && h < 21) opts.push('band', 'band');
       const c = pick(opts); let ok = false;
       if (this.partner && !this.partner.sleeping && this.partner.activity === 'leisure' && this.partner.dest && this.partner.inside === null && Math.random() < 0.55) { const d = this.partner.dest, ax = (Math.random() - 0.5) * 2.4, az = (Math.random() - 0.5) * 2.4; ok = this.goTo({ b: d.b, x: d.x + ax, z: d.z + az }); if (ok) { this.timer = 14 + Math.random() * 25; this.hurry = false; return; } }
       if (this.kind === 'child') this.hurry = Math.random() < 0.6;
       if (c === 'park') { const p = pick(parks), s = pick(p.spots.idle); ok = this.goTo({ b: p, x: s.x, z: s.z }); }
       else if (c === 'bench') { const p = pick(parks), seats = this.freeSeat(p); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: p, x: s.x, z: s.z, seat: s }); } }
       else if (c === 'shop') { const p = pick(shops), s = pick(p.spots.visit); ok = this.goTo({ b: p, x: s.x, z: s.z, face: p.rot * Math.PI / 2 + Math.PI }); this.shopping = true; }
+      else if (c === 'pub') { const p = pick(pubs), seats = this.freeSeat(p, ['dining']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: p, x: st.x, z: st.z, seat: st }); this.drinking = ok; } }
+      else if (c === 'church') { const seats = this.freeSeat(church, ['pew']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: church, x: st.x, z: st.z, seat: st }); } }
+      else if (c === 'band') { const a = Math.random() * 6.28, r = 3.6 + Math.random() * 2; ok = this.goTo({ x: band.cx + Math.cos(a) * r, z: band.cz + Math.sin(a) * r, face: Math.atan2(-Math.cos(a), -Math.sin(a)) }); if (ok) this.bandT = 1; }
       else if (c === 'sofa') { const seats = this.freeSeat(this.home, ['sofa']); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: this.home, x: s.x, z: s.z, seat: s }); } }
       else if (c === 'home') { const s = pick(this.home.spots.idle); ok = this.goTo({ b: this.home, x: s.x, z: s.z }); }
       else ok = this.wander();
       if (!ok) this.phase = 2; this.timer = 14 + Math.random() * 28;
       if (c !== 'shop' && this.shopping) { this.shopping = false; this.bag = Math.random() < 0.7; }
+      if (c !== 'pub') this.drinking = false; if (c !== 'band') this.bandT = 0;
     }
   }
   wander() {
@@ -266,7 +276,7 @@ export class Sim {
     if (this.phase === 0 || (this.phase === 2 && this.timer <= 0)) {
       if (this.visits === undefined) this.visits = 0;
       if (this.visits++ >= 5) { this.leaving = true; return; }
-      const done = g.buildings.list.filter((b) => b.state === 'done' && !b.def.special), shops = g.buildings.byDef('shop'), seats = done.filter((b) => b.def.park && this.freeSeat(b).length), yard = g.depot;
+      const done = g.buildings.list.filter((b) => b.state === 'done' && !b.def.special), shops = g.buildings.shops(), seats = done.filter((b) => b.def.park && this.freeSeat(b).length), yard = g.depot;
       const opts = ['sight', 'sight']; if (shops.length) opts.push('shop', 'shop'); if (seats.length) opts.push('sit'); if (yard) opts.push('souvenir'); if (g.mode === 'sim' && Math.hypot(g.player.x - this.x, g.player.z - this.z) < 40 && !this.metSam) opts.push('sam', 'sam');
       const c = pick(opts); let ok = false; this.timer = 12 + Math.random() * 14; const say = (t) => { if (this.mesh.visible) g.social.say(this, t, 2.6); };
       if (c === 'shop') { const b = pick(shops), sp = pick(b.spots.visit.length ? b.spots.visit : b.spots.idle); ok = this.goTo({ b, x: sp.x, z: sp.z, face: b.rot * Math.PI / 2 + Math.PI }); this.shopping = true; this.visitDo = () => { g.economy.earn(8 + Math.floor(Math.random() * 18)); this.bag = true; say(pick(['Lovely shop!', 'I\'ll take two.', 'Do you sell postcards?'])); }; }
@@ -378,6 +388,8 @@ export class Sim {
     if (this.frozen) { upper = this.talkingToPlayer && this.game.ui.dialogue && this.game.ui.dialogue.shown < this.game.ui.dialogue.full.length ? 'talk' : 'listen'; lower = this.sitting ? 'sit' : 'stand'; speaking = upper === 'talk'; }
     if (this.kind === 'raider') { if (this.atkT > 0) upper = this.weapon === 'pistol' ? 'aim' : 'strike'; else if (this.rstate === 'loot' && !this.moved) upper = 'carry'; }
     if (this.kind === 'security' && this.fireT > 0) upper = 'aim';
+    if (this.sitting && this.drinking && !this.eating && upper === 'eat') upper = 'drink';
+    if (this.bandT && !this.moved && !this.chat && lower === 'stand') upper = (this.id + Math.floor(this.game.clock.hour * 4)) % 3 === 0 ? 'clap' : (this.id % 2 ? 'dance' : 'idle');
     if (this.emote && this.emote.t > 0) upper = this.emote.upper;
     return { lower, upper, speaking };
   }

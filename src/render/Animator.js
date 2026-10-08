@@ -64,6 +64,8 @@ export class Animator {
       T[I.SLX] = 0.0; T[I.SRX] = 0.0;
     } else if (low === 'lie') {
       T[I.LIE] = 1; T[I.KL] = T[I.KR] = 0.12; T[I.SPX] = Math.sin(t * 1.4) * 0.018; T[I.TLZ] = -0.06; T[I.TRZ] = 0.06; T[I.SLZ] = -0.12; T[I.SRZ] = 0.12; T[I.HDX] = 0;
+    } else if (low === 'jump') {
+      T[I.TLX] = -0.7; T[I.TRX] = -0.5; T[I.KL] = 1.3; T[I.KR] = 1.0; T[I.AL] = T[I.AR] = 0.4; T[I.SPX] = 0.08; T[I.HY] = 0;
     } else if (low === 'crouch') {
       T[I.HY] = -0.3; T[I.TLX] = T[I.TRX] = -1.15; T[I.KL] = T[I.KR] = 1.9; T[I.AL] = T[I.AR] = -0.7; T[I.SPX] = 0.35 + slouch * 0.1; T[I.HZ] = -0.06;
     } else { // stand
@@ -117,6 +119,21 @@ export class Animator {
       case 'sleep': T[I.EC] = 1; T[I.SLX] = 0.0; T[I.SRX] = 0.0; T[I.SLZ] = -0.14; T[I.SRZ] = 0.14; T[I.ELL] = -0.35; T[I.ERR] = -0.35; T[I.HDX] = -0.05; T[I.SPX] = Math.sin(t * 1.4) * 0.025; T[I.SM] = 0.0; T[I.MO] = 0.1 + (Math.sin(t * 1.4) > 0.6 ? 0.1 : 0); break;
       case 'sedated': T[I.EC] = 1; T[I.SLX] = 0.1; T[I.SRX] = 0.1; T[I.HDX] = 0.1; T[I.HDZ] = 0.2; break;
       case 'handsup': T[I.SLX] = -2.6; T[I.SRX] = -2.6; T[I.ELL] = -0.4; T[I.ERR] = -0.4; break;
+      case 'dance': { // a bit of Britpop shuffle: arms pump, hips sway, knees bob
+        const b = Math.sin(ut * 8), b2 = Math.sin(ut * 4);
+        T[I.SLX] = -1.2 + b * 0.5; T[I.SRX] = -1.2 - b * 0.5; T[I.ELL] = -1.5; T[I.ERR] = -1.5; T[I.SLZ] = -0.3; T[I.SRZ] = 0.3; T[I.SPY] = b2 * 0.3; T[I.HDZ] = b2 * 0.15; T[I.SM] = 1;
+        if (still) { T[I.HR] = b2 * 0.12; T[I.HY] = -0.05 - Math.abs(b) * 0.06; T[I.KL] = T[I.KR] = 0.2 + Math.abs(b) * 0.25; T[I.TLX] = T[I.TRX] = -0.1 - Math.abs(b) * 0.12; T[I.HYAW] = b2 * 0.25; }
+        break; }
+      case 'cheer': { const b = Math.abs(Math.sin(ut * 7)); T[I.SLX] = -2.8 - b * 0.2; T[I.SRX] = -2.8 - b * 0.2; T[I.SLZ] = -0.35; T[I.SRZ] = 0.35; T[I.ELL] = -0.2 - b * 0.5; T[I.ERR] = -0.2 - b * 0.5; T[I.HDX] = -0.25; T[I.MO] = 0.7; T[I.SM] = 1; if (still) { T[I.HY] = -0.03 + b * 0.05; T[I.KL] = T[I.KR] = 0.1 + (1 - b) * 0.2; } break; }
+      case 'shrug': { const k = Math.min(1, ut / 0.3) * Math.min(1, Math.max(0, (1.6 - ut) / 0.3) + 0.25); T[I.SLX] = -0.6 * k; T[I.SRX] = -0.6 * k; T[I.ELL] = -1.3 * k; T[I.ERR] = -1.3 * k; T[I.SLZ] = -0.6 * k; T[I.SRZ] = 0.6 * k; T[I.WLL] = -0.6 * k; T[I.WRR] = -0.6 * k; T[I.SPY] = 0; T[I.HDZ] = 0.2 * k; T[I.HY] += 0.02 * k; T[I.BR] = -0.3; break; }
+      case 'facepalm': { const k = Math.min(1, ut / 0.35); T[I.SRX] = -2.2 * k; T[I.SRZ] = 0.45 * k; T[I.ERR] = -2.3 * k; T[I.HDX] = 0.35 * k; T[I.SPX] += 0.12 * k; T[I.SLX] = 0.05; T[I.EC] = k; T[I.HDY] = Math.sin(ut * 5) * 0.12 * k; break; }
+      case 'clap': { const c = Math.abs(Math.sin(ut * 9)); T[I.SLX] = -1.25; T[I.SRX] = -1.25; T[I.ELL] = -1.2; T[I.ERR] = -1.2; T[I.SLZ] = 0.15 + c * 0.35; T[I.SRZ] = -0.15 - c * 0.35; T[I.SLY] = -0.4; T[I.SRY] = 0.4; T[I.SM] = 1; break; }
+      case 'think': T[I.SRX] = -1.4; T[I.ERR] = -2.3; T[I.SRZ] = 0.25; T[I.SLX] = -0.55; T[I.SLZ] = 0.5; T[I.ELL] = -1.9; T[I.HDX] = -0.15; T[I.HDY] = 0.25 + Math.sin(ut * 0.8) * 0.1; T[I.HDZ] = 0.1; break;
+      case 'drink': { const b = (Math.sin(ut * 1.2) + 1) / 2, sip = b > 0.8 ? 1 : 0; T[I.SRX] = -0.6 - b * 1.0; T[I.ERR] = -1.0 - b * 1.3; T[I.SLX] = -0.2; T[I.ELL] = -0.5; T[I.HDX] = 0.05 - sip * 0.3; T[I.SM] = sip ? 0 : 0.6; props.handR = 'mug2'; break; }
+      case 'pray': T[I.SLX] = -1.0; T[I.SRX] = -1.0; T[I.ELL] = -1.8; T[I.ERR] = -1.8; T[I.SLZ] = 0.5; T[I.SRZ] = -0.5; T[I.HDX] = 0.45; T[I.EC] = 1; break;
+      case 'vsign': { const j = Math.sin(ut * 10) * 0.18; T[I.SRX] = -2.1 + j; T[I.SRZ] = 0.1; T[I.ERR] = -1.4 + j; T[I.WRR] = -0.4; T[I.SLX] = -0.1; T[I.HDX] = -0.12; T[I.SM] = 1; T[I.BR] = -0.4; T[I.SPX] -= 0.05; break; }
+      case 'airguitar': { const st2 = Math.sin(ut * 14); T[I.SLX] = -1.1; T[I.SLZ] = -0.6; T[I.ELL] = -0.5; T[I.SRX] = -0.8; T[I.SRZ] = 0.5; T[I.ERR] = -1.6 + st2 * 0.35; T[I.SPX] += 0.15 + Math.abs(st2) * 0.1; T[I.HDX] = 0.2 + Math.abs(Math.sin(ut * 7)) * 0.3; T[I.MO] = 0.5; T[I.EC] = 0.8; if (still) { T[I.KL] = T[I.KR] = 0.35; T[I.HY] = -0.08; T[I.TLX] = -0.3; T[I.TRX] = 0.1; } break; }
+      case 'jump': T[I.SLX] = -2.2; T[I.SRX] = -2.2; T[I.SLZ] = -0.5; T[I.SRZ] = 0.5; T[I.ELL] = -0.3; T[I.ERR] = -0.3; T[I.SM] = 1; break;
       default: break;
     }
     // props

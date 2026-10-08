@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { TILE } from '../config.js';
 import { stdMat } from '../render/BuildingFactory.js';
+import { MATERIALS } from '../data/buildings.js';
+import { Sfx } from '../core/Sfx.js';
 
 /** Delivery trucks: spawn at the Lift, drive along roads to the depot, unload, return. */
 export class Logistics {
-  constructor(game) { this.game = game; this.trucks = []; }
+  constructor(game) { this.game = game; this.trucks = []; this.queue = []; }
+  /** Where goods are left when no truck can take them: just in front of the Lift. */
+  dock() { const L = this.game.lift, dx = L.doorOut.x - L.cx, dz = L.doorOut.z - L.cz, d = Math.hypot(dx, dz) || 1; return { x: L.doorOut.x + dx / d * 2.6 + 3, z: L.doorOut.z + dz / d * 2.6 }; }
   makeTruck(color) {
     const g = new THREE.Group(), add = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
     add(2.2, 2.4, 4.4, color, 0, 1.9, -0.6); add(2.2, 1.6, 1.6, 0x2c3e50, 0, 1.4, 2.1); add(1.9, 0.6, 0.1, 0x9fd8f0, 0, 1.9, 2.92);
@@ -12,11 +16,13 @@ export class Logistics {
     add(2.0, 0.2, 5.8, 0x333333, 0, 0.6, 0);
     return g;
   }
-  dispatch(order) {
-    const g = this.game, lift = g.lift, depot = g.depot;
-    if (!depot) { g.economy.deliverToDepot(order); return; }
+  /** Orders come down the Lift in the goods cage first, then go by truck (or wait on the dock). */
+  dispatch(order) { this.queue.push(order); }
+  land(order) {
+    const g = this.game, lift = g.lift, depot = g.depot, toDock = () => { const d = this.dock(); g.piles.add(d.x, d.z, { [order.mat]: order.qty }); order.done = true; g.messages.push('Logistics', `${order.qty} ${MATERIALS[order.mat].name.toLowerCase()} is waiting on the Lift dock. Carry it where you need it.`, 'good'); };
+    if (!depot) return toDock();
     const to = g.world.findPath(lift.doorTile.x, lift.doorTile.z, depot.doorTile.x, depot.doorTile.z, true);
-    if (!to) { g.messages.push('Logistics', 'Truck could not reach the depot (no road). Goods held at the Lift dock.', 'warn'); g.economy.deliverToDepot(order); return; }
+    if (!to) { g.messages.push('Logistics', 'No road from the Lift to the Stockyard, so the goods are left on the dock.', 'warn'); return toDock(); }
     const mesh = this.makeTruck(order.mat === 'steel' ? 0x6a7a8c : order.mat === 'glass' ? 0x3aa0c8 : order.mat === 'brick' ? 0xb4442f : 0xc08a40);
     const pts = to.map(([x, z]) => ({ x: (x + 0.5) * TILE, z: (z + 0.5) * TILE }));
     const back = pts.slice().reverse();
@@ -24,6 +30,13 @@ export class Logistics {
     mesh.position.set(lift.doorOut.x, 0, lift.doorOut.z); g.scene.add(mesh); this.trucks.push(t);
   }
   update(dt) {
+    const g = this.game, ext = g.lift && g.lift.ext;
+    if (this.queue.length && (!ext || !ext.deliver)) this.land(this.queue.shift());
+    else if (this.queue.length && !ext.busy()) {
+      const o = this.queue.shift(), cols = Array.from({ length: Math.min(9, Math.ceil(o.qty / 3)) }, () => MATERIALS[o.mat].color);
+      if (g.mode === 'sim' && Math.hypot(g.player.x - g.lift.cx, g.player.z - g.lift.cz) < 40) Sfx.play('lift');
+      ext.deliver(cols, () => this.land(o));
+    }
     for (const t of this.trucks) {
       if (t.phase === 'unload') { t.wait -= dt; if (t.wait <= 0) { t.phase = 'out'; t.path = t.back.slice(); } continue; }
       const p = t.path[0]; if (!p) { t.done = true; if (t.phase === 'in') { t.phase = 'unload'; t.wait = 1.5; t.done = false; this.game.economy.deliverToDepot(t.order); } continue; }

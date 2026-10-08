@@ -15,6 +15,8 @@ const padOpt = document.getElementById('opt-pad'); try { if (localStorage.getIte
 const applyPad = () => { game.input.padEnabled = padOpt.checked; if (!padOpt.checked) game.input.padActive = false; try { localStorage.setItem('samcity-pad', padOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } }; padOpt.onchange = applyPad; applyPad();
 const padBtn = document.getElementById('c-pad'); const padLabel = () => { padBtn.textContent = '🎮 controller: ' + (padOpt.checked ? 'on' : 'off'); }; padLabel();
 padBtn.onclick = () => { padOpt.checked = !padOpt.checked; applyPad(); padLabel(); game.ui.toast(padOpt.checked ? 'Controller input on' : 'Controller input off (keyboard and mouse only)'); padBtn.blur(); };
+const adultOpt = document.getElementById('opt-adult'); try { if (localStorage.getItem('samcity-adult') === '0' || params.has('clean')) adultOpt.checked = false; } catch (e) { /* no storage */ }
+const applyAdult = () => { game.ui.adult = adultOpt.checked; try { localStorage.setItem('samcity-adult', adultOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } }; adultOpt.onchange = applyAdult; applyAdult();
 const raidOpt = document.getElementById('opt-raids'); try { if (localStorage.getItem('samcity-raids') === '0') raidOpt.checked = false; } catch (e) { /* no storage */ }
 const begin = (demo, cont) => { game.raids.enabled = raidOpt.checked && !params.has('noraids'); try { localStorage.setItem('samcity-raids', raidOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } if (demo === true) game.demo(); if (cont) game.loadSave(); game.start(); };
 import { hasSave, clearSave } from './core/Save.js';
