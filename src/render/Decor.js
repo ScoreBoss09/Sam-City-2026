@@ -69,12 +69,12 @@ export class Decor {
       const h = hash(x * 3 + 1, z * 7 + 2);
       const edge = (() => { for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) if (w.inBounds(x + dx, z + dz) && w.terrain[w.idx(x + dx, z + dz)] === T.FOREST) return true; return false; })();
       const meadow = !near && w.terrain[i] === T.LAND && !w.res[i] && ((edge && h < 0.2) || (h < 0.045));
-      if ((near && h < 0.3 && nt < 1400) || (meadow && nt < 1400)) {
+      if (false) {   // decorative trees removed: every tree on the island is a real, choppable one
         const px = (x + 0.25 + hash(z, x) * 0.5) * TILE, pz = (z + 0.25 + hash(x, z + 9) * 0.5) * TILE, s = 0.8 + hash(x + 5, z) * 0.7;
         m.compose(new THREE.Vector3(px, 0.55 * s, pz), q.identity(), new THREE.Vector3(s, s, s)); this.trunk.setMatrixAt(nt, m);
         m.compose(new THREE.Vector3(px, 1.1 * s + 1.0 * s, pz), q.identity(), new THREE.Vector3(s, s * 1.05, s)); this.crown.setMatrixAt(nt, m);
         c.setHSL(0.26 + hash(x, z) * 0.1, 0.5, (Assets.has('leaves') ? 0.52 : 0.26) + hash(z, x) * 0.1); this.crown.setColorAt(nt, c); nt++;
-      } else if (!near && h > 0.86 && nb < 1100 && w.terrain[i] === T.LAND && (hash(x, z) < 0.4)) {
+      } else if (((!near && h > 0.86) || (meadow && h < 0.06)) && nb < 1100 && w.terrain[i] === T.LAND && (hash(x, z) < 0.4)) {
         const px = (x + 0.2 + hash(z, x) * 0.6) * TILE, pz = (z + 0.2 + hash(x + 3, z) * 0.6) * TILE; m.compose(new THREE.Vector3(px, 0.3, pz), q.identity(), new THREE.Vector3(1.2, 0.9, 1.2)); this.bush.setMatrixAt(nb, m); c.setHSL(0.28 + hash(x, z + 2) * 0.08, 0.5, Assets.has('leaves') ? 0.5 : 0.28); this.bush.setColorAt(nb, c); nb++;
       }
     }

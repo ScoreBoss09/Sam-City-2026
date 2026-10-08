@@ -138,7 +138,7 @@ export class Sim {
   think(dt) {
     const g = this.game, h = g.clock.hour; this.timer -= dt; this.chatCool -= dt;
     this.tired = h >= 21 || h < 6.5; this.eatCD -= dt;
-    this.hunger = Math.min(100, this.hunger + dt * (this.pose === 'sleep' ? 0.28 : 0.72));
+    this.hunger = Math.min(100, this.hunger + dt * (this.pose === 'sleep' ? 0.16 : 0.6));
     if (this.hunger >= 97) { this.starveT += dt; if (this.starveT > 140 && !this.leaving && this.kind === 'resident') { this.leaving = true; g.messages.push('Lift', `${this.name} has left Sam City, hungry and fed up.`, 'warn'); } } else this.starveT = Math.max(0, this.starveT - dt);
     if (this.mood < -0.6 && this.kind === 'resident' && !this.leaving) { this.sadT += dt; if (this.sadT > 220) { this.leaving = true; g.messages.push('Lift', `${this.name} has packed up and left for good.`, 'warn'); } } else this.sadT = Math.max(0, this.sadT - dt * 0.5);
     // mood drifts around the personality baseline

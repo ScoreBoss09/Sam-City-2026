@@ -261,7 +261,7 @@ export class Player {
     const fx = -Math.sin(this.yaw) * Math.cos(this.pitch), fy = Math.sin(this.pitch), fz = -Math.cos(this.yaw) * Math.cos(this.pitch);
     if (this.sleeping || this.sedated > 0 || this.down > 0) { cam.position.set(this.x, 1.2, this.z); cam.lookAt(this.x - Math.sin(this.heading) * 0, 4, this.z + 0.001); return; }
     if (!this.third) { cam.position.set(hx, hy, hz); cam.lookAt(hx + fx, hy + fy, hz + fz); return; }
-    let d = this.camDist; const tx = hx + 0, ty = 1.7, tz = hz;
+    let d = this.camDist; const sx = Math.cos(this.yaw) * 0.55, sz = -Math.sin(this.yaw) * 0.55; const tx = hx + sx, ty = 1.75, tz = hz + sz;
     while (d > 0.6) { const cx = tx - fx * d, cz = tz - fz * d, cy = ty - fy * d + 0.4; if (cy < 0.3) { d -= 0.3; continue; } if (!w.collides(cx, cz, 0.25, true)) break; d -= 0.3; }
     cam.position.set(tx - fx * d, Math.max(0.4, ty - fy * d + 0.4), tz - fz * d); cam.lookAt(tx, ty, tz);
   }

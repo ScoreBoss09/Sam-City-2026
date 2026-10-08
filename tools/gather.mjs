@@ -7,7 +7,7 @@ await p.goto('http://localhost:8123/index.html?auto&scale=0.7'); await p.waitFor
 console.log(await p.evaluate(() => { const g = window.__game, B = g.buildings, w = g.world; g.clock.speed = 1; g.economy.stock.food = 60; g.economy.stock.timber = 10; g.economy.stock.stone = 0;
   for (let x = 6; x <= 32; x++) for (const z of [15, 21, 27]) w.addRoad(x, z, 1); for (let z = 15; z <= 27; z++) for (const x of [9, 19, 29]) w.addRoad(x, z, 1);
   const spot = (id) => { for (let z = 6; z < 36; z++) for (let x = 4; x < 38; x++) { const r = B.evaluate(id, x, z, 0); if (r.ok) return B.place(id, r.x0, r.z0, r.rot, { instant: true }); } return null; };
-  const made = ['hut', 'hut', 'hut', 'cabin', 'forager', 'lumbercamp', 'quarry', 'farm', 'fisher'].map((id) => { const b = spot(id); return id + (b ? '' : '(x)'); });
+  const made = ['stockyard', 'hut', 'hut', 'hut', 'cabin', 'forager', 'lumbercamp', 'quarry', 'farm', 'fisher'].map((id) => { const b = spot(id); return id + (b ? '' : '(x)'); });
   g.population.invites = 12; g.population.timer = 0; g.advance(60); return made.join(' '); }));
 await p.evaluate(() => { window.__game.clock.hour = 8.2; });
 for (let i = 0; i < 26; i++) console.log(await p.evaluate(() => { const g = window.__game; g.advance(5); const L = g.population.residents().filter((s) => s.role === 'lumberjack' || s.role === 'quarryman').slice(0, 3); return g.clock.hhmm + ' T' + (g.economy.stock.timber | 0) + ' gath' + g.economy.gathered + ' | ' + L.map((s) => `${s.role[0]}:${s.activity}/${s.job ? s.job.type + s.job.step + 'u' + s.job.units + (s.job.node && s.job.node.alive === false ? 'dead' : '') : '-'}@${Math.round(s.x)},${Math.round(s.z)}p${s.path.length}v${s.vel.toFixed(1)}ph${s.phase}`).join(' '); }));

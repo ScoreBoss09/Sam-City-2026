@@ -1,0 +1,11 @@
+import { chromium } from '/tmp/claude-0/-home-user-Sam-City-2026/6309cccc-23e7-5301-8e65-4b7cab65a79b/scratchpad/node_modules/playwright-core/index.mjs';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 800, height: 500 } }); const logs = []; p.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.stack));
+await p.goto('http://localhost:8123/index.html?auto&scale=0.4&noraids'); await p.waitForTimeout(700);
+await p.evaluate(() => { const g = window.__game, B = g.buildings, w = g.world; g.economy.stock.food = 80; g.clock.speed = 1;
+  for (let x = 6; x <= 32; x++) for (const z of [15, 21]) w.addRoad(x, z, 1); for (let z = 15; z <= 21; z++) for (const x of [9, 19, 29]) w.addRoad(x, z, 1);
+  const spot = (id) => { for (let z = 6; z < 36; z++) for (let x = 4; x < 38; x++) { const r = B.evaluate(id, x, z, 0); if (r.ok) return B.place(id, r.x0, r.z0, r.rot, { instant: true }); } };
+  for (const id of ['stockyard', 'hut', 'hut', 'hut', 'campfire', 'forager', 'lumbercamp']) spot(id); g.population.invites = 5; g.population.timer = 0; });
+for (let i = 0; i < 24; i++) console.log(await p.evaluate(() => { const g = window.__game; g.advance(60); const bad = g.population.residents().filter((s) => s.hunger > 90).map((s) => [s.name.split(' ')[0], s.activity, s.phase, Math.round(s.eatCD), s.eating ? 1 : 0, s.path.length, s.inside ? s.inside.id : '-', s.sitting ? s.sitting.kind : '', s.eatKind, s.x | 0, s.z | 0, s.dest ? [s.dest.x | 0, s.dest.z | 0] : null]);
+  return `${g.clock.totalDays}/${g.clock.hhmm} pop${g.population.count()} food${g.economy.stock.food | 0} avgH${Math.round(g.population.residents().reduce((a, s) => a + s.hunger, 0) / Math.max(1, g.population.count()))} ` + JSON.stringify(bad); }));
+console.log(logs.join('\n')); await b.close();

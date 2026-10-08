@@ -42,6 +42,10 @@ export class Terrain {
     this.spark = new THREE.Mesh(new THREE.PlaneGeometry(1500, 1500), new THREE.MeshBasicMaterial({ map: this.sparkTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.55 })); this.spark.rotation.x = -Math.PI / 2; this.spark.position.set(size / 2, -0.44, size / 2); scene.add(this.spark);
     this.paintAll(); this.buildRocks(); this.buildTrees();
     world.events.on('tile', (x, z) => this.paintAround(x, z));
+    // roads and building plots clear the trees standing on them
+    const clear = (x0, z0, w, d) => { for (const t of this.trees || []) if (t.alive && t.tx >= x0 && t.tx < x0 + w && t.tz >= z0 && t.tz < z0 + d) this.killTree(t); };
+    world.events.on('tile', (x, z) => { if (world.road[world.idx(x, z)]) clear(x, z, 1, 1); });
+    world.events.on('building:added', (b) => { if (!b.def.special) clear(b.x0, b.z0, b.w, b.d); });
     world.events.on('zone', () => { this.zDirty = true; });
     this.zDirty = true;
   }

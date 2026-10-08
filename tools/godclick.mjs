@@ -5,7 +5,7 @@ const p = await b.newPage({ viewport: { width: 1280, height: 760 } });
 const logs = []; p.on('console', (m) => { if (!/GPU stall|404/.test(m.text())) logs.push(m.type() + ': ' + m.text()); }); p.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.stack));
 await p.goto('http://localhost:8123/index.html?auto&scale=0.7'); await p.waitForTimeout(700);
 const proj = (x, z) => p.evaluate(([x, z]) => { const g = window.__game, v = new (g.camera.position.constructor)(x, 0, z).project(g.camera), r = document.getElementById('view').getBoundingClientRect(); return [r.left + (v.x * 0.5 + 0.5) * r.width, r.top + (-v.y * 0.5 + 0.5) * r.height]; }, [x, z]);
-await p.keyboard.press('Tab'); await p.waitForTimeout(500);
+await p.waitForTimeout(300);
 await p.evaluate(() => { const g = window.__game; g.clock.speed = 0; g.god.dist = 80; g.god.target.set(88, 0, 70); });
 await p.click('button.tool[data-t="build"]'); await p.waitForTimeout(300);
 console.log('submenu tabs', await p.evaluate(() => [...document.querySelectorAll('#submenu .subtab')].map((e) => e.textContent).join(',')), '| items', await p.evaluate(() => [...document.querySelectorAll('#submenu .sub')].map((e) => e.textContent.replace(/\s+/g, ' ')).join(' ; ')));

@@ -73,7 +73,7 @@ export class UI {
   openSub(id) {
     const g = this.game, sm = $('submenu');
     if (id === 'zone') { sm.innerHTML = [['res', 'Residential'], ['com', 'Commercial'], ['ind', 'Industrial'], ['none', 'Clear zone']].map(([k, n]) => `<button class="sub ${g.god.tool.sub === k ? 'on' : ''}" data-s="${k}">${n}<small>drag to paint</small></button>`).join(''); sm.classList.remove('hidden'); return; }
-    if (id === 'road') { const pop = g.population.count(); sm.innerHTML = [['dirt', 'Dirt track', '£4 per tile'], ['paved', 'Paved road', pop >= 15 ? '£25 per tile' : 'needs 15 residents']].map(([k, n, t]) => `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${k === 'paved' && pop < 15 ? 'locked' : ''}" data-s="${k}">${n}<small>${t}</small></button>`).join(''); sm.classList.remove('hidden'); return; }
+    if (id === 'road') { const pop = g.population.count(); sm.innerHTML = [['dirt', 'Dirt path', '£2 a tile, dug by hand'], ['paved', 'Paved road', pop >= 15 ? '£20 + 1 stone a tile' : 'needs 15 residents']].map(([k, n, t]) => `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${k === 'paved' && pop < 15 ? 'locked' : ''}" data-s="${k}">${n}<small>${t}</small></button>`).join(''); sm.classList.remove('hidden'); return; }
     let list = TOOL_MENUS[id], tabs = '';
     if (id === 'build') { tabs = TOOL_MENUS.build.map(([n]) => `<button class="subtab ${n === this.buildTab ? 'on' : ''}" data-tab="${n}">${n}</button>`).join(''); list = (TOOL_MENUS.build.find(([n]) => n === this.buildTab) || TOOL_MENUS.build[0])[1]; }
     if (!list) { sm.classList.add('hidden'); return; }
@@ -201,6 +201,7 @@ export class UI {
     $('b-energy').style.width = Math.round(g.player.energy) + '%'; $('b-energy').style.background = g.player.energy < 25 ? '#ff6b6b' : '#7be08f';
     $('h-carry').textContent = g.player.carry ? `${g.player.carry.qty} ${MATERIALS[g.player.carry.mat].name}` : 'nothing';
     if (this._padWas !== g.input.padActive) { this._padWas = g.input.padActive; this.setMode(g.mode); }
+    $('crosshair').classList.toggle('hidden', g.mode === 'god' && !g.input.padActive); $('crosshair').classList.toggle('godcur', g.mode === 'god');
     if (g.mode === 'sim') $('c-mode').textContent = 'SAM (' + (g.player.third ? '3rd' : '1st') + ' person)';
     this.renderObjectives();
   }

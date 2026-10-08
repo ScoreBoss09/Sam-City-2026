@@ -58,8 +58,12 @@ export class GodControls {
     if (id === 'road' || id === 'bulldoze' || id === 'zone') {
       this.tileBox.visible = g.world.inBounds(tx, tz); this.tileBox.scale.set(TILE, 0.2, TILE); this.tileBox.position.set((tx + 0.5) * TILE, 0.15, (tz + 0.5) * TILE);
       this.tileBox.material.color.setHex(id === 'bulldoze' ? 0xff5544 : id === 'road' ? 0xcccccc : 0x66ff99);
-      if (inp.mouse.down) { this.painting = true; this.lastTile = null; }
-      if (inp.mouse.left && this.painting) this.paint(tx, tz); else this.painting = false;
+      if (inp.mouse.down) { this.painting = true; this.lastTile = null; this.lastXY = null; }
+      if (inp.mouse.left && this.painting) {
+        const lt = this.lastXY; if (lt && (Math.abs(lt[0] - tx) > 1 || Math.abs(lt[1] - tz) > 1 || (lt[0] !== tx && lt[1] !== tz))) { // fill gaps with an L-shaped run so paths stay connected
+          let x = lt[0], z = lt[1]; while (x !== tx) { x += Math.sign(tx - x); this.paint(x, z); } while (z !== tz) { z += Math.sign(tz - z); this.paint(x, z); }
+        } else this.paint(tx, tz); this.lastXY = [tx, tz];
+      } else { this.painting = false; this.lastXY = null; }
     } else if (this.placing()) {
       const def = BUILDINGS[this.tool.sub], ev = g.buildings.evaluate(this.tool.sub, tx, tz, this.prefRot), unlocked = g.economy.isUnlocked(this.tool.sub);
       const T4 = TILE, h = def.park ? 0.4 : Math.max(2, (def.floors || 1) * 3.2);
