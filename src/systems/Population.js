@@ -170,6 +170,7 @@ export class Population {
     for (const s of this.residents()) if (!s.workplace && this.canWork(s) && this.vacancies().length) this.assignJob(s);
     // update sims
     for (const s of this.sims) { s.think(dt); s.step(dt); }
+    this.separate(dt);
     for (const s of this.sims) if (s.remove) { this.release(s); s.dispose(); }
     this.sims = this.sims.filter((s) => !s.remove);
     // performance governor
@@ -180,6 +181,28 @@ export class Population {
       else if (g.fps > 56 && this.simCap < MAX_SIMS_HARD && this.sims.length >= this.simCap - 4) this.simCap = Math.min(MAX_SIMS_HARD, this.simCap + 3);
       // over cap: send surplus visitors/residents home through the lift
       if (this.sims.length > this.simCap) { const extra = this.sims.find((s) => s.kind === 'visitor' && !s.leaving) || null; if (extra) extra.leaving = true; }
+    }
+  }
+  /** Soft personal space: sims (and Sam) gently push apart instead of walking through each other. */
+  separate(dt) {
+    const w = this.game.world, R = 0.58, grid = new Map(), k = Math.min(1, dt * 12), P = this.game.player;
+    const movable = (s) => !s.remove && !s.sitting && s.pose !== 'sleep' && !(s.down > 0) && !s.glide && !s.hidden;
+    const list = this.sims.filter(movable);
+    for (const s of list) { const key = Math.floor(s.x / 1.2) + ',' + Math.floor(s.z / 1.2) + ',' + (s.inside ? s.inside.uid : 0); (grid.get(key) || grid.set(key, []).get(key)).push(s); }
+    const push = (a, dx, dz, f) => { const nx = a.x + dx * f, nz = a.z + dz * f; if (!w.collides(nx, nz, 0.3)) { a.x = nx; a.z = nz; } else if (!w.collides(nx, a.z, 0.3)) a.x = nx; else if (!w.collides(a.x, nz, 0.3)) a.z = nz; };
+    for (const a of list) {
+      const cx = Math.floor(a.x / 1.2), cz = Math.floor(a.z / 1.2), ins = a.inside ? a.inside.uid : 0;
+      for (let ox = -1; ox <= 1; ox++) for (let oz = -1; oz <= 1; oz++) {
+        const arr = grid.get((cx + ox) + ',' + (cz + oz) + ',' + ins); if (!arr) continue;
+        for (const b of arr) {
+          if (b.id <= a.id) continue; let dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz); if (d >= R) continue;
+          if (d < 0.001) { dx = Math.random() - 0.5; dz = Math.random() - 0.5; d = Math.hypot(dx, dz); } const f = (R - d) * 0.5 * k / d;
+          if (!a.frozen && !a.chat) push(a, -dx, -dz, f); if (!b.frozen && !b.chat) push(b, dx, dz, f);
+        }
+      }
+      if (P && (a.inside || null) === (this.game.buildings.playerInside || null) && !P.sleeping) {
+        const dx = a.x - P.x, dz = a.z - P.z, d = Math.hypot(dx, dz); if (d < R && d > 0.001 && !a.frozen) push(a, dx, dz, (R - d) * k / d);
+      }
     }
   }
   release(s) {

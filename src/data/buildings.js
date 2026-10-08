@@ -131,12 +131,12 @@ export const BUILDINGS = {
   },
   stockyard: {
     name: 'Stockyard', cat: 'civic', w: 3, d: 2, floors: 1, wall: 'timber', roof: 'none', stores: true, open: true, special_ext: 'stockyard',
-    mat: { timber: 10 }, work: 16, layout: 'yard', permit: { cost: 150, pop: 6 }, tab: 'Civic',
+    mat: { timber: 10 }, work: 16, layout: 'yard', permit: { cost: 0, pop: 0 }, tab: 'Civic',
     blurb: 'Stores gathered and delivered goods. Builders collect from here.',
   },
   campfire: {
     name: 'Campfire', cat: 'park', w: 2, d: 2, floors: 0, park: 'camp', needsRoad: false,
-    mat: { timber: 3, stone: 2 }, work: 6, permit: { cost: 0, pop: 0 }, tab: 'Civic',
+    mat: { timber: 4 }, work: 6, permit: { cost: 0, pop: 0 }, tab: 'Civic',
     blurb: 'Warmth, light, and a place to share a meal.',
   },
   well: {
@@ -209,7 +209,8 @@ export const BUILDINGS = {
   // Story / world pieces (cannot be built by the player)
   surveyor: {
     name: "Surveyor's Hut", cat: 'civic', w: 2, d: 2, floors: 1, wall: 'logs', roof: 'thatch', roofColor: 0xb89a4a,
-    mat: {}, work: 0, layout: 'terminalhut', special: true,
+    mat: { timber: 8 }, work: 12, layout: 'terminalhut', permit: { cost: 0, pop: 0 }, tab: 'Civic',
+    blurb: 'The planning office. Its computer terminal handles permits, trade and the town report.',
   },
   lift: {
     name: 'Supply Lift', cat: 'special', w: 4, d: 3, floors: 1, wall: 'industrial', roof: 'none', open: true, special: true,
@@ -226,7 +227,7 @@ export const TOOL_MENUS = {
     ['Homes', ['hut', 'cabin', 'cottage', 'townhouse', 'apartments']],
     ['Food', ['forager', 'fisher', 'farm', 'tavern']],
     ['Industry', ['lumbercamp', 'quarry', 'contractor', 'brickworks', 'glassworks', 'foundry', 'factory']],
-    ['Civic', ['stockyard', 'school', 'townhall', 'clinic', 'police']],
+    ['Civic', ['stockyard', 'surveyor', 'school', 'townhall', 'clinic', 'police']],
     ['Commerce', ['shop', 'office', 'hotel', 'skyscraper']],
   ],
   park: ['campfire', 'park', 'plaza', 'ballfield'],

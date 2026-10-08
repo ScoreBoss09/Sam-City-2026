@@ -8,7 +8,7 @@ export class ConstructionSystem {
 
   requestTask(sim) {
     const g = this.game, B = g.buildings, depot = g.depot, sites = this.sites;
-    if (!sites.length) return null;
+    if (!sites.length) { const p = g.roadPlans.next(sim); if (p) { p.reserved = sim; return { type: 'road', plan: p }; } return null; }
     for (const s of sites) if (this.workable(s) && (s.builders || 0) < 2) return { type: 'build', site: s };
     if (depot) {
       sites.sort((a, b) => Math.hypot(a.cx - depot.cx, a.cz - depot.cz) - Math.hypot(b.cx - depot.cx, b.cz - depot.cz));
@@ -18,6 +18,7 @@ export class ConstructionSystem {
       }
     }
     for (const s of sites) if (this.workable(s) && (s.builders || 0) < 3) return { type: 'build', site: s };
+    const p = g.roadPlans.next(sim); if (p) { p.reserved = sim; return { type: 'road', plan: p }; }
     return null;
   }
   /** Walkable tile centre around the site footprint closest to the sim. */

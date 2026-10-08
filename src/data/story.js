@@ -64,19 +64,61 @@ export const SLIPS = [
   ],
 ];
 
+const step = (text, done, target) => ({ text, done, target });
+const obj = (id, title, steps, extra = {}) => ({ id, title, steps, text: steps.map((x) => x.text).join(' '), done: (g) => steps.every((x) => x.done(g)), target: (g) => { const s = steps.find((x) => !x.done(g)); return s && s.target ? s.target(g) : null; }, ...extra });
+const hasB = (g, id, state) => g.buildings.list.some((b) => b.id === id && (!state || b.state === state));
+const nearestTree = (g) => { let best = null, bd = 1e9; for (const t of g.terrain.trees) { if (!t.alive) continue; const d = Math.hypot(t.x - g.player.x, t.z - g.player.z); if (d < bd) { bd = d; best = t; } } return best && { x: best.x, z: best.z }; };
+const siteOf = (g, id) => { const b = g.buildings.list.find((q) => q.id === id && q.state === 'site'); return b && { x: b.cx, z: b.cz }; };
+const siteFull = (g, id) => g.buildings.list.some((b) => b.id === id && (b.state === 'done' || (b.state === 'site' && Object.keys(b.need).every((m) => (b.have[m] || 0) >= b.need[m]))));
+const haulTarget = (g, id) => (g.player.carry ? siteOf(g, id) : (nearestTree(g)));
+const nearestPlan = (g) => { let best = null, bd = 1e9; for (const p of g.roadPlans.plans.values()) { const d = Math.hypot(p.cx - g.player.x, p.cz - g.player.z); if (d < bd) { bd = d; best = p; } } return best && { x: best.cx, z: best.cz }; };
+const rackTarget = (g) => { const u = g.tools.untaken[0]; return u ? { x: u.x, z: u.z } : null; };
+
 export const OBJECTIVES = [
-  { id: 'terminal', text: 'Visit the Surveyor\'s Hut and read the planning terminal (E).', done: (g) => g.flags.terminalOpened, target: (g) => g.townhall && g.townhall.doorOut },
-  { id: 'gather', text: 'Fell trees at the edge of the northern forest (hold E) and store 10 timber in the Stockyard.', done: (g) => (g.flags.stored || 0) >= 10, target: (g) => g.depot && g.depot.doorOut },
-  { id: 'hut', text: 'Press TAB for the planning view. Place a Wooden Hut beside a road.', done: (g) => g.buildings.list.some((b) => b.id === 'hut' && b !== g.starterHome) },
-  { id: 'buildhut', text: 'Back in the world (TAB): carry timber from the Stockyard to the site (E), then hold E to build.', done: (g) => g.buildings.list.filter((b) => b.id === 'hut' && b.state === 'done').length >= 2, target: (g) => nearestSite(g) },
-  { id: 'feed', text: 'Everyone needs to eat. Place a Campfire and a Forager\'s Hut, and build them.', done: (g) => g.buildings.count('campfire') && g.buildings.count('forager'), target: (g) => nearestSite(g) },
-  { id: 'settlers', text: 'Welcome settlers: reach 6 residents. They need beds, food and work.', done: (g) => g.population.count() >= 6 },
-  { id: 'yard', text: 'Request permits at the terminal for a Lumber Camp and a Builders\' Yard, and build both.', done: (g) => g.buildings.count('lumbercamp') && g.buildings.count('contractor'), target: (g) => nearestSite(g) },
-  { id: 'hamlet', text: 'Grow the hamlet to 15 residents: build Log Cabins, a Quarry and a Farm.', done: (g) => g.population.count() >= 15 && g.buildings.count('quarry') && g.buildings.count('farm'), target: (g) => nearestSite(g) },
-  { id: 'village', text: 'Raise a Tavern and a Brickworks, then begin on Stone Cottages.', done: (g) => g.buildings.count('tavern') && g.buildings.count('brickworks') && g.buildings.count('cottage') >= 1, target: (g) => nearestSite(g) },
-  { id: 'town', text: 'Reach 30 residents with a Town Hall and a Schoolhouse.', done: (g) => g.population.count() >= 30 && g.buildings.count('townhall') && g.buildings.count('school'), target: (g) => nearestSite(g) },
-  { id: 'city', text: 'Grow to 60 residents with a Glassworks, a Foundry and a Hospital.', done: (g) => g.population.count() >= 60 && g.buildings.count('glassworks') && g.buildings.count('foundry') && g.buildings.count('clinic'), target: (g) => nearestSite(g) },
-  { id: 'landmark', text: 'Crown the skyline with the Grand Hotel or Sam Tower.', done: (g) => g.largeCount() >= 1, target: (g) => nearestSite(g) },
+  obj('plan', '1. Plan your camp (planning view)', [
+    step('Choose the ROADS tool on the left and drag a dirt path away from the Supply Lift.', (g) => g.roadPlans.count + (g.flags.pathsBuilt || 0) >= 3, (g) => ({ x: g.lift.doorOut.x, z: g.lift.doorOut.z + 6 })),
+    step('BUILDINGS > Civic > Stockyard: click a spot beside the path to order it.', (g) => hasB(g, 'stockyard')),
+    step('BUILDINGS > Homes > Wooden Hut: order one beside the path too.', (g) => hasB(g, 'hut')),
+  ]),
+  obj('tools', '2. Become Sam and pick up tools', [
+    step('Press TAB (or Start) to step into Sam\'s shoes.', (g) => g.flags.sawSim),
+    step('Walk to the TOOL RACK by the Lift (the glowing yellow spot) and pick up the Axe (E).', (g) => g.player.tools.has('axe'), rackTarget),
+    step('Pick up the Hammer.', (g) => g.player.tools.has('hammer'), rackTarget),
+    step('Pick up the Shovel.', (g) => g.player.tools.has('shovel'), rackTarget),
+  ]),
+  obj('dig', '3. Dig the path', [
+    step('Walk onto the staked path tiles and hold E to dig each one.', (g) => (g.flags.pathsBuilt || 0) >= 3 || (g.roadPlans.count === 0 && (g.flags.pathsBuilt || 0) >= 1), nearestPlan),
+  ]),
+  obj('yard', '4. Raise the Stockyard', [
+    step('Chop trees (hold E at a tree) and carry the timber to the Stockyard site (E). It needs 10.', (g) => siteFull(g, 'stockyard'), (g) => haulTarget(g, 'stockyard')),
+    step('Hold E at the Stockyard site to build it.', (g) => hasB(g, 'stockyard', 'done'), (g) => siteOf(g, 'stockyard')),
+  ]),
+  obj('hut', '5. A roof for Sam', [
+    step('Bring 8 timber to the Hut site (chop trees, or take a crate from the Stockyard pile with E).', (g) => siteFull(g, 'hut'), (g) => (g.player.carry ? siteOf(g, 'hut') : (g.depot ? { x: g.depot.doorOut.x, z: g.depot.doorOut.z } : nearestTree(g)))),
+    step('Hold E at the Hut site to build it. This will be Sam\'s home.', (g) => hasB(g, 'hut', 'done'), (g) => siteOf(g, 'hut')),
+  ]),
+  obj('eat', '6. Eat something', [
+    step('Pick up the Basket from the Tool Rack.', (g) => g.player.tools.has('basket'), rackTarget),
+    step('Hold E on berry bushes to pick food, then press Q (or Y on a controller) to eat. Or eat at the Stockyard.', (g) => (g.flags.ate || 0) >= 1),
+  ]),
+  obj('office', '7. The Surveyor\'s Hut', [
+    step('Planning view: BUILDINGS > Civic > Surveyor\'s Hut. Order it beside the path.', (g) => hasB(g, 'surveyor')),
+    step('Supply 8 timber and build it.', (g) => hasB(g, 'surveyor', 'done'), (g) => siteOf(g, 'surveyor') || nearestTree(g)),
+    step('Use the planning terminal inside (E). Permits and trade happen there.', (g) => g.flags.terminalOpened, (g) => { const b = g.buildings.list.find((q) => q.id === 'surveyor' && q.state === 'done'); return b && b.doorOut; }),
+  ]),
+  obj('feed', '8. Feed the camp', [
+    step('Order a Campfire and a Forager\'s Hut (Food tab) and build them. The forager brings food to the Stockyard.', (g) => g.buildings.count('campfire') && g.buildings.count('forager'), (g) => siteOf(g, 'campfire') || siteOf(g, 'forager')),
+  ]),
+  obj('settle', '9. Welcome settlers', [
+    step('Newcomers arrive when there is a free bed and 3 food in the Stockyard. Reach 6 residents.', (g) => g.population.count() >= 6),
+    step('Sleep through a night in Sam\'s own bed (E, after 20:00 or when tired).', (g) => g.flags.slept),
+  ]),
+  obj('yard2', '10. Builders and lumber', [step('Request permits at the terminal for a Lumber Camp and a Builders\' Yard, then build both.', (g) => g.buildings.count('lumbercamp') && g.buildings.count('contractor'), (g) => siteOf(g, 'lumbercamp') || siteOf(g, 'contractor'))]),
+  obj('hamlet', '11. Grow the hamlet', [step('Reach 15 residents: build Log Cabins, a Quarry and a Farm.', (g) => g.population.count() >= 15 && g.buildings.count('quarry') && g.buildings.count('farm'), (g) => nearestSite(g))]),
+  obj('village', '12. A proper village', [step('Raise a Tavern and a Brickworks, then begin on Stone Cottages.', (g) => g.buildings.count('tavern') && g.buildings.count('brickworks') && g.buildings.count('cottage') >= 1, (g) => nearestSite(g))]),
+  obj('town', '13. Become a town', [step('Reach 30 residents with a Town Hall and a Schoolhouse.', (g) => g.population.count() >= 30 && g.buildings.count('townhall') && g.buildings.count('school'), (g) => nearestSite(g))]),
+  obj('city', '14. Become a city', [step('Grow to 60 residents with a Glassworks, a Foundry and a Hospital.', (g) => g.population.count() >= 60 && g.buildings.count('glassworks') && g.buildings.count('foundry') && g.buildings.count('clinic'), (g) => nearestSite(g))]),
+  obj('landmark', '15. Crown the skyline', [step('Build the Grand Hotel or Sam Tower.', (g) => g.largeCount() >= 1, (g) => nearestSite(g))]),
 ];
 function nearestSite(g) {
   const s = g.buildings.list.filter((b) => b.state === 'site'); if (!s.length) return null;
@@ -84,8 +126,8 @@ function nearestSite(g) {
 }
 
 export const INTRO = [
-  ['Planning Office', 'Welcome to Sam City, Sam. It is little more than a hut, a campfire and a lot of forest. Everything here will be built by hand.'],
-  ['Planning Office', 'Gather timber, feed your people, and the town will grow. Press TAB for the planning view.'],
+  ['Planning Office', 'Welcome to Sam City, Sam. There is nothing here but the Lift, the forest and a rack of tools. Everything will be ordered from this planning view and built by hand.'],
+  ['Planning Office', 'Follow the objectives on the right. First, order a path and your first two buildings. Nothing happens until you do.'],
 ];
 
 // ---- raids: weapons exist in this world, but only as an occasional, uneasy fact of life ----

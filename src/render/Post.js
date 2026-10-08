@@ -37,7 +37,7 @@ export class Post {
     this.r = renderer; this.enabled = opts.enabled !== false; this.rt = null;
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
       vertexShader: VERT, fragmentShader: FRAG, depthTest: false, depthWrite: false,
-      uniforms: { tColor: { value: null }, tDepth: { value: null }, texel: { value: new THREE.Vector2() }, near: { value: 0.2 }, far: { value: 700 }, levels: { value: 40 }, outline: { value: 0.85 }, sat: { value: 1.18 }, contrast: { value: 1.06 } },
+      uniforms: { tColor: { value: null }, tDepth: { value: null }, texel: { value: new THREE.Vector2() }, near: { value: 0.3 }, far: { value: 600 }, levels: { value: 40 }, outline: { value: 0.85 }, sat: { value: 1.18 }, contrast: { value: 1.06 } },
     }));
     this.quad.frustumCulled = false; this.scene = new THREE.Scene(); this.scene.add(this.quad); this.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   }

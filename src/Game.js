@@ -14,6 +14,10 @@ import { Population } from './systems/Population.js';
 import { Story } from './systems/Story.js';
 import { Security } from './systems/Security.js';
 import { Raids } from './systems/Raids.js';
+import { RoadPlans } from './systems/RoadPlans.js';
+import { Minimap } from './ui/Minimap.js';
+import { SiteLabels } from './render/SiteLabels.js';
+import { ToolRack } from './systems/Tools.js';
 import { Planner } from './systems/Planner.js';
 import { Resources } from './systems/Resources.js';
 import { Social } from './systems/Social.js';
@@ -35,12 +39,12 @@ export class Game {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     this.post = new Post(this.renderer, { enabled: opts.post !== false });
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.2, 700);
+    this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.3, 600);
     this.input = new Input(canvas); this.clock = new Clock(); this.messages = new Messages();
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
-    this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
+    this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.raids = new Raids(this); this.planner = new Planner(this); this.social = new Social(this);
-    this.god = new GodControls(this); this.ui = new UI(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
+    this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
     // objective beacon
     this.beacon = new THREE.Group(); const bm = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.9, depthTest: false });
@@ -48,38 +52,33 @@ export class Game {
     beam.position.y = 20; this.beacon.add(cone, beam); this.beacon.userData.cone = cone; this.beacon.visible = false; this.scene.add(this.beacon);
     this.setupCity(); this.resize(); window.addEventListener('resize', () => this.resize());
     canvas.addEventListener('click', () => { if (this.mode === 'sim' && !this.ui.modalOpen && this.started && !this.ending) this.input.lock(); });
-    this.setMode('sim'); this.last = performance.now(); this.frames = 0;
+    this.setMode('god'); this.last = performance.now(); this.frames = 0;
   }
   get depot() { return this.buildings.list.find((b) => b.def.stores && b.state === 'done') || null; }
   get townhall() { return this.buildings.list.find((b) => b.id === 'surveyor') || this.buildings.list.find((b) => b.id === 'townhall') || null; }
   largeCount() { return this.buildings.list.filter((b) => b.def.large && b.state === 'done').length; }
 
   setupCity() {
-    const w = this.world, B = this.buildings;
-    const road = (x0, z0, x1, z1) => { for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) w.addRoad(x, z, 1); };
-    // everything starts primitive: a surveyor's hut, a stockyard, a campfire, Sam's hut and a dirt track from the Lift
+    const B = this.buildings;
+    // The island starts empty: only the Supply Lift and the Service Tunnel exist. Everything else is ordered in god mode and built by hand.
     this.lift = B.place('lift', 18, 2, 0, { instant: true });
-    this.surveyor = B.place('surveyor', 20, 13, 0, { instant: true });
-    B.place('stockyard', 12, 13, 0, { instant: true });
-    this.starterHome = B.place('hut', 23, 16, 2, { instant: true });
-    B.place('campfire', 15, 17, 0, { instant: true });
     this.tunnel = B.place('tunnel', 34, 19, 3, { instant: true });
-    road(19, 5, 19, 16); road(12, 15, 26, 15);
-    this.starterHome.reservedForPlayer = true; this.starterHome.spots.bed[0].taken = 'player';
-    this.plaza = { x: 19.5 * TILE, z: 17.5 * TILE };
+    const d = this.lift.doorOut; this.plaza = { x: d.x, z: d.z + 8 };
+    for (const t of this.terrain.trees) if (t.alive && Math.hypot(t.x - this.lift.trigger.x, t.z - this.lift.trigger.z) < 13) this.terrain.killTree(t);   // the Lift yard is kept clear
+    this.tools.build(d.x + 8, d.z + 13);
     this.security.init();
-    const h = this.starterHome, dx = h.doorOut.x - h.doorIn.x, dz = h.doorOut.z - h.doorIn.z; this.player.teleport(h.doorIn.x, h.doorIn.z, Math.atan2(dx, dz)); this.player.yaw = Math.atan2(-dx, -dz);
-    this.god.target.set(20 * TILE, 0, 16 * TILE);
+    this.player.teleport(d.x + 2, d.z + 17, 0); this.player.yaw = Math.PI;
+    this.god.target.set(d.x + 4, 0, d.z + 22); this.god.dist = 105; this.god.pitch = 1.05;
   }
 
   setMode(mode) {
-    this.mode = mode; this.camera.fov = mode === 'god' ? 38 : 72; this.camera.updateProjectionMatrix();
+    this.mode = mode; if (mode === 'sim') this.flags.sawSim = true; this.camera.fov = mode === 'god' ? 38 : 72; this.camera.updateProjectionMatrix();
     this.ui.setMode(mode); if (mode === 'god') { this.ui.setPrompt(null); this.god.setTool('pan'); }
   }
   start() {
     this.started = true; this.ui.start();
     INTRO.forEach(([f, t], i) => setTimeout(() => this.messages.push(f, t), 600 + i * 2500));
-    this.ui.renderObjectives(); this.ui.toast('Click the view to capture the mouse. TAB = planning view.', 4500);
+    this.ui.renderObjectives(); this.ui.toast('Welcome! Start with the objective on the right. Nothing gets built until you order it here.', 5500);
   }
   startDialogue(sim) {
     const res = this.story.dialogue(sim); sim.frozen = true; sim.talkingToPlayer = true; if (sim.chat) this.social.endChat(sim); sim.heading = Math.atan2(this.player.x - sim.x, this.player.z - sim.z); this.player.heading = Math.atan2(sim.x - this.player.x, sim.z - this.player.z);
@@ -103,10 +102,12 @@ export class Game {
   update(raw) {
     const inp = this.input, ui = this.ui; const dt = Math.min(raw, 0.1);
     if (!this.skipRender) this.fps += ((1 / Math.max(raw, 0.001)) - this.fps) * 0.05;
+    inp.pollPad(dt, !this.started || ui.modalOpen ? 'menu' : this.mode); ui.padUpdate(inp, dt);
     if (!this.started) { this.render(dt); inp.endFrame(); return; }
     // modal / toggles
     if (ui.dialogue && (inp.hit('KeyE') || inp.hit('Space') || inp.mouse.down)) ui.advanceDialogue();
     if (ui.terminalB && inp.hit('Escape')) ui.closeTerminal();
+    if (ui.dialogue && inp.padHit(1)) ui.closeDialogue();
     if (!ui.modalOpen && !this.ending && inp.hit('Tab')) this.setMode(this.mode === 'god' ? 'sim' : 'god');
     if (inp.hit('KeyP') && !ui.modalOpen) this.clock.speed = this.clock.speed ? 0 : 1;
     if (!ui.modalOpen) { if (inp.hit('Digit0')) this.clock.speed = 0; }
@@ -119,7 +120,7 @@ export class Game {
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
     this.player.update(gdt, dt);
     for (const s of this.population.sims) s.sync(dt); this.social.render(dt);
-    this.buildings.update(dt); this.story.update(dt); this.ui.update(dt);
+    this.buildings.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt);
 
     // camera
     let focus;

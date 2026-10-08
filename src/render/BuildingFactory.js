@@ -48,7 +48,7 @@ const HOME_PAPER = [['int_wallpaper_green', 0x8ab48a], ['int_wallpaper_blue', 0x
 function lining(g, len, h, cx, cz, rotY, mat) {
   const geo = new THREE.PlaneGeometry(len, h), uv = geo.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * len / 3, uv.getY(i) * h / 3);
-  const m = new THREE.Mesh(geo, mat); m.position.set(cx, 0.12 + h / 2, cz); m.rotation.y = rotY; m.receiveShadow = true; g.add(m);
+  const m = new THREE.Mesh(geo, mat); m.position.set(cx, 0.14 + h / 2, cz); m.rotation.y = rotY; m.receiveShadow = true; g.add(m);
 }
 const RUSTIC = ['timber', 'logs', 'stone'];
 const shadeHex = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(f); return c.getHex(); };
@@ -101,10 +101,10 @@ function buildExterior0(def, uid = 1) {
   const W = def.w * TILE, D = def.d * TILE, H = def.floors * WALL_H, T = WALL_T, rnd = mulberry32(uid * 7919 + 13);
   const g = new THREE.Group(), roof = new THREE.Group(), cols = [];
   const mat = facadeMaterial(def.wall), door = doorOffset(def.w), dw = DOOR_W;
-  box(g, W + 0.7, 0.3, D + 0.7, 0x9a9b9c, 0, -0.18, 0);                       // pavement slab
+  box(g, W + 0.7, 0.3, D + 0.7, 0x9a9b9c, 0, -0.2, 0);                       // pavement slab
   const homey = ['house', 'apartments'].includes(def.layout), paper = HOME_PAPER[uid % HOME_PAPER.length];
   const look = INTERIOR[def.layout] || (homey ? ['floor_wood', 0xa6825a, paper[0], paper[1]] : ['floor_wood', 0xa6825a, 'int_stucco', 0xc9bfa0]);
-  const floor = new THREE.Mesh(unit, texMat(look[0], look[1], W / 4, D / 4)); floor.scale.set(W - 0.1, 0.12, D - 0.1); floor.position.y = 0.06; floor.receiveShadow = true; g.add(floor);   // interior floor
+  const floor = new THREE.Mesh(unit, texMat(look[0], look[1], W / 4, D / 4)); floor.scale.set(W - 0.1, 0.12, D - 0.1); floor.position.y = 0.08; floor.receiveShadow = true; g.add(floor);   // interior floor
   addWall(g, cols, mat, 0, -D / 2 + T / 2, W, T, H);                              // back
   addWall(g, cols, mat, -W / 2 + T / 2, 0, T, D - 2 * T, H);                      // left
   addWall(g, cols, mat, W / 2 - T / 2, 0, T, D - 2 * T, H);                       // right
@@ -117,8 +117,8 @@ function buildExterior0(def, uid = 1) {
   const ceilH = Math.min(H, WALL_H * 1.7);
   box(g, W - 2 * T, 0.12, D - 2 * T, 0xe8e4da, 0, ceilH - 0.1, 0, { emissive: 0xfff2d0, emissiveIntensity: 0.55 });
   // textured wall lining on the inside faces
-  const lm = texMat(look[2], look[3], 1, 1, 0xb8b2a6), lh = ceilH - 0.22, iz = D / 2 - T - 0.01, ix = W / 2 - T - 0.01;
-  lining(g, W - 2 * T, lh, 0, -D / 2 + T + 0.01, 0, lm);
+  const lm = texMat(look[2], look[3], 1, 1, 0xb8b2a6), lh = ceilH - 0.24, iz = D / 2 - T - 0.02, ix = W / 2 - T - 0.02;
+  lining(g, W - 2 * T, lh, 0, -D / 2 + T + 0.02, 0, lm);
   lining(g, D - 2 * T, lh, -ix, 0, Math.PI / 2, lm); lining(g, D - 2 * T, lh, ix, 0, -Math.PI / 2, lm);
   const fl0 = l1 - (-W / 2 + T), fr0 = (W / 2 - T) - r0;
   if (fl0 > 0.1) lining(g, fl0, lh, (-W / 2 + T + l1) / 2, iz, Math.PI, lm); if (fr0 > 0.1) lining(g, fr0, lh, (r0 + W / 2 - T) / 2, iz, Math.PI, lm);
@@ -127,7 +127,7 @@ function buildExterior0(def, uid = 1) {
   const dmat = texMat(dkey, dcol, 1, 1), lw = dw / 2 - 0.04, hingeZ = fz - T / 2 - 0.05;
   for (const side of [-1, 1]) {
     const geo = new THREE.BoxGeometry(lw, 2.45, 0.06); geo.translate(-side * lw / 2, 1.25, 0);
-    const leaf = new THREE.Mesh(geo, dmat); leaf.position.set(door + side * (dw / 2 - 0.02), 0.05, hingeZ); leaf.rotation.y = -side * 1.25; leaf.castShadow = true; g.add(leaf);
+    const leaf = new THREE.Mesh(geo, dmat); leaf.position.set(door + side * (dw / 2 - 0.02), 0.15, hingeZ); leaf.rotation.y = -side * 1.25; leaf.castShadow = true; g.add(leaf);
   }
   // sign above the door
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture(def.name) }));

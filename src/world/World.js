@@ -139,13 +139,13 @@ export class World {
       }
     }
   }
-  /** Circle-vs-world test used by the player. */
-  collides(x, z, r) {
+  /** Circle-vs-world test used by the player. wallsOnly: ignore water/forest tiles (camera). */
+  collides(x, z, r, wallsOnly = false) {
     const [tx0, tz0] = this.tileOf(x - r, z - r), [tx1, tz1] = this.tileOf(x + r, z + r);
     for (let tz = tz0; tz <= tz1; tz++) for (let tx = tx0; tx <= tx1; tx++) {
       if (!this.inBounds(tx, tz)) return true;
       const t = this.terrain[this.idx(tx, tz)];
-      if (t === T.WATER || t === T.FOREST) return true;
+      if (!wallsOnly && (t === T.WATER || t === T.FOREST)) return true;
       const a = this.colBuckets.get(this.idx(tx, tz));
       if (a) for (const c of a) {
         const cx = Math.max(c.minx, Math.min(x, c.maxx)), cz = Math.max(c.minz, Math.min(z, c.maxz));

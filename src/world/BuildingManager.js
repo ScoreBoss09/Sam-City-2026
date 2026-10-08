@@ -38,7 +38,7 @@ export class BuildingManager {
       const fits = this.world.canPlace(x0, z0, w, d);
       const needRoad = def.needsRoad !== false;
       const [dtx, dtz] = geo.doorTile;
-      const roadOk = !needRoad || (this.world.inBounds(dtx, dtz) && this.world.road[this.world.idx(dtx, dtz)] > 0);
+      const roadOk = !needRoad || (this.world.inBounds(dtx, dtz) && (this.world.road[this.world.idx(dtx, dtz)] > 0 || (this.game.roadPlans && this.game.roadPlans.has(dtx, dtz))));
       let shoreOk = true; if (def.needsShore && fits) { shoreOk = false; for (let zz = z0 - 1; zz <= z0 + d && !shoreOk; zz++) for (let xx = x0 - 1; xx <= x0 + w; xx++) if (this.world.inBounds(xx, zz) && this.world.terrain[this.world.idx(xx, zz)] === 0) { shoreOk = true; break; } }
       const cand = { ok: fits && roadOk && shoreOk, reason: !fits ? 'Blocked' : (!roadOk ? 'Needs road frontage' : (!shoreOk ? 'Must be on the shore' : '')), rot, x0, z0, w, d, geo };
       if (cand.ok) return cand; if (!fallback || (fits && !fallback.fits)) { cand.fits = fits; fallback = cand; }
@@ -126,6 +126,7 @@ export class BuildingManager {
     if (ext.smokeSrc) b.smoke = { lx: ext.smokeSrc.x, ly: ext.smokeSrc.y, lz: ext.smokeSrc.z };
     if (ext.fire) b.fire = ext.fire;
     if (ext.fieldPlots && this.game.resources) this.game.resources.addFields(b, ext.fieldPlots);
+    if (def.id === 'hut' && !this.game.starterHome && !this.game.flags.noStarter) { this.game.starterHome = b; b.reservedForPlayer = true; if (b.spots.bed[0]) b.spots.bed[0].taken = 'player'; this.game.messages.push('Planning Office', 'This hut is Sam\'s home. Sleep in its bed (E) when you are tired.', 'good'); }
     this.world.events.emit('building:done', b);
   }
 
@@ -134,6 +135,7 @@ export class BuildingManager {
     if (b.ext) { this.scene.remove(b.ext.group, b.ext.roof); }
     if (b.siteVis) this.scene.remove(b.siteVis.group);
     if (b.interior) this.scene.remove(b.interior);
+    if (b.label) { this.scene.remove(b.label); b.label = null; }
     this.world.removeColliders(b); this.world.unfill(b); this.world.buildings.delete(b.uid);
     const i = this.list.indexOf(b); if (i >= 0) this.list.splice(i, 1);
     this.world.events.emit('building:removed', b);

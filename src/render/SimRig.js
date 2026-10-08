@@ -185,3 +185,6 @@ export function setProp(rig, slot, name, color) {
   const parent = slot === 'handR' ? rig.armR.hand : slot === 'handL' ? rig.armL.hand : rig.spine;
   if (slot === 'chest') obj.position.set(0, 0.28, 0.33); parent.add(obj); rig.props[key] = { name, obj };
 }
+
+/** A free-standing copy of a held prop (used by the tool rack). */
+export function makeProp(name) { return PROPS[name](); }

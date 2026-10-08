@@ -2,6 +2,7 @@ import { BUILDINGS, MATERIALS, ROLES, TOOL_MENUS, ALL_BUILDABLE, tierOf } from '
 import { OBJECTIVES } from '../data/story.js';
 import { fmtMoney } from '../util.js';
 import { MONTHS } from '../core/Clock.js';
+import { TOOLS as TOOL_NAMES } from '../player/Player.js';
 
 const $ = (id) => document.getElementById(id);
 const TOOLS = [
@@ -32,11 +33,38 @@ export class UI {
     const god = mode === 'god';
     ['toolbox'].forEach((i) => $(i).classList.toggle('hidden', !god)); if (!god) this.hide('submenu', 'hover');
     $('crosshair').classList.toggle('hidden', god); $('simhud').classList.toggle('hidden', god); $('stock').classList.remove('hidden');
-    $('help').classList.remove('hidden'); $('help').textContent = god ? 'GOD MODE · TAB: control Sam · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SIM MODE · TAB: planning view · WASD move · Shift sprint · V camera · E interact (hold to work) · G wave · click to capture mouse';
+    $('help').classList.remove('hidden'); this.helpMode = mode; $('help').textContent = this.game.input.padActive ? (god ? 'GOD MODE · START: control Sam · Left stick pan · Right stick rotate/zoom · A place/paint · B cancel · Y rotate · LB/RB tool · D-pad item' : 'SAM · START: planning view · Left stick move · Right stick look · A interact (hold to work) · Y eat · X swing · LB sprint · RB camera') : god ? 'GOD MODE · TAB: control Sam · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SIM MODE · TAB: planning view · WASD move · Shift sprint · V camera · E interact (hold to work) · G wave · click to capture mouse';
     $('c-mode').textContent = god ? 'PLANNING VIEW' : 'SAM (' + (this.game.player.third ? '3rd' : '1st') + ' person)';
     if (god) this.game.input.unlock();
   }
   start() { this.hide('title'); this.show('hud-info', 'objectives', 'clockbox', 'stock'); this.setMode(this.game.mode); }
+
+  // ---------- controller ----------
+  /** Swap keyboard hints for controller buttons while a pad is in use. */
+  keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, 'A').replace(/\bF\b/g, 'X').replace(/\bQ\b/g, 'Y').replace(/\bTAB\b/g, 'START').replace(/\bV\b/g, 'RB').replace(/\bG\b/g, 'B'); }
+  padScope() { if (!this.game.started) return $('title'); if (this.terminalB) return $('terminal'); return null; }
+  padUpdate(inp, dt) {
+    const P = inp.pad, g = this.game; if (!inp.padActive || !P.connected) { this.clearPadFocus(); return; }
+    // menu focus (title screen, terminal)
+    const scope = this.padScope();
+    if (scope) {
+      const btns = [...scope.querySelectorAll('button')].filter((b) => !b.disabled && b.offsetParent !== null); if (!btns.length) return;
+      this._pfIdx = Math.min(this._pfIdx || 0, btns.length - 1);
+      this._navT = (this._navT || 0) - dt; let d = 0; const sy = Math.abs(P.ly) > 0.6 ? Math.sign(P.ly) : Math.abs(P.lx) > 0.6 ? Math.sign(P.lx) : 0;
+      if (P.hitB[12] || P.hitB[14]) d = -1; else if (P.hitB[13] || P.hitB[15]) d = 1; else if (sy && this._navT <= 0) { d = sy; this._navT = 0.22; } if (!sy) this._navT = 0;
+      if (d) this._pfIdx = (this._pfIdx + d + btns.length) % btns.length;
+      for (const b of scope.querySelectorAll('button.padfocus')) if (b !== btns[this._pfIdx]) b.classList.remove('padfocus'); btns[this._pfIdx].classList.add('padfocus'); btns[this._pfIdx].scrollIntoView({ block: 'nearest' });
+      if (P.hitB[0]) { btns[this._pfIdx].click(); } return;
+    }
+    this.clearPadFocus();
+    if (g.mode !== 'god' || this.modalOpen || !g.started) return;
+    const ids = TOOLS.map((t) => t[0]), cur = ids.indexOf(g.god.tool.id);
+    if (P.hitB[5] || P.hitB[4]) { const n = ids[(cur + (P.hitB[5] ? 1 : -1) + ids.length) % ids.length]; g.god.setTool(n, n === 'zone' ? 'res' : n === 'road' ? 'dirt' : null); this.openSub(n); this.toast(TOOLS.find((t) => t[0] === n)[2] + ' tool', 1200); }
+    const list = this.padItems(); if (list.length && (P.hitB[12] || P.hitB[13])) { const i = list.indexOf(g.god.tool.sub), n = list[(i + (P.hitB[13] ? 1 : -1) + list.length + (i < 0 ? 1 : 0)) % list.length]; g.god.setTool(g.god.tool.id, n); this.openSub(g.god.tool.id); }
+    if (g.god.tool.id === 'build' && (P.hitB[14] || P.hitB[15])) { const tabs = TOOL_MENUS.build.map(([n]) => n), i = tabs.indexOf(this.buildTab); this.buildTab = tabs[(i + (P.hitB[15] ? 1 : -1) + tabs.length) % tabs.length]; g.god.setTool('build', null); this.openSub('build'); }
+  }
+  padItems() { const t = this.game.god.tool.id; if (t === 'build') return (TOOL_MENUS.build.find(([n]) => n === this.buildTab) || TOOL_MENUS.build[0])[1]; if (t === 'park' || t === 'util') return TOOL_MENUS[t]; if (t === 'road') return ['dirt', 'paved']; if (t === 'zone') return ['res', 'com', 'ind', 'none']; return []; }
+  clearPadFocus() { if (this._pfOn) { document.querySelectorAll('.padfocus').forEach((b) => b.classList.remove('padfocus')); this._pfOn = false; } if (this.padScope()) this._pfOn = true; }
 
   // ---------- toolbox ----------
   refreshTools() {
@@ -60,23 +88,27 @@ export class UI {
 
   // ---------- messages / toasts ----------
   addMessage(m) {
-    const el = document.createElement('div'); el.className = 'msg ' + (m.kind || ''); el.innerHTML = `<b>${m.from}:</b> ${m.text}`; const box = $('messages'); box.appendChild(el);
+    const el = document.createElement('div'); el.className = 'msg ' + (m.kind || ''); el.innerHTML = `<b>${m.from}:</b> ${this.keyText(m.text)}`; const box = $('messages'); box.appendChild(el);
     while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(() => { el.style.transition = 'opacity 1s'; el.style.opacity = 0; setTimeout(() => el.remove(), 1000); }, 7000);
   }
   setAlert(text) { const a = $('alertbar'); if (!a) return; if (text) { a.textContent = text; a.classList.remove('hidden'); } else a.classList.add('hidden'); }
-  toast(text, ms = 2600) { const t = $('toast'); t.textContent = text; t.classList.remove('hidden'); clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.add('hidden'), ms); }
+  toast(text, ms = 2600) { const t = $('toast'); t.textContent = this.keyText(text); t.classList.remove('hidden'); clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.add('hidden'), ms); }
   fade(a, text = '') { $('fade').style.opacity = a; $('fade-text').textContent = text; }
   setPrompt(text, hold) {
     const p = $('prompt'); if (!text || this.game.mode !== 'sim' || this.modalOpen) { p.classList.add('hidden'); return; }
-    p.classList.remove('hidden'); $('prompt-text').textContent = text; const bar = $('prompt-bar'); bar.style.display = hold >= 0 ? 'block' : 'none'; bar.firstChild.style.width = Math.round(Math.max(0, hold) * 100) + '%';
+    p.classList.remove('hidden'); p.classList.toggle('pad', this.game.input.padActive); $('prompt-text').textContent = this.keyText(text); const bar = $('prompt-bar'); bar.style.display = hold >= 0 ? 'block' : 'none'; bar.firstChild.style.width = Math.round(Math.max(0, hold) * 100) + '%';
   }
 
   // ---------- objectives ----------
   renderObjectives() {
-    const g = this.game, cur = g.story.objective, o = OBJECTIVES[cur];
-    $('obj-text').textContent = o ? o.text : 'The story continues...';
-    $('obj-list').innerHTML = OBJECTIVES.map((x, i) => `<div class="${i < cur ? 'done' : i === cur ? 'cur' : ''}">${i < cur ? '✓' : i === cur ? '▶' : '·'} ${x.text}</div>`).join('');
+    const g = this.game, cur = g.story.objective, o = OBJECTIVES[cur], el = $('obj-list');
+    if (!o) { $('obj-title').textContent = 'The story continues...'; $('obj-text').textContent = ''; el.innerHTML = ''; return; }
+    $('obj-title').textContent = o.title; $('obj-text').textContent = '';
+    let first = true;
+    const html = o.steps.map((s) => { const d = !!s.done(g); const cls = d ? 'done' : first ? 'cur' : ''; const mark = d ? '✓' : first ? '▶' : '·'; if (!d) first = false; return `<div class="${cls}">${mark} ${this.keyText(s.text)}</div>`; }).join('');
+    const next = OBJECTIVES.slice(cur + 1, cur + 3).map((x) => `<div class="later">· ${x.title}</div>`).join('');
+    const sig = html + next + this.game.input.padActive; if (sig !== this._objSig) { this._objSig = sig; el.innerHTML = html + (next ? `<div class="sep">Coming up</div>${next}` : ''); }
   }
   flashObjective() { const o = $('objectives'); o.classList.remove('flash'); void o.offsetWidth; o.classList.add('flash'); this.renderObjectives(); }
 
@@ -160,13 +192,15 @@ export class UI {
     if (this.dialogue) { const d = this.dialogue; d.shown = Math.min(d.full.length, d.shown + dt * 55); $('d-text').textContent = d.full.slice(0, Math.floor(d.shown)); }
     this.acc += dt; if (this.acc < 0.25) return; this.acc = 0;
     const c = g.clock, P = g.population;
-    $('h-pop').textContent = P.count().toLocaleString(); $('h-funds').textContent = fmtMoney(g.economy.funds); $('h-month').textContent = MONTHS[c.month]; $('h-year').textContent = c.year; $('h-sims').textContent = `${P.sims.length}/${P.simCap}`;
+    $('h-pop').textContent = P.count().toLocaleString(); $('h-funds').textContent = fmtMoney(g.economy.funds); $('h-month').textContent = MONTHS[c.month]; $('h-year').textContent = c.year; $('h-sims').textContent = `${P.sims.filter((s) => !s.hidden).length}/${P.simCap}`;
     $('c-date').textContent = `${MONTHS[c.month]} ${c.year}`; $('c-time').textContent = c.hhmm;
     for (const b of $('c-speed').children) b.classList.toggle('on', +b.dataset.s === c.speed);
     $('stock').innerHTML = Object.keys(MATERIALS).map((m) => `<div><span>${MATERIALS[m].name}</span> <b>${Math.floor(g.economy.stock[m])}</b></div>`).join('');
     $('h-tier').textContent = tierOf(P.count());
+    $('b-hunger').style.width = Math.round(100 - g.player.hunger) + '%'; $('b-hunger').style.background = g.player.hunger > 70 ? '#ff6b6b' : '#e8b44a'; $('h-tools').textContent = [...g.player.tools].map((t) => TOOL_NAMES[t]).join(', ') || 'none yet';
     $('b-energy').style.width = Math.round(g.player.energy) + '%'; $('b-energy').style.background = g.player.energy < 25 ? '#ff6b6b' : '#7be08f';
     $('h-carry').textContent = g.player.carry ? `${g.player.carry.qty} ${MATERIALS[g.player.carry.mat].name}` : 'nothing';
+    if (this._padWas !== g.input.padActive) { this._padWas = g.input.padActive; this.setMode(g.mode); }
     if (g.mode === 'sim') $('c-mode').textContent = 'SAM (' + (g.player.third ? '3rd' : '1st') + ' person)';
     this.renderObjectives();
   }

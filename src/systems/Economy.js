@@ -5,7 +5,7 @@ import { Emitter } from '../util.js';
 /** Funds, material/food stock, permits, trade and monthly accounts. */
 export class Economy extends Emitter {
   constructor(game) {
-    super(); this.game = game; this.funds = START_FUNDS; this.stock = { timber: 24, stone: 6, brick: 0, steel: 0, glass: 0, food: 16 };
+    super(); this.game = game; this.funds = START_FUNDS; this.stock = { timber: 0, stone: 0, brick: 0, steel: 0, glass: 0, food: 0 };
     this.permits = {}; for (const id of Object.keys(BUILDINGS)) { const d = BUILDINGS[id]; this.permits[id] = d.special || (d.permit && d.permit.cost === 0 && d.permit.pop === 0) ? 'approved' : 'locked'; }
     this.orders = []; this.pending = []; this.lastReport = null; this.foodWarned = -1; this.gathered = 0;
   }

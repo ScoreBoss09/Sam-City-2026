@@ -23,7 +23,8 @@ export class Security {
     const g = this.game, p = g.player;
     // tunnel guards leave their post during rotation
     const duty = this.tunnelOnDuty();
-    for (const s of this.guards) if (s.zone === 'tunnel') { s.hidden = !duty; s.inside = !duty ? g.tunnel : null; if (duty && s.path.length === 0 && !s.engaged && Math.hypot(s.x - s.post.x, s.z - s.post.z) > 0.5) s.goTo({ x: s.post.x, z: s.post.z }); }
+    const show = g.population.count() > 0 || g.flags.guardsOut; for (const s of this.guards) if (s.zone !== 'tunnel') s.hidden = !show;
+    for (const s of this.guards) if (s.zone === 'tunnel') { s.hidden = !duty || !show; s.inside = !duty || !show ? g.tunnel : null; if (duty && s.path.length === 0 && !s.engaged && Math.hypot(s.x - s.post.x, s.z - s.post.z) > 0.5) s.goTo({ x: s.post.x, z: s.post.z }); }
     for (const s of this.guards) if (s.zone !== 'tunnel' && !s.engaged && s.path.length === 0 && s.sortied && Math.hypot(s.x - s.post.x, s.z - s.post.z) > 0.5) { s.sortied = false; s.goTo({ x: s.post.x, z: s.post.z }); }
     // darts
     for (const d of this.darts) {
@@ -35,9 +36,9 @@ export class Security {
     this.cool -= dt;
     for (const b of [g.lift, g.tunnel]) {
       const d = Math.hypot(p.x - b.trigger.x, p.z - b.trigger.z), tun = b.id === 'tunnel';
-      const warnR = tun ? 15 : 17, killR = tun ? 4.2 : 8.5;
+      const warnR = tun ? 15 : 9, killR = tun ? 4.2 : 5;
       if (d < warnR && !this.warned[b.id]) {
-        this.warned[b.id] = true;
+        this.warned[b.id] = true; g.flags.guardsOut = true;
         g.messages.push(tun ? 'Gate Guard' : 'Lift Guard', tun ? 'Restricted area! Turn back, Sam. That corridor is closed.' : 'Staff only beyond this point, Sam. Please step back.', 'warn'); g.ui.toast('RESTRICTED AREA AHEAD');
       }
       if (d > warnR + 5) this.warned[b.id] = false;

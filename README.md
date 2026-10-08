@@ -16,15 +16,41 @@ python3 -m http.server 8000
 `?scale=0.75` gives a crisper render (default 0.6 = chunky pixel look), `?post=0` turns the pixel-art outline pass off, `?auto` skips the title screen, `?auto&demo` (or the **Demo City** button) builds a lively sandbox town. Progress autosaves in the browser; use **Continue** on the title screen.
 
 ## Controls
-**Sim mode:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact (hold E to chop, mine, harvest, fish, build or work a shift), G wave, TAB planning view.
-**Planning view:** WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, F frame the island, 1-7 tools (bulldoze, roads, zones, buildings, parks, utilities, query), R rotate the ghost, Esc cancel, TAB back to Sam. P pauses; the clock buttons set 1x/2x/4x.
+**Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact (hold E to chop, mine, pick, fish, dig paths, build or work), Q eat, F swing the club (raids only), G wave, M big map, TAB planning view.
+**Keyboard and mouse, planning view:** WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, F frame the island, 1-7 tools, R rotate the ghost, Esc cancel, TAB back to Sam. P pauses; the clock buttons set 1x/2x/4x.
+
+**Controller (Xbox/PlayStation layout, plug it in and press any button):**
+| Button | Sam | Planning view |
+|---|---|---|
+| Left stick | walk | move the map (the yellow cursor is the centre of the screen) |
+| Right stick | look | rotate (left/right) and zoom (up/down) |
+| A / Cross | interact, hold to work | place, or hold and move to paint paths |
+| B / Circle | wave | cancel tool |
+| X / Square, RT | swing the club | frame the island |
+| Y / Triangle | eat | rotate the building |
+| LB / L1 | sprint | previous tool |
+| RB / R1 | first/third person | next tool |
+| D-pad | | up/down: pick a building, left/right: building tab |
+| Start | planning view / Sam | planning view / Sam |
+| Back / Select | pause | pause |
+| R3 | big map | |
+Menus and the terminal: D-pad or stick to move, A to press, B to close.
+
+## How a new game starts
+The island is empty: just the Supply Lift, the forest and a tool rack. The game opens in the planning view and nothing happens until you order it.
+1. **Plan:** draw a dirt path with the Roads tool and order a Stockyard and a Wooden Hut beside it. They appear as building sites.
+2. **Tools:** TAB into Sam, walk to the glowing Tool Rack and pick up the Axe, Hammer and Shovel (Basket, Pickaxe and Fishing rod too, when you need them).
+3. **Dig the path:** stand on the staked tiles and hold E.
+4. **Build:** chop trees, carry the timber to each site, hold E to build. The first hut becomes Sam's home.
+5. **Eat and sleep:** Sam gets hungry and tired. Pick berries and press Q, or eat at the Stockyard or a campfire; sleep in your bed at night. If you forget, Sam collapses.
+6. Build the Surveyor's Hut for its planning terminal (permits, trade), a Campfire and a Forager, and settlers start arriving when there is a free bed and food in the Stockyard. Builders from a Builders' Yard will dig paths and build for you.
+The minimap (bottom right in Sam's view) shows a yellow star where the current objective wants you.
 
 ## How the town grows
-1. **Camp** (0 residents): Sam has a hut, a campfire, a Stockyard and a Surveyor's Hut with a planning terminal. Chop trees at the forest edge, store timber in the Stockyard, place a Wooden Hut and build it (carry timber to the site, hold E).
-2. Settlers arrive through the Supply Lift when there are free beds, work and food. Place a Forager's Hut and a Campfire so people can eat; request permits at the terminal for more.
-3. **Hamlet** (6) → **Village** (15) → **Town** (30) → **City** (60): each tier unlocks new buildings (Log Cabins, Quarry, Farm, Tavern, Brickworks, Stone Cottages, School, Town Hall, Glassworks, Foundry, Hospital, Power, Hotel, Tower...). Roads start as dirt tracks and can be paved once the village is big enough.
-4. Gatherers work raw resources (forest, rocks, iron ore, clay pits, berry bushes, fields, the sea and beach) and carry them to the Stockyard. You can trade surplus with the Lift for money, or buy goods at a premium.
-5. Citizens get hungry (meals at home, the campfire or the tavern; workers pack lunch), sleep in their own beds, chat, become friends, couple up and move in together, have children who go to school and grow up. Mood affects whether people stay.
+1. Settlers arrive through the Supply Lift when there are free beds, work and food.
+2. **Hamlet** (6) → **Village** (15) → **Town** (30) → **City** (60): each tier unlocks new buildings (Log Cabins, Quarry, Farm, Tavern, Brickworks, Stone Cottages, School, Town Hall, Glassworks, Foundry, Hospital, Power, Hotel, Tower...). Paths can be paved once the village is big enough (1 stone per tile).
+3. Gatherers work raw resources (forest, rocks, iron ore, clay pits, berry bushes, fields, the sea and beach) and carry them to the Stockyard. You can trade surplus with the Lift for money, or buy goods at a premium.
+4. Citizens get hungry (meals at home, the campfire or the tavern; workers pack lunch), sleep in their own beds, chat, become friends, couple up and move in together, have children who go to school and grow up. Mood affects whether people stay.
 
 There is more going on in Sam City than a town. You will have to explore to find out.
 
