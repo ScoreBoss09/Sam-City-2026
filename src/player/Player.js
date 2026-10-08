@@ -434,7 +434,7 @@ export class Player {
     const sh = this.shake > 0 ? this.shake * 0.12 : 0, jx = sh ? (Math.random() - 0.5) * sh : 0, jy = sh ? (Math.random() - 0.5) * sh : 0;
     if (!this.third) { if (this.cut && this.cut.size) this.cutaway(null); cam.position.set(hx + jx, hy + jy, hz); cam.lookAt(hx + fx, hy + fy, hz + fz); return; }
     let d = this.camDist; const sx = Math.cos(this.yaw) * 0.55, sz = -Math.sin(this.yaw) * 0.55; const tx = hx + sx, ty = 1.75, tz = hz + sz;
-    while (d > 0.6) { const cx = tx - fx * d, cz = tz - fz * d, cy = ty - fy * d + 0.4; if (cy < 0.3) { d -= 0.3; continue; } if (!w.collides(cx, cz, 0.25, true)) break; d -= 0.3; }
+    { let ok = 0.5; for (let t = 0.5; t <= d; t += 0.15) { const cx = tx - fx * t, cz = tz - fz * t; if (w.collides(cx, cz, 0.22, true)) break; ok = t; } d = Math.min(d, ok); }   // walk out from Sam and stop at the first wall
     cam.position.set(tx - fx * d + jx, Math.max(0.4, ty - fy * d + 0.4) + jy, tz - fz * d); cam.lookAt(tx, ty, tz); this.cutaway(cam.position.x, cam.position.z, hx, hz);
   }
 }
