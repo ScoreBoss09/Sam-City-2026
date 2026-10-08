@@ -38,8 +38,10 @@
 
   <div id="minimap" class="hidden"><canvas width="200" height="200"></canvas><div class="mm-hint">M: map</div></div>
   <div id="crosshair" class="hidden"></div>
+  <div id="workgame" class="hidden"><div class="wg-top"><span id="wg-title"></span><span id="wg-label"></span></div><div class="wg-bar"><div id="wg-good"></div><div id="wg-perfect"></div><div id="wg-cursor"></div></div><div class="wg-progbar"><div id="wg-prog"></div></div><div id="wg-hint"></div><div id="wg-pop" class="wg-pop"></div></div>
+  <div id="inventory" class="panel hidden"></div>
   <div id="prompt" class="hidden"><div id="prompt-text"></div><div id="prompt-bar"><div></div></div></div>
-  <div id="simhud" class="panel hidden"><div class="row"><span>Energy</span><div class="bar"><div id="b-energy"></div></div></div><div class="row"><span>Fed</span><div class="bar"><div id="b-hunger"></div></div></div><div class="row"><span>Tools</span></div><div id="h-tools">none yet</div><div class="row"><span>Carrying</span><b id="h-carry">nothing</b></div></div>
+  <div id="simhud" class="panel hidden"><div class="row"><span>Energy</span><div class="bar"><div id="b-energy"></div></div></div><div class="row"><span>Fed</span><div class="bar"><div id="b-hunger"></div></div></div><div class="row"><span>Tools</span></div><div id="h-tools">none yet</div><div class="row"><span>Backpack</span><b id="h-carry">0</b></div><div class="bar wide"><div id="b-pack"></div></div><div id="h-pack">empty</div><div class="keys" id="h-keys">I backpack · R drop · Q eat</div></div>
   <div id="help" class="hidden"></div>
 
   <div id="dialogue" class="panel hidden"><div id="d-name"></div><div id="d-text"></div><div id="d-hint">[E] continue</div></div>
@@ -67,6 +69,7 @@
       <button id="btn-continue" class="hidden">Continue</button>
       <button id="btn-new">New Game</button>
       <button id="btn-demo">Demo City (sandbox)</button>
+      <label class="opt"><input type="checkbox" id="opt-sound" checked> Sound effects</label>
       <label class="opt"><input type="checkbox" id="opt-raids" checked> Occasional raids (weapons appear in the story)</label>
       <div class="how">
         <b>Sim mode</b> WASD move · Shift sprint · mouse look (click to capture) · V first/third person · E interact (hold to work)<br>

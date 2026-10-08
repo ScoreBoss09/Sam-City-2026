@@ -2,7 +2,8 @@ import { BUILDINGS, MATERIALS, ROLES, TOOL_MENUS, ALL_BUILDABLE, tierOf } from '
 import { OBJECTIVES } from '../data/story.js';
 import { fmtMoney } from '../util.js';
 import { MONTHS } from '../core/Clock.js';
-import { TOOLS as TOOL_NAMES } from '../player/Player.js';
+import { TOOLS as TOOL_NAMES, TOOL_ICON, MAT_ICON, BACKPACK } from '../player/Player.js';
+import { Sfx } from '../core/Sfx.js';
 
 const $ = (id) => document.getElementById(id);
 const TOOLS = [
@@ -20,7 +21,7 @@ export class UI {
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; game.clock.speed = +b.dataset.s; });
-    $('terminal').addEventListener('click', (e) => this.terminalClick(e));
+    $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('inventory').addEventListener('click', (e) => this.invClick(e));
     game.messages.on('msg', (m) => this.addMessage(m));
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
     $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
@@ -34,7 +35,7 @@ export class UI {
     const god = mode === 'god';
     ['toolbox'].forEach((i) => $(i).classList.toggle('hidden', !god)); if (!god) this.hide('submenu', 'hover');
     $('crosshair').classList.toggle('hidden', god); $('simhud').classList.toggle('hidden', god); $('stock').classList.remove('hidden');
-    $('help').classList.remove('hidden'); this.helpMode = mode; $('help').textContent = this.game.input.padActive ? (god ? 'GOD MODE · START: control Sam · Left stick pan · Right stick rotate/zoom · A place/paint · B cancel · Y rotate · LB/RB tool · D-pad item' : 'SAM · START: planning view · Left stick move · Right stick look · A interact (hold to work) · Y eat · X swing · LB sprint · RB camera') : god ? 'GOD MODE · TAB: control Sam · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SIM MODE · TAB: planning view · WASD move · Shift sprint · V camera · E interact (hold to work) · G wave · click to capture mouse';
+    $('help').classList.remove('hidden'); this.helpMode = mode; $('help').textContent = this.game.input.padActive ? (god ? 'GOD MODE · START: control Sam · Left stick pan · Right stick rotate/zoom · A place/paint · B cancel · Y rotate · LB/RB tool · D-pad item' : 'SAM · START planning view · Left stick move · Right stick look · A use / tap in the green · D-pad ↑ backpack · D-pad ↓ drop · Y eat · LB sprint · RB camera') : god ? 'GOD MODE · TAB: control Sam · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SAM · TAB planning view · WASD move · Shift sprint · E use / tap in the green to work · I backpack · R drop · Q eat · V camera · M map · click to capture mouse';
     $('c-mode').textContent = god ? 'PLANNING VIEW' : 'SAM (' + (this.game.player.third ? '3rd' : '1st') + ' person)';
     if (god) this.game.input.unlock();
   }
@@ -42,8 +43,8 @@ export class UI {
 
   // ---------- controller ----------
   /** Swap keyboard hints for controller buttons while a pad is in use. */
-  keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, 'A').replace(/\bF\b/g, 'X').replace(/\bQ\b/g, 'Y').replace(/\bTAB\b/g, 'START').replace(/\bV\b/g, 'RB').replace(/\bG\b/g, 'B'); }
-  padScope() { if (!this.game.started) return $('title'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); return null; }
+  keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, 'A').replace(/\bF\b/g, 'X').replace(/\bQ\b/g, 'Y').replace(/\bTAB\b/g, 'START').replace(/\bV\b/g, 'RB').replace(/\bG\b/g, 'B').replace(/\bR\b/g, 'D-pad ↓'); }
+  padScope() { if (!this.game.started) return $('title'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); if (this.invOpen) return $('inventory'); return null; }
   padUpdate(inp, dt) {
     const P = inp.pad, g = this.game; if (!inp.padActive || !P.connected) { this.clearPadFocus(); return; }
     // menu focus (title screen, terminal)
@@ -96,20 +97,22 @@ export class UI {
   setAlert(text) { const a = $('alertbar'); if (!a) return; if (text) { a.textContent = text; a.classList.remove('hidden'); } else a.classList.add('hidden'); }
   toast(text, ms = 2600) { const t = $('toast'); t.textContent = this.keyText(text); t.classList.remove('hidden'); clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.add('hidden'), ms); }
   fade(a, text = '') { $('fade').style.opacity = a; $('fade-text').textContent = text; }
-  setPrompt(text, hold) {
+  setPrompt(text, hold, info = false) {
     const p = $('prompt'); if (!text || this.game.mode !== 'sim' || this.modalOpen) { p.classList.add('hidden'); return; }
-    p.classList.remove('hidden'); p.classList.toggle('pad', this.game.input.padActive); $('prompt-text').textContent = this.keyText(text); const bar = $('prompt-bar'); bar.style.display = hold >= 0 ? 'block' : 'none'; bar.firstChild.style.width = Math.round(Math.max(0, hold) * 100) + '%';
+    p.classList.remove('hidden'); p.classList.toggle('pad', this.game.input.padActive); p.classList.toggle('info', !!info); $('prompt-text').textContent = this.keyText(text); const bar = $('prompt-bar'); bar.style.display = hold >= 0 ? 'block' : 'none'; bar.firstChild.style.width = Math.round(Math.max(0, hold) * 100) + '%';
   }
 
   // ---------- objectives ----------
   renderObjectives() {
     const g = this.game, cur = g.story.objective, o = OBJECTIVES[cur], el = $('obj-list');
-    if (!o) { $('obj-title').textContent = 'The story continues...'; $('obj-text').textContent = ''; el.innerHTML = ''; return; }
-    $('obj-title').textContent = o.title; $('obj-text').textContent = '';
-    let first = true;
-    const html = o.steps.map((s) => { const d = !!s.done(g); const cls = d ? 'done' : first ? 'cur' : ''; const mark = d ? '✓' : first ? '▶' : '·'; if (!d) first = false; return `<div class="${cls}">${mark} ${this.keyText(s.text)}</div>`; }).join('');
-    const next = OBJECTIVES.slice(cur + 1, cur + 3).map((x) => `<div class="later">· ${x.title}</div>`).join('');
-    const sig = html + next + this.game.input.padActive; if (sig !== this._objSig) { this._objSig = sig; el.innerHTML = html + (next ? `<div class="sep">Coming up</div>${next}` : ''); }
+    if (!o) { $('obj-title').textContent = 'Free play'; $('obj-text').textContent = 'Grow the town however you like.'; el.innerHTML = ''; return; }
+    // one thing at a time: only the current step is shown
+    const i = o.steps.findIndex((s) => !s.done(g)), k = i < 0 ? o.steps.length - 1 : i, step = o.steps[k];
+    const sig = cur + ':' + k + g.input.padActive; if (sig === this._objSig) return; this._objSig = sig;
+    $('obj-title').textContent = o.title.replace(/^\d+\. /, ''); $('obj-text').textContent = this.keyText(step.text);
+    el.innerHTML = `<div class="stepdots">${o.steps.map((s, n) => `<span class="${n < k ? 'd' : n === k ? 'c' : ''}"></span>`).join('')}<em>Step ${k + 1} of ${o.steps.length} · Goal ${cur + 1} of ${OBJECTIVES.length}</em></div>`;
+    if (this._lastStep && this._lastStep !== sig) { const b = $('objectives'); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); Sfx.play('ui'); }
+    this._lastStep = sig;
   }
   flashObjective() { const o = $('objectives'); o.classList.remove('flash'); void o.offsetWidth; o.classList.add('flash'); this.renderObjectives(); }
 
@@ -125,6 +128,21 @@ export class UI {
   // ---------- terminal ----------
   openTerminal(b) { this.terminalB = b; this.modalOpen = true; this.game.input.unlock(); this.game.flags.terminalOpened = true; this.renderTerminal(); this.show('terminal'); }
   closeTerminal() { this.terminalB = null; this.modalOpen = false; this.hide('terminal'); }
+
+  // ---------- backpack ----------
+  openInventory() { this.invOpen = true; this.modalOpen = true; this.game.input.unlock(); this.renderInventory(); this.show('inventory'); Sfx.play('ui'); }
+  closeInventory() { this.invOpen = false; this.modalOpen = false; this.hide('inventory'); }
+  renderInventory() {
+    const g = this.game, P = g.player, n = P.invTotal();
+    const tools = Object.keys(TOOL_NAMES).map((t) => `<div class="slot ${P.tools.has(t) ? 'has' : 'empty'}"><span class="ic">${TOOL_ICON[t]}</span>${TOOL_NAMES[t]}</div>`).join('');
+    const rows = Object.entries(P.inv).map(([m, q]) => `<div class="row2"><span class="ic">${MAT_ICON[m] || ''}</span><span class="nm">${q} × ${MATERIALS[m].name}</span>${m === 'food' ? `<button data-inv="eat">Eat</button>` : ''}<button data-inv="drop" data-m="${m}">Drop</button></div>`).join('') || '<div class="row2"><span class="nm">Empty. Chop, mine, pick or take crates from the Stockyard.</span></div>';
+    $('inventory').innerHTML = `<h2><span>BACKPACK</span><button data-inv="close">Close</button></h2><div>Tool belt</div><div class="slots">${tools}</div><div>Backpack ${n}/${BACKPACK}</div><div class="cap"><div style="width:${n / BACKPACK * 100}%"></div></div>${rows}${n ? '<div class="row2"><span class="nm"></span><button data-inv="dropall">Drop everything</button></div>' : ''}<div class="hint">${(this.game.input.padActive ? 'D-pad ↑ opens this · D-pad ↓ drops everything · Y eats · deliver to sites with A' : 'I opens this · R drops everything · Q eats · deliver to sites with E')}</div>`;
+  }
+  invClick(e) {
+    const b = e.target.closest('button'); if (!b) return; const P = this.game.player, a = b.dataset.inv;
+    if (a === 'close') return this.closeInventory(); if (a === 'drop') P.drop(b.dataset.m); if (a === 'dropall') P.drop(); if (a === 'eat') P.eat();
+    this.renderInventory();
+  }
   renderTerminal() {
     const g = this.game, e = g.economy, tab = this.terminalTab, T = $('terminal');
     const tabs = [['permits', 'Permits'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
@@ -200,7 +218,7 @@ export class UI {
     $('h-tier').textContent = tierOf(P.count());
     $('b-hunger').style.width = Math.round(100 - g.player.hunger) + '%'; $('b-hunger').style.background = g.player.hunger > 70 ? '#ff6b6b' : '#e8b44a'; $('h-tools').textContent = [...g.player.tools].map((t) => TOOL_NAMES[t]).join(', ') || 'none yet';
     $('b-energy').style.width = Math.round(g.player.energy) + '%'; $('b-energy').style.background = g.player.energy < 25 ? '#ff6b6b' : '#7be08f';
-    $('h-carry').textContent = g.player.carry ? `${g.player.carry.qty} ${MATERIALS[g.player.carry.mat].name}` : 'nothing';
+    $('h-carry').textContent = `${g.player.invTotal()}/${BACKPACK}`; $('h-pack').textContent = g.player.invText(); $('b-pack').style.width = (g.player.invTotal() / BACKPACK * 100) + '%'; $('h-keys').textContent = g.input.padActive ? 'D-pad ↑ backpack · D-pad ↓ drop · Y eat' : 'I backpack · R drop · Q eat';
     if (this._padWas !== g.input.padActive) { this._padWas = g.input.padActive; this.setMode(g.mode); }
     $('crosshair').classList.toggle('hidden', g.mode === 'god' && !g.input.padActive); $('crosshair').classList.toggle('godcur', g.mode === 'god');
     if (g.mode === 'sim') $('c-mode').textContent = 'SAM (' + (g.player.third ? '3rd' : '1st') + ' person)';

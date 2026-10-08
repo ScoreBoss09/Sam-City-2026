@@ -40,7 +40,7 @@ export class Raids {
 
   /** A sandy shore tile away from the gates, joined by land to the Stockyard. */
   landing() {
-    const g = this.game, w = g.world, c = [], gates = [g.lift.doorOut, g.tunnel.doorOut], tgt = (g.depot || g.surveyor).doorTile;
+    const g = this.game, w = g.world, c = [], gates = [g.lift.doorOut, g.tunnel.doorOut], tgt = (g.depot || g.townhall || g.lift).doorTile;
     for (let z = 1; z < MAP - 1; z++) for (let x = 1; x < MAP - 1; x++) {
       const i = w.idx(x, z); if (w.terrain[i] !== T.SAND || w.road[i] || w.occ[i]) continue;
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (w.terrain[w.idx(x + dx, z + dz)] === T.WATER) { c.push({ x, z, dx, dz }); break; }
@@ -80,7 +80,7 @@ export class Raids {
     for (const m of [hull, bow, seat, oar]) { m.castShadow = true; b.add(m); } b.position.set(l.bx - Math.sin(l.heading) * 0.3, 0.05, l.bz - Math.cos(l.heading) * 0.3); b.rotation.y = l.heading + Math.PI / 2; return b;
   }
   spawnPickup() {
-    const g = this.game, dep = g.depot || g.surveyor; if (!dep) return;
+    const g = this.game, dep = g.depot || g.townhall || g.lift; if (!dep) return;
     const m = new THREE.Group(), wood = new THREE.MeshStandardMaterial({ color: 0x6e4a2a, roughness: 0.9 }), glow = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 12), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.45 }));
     const club = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.08), wood); club.rotation.z = 1.2; club.position.y = 0.12; const head = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.22, 0.14), wood); head.position.set(0.3, 0.2, 0); head.rotation.z = 1.2;
     m.add(glow, club, head); const px = dep.doorOut.x + 1.6, pz = dep.doorOut.z + 0.4; m.position.set(px, 0.08, pz); g.scene.add(m); this.pickup = { x: px, z: pz, mesh: m };

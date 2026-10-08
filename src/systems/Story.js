@@ -1,3 +1,4 @@
+import { Sfx } from '../core/Sfx.js';
 import { ALERT_LINES, ALERT_SLIPS, OBJECTIVES, SLIPS, GREETINGS, ROLE_LINES, NIGHT_LINES, SCRIPT_PAGES, HUNGRY_LINES, PARTNER_LINES, CHILD_LINES, ELDER_LINES } from '../data/story.js';
 import { pick } from '../util.js';
 
@@ -8,7 +9,7 @@ export class Story {
 
   update(dt) {
     const g = this.game, o = this.currentObjective;
-    if (o && o.done(g)) { g.messages.push('Objective complete', o.title.replace(/^\d+\. /, ''), 'good'); this.objective++; g.ui.flashObjective(); const n = this.currentObjective; if (n) g.messages.push('New objective', n.title.replace(/^\d+\. /, '') + ': ' + n.steps[0].text); }
+    if (o && o.done(g)) { g.messages.push('Objective complete', o.title.replace(/^\d+\. /, ''), 'good'); this.objective++; g.ui.flashObjective(); Sfx.play('done'); }
     const pop = g.population.count();
     if (this.stage < 1 && pop >= 12) this.setStage(1);
     if (this.stage < 2 && pop >= 28) this.setStage(2);

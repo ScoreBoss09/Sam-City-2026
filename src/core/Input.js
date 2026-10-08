@@ -28,20 +28,20 @@ export class Input {
       const dz = (v) => (Math.abs(v) < 0.2 ? 0 : (v - Math.sign(v) * 0.2) / 0.8), ax = (i) => dz(gp.axes[i] || 0), bt = (i) => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.5));
       const cur = []; for (let i = 0; i < 17; i++) cur.push(bt(i)); P.hitB = cur.map((v, i) => v && !P.prev[i]); P.relB = cur.map((v, i) => !v && !!P.prev[i]); P.prev = cur; P.down = cur;
       P.lx = ax(0); P.ly = ax(1); P.rx = ax(2); P.ry = ax(3);
-      if (cur.some(Boolean) || Math.hypot(P.lx, P.ly) > 0.4 || Math.hypot(P.rx, P.ry) > 0.4) this.padActive = true;
+      if (cur.some(Boolean) || Math.hypot(P.lx, P.ly) > 0.4 || Math.hypot(P.rx, P.ry) > 0.4) { this.padActive = true; if (cur.some(Boolean) && this.onActivity) this.onActivity(); }
       if (this.padActive) {
         const st = 0.4; if (P.ly < -st) want.add('KeyW'); if (P.ly > st) want.add('KeyS'); if (P.lx < -st) want.add('KeyA'); if (P.lx > st) want.add('KeyD');
         if (cur[9]) want.add('Tab'); if (cur[8]) want.add('KeyP');
         if (mode === 'sim') {
           this.mouse.dx += P.rx * 1000 * dt; this.mouse.dy += P.ry * 800 * dt;
-          if (cur[0]) want.add('KeyE'); if (cur[2] || cur[7]) want.add('KeyF'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[11]) want.add('KeyM');
+          if (cur[0]) want.add('KeyE'); if (cur[2] || cur[7]) want.add('KeyF'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[11]) want.add('KeyM'); if (cur[12]) want.add('KeyI'); if (cur[13]) want.add('KeyR');
         } else if (mode === 'god') {
           if (P.rx < -0.4) want.add('KeyQ'); if (P.rx > 0.4) want.add('KeyE'); if (cur[3]) want.add('KeyR'); if (cur[2]) want.add('KeyF'); if (cur[1]) want.add('Escape');
           P.zoomAcc += (P.ry + (cur[6] ? -1 : 0) + (cur[7] ? 1 : 0)) * dt * 9; while (Math.abs(P.zoomAcc) >= 1) { this.mouse.wheel += Math.sign(P.zoomAcc); P.zoomAcc -= Math.sign(P.zoomAcc); }
           this.mouse.x = 0.5; this.mouse.y = 0.5; const a = cur[0], was = !!this.padLeft;
           if (a && !was) this.mouse.down = true; if (!a && was) this.mouse.up = true; this.mouse.left = a; this.padLeft = a;
           if (cur[10]) want.add('ShiftLeft');
-        } else { if (cur[0]) want.add('KeyE'); if (cur[1]) want.add('Escape'); }
+        } else { if (cur[0]) want.add('KeyE'); if (cur[1]) want.add('Escape'); if (cur[12] && false) want.add('KeyI'); }
       }
     } else { P.lx = P.ly = P.rx = P.ry = 0; P.hitB = []; P.relB = []; P.down = []; }
     for (const k of want) if (!this.virt.has(k)) { if (!this.keys.has(k)) this.pressed.add(k); this.keys.add(k); }
