@@ -1,0 +1,12 @@
+import { chromium } from '/tmp/claude-0/-home-user-Sam-City-2026/6309cccc-23e7-5301-8e65-4b7cab65a79b/scratchpad/node_modules/playwright-core/index.mjs';
+const S = '/tmp/claude-0/-home-user-Sam-City-2026/6309cccc-23e7-5301-8e65-4b7cab65a79b/scratchpad/';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 1100, height: 650 } });
+const logs = []; p.on('console', (m) => { if (!/GPU stall|404/.test(m.text())) logs.push(m.type() + ': ' + m.text()); }); p.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.stack));
+await p.goto('http://localhost:8123/index.html?auto&demo&scale=0.8'); await p.waitForTimeout(600);
+console.log(await p.evaluate(() => { const g = window.__game; g.clock.hour = 12.5; g.advance(10); g.clock.speed = 0; g.story.stage = 3; const s = g.population.sims.find((s) => s.kind === 'resident' && !s.inside && !s.sleeping && !s.chat); window.T = s; g.setMode('sim'); g.player.teleport(s.x, s.z + 1.8); g.player.yaw = 0; g.player.heading = Math.PI; g.player.pitch = -0.1; g.player.camDist = 3.5; return s.name; }));
+await p.waitForTimeout(500); console.log('target', await p.evaluate(() => window.__game.player.target && window.__game.player.target.kind));
+await p.keyboard.press('KeyE'); await p.waitForTimeout(1200); await p.screenshot({ path: S + 'talk1.png' });
+console.log('dialogue', await p.evaluate(() => !!window.__game.ui.dialogue)); await p.keyboard.press('KeyE'); await p.keyboard.press('KeyE'); await p.waitForTimeout(300);
+console.log('closed', await p.evaluate(() => !window.__game.ui.dialogue && !window.T.frozen));
+console.log(logs.join('\n')); await b.close();

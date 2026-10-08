@@ -4,6 +4,7 @@ import { ROLES } from '../data/buildings.js';
 import { createRig } from '../render/SimRig.js';
 import { Animator } from '../render/Animator.js';
 import { pick, angleDiff } from '../util.js';
+import { Dog } from '../render/Dog.js';
 
 let nextId = 1;
 const STYLES = {
@@ -31,6 +32,7 @@ export class Sim {
     this.lookYaw = 0; this.lookPitch = 0; this.glanceT = 2 + Math.random() * 4; this.glanceTarget = null; this.greeted = -999; this.chatCool = 10 + Math.random() * 30; this.bag = false; this.lowDetail = false;
     this.rig = createRig(this.look); this.mesh = this.rig.root; this.anim = new Animator(this.rig, { trait: this.trait, bounce: this.style.bounce, slouch: this.style.slouch, swing: this.style.swing, stride: this.style.stride, fidget: this.style.fidget });
     game.scene.add(this.mesh); this.sync(0.016, true);
+    if (this.kind === 'resident' && Math.random() < 0.16) this.dog = new Dog(game, this);
   }
   get roleName() { return this.role ? ROLES[this.role].name : (this.kind === 'visitor' ? 'Visitor' : this.kind === 'security' ? 'Security' : 'Unemployed'); }
   get sleeping() { return this.pose === 'sleep'; }
@@ -70,6 +72,7 @@ export class Sim {
 
   step(dt) {
     const prevX = this.x, prevZ = this.z; this.moved = false; this.turning = false;
+    if (this.freezeT > 0) { this.freezeT -= dt; this.vel = 0; this.dist = 0; return; }
     if (this.pose === 'sleep') { this.vel = 0; return; }
     if (this.glide) { const k = Math.min(1, dt * 7); this.x += (this.glide.x - this.x) * k; this.z += (this.glide.z - this.z) * k; if (Math.hypot(this.glide.x - this.x, this.glide.z - this.z) < 0.02) this.glide = null; }
     if (this.faceGoal !== undefined && !this.path.length) { const d = angleDiff(this.heading, this.faceGoal); this.heading += Math.max(-9 * dt, Math.min(9 * dt, d)); if (Math.abs(d) < 0.03) this.faceGoal = undefined; else this.turning = true; }
@@ -253,6 +256,8 @@ export class Sim {
     if (far !== this.lowDetail || init) { this.lowDetail = far; this.rig.lod.visible = far; for (const p of this.rig.parts) p.visible = !far; if (!far) this.rig.lids.visible = false; }
     if (far) { this.rig.lod.position.y = this.moved ? Math.abs(Math.sin(this.game.clock.hour * 900)) * 0.04 : 0; if (this.pose === 'sleep') { this.rig.lod.rotation.x = -Math.PI / 2; this.rig.lod.position.set(0, 0.7, 0.9); } else { this.rig.lod.rotation.x = 0; this.rig.lod.position.z = 0; } this.working = false; return; }
     if (this.emote) { this.emote.t -= dt; if (this.emote.t <= 0) this.emote = null; }
+    if (this.dog) this.dog.update(dt);
+    if (this.freezeT > 0) dt = 0;
     this.updateLook(dt);
     const a = this.decideAnim(), carryCol = this.carry ? ({ timber: 0xb5834a, brick: 0xa8442f, steel: 0x7b8794, glass: 0x7ec8e3 }[this.carry.mat]) : undefined;
     this.anim.update(dt, { ...a, dist: this.moved ? (this.dist || 0) : 0, speed: this.vel, run: this.hurry && this.vel > 2.3, turning: this.turning && !this.moved, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: this.mood, tired: this.tired, crateColor: carryCol,
@@ -281,5 +286,5 @@ export class Sim {
     this.game.scene.remove(this.mesh); this.rig = createRig(this.look); this.mesh = this.rig.root; this.anim = new Animator(this.rig, { trait: this.trait, bounce: this.style.bounce, slouch: this.style.slouch, swing: this.style.swing, stride: this.style.stride, fidget: this.style.fidget });
     this.game.scene.add(this.mesh); this.lowDetail = null; this.sync(0.016, true);
   }
-  dispose() { this.standUp(); this.game.scene.remove(this.mesh); }
+  dispose() { this.standUp(); this.game.scene.remove(this.mesh); if (this.dog) this.dog.dispose(); }
 }

@@ -29,7 +29,41 @@ function addWall(g, cols, mat, cx, cz, sx, sz, h = null, y = 0) {
   if (y === 0) cols.push({ cx, cz, sx, sz });
 }
 
+/** Merge all static meshes of a group that share a material into one mesh (big draw-call saver). */
+export function mergeByMaterial(root) {
+  root.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), buckets = new Map(), remove = [];
+  root.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || !o.geometry || Array.isArray(o.material)) return;
+    const a = o.geometry.attributes, k = o.material.uuid + '|' + Object.keys(a).join(',') + '|' + !!o.geometry.index + '|' + o.castShadow + o.receiveShadow;
+    let bk = buckets.get(k); if (!bk) buckets.set(k, bk = { mat: o.material, list: [], cast: o.castShadow, recv: o.receiveShadow, keys: Object.keys(a), indexed: !!o.geometry.index });
+    bk.list.push(o); remove.push(o);
+  });
+  const mtx = new THREE.Matrix4(), nm = new THREE.Matrix3(), v = new THREE.Vector3();
+  for (const bk of buckets.values()) {
+    if (bk.list.length < 2) continue; const arrays = {}; for (const key of bk.keys) arrays[key] = []; const idx = []; let off = 0;
+    for (const o of bk.list) {
+      mtx.multiplyMatrices(inv, o.matrixWorld); nm.getNormalMatrix(mtx); const g = o.geometry, pos = g.attributes.position;
+      for (const key of bk.keys) {
+        const at = g.attributes[key];
+        for (let i = 0; i < at.count; i++) {
+          if (key === 'position') { v.fromBufferAttribute(at, i).applyMatrix4(mtx); arrays[key].push(v.x, v.y, v.z); }
+          else if (key === 'normal') { v.fromBufferAttribute(at, i).applyMatrix3(nm).normalize(); arrays[key].push(v.x, v.y, v.z); }
+          else for (let c = 0; c < at.itemSize; c++) arrays[key].push(at.array[i * at.itemSize + c]);
+        }
+      }
+      if (bk.indexed) for (const i of g.index.array) idx.push(i + off); off += pos.count;
+    }
+    const geo = new THREE.BufferGeometry(); for (const key of bk.keys) geo.setAttribute(key, new THREE.Float32BufferAttribute(arrays[key], bk.list[0].geometry.attributes[key].itemSize)); if (bk.indexed) geo.setIndex(idx);
+    const m = new THREE.Mesh(geo, bk.mat); m.castShadow = bk.cast; m.receiveShadow = bk.recv; root.add(m);
+    for (const o of bk.list) o.parent.remove(o);
+  }
+  return root;
+}
+
 export function buildExterior(def, uid = 1) {
+  const r = buildExterior0(def, uid); mergeByMaterial(r.group); mergeByMaterial(r.roof); return r;
+}
+function buildExterior0(def, uid = 1) {
   if (def.id === 'lift') return buildLift(def);
   if (def.id === 'tunnel') return buildTunnel(def);
   if (def.park) return buildPark(def, uid);
@@ -49,7 +83,7 @@ export function buildExterior(def, uid = 1) {
   box(g, 0.12, 2.6, 0.5, 0x2a2d33, door - dw / 2, 0, fz); box(g, 0.12, 2.6, 0.5, 0x2a2d33, door + dw / 2, 0, fz); box(g, dw, 0.12, 0.5, 0x2a2d33, door, 2.55, fz);
   // ceiling (stays when the roof is cut away)
   const ceilH = Math.min(H, WALL_H * 1.7);
-  box(g, W - 2 * T, 0.12, D - 2 * T, 0xe8e4da, 0, ceilH - 0.1, 0, { emissive: 0xfff2d0, emissiveIntensity: 0.0 });
+  box(g, W - 2 * T, 0.12, D - 2 * T, 0xe8e4da, 0, ceilH - 0.1, 0, { emissive: 0xfff2d0, emissiveIntensity: 0.55 });
   // sign above the door
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture(def.name) }));
   sign.position.set(door, Math.min(2.95, H - 0.4), D / 2 + 0.02); g.add(sign);

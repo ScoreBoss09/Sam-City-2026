@@ -19,7 +19,7 @@ export function geometry(def, x0, z0, rot) {
 export class BuildingManager {
   constructor(game) {
     this.game = game; this.world = game.world; this.scene = game.scene;
-    this.list = []; this.nextUid = 1; this.interiorLight = new THREE.PointLight(0xffe2b0, 0, 18, 1.6); this.scene.add(this.interiorLight);
+    this.list = []; this.nextUid = 1; this.interiorLight = new THREE.PointLight(0xffe2b0, 0, 24, 1.1); this.scene.add(this.interiorLight);
   }
   byDef(id, doneOnly = true) { return this.list.filter((b) => b.id === id && (!doneOnly || b.state === 'done')); }
   count(id, doneOnly = true) { return this.byDef(id, doneOnly).length; }
@@ -138,6 +138,6 @@ export class BuildingManager {
     }
     // warm interior light follows the player indoors
     const L = this.interiorLight;
-    if (inside) { L.position.set(inside.cx, 2.6, inside.cz); L.intensity = 14; } else L.intensity = 0;
+    if (inside) { L.position.set(inside.cx, 2.6, inside.cz); L.intensity = 38; } else L.intensity = 0;
   }
 }

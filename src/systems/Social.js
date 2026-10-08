@@ -56,6 +56,13 @@ export class Social {
         }
       }
     }
+    // Truman-style cracks in the performance
+    const stage = g.story.stage, cam = g.camera.position;
+    if (stage >= 2 && this.timer > 1.1) for (const s of sims) {
+      if (s.kind !== 'resident' || s.sleeping || (s.inside && s.inside !== g.buildings.playerInside) || !s.mesh.visible) continue;
+      if (Math.random() < 0.0035 * (stage - 1) && !s.glanceCam) { s.glanceTarget = { x: cam.x, z: cam.z, y: cam.y + 3 }; s.glanceT = 1.1; s.glanceCam = true; setTimeout(() => (s.glanceCam = false), 20000); }
+      if (stage >= 3 && Math.random() < 0.0012) { s.freezeT = 0.9; this.say(s, '...', 1.2); }
+    }
     // greet the player
     const p = g.player;
     if (g.mode === 'sim') for (const s of sims) {
@@ -66,6 +73,14 @@ export class Social {
         const t = s.trait; s.emote = { upper: t === 'cheerful' ? 'wave' : (t === 'grumpy' ? 'idle' : 'nod'), t: 1.9 };
         s.glanceTarget = { x: p.x, z: p.z, y: 1.6 }; s.glanceT = 2.5; this.say(s, pick(GREET[t] || GREET.cheerful), 2.2);
       }
+    }
+  }
+  /** Everyone looks up when the dome is revealed, then pretends nothing happened. */
+  skyReaction() {
+    for (const s of this.game.population.sims) {
+      if (s.kind !== 'resident' || s.sleeping || (s.inside && !s.inside.def.open)) continue;
+      s.anim.fid = 'lookup'; s.anim.fidT = 0; s.anim.fidDur = 3.2; s.glanceTarget = { x: s.x, z: s.z, y: 40 }; s.glanceT = 3;
+      setTimeout(() => { if (!s.remove) this.say(s, pick(['Nothing to see!', 'Lovely day!', 'What sky?', 'Back to it...']), 2.4); }, 3200 + Math.random() * 1500);
     }
   }
   render(dt) {

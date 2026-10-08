@@ -20,7 +20,7 @@ export class Story {
     if (n <= this.stage) return; this.stage = n; const m = this.game.messages;
     if (n === 1) m.push('Sam (thought)', 'Odd. A few people have repeated the same sentence word for word. Probably nothing.', 'story');
     if (n === 2) m.push('Sam (thought)', 'Everyone is so... on time. Has anybody here ever been late for real?', 'story');
-    if (n === 3) { m.push('PA SYSTEM', 'Attention citizens: please disregard any visual disturbance overhead. Thank you for your cooperation.', 'alarm'); m.push('Sam (thought)', 'Something is up there. A seam in the sky. I need answers — the residents keep slipping up.', 'story'); this.game.ui.toast('THE SKY HAS A SEAM'); this.game.glitch = 2.5; }
+    if (n === 3) { m.push('PA SYSTEM', 'Attention citizens: please disregard any visual disturbance overhead. Thank you for your cooperation.', 'alarm'); m.push('Sam (thought)', 'Something is up there. A seam in the sky. I need answers — the residents keep slipping up.', 'story'); this.game.ui.toast('THE SKY HAS A SEAM'); this.game.glitch = 2.5; this.game.social.skyReaction(); }
     if (n === 4) { m.push('Sam (thought)', 'Three pages. Guard rotation at 02:00 to 04:00. The tunnel is the way out.', 'story'); }
   }
 
