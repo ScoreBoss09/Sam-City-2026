@@ -126,7 +126,7 @@ export class Player {
     else if (t.kind === 'bed' && e) this.trySleep(t.spot);
     else if (t.kind === 'site') {
       if (e && this.carry && t.b.need[this.carry.mat] - (t.b.have[this.carry.mat] || 0) > 0) { g.buildings.deliver(t.b, this.carry.mat, this.carry.qty); g.ui.toast(`Delivered ${this.carry.qty} ${MATERIALS[this.carry.mat].name}`); this.carry = null; }
-      else if (held && t.hold) { this.working = true; this.faceTo(t.b.cx, t.b.cz); g.buildings.addWork(t.b, rawDt * g.clock.speed * 1.0); this.hold = t.b.progress; }
+      else if (held && t.hold) { this.working = true; this.faceTo(t.b.cx, t.b.cz); g.buildings.addWork(t.b, rawDt * Math.max(1, g.clock.speed)); this.hold = t.b.progress; }
     } else if (t.kind === 'work') {
       if (held) { this.working = true; const wage = 12; g.economy.earn(wage * rawDt); this.hold = (this.hold + rawDt * 0.2) % 1; } else this.hold = 0;
     }
