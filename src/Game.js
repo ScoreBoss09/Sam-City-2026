@@ -19,6 +19,9 @@ import { Minimap } from './ui/Minimap.js';
 import { WorkGame } from './ui/WorkGame.js';
 import { Particles } from './render/Particles.js';
 import { Piles } from './systems/Piles.js';
+import { Mail } from './systems/Mail.js';
+import { Weather } from './render/Weather.js';
+import { Wildlife } from './render/Wildlife.js';
 import { SiteLabels } from './render/SiteLabels.js';
 import { ToolRack } from './systems/Tools.js';
 import { Planner } from './systems/Planner.js';
@@ -47,7 +50,7 @@ export class Game {
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
     this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.raids = new Raids(this); this.planner = new Planner(this); this.social = new Social(this);
-    this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
+    this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.mail = new Mail(this); this.weather = new Weather(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
     // objective beacon
     this.beacon = new THREE.Group(); const bm = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.9, depthTest: false });
@@ -69,7 +72,7 @@ export class Game {
     const d = this.lift.doorOut; this.plaza = { x: d.x, z: d.z + 8 };
     for (const t of this.terrain.trees) if (t.alive && Math.hypot(t.x - this.lift.trigger.x, t.z - this.lift.trigger.z) < 13) this.terrain.killTree(t);   // the Lift yard is kept clear
     this.tools.build(d.x + 8, d.z + 13);
-    this.security.init();
+    this.security.init(); this.wildlife = new Wildlife(this);
     this.player.teleport(d.x + 2, d.z + 17, 0); this.player.yaw = Math.PI;
     this.god.target.set(d.x + 4, 0, d.z + 22); this.god.dist = 105; this.god.pitch = 1.05;
   }
@@ -124,7 +127,7 @@ export class Game {
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
     this.player.update(gdt, dt);
     for (const s of this.population.sims) s.sync(dt); this.social.render(dt);
-    this.buildings.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt);
+    this.buildings.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt); this.resources.animate(dt); this.mail.update(); this.weather.update(dt); if (this.wildlife) this.wildlife.update(dt);
 
     // camera
     let focus;

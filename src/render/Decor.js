@@ -17,6 +17,13 @@ export class Decor {
     this.trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.12, 0.17, 1.1, 5), new THREE.MeshStandardMaterial({ color: Assets.has('bark') ? 0xffffff : 0x5a3b22, roughness: 1, map: Assets.tex('bark') }), 1500);
     this.crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1.15, 0), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true, map: Assets.tex('leaves', 2, 2) }), 1500);
     this.bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.55, 0), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), 1200);
+    // grass tufts and wildflowers on open land
+    const tuft = new THREE.BufferGeometry(), tp = [], tc = [];
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2, r = 0.12, h = 0.35 + (i % 2) * 0.15, x = Math.cos(a) * r, z = Math.sin(a) * r; tp.push(x - 0.04, 0, z, x + 0.04, 0, z, x * 2.2, h, z * 2.2); }
+    tuft.setAttribute('position', new THREE.Float32BufferAttribute(tp, 3)); tuft.computeVertexNormals();
+    this.tufts = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, side: THREE.DoubleSide }), 4000);
+    this.flowers = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), new THREE.MeshStandardMaterial({ roughness: 0.8 }), 1500);
+    for (const m of [this.tufts, this.flowers]) { m.frustumCulled = false; m.receiveShadow = true; sc.add(m); }
     for (const m of [this.pole, this.head, this.trunk, this.crown, this.bush]) { m.frustumCulled = false; m.castShadow = m === this.crown || m === this.pole; sc.add(m); }
     // smoke puffs
     const sc2 = document.createElement('canvas'); sc2.width = sc2.height = 32; const cx = sc2.getContext('2d'), gr = cx.createRadialGradient(16, 16, 2, 16, 16, 15); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = gr; cx.fillRect(0, 0, 32, 32);
@@ -78,6 +85,15 @@ export class Decor {
         const px = (x + 0.2 + hash(z, x) * 0.6) * TILE, pz = (z + 0.2 + hash(x + 3, z) * 0.6) * TILE; m.compose(new THREE.Vector3(px, 0.3, pz), q.identity(), new THREE.Vector3(1.2, 0.9, 1.2)); this.bush.setMatrixAt(nb, m); c.setHSL(0.28 + hash(x, z + 2) * 0.08, 0.5, Assets.has('leaves') ? 0.5 : 0.28); this.bush.setColorAt(nb, c); nb++;
       }
     }
+    // grass tufts & flowers
+    let ng = 0, nf = 0; const FL = [0xf2e35a, 0xffffff, 0xe86aa0, 0x9a7ae0, 0xff8a3a];
+    for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) {
+      const i = w.idx(x, z); if (w.terrain[i] !== T.LAND || w.road[i] || w.occ[i]) continue;
+      const nearRoad = roadAt(x + 1, z) || roadAt(x - 1, z) || roadAt(x, z + 1) || roadAt(x, z - 1), n = nearRoad ? 3 : 7;
+      for (let k = 0; k < n && ng < 4000; k++) { const px = (x + hash(x * 7 + k, z)) * TILE, pz = (z + hash(z * 5 + k, x + 3)) * TILE, s = 0.7 + hash(x + k, z * 3) * 0.9; m.compose(new THREE.Vector3(px, 0.02, pz), q.setFromEuler(new THREE.Euler(0, hash(k, x + z) * 6, 0)), new THREE.Vector3(s, s, s)); this.tufts.setMatrixAt(ng, m); c.setHSL(0.24 + hash(x, z + k) * 0.08, 0.45, 0.3 + hash(k + 1, x) * 0.12); this.tufts.setColorAt(ng, c); ng++; }
+      if (hash(x * 13, z * 17) < 0.35) for (let k = 0; k < 4 && nf < 1500; k++) { const px = (x + hash(x + k * 3, z * 2)) * TILE, pz = (z + hash(z + k * 5, x * 2)) * TILE; m.makeTranslation(px, 0.22, pz); this.flowers.setMatrixAt(nf, m); c.setHex(FL[Math.floor(hash(x * 3 + k, z) * FL.length)]); this.flowers.setColorAt(nf, c); nf++; }
+    }
+    this.tufts.count = ng; this.flowers.count = nf; for (const im of [this.tufts, this.flowers]) { im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
     // shrubs hugging building walls
     for (const b of this.game.buildings.list) {
       if (b.state !== 'done' || b.def.park || b.def.special || nb > 880) continue;

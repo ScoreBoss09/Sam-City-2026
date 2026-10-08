@@ -70,9 +70,9 @@ export class GodControls {
       this.ghost.visible = true; this.ghost.position.set(ev.geo.cx, 0, ev.geo.cz); this.ghostBox.scale.set(ev.w * T4, h, ev.d * T4); this.ghostBox.position.y = h / 2;
       const ok = ev.ok && unlocked; this.ghostBox.material.color.setHex(ok ? 0x44ff66 : 0xff4455);
       const [dx, dz] = [ev.geo.doorOut[0] - ev.geo.cx, ev.geo.doorOut[1] - ev.geo.cz]; this.ghostDoor.visible = def.needsRoad !== false; this.ghostDoor.position.set(dx, 0.9, dz); this.ghostDoor.rotation.set(0, Math.atan2(dx, dz), 0); this.ghostDoor.rotation.x = 0; this.ghostDoor.material.color.setHex(ok ? 0xffffff : 0xff8888);
-      g.ui.setHover(`${def.name}: ${!unlocked ? 'Permit needed (use a terminal)' : ev.ok ? (g.input.padActive ? 'Press A to order it' : 'Click to order it') : ev.reason}`);
+      g.ui.setHover(`${def.name}: ${!unlocked ? 'Permit needed: post a permit form at the Postbox' : ev.ok ? (g.input.padActive ? 'Press A to order it' : 'Click to order it') : ev.reason}`);
       if (inp.mouse.down) {
-        if (!unlocked) g.ui.toast('Permit required. Request it at a computer terminal.');
+        if (!unlocked) g.ui.toast('Permit required: post a permit form at the Postbox.');
         else if (!ev.ok) g.ui.toast(ev.reason);
         else { const b = g.buildings.place(this.tool.sub, ev.x0, ev.z0, ev.rot); this.prefRot = ev.rot; g.messages.push('Planning Office', `${def.name} planned. It needs materials and workers.`); g.ui.toast(`${def.name} placed - needs building!`); }
       }

@@ -6,7 +6,7 @@ import { Sim } from '../sim/Sim.js';
  * during the 02:00-04:00 rotation once Sam has collected all three script pages - that is the escape.
  */
 export class Security {
-  constructor(game) { this.game = game; this.guards = []; this.darts = []; this.warned = {}; this.cool = 0; }
+  constructor(game) { this.game = game; this.guards = []; this.darts = []; this.warned = {}; this.count = {}; this.cool = 0; }
   init() {
     const g = this.game;
     const mk = (b, lx, lz, name) => {
@@ -18,7 +18,7 @@ export class Security {
     g.population.names.add('Gate Guard');
   }
   tunnelOnDuty() { const h = this.game.clock.hour; return !(h >= 2 && h < 4); }
-  reset() { this.warned = {}; }
+  reset() { this.warned = {}; this.count = {}; this.game.ui.setCountdown(null); }
   update(dt) {
     const g = this.game, p = g.player;
     // tunnel guards leave their post during rotation
@@ -32,7 +32,7 @@ export class Security {
       if (d.t >= 1) { d.done = true; g.scene.remove(d.mesh); if (d.onHit) d.onHit(); else if (g.player.sedated <= 0) g.player.sedate('dart'); }
     }
     this.darts = this.darts.filter((d) => !d.done);
-    if (g.mode !== 'sim' || p.sedated > 0 || g.ending || p.sleeping) return;
+    if (g.mode !== 'sim' || p.sedated > 0 || g.ending || p.sleeping) { if (Object.values(this.count).some(Boolean)) { this.count = {}; g.ui.setCountdown(null); } return; }
     this.cool -= dt;
     for (const b of [g.lift, g.tunnel]) {
       const d = Math.hypot(p.x - b.trigger.x, p.z - b.trigger.z), tun = b.id === 'tunnel';
@@ -43,12 +43,19 @@ export class Security {
       }
       if (d > warnR + 5) this.warned[b.id] = false;
       if (tun && d < 3.4 && g.story.clues >= 3 && !this.tunnelOnDuty()) { g.escape(); return; }
-      if (d < killR && this.cool <= 0 && !(tun && !this.tunnelOnDuty() && g.story.clues >= 3)) {
-        const guard = this.guards.filter((s) => s.zone === b.id && !s.hidden).sort((a, c) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(c.x - p.x, c.z - p.z))[0];
-        if (guard) this.fire(guard, p);
-        else if (tun) p.sedate('dart');   // off-duty but no pages: automated gate gas
-        this.cool = 6;
-      }
+      // stepping onto the Lift platform (or into the tunnel mouth) starts a 10 second countdown
+      const onIt = tun ? d < killR : (p.x > b.x0 * 4 - 0.5 && p.x < (b.x0 + b.w) * 4 + 0.5 && p.z > b.z0 * 4 - 0.5 && p.z < (b.z0 + b.d) * 4 + 0.5);
+      const exempt = tun && !this.tunnelOnDuty() && g.story.clues >= 3;
+      if (onIt && !exempt && this.cool <= 0) {
+        if (!this.count[b.id]) { this.count[b.id] = 10; g.flags.guardsOut = true; g.messages.push(tun ? 'Gate Guard' : 'Lift Guard', tun ? 'Oi! Out of the tunnel, Sam. Now.' : 'Off the platform, Sam. You have ten seconds.', 'alarm'); }
+        this.count[b.id] -= dt / Math.max(1, g.clock.speed); g.ui.setCountdown(Math.ceil(this.count[b.id]), tun ? 'LEAVE THE TUNNEL' : 'GET OFF THE LIFT');
+        if (this.count[b.id] <= 0) {
+          this.count[b.id] = 0; g.ui.setCountdown(null);
+          const guard = this.guards.filter((s) => s.zone === b.id && !s.hidden).sort((a, c) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(c.x - p.x, c.z - p.z))[0];
+          if (guard) this.fire(guard, p); else p.sedate('dart');
+          this.cool = 6;
+        }
+      } else if (this.count[b.id]) { this.count[b.id] = 0; g.ui.setCountdown(null); g.messages.push(tun ? 'Gate Guard' : 'Lift Guard', 'Good. Stay clear.', 'warn'); }
     }
   }
   /** Sedative dart at a raider (same visual as the one used on Sam). */

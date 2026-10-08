@@ -257,13 +257,22 @@ export class Sim {
     const w = this.game.world; const tx = Math.floor(this.x / TILE) + Math.floor((Math.random() - 0.5) * 14), tz = Math.floor(this.z / TILE) + Math.floor((Math.random() - 0.5) * 14);
     if (!w.inBounds(tx, tz) || !w.road[w.idx(tx, tz)]) return false; const [cx, cz] = w.center(tx, tz); return this.goTo({ x: cx, z: cz });
   }
+  /** Tourists: browse the shop, sit by the fire, admire (and photograph) buildings, buy souvenirs, look for the famous Sam. */
   doVisit() {
+    const g = this.game;
+    if (this.phase === 2 && this.visitDo) { const a = this.visitDo; this.visitDo = null; a(); }
     if (this.phase === 0 || (this.phase === 2 && this.timer <= 0)) {
       if (this.visits === undefined) this.visits = 0;
-      if (this.visits++ >= 3) { this.leaving = true; return; }
-      const g = this.game, shops = g.buildings.byDef('shop'), parks = g.buildings.list.filter((b) => b.def.park && b.state === 'done'), all = shops.concat(parks);
-      if (!all.length) { if (!this.wander()) this.phase = 2; this.timer = 10; return; }
-      const b = pick(all), s = pick(b.spots.visit.length ? b.spots.visit : b.spots.idle); if (!this.goTo({ b, x: s.x, z: s.z })) this.phase = 2; this.timer = 15 + Math.random() * 15;
+      if (this.visits++ >= 5) { this.leaving = true; return; }
+      const done = g.buildings.list.filter((b) => b.state === 'done' && !b.def.special), shops = g.buildings.byDef('shop'), seats = done.filter((b) => b.def.park && this.freeSeat(b).length), yard = g.depot;
+      const opts = ['sight', 'sight']; if (shops.length) opts.push('shop', 'shop'); if (seats.length) opts.push('sit'); if (yard) opts.push('souvenir'); if (g.mode === 'sim' && Math.hypot(g.player.x - this.x, g.player.z - this.z) < 40 && !this.metSam) opts.push('sam', 'sam');
+      const c = pick(opts); let ok = false; this.timer = 12 + Math.random() * 14; const say = (t) => { if (this.mesh.visible) g.social.say(this, t, 2.6); };
+      if (c === 'shop') { const b = pick(shops), sp = pick(b.spots.visit.length ? b.spots.visit : b.spots.idle); ok = this.goTo({ b, x: sp.x, z: sp.z, face: b.rot * Math.PI / 2 + Math.PI }); this.shopping = true; this.visitDo = () => { g.economy.earn(8 + Math.floor(Math.random() * 18)); this.bag = true; say(pick(['Lovely shop!', 'I\'ll take two.', 'Do you sell postcards?'])); }; }
+      else if (c === 'sit') { const b = pick(seats), st = pick(this.freeSeat(b)); ok = this.goTo({ b, x: st.x, z: st.z, seat: st }); this.visitDo = () => say(pick(['Ahh, that is the life.', 'Smells like woodsmoke.', 'So peaceful here.'])); }
+      else if (c === 'souvenir') { ok = this.goTo({ x: yard.doorOut.x + (Math.random() - 0.5) * 2, z: yard.doorOut.z + 1.5, face: yard.rot * Math.PI / 2 + Math.PI }); this.visitDo = () => { g.economy.earn(5 + Math.floor(Math.random() * 10)); this.emote = { upper: 'point', t: 1.6 }; say(pick(['Can I buy a little log as a souvenir?', 'Real hand-chopped timber!', 'How much for a crate of berries?'])); }; }
+      else if (c === 'sam') { const p = g.player; ok = this.goTo({ x: p.x + 1.4, z: p.z + 0.8, face: Math.atan2(p.x - this.x, p.z - this.z) }); this.visitDo = () => { this.metSam = true; this.faceGoal = Math.atan2(g.player.x - this.x, g.player.z - this.z); this.emote = { upper: 'wave', t: 2 }; say(pick(['Are you THE Sam?', 'Can I get a photo with you?', 'Everybody back home talks about you!'])); }; }
+      else { const b = done.length ? pick(done) : null; if (b) { const a = b.rot * Math.PI / 2, dx = Math.sin(a), dz = Math.cos(a); ok = this.goTo({ x: b.doorOut.x + dx * 3 + (Math.random() - 0.5) * 3, z: b.doorOut.z + dz * 3 + (Math.random() - 0.5) * 3, face: Math.atan2(b.cx - b.doorOut.x - dx * 3, b.cz - b.doorOut.z - dz * 3) }); this.visitDo = () => { this.emote = { upper: Math.random() < 0.5 ? 'phone' : 'point', t: 2.5 }; say(pick([`What a lovely ${b.def.name.toLowerCase()}!`, 'Click! Got it.', 'They built all this by hand?', 'Postcard material, that.'])); }; } else ok = this.wander(); }
+      if (!ok) { this.phase = 2; this.visitDo = null; }
     }
   }
   doLeave() {

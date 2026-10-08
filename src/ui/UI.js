@@ -82,7 +82,7 @@ export class UI {
     const pop = g.population.count();
     sm.innerHTML = (tabs ? `<div class="tabrow">${tabs}</div>` : '') + list.map((k) => {
       const d = BUILDINGS[k], un = g.economy.isUnlocked(k), p = g.economy.permits[k], mats = Object.entries(d.mat).map(([m, n]) => n + ' ' + m).join(', ');
-      const status = un ? mats : (p === 'pending' ? 'permit pending…' : pop < d.permit.pop ? `needs ${d.permit.pop} residents` : `permit £${d.permit.cost} (terminal)`);
+      const status = un ? mats : (p === 'pending' ? 'permit pending…' : pop < d.permit.pop ? `needs ${d.permit.pop} residents` : `permit £${d.permit.cost} (Postbox form)`);
       return `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${un ? '' : 'locked'}" data-s="${k}">${d.name}<small>${status}</small></button>`;
     }).join(''); sm.classList.remove('hidden');
   }
@@ -94,6 +94,7 @@ export class UI {
     while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(() => { el.style.transition = 'opacity 1s'; el.style.opacity = 0; setTimeout(() => el.remove(), 1000); }, 7000);
   }
+  setCountdown(n, label) { const c = $('countdown'); if (n == null) { c.classList.add('hidden'); return; } c.classList.remove('hidden'); if (c.dataset.n !== String(n)) { c.dataset.n = n; c.innerHTML = `<div>${label}</div><b>${n}</b>`; c.classList.remove('tick'); void c.offsetWidth; c.classList.add('tick'); Sfx.play('deny'); } }
   setAlert(text) { const a = $('alertbar'); if (!a) return; if (text) { a.textContent = text; a.classList.remove('hidden'); } else a.classList.add('hidden'); }
   toast(text, ms = 2600) { const t = $('toast'); t.textContent = this.keyText(text); t.classList.remove('hidden'); clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.add('hidden'), ms); }
   fade(a, text = '') { $('fade').style.opacity = a; $('fade-text').textContent = text; }
@@ -120,13 +121,13 @@ export class UI {
   openDialogue(sim, res) {
     this.dialogue = { sim, full: res.text, shown: 0 }; this.modalOpen = true; this.game.input.unlock();
     $('d-name').textContent = `${sim.name} — ${sim.roleName}`; $('d-text').textContent = ''; this.show('dialogue');
-    if (res.page) this.toast('Script page collected! (see terminal Notes)', 3500);
+    if (res.page) this.toast('Crumpled page collected! (see Notes in the post)', 3500);
   }
   advanceDialogue() { const d = this.dialogue; if (!d) return; if (d.shown < d.full.length) { d.shown = d.full.length; } else this.closeDialogue(); }
   closeDialogue() { if (!this.dialogue) return; this.dialogue.sim.frozen = false; this.dialogue.sim.talkingToPlayer = false; this.dialogue.sim.moodBoost += 0.1; this.dialogue = null; this.modalOpen = false; this.hide('dialogue'); }
 
   // ---------- terminal ----------
-  openTerminal(b) { this.terminalB = b; this.modalOpen = true; this.game.input.unlock(); this.game.flags.terminalOpened = true; this.renderTerminal(); this.show('terminal'); }
+  openTerminal(b, mode = 'computer') { this.terminalB = b; this.termMode = mode; this.terminalTab = mode === 'post' ? 'letters' : (this.terminalTab === 'letters' ? 'permits' : this.terminalTab); this.modalOpen = true; this.game.input.unlock(); if (mode === 'post') this.game.flags.postRead = true; else this.game.flags.terminalOpened = true; this.renderTerminal(); this.show('terminal'); $('terminal').classList.toggle('post', mode === 'post'); }
   closeTerminal() { this.terminalB = null; this.modalOpen = false; this.hide('terminal'); }
 
   // ---------- backpack ----------
@@ -145,8 +146,13 @@ export class UI {
   }
   renderTerminal() {
     const g = this.game, e = g.economy, tab = this.terminalTab, T = $('terminal');
-    const tabs = [['permits', 'Permits'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
+    const post = this.termMode === 'post';
+    const tabs = post ? [['letters', `Letters${g.mail.unread() ? ' (' + g.mail.unread() + ' new)' : ''}`], ['permits', 'Permit forms'], ['materials', 'Order form'], ['report', 'Accounts']] : [['permits', 'Permits'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
     let body = '';
+    if (tab === 'letters') {
+      const L = g.mail.letters; body = L.length ? L.map((l, i) => `<div class="letter ${l.read ? '' : 'new'} ${l.kind}"><div class="lh"><b>${l.title}</b><span>${l.date}</span></div><div class="lf">From: ${l.from}</div><div class="lb">${l.body.replace(/\n/g, '<br>')}</div></div>`).join('') : '<div class="note">The box is empty.</div>';
+      setTimeout(() => { g.mail.markRead(); }, 0);
+    }
     if (tab === 'permits') {
       const list = ALL_BUILDABLE.slice().sort((a, b) => BUILDINGS[a].permit.pop - BUILDINGS[b].permit.pop || BUILDINGS[a].permit.cost - BUILDINGS[b].permit.cost);
       body = `<div class="note">Settlement: <b>${tierOf(g.population.count())}</b> · ${g.population.count()} residents. Bigger towns unlock bigger buildings.</div><table><tr><th>Building</th><th>Needs</th><th>Fee</th><th></th></tr>` + list.map((k) => {
@@ -173,7 +179,7 @@ export class UI {
     } else if (tab === 'notes') {
       const pg = g.story.pages; body = pg.length ? pg.map((p) => `<div class="page">${p}</div>`).join('') : '<div class="note">No notes yet. Talk to residents regularly — some of them know more than they should.</div>';
     }
-    T.innerHTML = `<div class="win"><h2><span>SAM CITY - PLANNING TERMINAL</span><button data-act="close">Close [Esc]</button></h2><div class="tabs">${tabs.map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}<span style="margin-left:auto">Funds: <b>${fmtMoney(e.funds)}</b></span></div>${body}</div>`;
+    T.innerHTML = `<div class="win"><h2><span>${post ? '✉ THE POST · SAM CITY' : 'SAM CITY - PLANNING TERMINAL'}</span><button data-act="close">Close [Esc]</button></h2><div class="tabs">${tabs.map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}<span style="margin-left:auto">Funds: <b>${fmtMoney(e.funds)}</b></span></div>${body}</div>`;
   }
   terminalClick(e) {
     const b = e.target.closest('button'); if (!b) return; const g = this.game, a = b.dataset.act; let r = null;

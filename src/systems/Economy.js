@@ -21,9 +21,9 @@ export class Economy extends Emitter {
     if (g.population.count() < def.permit.pop) return { ok: false, msg: `Needs ${def.permit.pop} residents.` };
     if (!this.spend(def.permit.cost)) return { ok: false, msg: 'Not enough funds.' };
     this.permits[id] = 'pending';
-    g.messages.push('Planning Office', `Permit request for ${def.name} received. Processing...`);
+    g.messages.push('Planning Office', `Permit form for ${def.name} posted. Expect a reply soon.`);
     g.flags.permitRequested = true;
-    this.pending.push({ id, t: 5 });
+    this.pending.push({ id, t: 30 });
     return { ok: true, msg: 'Request sent.' };
   }
 
@@ -41,7 +41,7 @@ export class Economy extends Emitter {
     return { ok: true, msg: `Sold for ${pay}` };
   }
   update(dt) {
-    for (const q of this.pending) { q.t -= dt; if (q.t <= 0 && this.permits[q.id] === 'pending') { this.permits[q.id] = 'approved'; this.game.messages.push('Planning Office', `${BUILDINGS[q.id].name} APPROVED. It is now in your build menu.`, 'good'); this.emit('permits'); } }
+    for (const q of this.pending) { q.t -= dt; if (q.t <= 0 && this.permits[q.id] === 'pending') { this.permits[q.id] = 'approved'; this.game.messages.push('Planning Office', `${BUILDINGS[q.id].name} APPROVED. It is now in your build menu.`, 'good'); this.game.mail.send('The Planning Office', `Permit approved: ${BUILDINGS[q.id].name}`, `Dear Sam,\n\nWe are pleased to approve your application for a ${BUILDINGS[q.id].name}. You will find it in the planning view under Buildings.\n\n${BUILDINGS[q.id].blurb || ''}\n\nYours faithfully,\nThe Planning Office`); this.emit('permits'); } }
     this.pending = this.pending.filter((q) => q.t > 0);
     for (const o of this.orders) { o.eta -= dt; if (o.eta <= 0 && !o.sent) { o.sent = true; this.game.logistics.dispatch(o); } }
     this.orders = this.orders.filter((o) => !o.done);
@@ -67,6 +67,7 @@ export class Economy extends Emitter {
     cost += g.population.employed() * 2;
     const net = Math.round(income - cost); this.funds += net; this.lastReport = { income: Math.round(income), cost: Math.round(cost), net };
     g.messages.push('Treasury', `Monthly accounts: income £${Math.round(income)}, costs £${Math.round(cost)}, net ${net >= 0 ? '+' : '-'}£${Math.abs(net)}.`, net >= 0 ? 'good' : 'warn');
+    g.mail.send('The Treasury', 'Monthly accounts', `Income: £${Math.round(income)} (rates from ${g.population.count()} residents and trade)\nCosts: £${Math.round(cost)} (upkeep and wages)\nNet: ${net >= 0 ? '+' : '-'}£${Math.abs(net)}\nFunds now: £${Math.round(this.funds)}\nStockyard: ${Object.entries(this.stock).map(([m, n]) => `${Math.floor(n)} ${m}`).join(', ')}`, { kind: 'report' });
   }
   serialize() { return { funds: this.funds, stock: this.stock, permits: this.permits }; }
   load(s) { this.funds = s.funds; Object.assign(this.stock, s.stock); Object.assign(this.permits, s.permits); }

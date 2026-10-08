@@ -47,13 +47,18 @@ export const GATHER = {
 
 // cat: res | prod | civic | com | ind | util | park | special
 export const BUILDINGS = {
+  shack: {
+    name: 'Log Cabin', cat: 'res', w: 1, d: 1, floors: 1, wall: 'logs', roof: 'thatch', roofColor: 0xc9a85a,
+    mat: { timber: 6 }, work: 10, beds: 1, layout: 'shack', permit: { cost: 0, pop: 0 }, tab: 'Homes',
+    blurb: 'A snug one-room log cabin for one person. The first home anyone gets.',
+  },
   hut: {
     name: 'Wooden Hut', cat: 'res', w: 2, d: 2, floors: 1, wall: 'logs', roof: 'thatch', roofColor: 0xc9a85a,
     mat: { timber: 8 }, work: 14, beds: 2, layout: 'hut', permit: { cost: 0, pop: 0 }, tab: 'Homes',
     blurb: 'A rough one-room home with straw beds. Sleeps 2.',
   },
   cabin: {
-    name: 'Log Cabin', cat: 'res', w: 2, d: 2, floors: 1, wall: 'logs', roof: 'gable', roofColor: 0x9a6a40,
+    name: 'Family Cabin', cat: 'res', w: 2, d: 2, floors: 1, wall: 'logs', roof: 'gable', roofColor: 0x9a6a40,
     mat: { timber: 12, stone: 4 }, work: 24, beds: 4, layout: 'cabin', permit: { cost: 200, pop: 6 }, tab: 'Homes',
     blurb: 'Sturdy cabin with a hearth. Sleeps 4.',
   },
@@ -139,6 +144,11 @@ export const BUILDINGS = {
     mat: { timber: 4 }, work: 6, permit: { cost: 0, pop: 0 }, tab: 'Civic',
     blurb: 'Warmth, light, and a place to share a meal.',
   },
+  postbox: {
+    name: 'Postbox', cat: 'civic', w: 1, d: 1, floors: 0, park: 'postbox',
+    mat: { timber: 2 }, work: 4, permit: { cost: 0, pop: 0 }, tab: 'Civic',
+    blurb: 'Letters arrive here: reports, permit forms, replies and the odd note from a neighbour.',
+  },
   well: {
     name: 'Well', cat: 'util', w: 1, d: 1, floors: 0, park: 'well', needsRoad: false,
     mat: { stone: 6, timber: 2 }, work: 8, permit: { cost: 150, pop: 6 }, tab: 'Civic',
@@ -208,8 +218,8 @@ export const BUILDINGS = {
   },
   // Story / world pieces (cannot be built by the player)
   surveyor: {
-    name: "Surveyor's Hut", cat: 'civic', w: 2, d: 2, floors: 1, wall: 'logs', roof: 'thatch', roofColor: 0xb89a4a,
-    mat: { timber: 8 }, work: 12, layout: 'terminalhut', permit: { cost: 0, pop: 0 }, tab: 'Civic',
+    name: "Planning Office", cat: 'civic', w: 2, d: 2, floors: 1, wall: 'logs', roof: 'thatch', roofColor: 0xb89a4a,
+    mat: { timber: 10, stone: 4 }, work: 16, layout: 'terminalhut', permit: { cost: 400, pop: 15 }, tab: 'Civic',
     blurb: 'The planning office. Its computer terminal handles permits, trade and the town report.',
   },
   lift: {
@@ -224,10 +234,10 @@ export const BUILDINGS = {
 
 export const TOOL_MENUS = {
   build: [
-    ['Homes', ['hut', 'cabin', 'cottage', 'townhouse', 'apartments']],
+    ['Homes', ['shack', 'hut', 'cabin', 'cottage', 'townhouse', 'apartments']],
     ['Food', ['forager', 'fisher', 'farm', 'tavern']],
     ['Industry', ['lumbercamp', 'quarry', 'contractor', 'brickworks', 'glassworks', 'foundry', 'factory']],
-    ['Civic', ['stockyard', 'surveyor', 'school', 'townhall', 'clinic', 'police']],
+    ['Civic', ['stockyard', 'postbox', 'surveyor', 'school', 'townhall', 'clinic', 'police']],
     ['Commerce', ['shop', 'office', 'hotel', 'skyscraper']],
   ],
   park: ['campfire', 'park', 'plaza', 'ballfield'],

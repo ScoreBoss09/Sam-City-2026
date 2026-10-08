@@ -10,9 +10,14 @@ const rockGeo = new THREE.DodecahedronGeometry(1, 0);
 /** Gatherable resource nodes: trees (from Terrain), rocks, ore, clay, berries, farm fields; plus sand and fish. */
 export class Resources {
   constructor(game) {
-    this.game = game; this.world = game.world; this.terrain = game.terrain; this.nodes = []; this.group = new THREE.Group(); game.scene.add(this.group);
+    this.game = game; this.world = game.world; this.terrain = game.terrain; this.nodes = []; this.shaking = []; this.group = new THREE.Group(); game.scene.add(this.group);
     for (const sd of this.world.nodeSeeds) this.addNode({ ...sd });
+    // nothing grows or lies on top of a building plot
+    this.world.events.on('building:added', (b) => { for (const n of this.nodes) if (n.mesh && n.tx >= b.x0 - 1 && n.tx < b.x0 + b.w + 1 && n.tz >= b.z0 - 1 && n.tz < b.z0 + b.d + 1 && (b.def.special || (n.tx >= b.x0 && n.tx < b.x0 + b.w && n.tz >= b.z0 && n.tz < b.z0 + b.d))) { n.amount = 0; n.max = n.max || 1; this.group.remove(n.mesh); n.mesh = null; n.gone = true; n.regen = 0; } });
   }
+  /** A hit lands on a bush / rock: it shudders. */
+  shake(n) { if (n.mesh) { n.shakeT = 0.35; if (!this.shaking.includes(n)) this.shaking.push(n); } }
+  animate(dt) { for (const n of this.shaking) { n.shakeT -= dt; const k = Math.max(0, n.shakeT / 0.35); n.mesh.rotation.z = Math.sin(n.shakeT * 45) * 0.08 * k; n.mesh.rotation.x = Math.cos(n.shakeT * 37) * 0.05 * k; } this.shaking = this.shaking.filter((n) => n.shakeT > 0); }
   addNode(n) {
     n.reserved = null; n.type = n.kind; n.x = (n.tx + 0.5) * TILE; n.z = (n.tz + 0.5) * TILE; n.mesh = this.makeMesh(n); if (n.mesh) { n.mesh.position.set(n.x, 0, n.z); this.group.add(n.mesh); } this.nodes.push(n); this.visual(n); return n;
   }

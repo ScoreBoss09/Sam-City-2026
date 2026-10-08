@@ -45,7 +45,7 @@ export class Terrain {
     // roads and building plots clear the trees standing on them
     const clear = (x0, z0, w, d) => { for (const t of this.trees || []) if (t.alive && t.tx >= x0 && t.tx < x0 + w && t.tz >= z0 && t.tz < z0 + d) this.killTree(t); };
     world.events.on('tile', (x, z) => { if (world.road[world.idx(x, z)]) clear(x, z, 1, 1); });
-    world.events.on('building:added', (b) => { if (!b.def.special) clear(b.x0, b.z0, b.w, b.d); });
+    world.events.on('building:added', (b) => clear(b.x0 - (b.def.special ? 1 : 0), b.z0 - (b.def.special ? 1 : 0), b.w + (b.def.special ? 2 : 0), b.d + (b.def.special ? 2 : 0)));
     world.events.on('zone', () => { this.zDirty = true; });
     this.zDirty = true;
   }
@@ -141,6 +141,11 @@ export class Terrain {
       if (w.terrain[w.idx(x, z)] !== T.FOREST) continue;
       for (let k = 0; k < 4; k++) pts.push({ x: (x + rnd()) * TILE, z: (z + rnd()) * TILE, s: 0.8 + rnd() * 0.9, tx: x, tz: z, hue: rnd(), light: rnd(), alive: true, amount: 3, reserved: null, pine: rnd() < 0.7 });
     }
+    // a few lone trees out in the meadows (real, choppable ones)
+    for (let z = 2; z < MAP - 2; z++) for (let x = 2; x < MAP - 2; x++) {
+      if (w.terrain[w.idx(x, z)] !== T.LAND || w.res[w.idx(x, z)] || rnd() > 0.05) continue;
+      pts.push({ x: (x + 0.3 + rnd() * 0.4) * TILE, z: (z + 0.3 + rnd() * 0.4) * TILE, s: 0.9 + rnd() * 0.6, tx: x, tz: z, hue: rnd() * 0.5 + 0.5, light: rnd(), alive: true, amount: 3, reserved: null, pine: false, lone: true });
+    }
     this.trees = pts; this.treeAlive = new Map(); for (const t of pts) { const k = t.tz * MAP + t.tx; this.treeAlive.set(k, (this.treeAlive.get(k) || 0) + 1); }
     const fg = new THREE.ConeGeometry(1.5, 3.4, 6), tg = new THREE.CylinderGeometry(0.22, 0.28, 1.2, 5), sg = new THREE.CylinderGeometry(0.28, 0.34, 0.45, 6);
     this.foliage = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true, map: Assets.tex('leaves', 2, 2) }), pts.length);
@@ -150,6 +155,25 @@ export class Terrain {
     pts.forEach((t, k) => { t.idx = k; this.setTree(k, 1); c.setHSL(0.27 + t.hue * 0.06, 0.5, Assets.has('leaves') ? 0.5 + t.light * 0.18 : 0.2 + t.light * 0.1); this.foliage.setColorAt(k, c); });
     this.foliage.castShadow = true; this.scene.add(this.foliage, this.trunks, this.stumps);
   }
+  /** Tree with a tilt (radians) towards direction `dir` (angle in the xz plane), pivoting at the base. */
+  setTreeTilt(t, f, ang, dir) {
+    const m = this._m, s = t.s * f, q = this._q || (this._q = new THREE.Quaternion()), ax = this._ax || (this._ax = new THREE.Vector3()), v = this._v || (this._v = new THREE.Vector3()), sc = this._sc || (this._sc = new THREE.Vector3());
+    ax.set(Math.cos(dir), 0, -Math.sin(dir)); q.setFromAxisAngle(ax, ang); sc.set(s, s, s);
+    v.set(0, 1.2 * s + 1.4 * s, 0).applyQuaternion(q); m.compose(v.clone().add(new THREE.Vector3(t.x, 0, t.z)), q, sc); this.foliage.setMatrixAt(t.idx, m);
+    v.set(0, 0.6 * s, 0).applyQuaternion(q); m.compose(v.clone().add(new THREE.Vector3(t.x, 0, t.z)), q, sc); this.trunks.setMatrixAt(t.idx, m);
+    this.foliage.instanceMatrix.needsUpdate = this.trunks.instanceMatrix.needsUpdate = true;
+  }
+  treeScale(t) { return t.alive ? (t.amount < 3 ? 0.55 + 0.15 * t.amount : 1) : 1; }
+  /** A chop lands: the tree shudders. */
+  hitTree(t) { if (!t.alive) return; const a = (this.anims || (this.anims = new Map())).get(t); if (a && a.kind === 'fall') return; this.anims.set(t, { kind: 'wob', t: 0, dir: Math.random() * 6.28 }); }
+  animate(dt) {
+    if (!this.anims || !this.anims.size) return;
+    for (const [t, a] of this.anims) {
+      a.t += dt;
+      if (a.kind === 'wob') { if (a.t > 0.4) { this.setTree(t.idx, this.treeScale(t)); this.anims.delete(t); } else this.setTreeTilt(t, this.treeScale(t), Math.sin(a.t * 40) * 0.09 * (1 - a.t / 0.4), a.dir); }
+      else { const k = Math.min(1, a.t / 1.0); if (a.t > 1.5) { this.setTree(t.idx, 0.0001); this.anims.delete(t); if (this.onFelled) this.onFelled(t, a.dir); } else this.setTreeTilt(t, a.f, k * k * 1.5, a.dir); }
+    }
+  }
   setTree(k, f) { const t = this.trees[k], m = this._m, s = t.s * f; m.makeScale(s, s, s).setPosition(t.x, 1.2 * s + 1.4 * s, t.z); this.foliage.setMatrixAt(k, m); m.makeScale(s, s, s).setPosition(t.x, 0.6 * s, t.z); this.trunks.setMatrixAt(k, m); this.foliage.instanceMatrix.needsUpdate = this.trunks.instanceMatrix.needsUpdate = true; }
   /** Hide/show just the crown of a tree (camera cut-away). */
   setCrown(t, on) { const m = this._m, s = t.s * (t.alive ? (t.amount < 3 ? 0.55 + 0.15 * t.amount : 1) : 0.0001), k = on ? s : 0.0001; m.makeScale(k, k, k).setPosition(t.x, 1.2 * s + 1.4 * s, t.z); this.foliage.setMatrixAt(t.idx, m); this.foliage.instanceMatrix.needsUpdate = true; }
@@ -158,13 +182,14 @@ export class Terrain {
   /** One chop: shrink the tree; when it is felled leave a stump, and clear the forest tile when empty. */
   chopTree(t) {
     t.amount--; if (t.amount > 0) { this.setTree(t.idx, 0.55 + 0.15 * t.amount); return false; }
-    t.alive = false; this.setTree(t.idx, 0.0001); this._m.makeTranslation(t.x, 0.22, t.z); this.stumps.setMatrixAt(this.stumpN++, this._m); this.stumps.count = this.stumpN; this.stumps.instanceMatrix.needsUpdate = true;
+    t.alive = false; (this.anims || (this.anims = new Map())).set(t, { kind: 'fall', t: 0, f: 0.7, dir: this.fallFrom ? Math.atan2(t.x - this.fallFrom.x, t.z - this.fallFrom.z) + Math.PI / 2 : Math.random() * 6.28 }); this.fallFrom = null; this._m.makeTranslation(t.x, 0.22, t.z); this.stumps.setMatrixAt(this.stumpN++, this._m); this.stumps.count = this.stumpN; this.stumps.instanceMatrix.needsUpdate = true;
     const k = t.tz * MAP + t.tx, n = (this.treeAlive.get(k) || 1) - 1; this.treeAlive.set(k, n);
     if (n <= 0) { this.world.terrain[k] = T.LAND; this.world.events.emit('tile', t.tx, t.tz); this.world.events.emit('cleared', t.tx, t.tz); }
     return true;
   }
 
   update(dt, godMode) {
+    this.animate(dt);
     this.water.material.map.offset.x += dt * 0.004; this.water.material.map.offset.y += dt * 0.002; this.sparkTex.offset.x -= dt * 0.012; this.sparkTex.offset.y += dt * 0.007; this.spark.material.opacity = 0.2 + 0.5 * (this.day ?? 1);
     this.zoneMesh.visible = godMode;
     if (this.zDirty) this.paintZones();

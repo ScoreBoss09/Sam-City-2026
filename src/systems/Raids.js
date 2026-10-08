@@ -109,7 +109,7 @@ export class Raids {
       const caught = this.raiders.filter((r) => r.captured).length, tot = this.raiders.length;
       if (caught === tot) g.messages.push('Lift Guard', 'Intruders are in custody. Back to your posts, everyone. All clear.', 'good');
       else g.messages.push('Planning Office', `The raiders got away${this.stolen > 0 ? ` with ${Math.round(this.stolen)} supplies` : ''}. It is safe to come out.`, caught ? 'good' : 'warn');
-      this.lastCaptured = caught;
+      this.lastCaptured = caught; g.mail.send('The Sam City Gazette', 'Raiders on the beach!', `Raiders landed on the shore this week. ${caught} of ${tot} were caught by the guards${caught < tot ? `; the rest rowed off with ${Math.round(this.stolen)} supplies` : ''}.\n\nResidents are reminded to go indoors when the alarm is raised. A Police Station would help keep the island safe.`);
     }
   }
   bark() {
