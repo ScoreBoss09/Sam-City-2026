@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { TILE, MAP } from '../config.js';
 import { T } from '../world/World.js';
+import { Assets } from '../render/Assets.js';
 
 const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true, ...o });
+const rockMat = (c) => Assets.has('rock') ? new THREE.MeshStandardMaterial({ color: new THREE.Color(0xffffff).lerp(new THREE.Color(c), 0.35), map: Assets.tex('rock', 2, 2), roughness: 1, flatShading: true }) : mat(c);
 const rockGeo = new THREE.DodecahedronGeometry(1, 0);
 
 /** Gatherable resource nodes: trees (from Terrain), rocks, ore, clay, berries, farm fields; plus sand and fish. */
@@ -17,7 +19,7 @@ export class Resources {
   makeMesh(n) {
     const g = new THREE.Group(), rnd = Math.random;
     if (n.kind === 'rock' || n.kind === 'ore') {
-      for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(rockGeo, mat(n.kind === 'ore' ? [0x4a4a52, 0x56565e, 0x3e3e46][i] : [0x8d8a82, 0x7a776f, 0x9a978d][i])); const s = [1.5, 1.0, 0.8][i]; m.scale.set(s * 1.2, s * 0.9, s); m.position.set((i - 1) * 1.1, s * 0.6, (i % 2) * 0.9 - 0.4); m.rotation.set(rnd(), rnd() * 3, rnd()); m.castShadow = true; g.add(m); }
+      for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(rockGeo, rockMat(n.kind === 'ore' ? [0x4a4a52, 0x56565e, 0x3e3e46][i] : [0x8d8a82, 0x7a776f, 0x9a978d][i])); const s = [1.5, 1.0, 0.8][i]; m.scale.set(s * 1.2, s * 0.9, s); m.position.set((i - 1) * 1.1, s * 0.6, (i % 2) * 0.9 - 0.4); m.rotation.set(rnd(), rnd() * 3, rnd()); m.castShadow = true; g.add(m); }
       if (n.kind === 'ore') for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), mat(0xc2703a, { emissive: 0x6a2a0a, emissiveIntensity: 0.4 })); m.position.set((rnd() - 0.5) * 3, 0.5 + rnd() * 1.1, (rnd() - 0.5) * 2); g.add(m); }
     } else if (n.kind === 'berry') {
       const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0, 0), mat(0x3a7a32)); b.position.y = 0.8; b.scale.set(1.3, 0.9, 1.1); b.castShadow = true; g.add(b);

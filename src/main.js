@@ -1,6 +1,8 @@
 import { Game } from './Game.js';
+import { Assets } from './render/Assets.js';
 
 const params = new URLSearchParams(location.search);
+await Assets.load();
 const game = new Game(document.getElementById('view'), { scale: parseFloat(params.get('scale')) || 0.6, post: params.get('post') !== '0' });
 window.__game = game;
 game.run();
