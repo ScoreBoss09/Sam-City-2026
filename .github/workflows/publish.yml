@@ -1,0 +1,30 @@
+name: Publish playable build
+on:
+  push:
+    branches: [main, claude/adoring-goodall-uzl91n]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble the game (no build step: plain files)
+        run: |
+          mkdir -p site
+          cp -r index.html css src vendor site/
+          touch site/.nojekyll
+          (cd site && zip -qr ../SamCity-playable.zip .)
+      - name: Publish to GitHub Pages branch (play in the browser)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site
+          publish_branch: gh-pages
+      - name: Rolling "latest" release with the downloadable zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest SamCity-playable.zip --title "Sam City (latest playable build)" --notes "Unzip, then run play.bat (Windows) or play.sh (Mac/Linux), or open the GitHub Pages link in the README."
