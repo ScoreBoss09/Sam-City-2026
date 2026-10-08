@@ -33,8 +33,21 @@ MAP = {
   'roof_tiles_blue': ('Roofing/Roof_Tiles_01_Blue_1.png', 64, 1.4), 'roof_thatch': ('Wood/Wood_Pattern_01_Yellow_1.png', 64, 0.95),
   'roof_gravel': ('Gravel/Gravel_01_Grey_1.png', 64, 0.9),
   # nature
+  # interior floors (1 tile = 4 m) and wall lining (1 tile = 3 m)
+  'floor_wood': ('Wood/Wood_Planks_01_Brown_1.png', 64, 1.1), 'floor_wood_dark': ('Wood/Wood_Planks_01_Brown_4.png', 64, 0.95),
+  'floor_tile': ('Tiles/Tiles Rectangle/Tiles_Rectangle_01_White_1.png', 64, 1.05), 'floor_tile_grey': ('Tiles/Tiles Rectangle/Tiles_Rectangle_01_Grey_1.png', 64, 1.0),
+  'floor_carpet_red': ('Patterns/Pattern_01_Retro_Carpet_Red_1.png', 64, 1.0), 'floor_carpet_green': ('Patterns/Pattern_01_Retro_Carpet_Green_1.png', 64, 1.0),
+  'int_wallpaper_red': ('Wall/Wallpaper_01_Red_1.png', 64, 1.05), 'int_wallpaper_green': ('Wall/Wallpaper_03_Green_1.png', 64, 1.05),
+  'int_wallpaper_white': ('Wall/Wallpaper_02_White_1.png', 64, 1.1), 'int_wallpaper_blue': ('Wall/Pattern_02_BlueWhite_Wallpaper_1.png', 64, 1.05),
+  'int_paint_yellow': ('Painted Wall/Painted_Wall_01_Yellow_1.png', 64, 1.1), 'int_paint_green': ('Painted Wall/Painted_Wall_01_Green_1.png', 64, 1.1),
+  'int_paint_grey': ('Painted Wall/Painted_Wall_01_Grey_1.png', 64, 1.1), 'int_paint_blue': ('Painted Wall/Painted_Wall_01_Blue_1.png', 64, 1.1),
+  'int_stucco': ('Wall/Wall_01_Stucco_Yellow_1.png', 64, 1.1), 'int_planks': ('Wood/Wood_Planks_01_Brown_2.png', 64, 0.95),
   'bark': ('Wood/Wood_Bark_01.png', 32, 1.0), 'leaves': ('Foliage/Foliage_Leaves_01_Green_1.png', 32, 1.2), 'rock': ('Rockface/Rock_Grey_01.png', 64, 1.0),
 }
+# fabrics/wood are stored as soft greyscale so the game can tint them with any colour (clothes, upholstery, furniture)
+GREY = {'fab_plaid': 'Fabric/Fabric_Plaid_01_Red_1.png', 'fab_gingham': 'Fabric/Fabric_Gingam_01_Blue_1.png', 'fab_cord': 'Fabric/Fabric_Corduroy_01_Brown_1.png',
+        'fab_hound': 'Fabric/Fabric_Houndstooth_01_BlackWhite_1.png', 'fab_diamond': 'Fabric/Fabric_Diamond_01_Blue_1.png', 'fab_padded': 'Fabric/Fabric_Padded_02_Grey_1.png',
+        'fab_plain': 'Fabric/Fabric_Plain_01_Grey_3.png', 'fab_wood': 'Wood/Wood_Planks_01_Brown_2.png'}
 # windows keep their transparency and are trimmed to the visible frame
 TRIM = {'win_modern': ('Windows/Window 04/Window_04_Double_1.png', 48), 'win_old': ('Windows/Window 02/Window_Old_Single_1.png', 48), 'door_blue': ('Doors/Door Wood 01/Door_Wood_Blue_1.png', 48), 'door_green': ('Doors/Door Wood 01/Door_Wood_Green_1.png', 48)}
 
@@ -62,6 +75,12 @@ def main():
         except Exception as e: print('missing', rel); continue
         im = im.resize((size, size), Image.BOX).convert('RGB')
         if bright != 1.0: im = ImageEnhance.Brightness(im).enhance(bright)
+        im.save(os.path.join(out, name + '.png')); manifest[name] = name + '.png'
+    for name, rel in GREY.items():
+        try: im = op(rel).convert('L')
+        except Exception as e: print('missing', rel); continue
+        im = im.resize((32, 32), Image.BOX); px = list(im.getdata()); mean = sum(px) / len(px)
+        im = im.point(lambda v: max(0, min(255, int(222 + (v - mean) * 0.75)))).convert('RGB')
         im.save(os.path.join(out, name + '.png')); manifest[name] = name + '.png'
     for name, (rel, size) in TRIM.items():
         try: im = op(rel).convert('RGBA')

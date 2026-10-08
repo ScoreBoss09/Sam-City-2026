@@ -33,7 +33,14 @@ The game ships with generated textures. For richer walls, roofs, ground and wate
 pip install pillow
 python3 tools/build_textures.py path/to/PNG_-_Pixel_Art_Textures.zip
 ```
-This writes `textures/` (about 300 KB). Reload the game: brick, stone, planks, stucco, roof tiles, thatch, grass, sand, dirt, water, bark, leaves and window frames switch over automatically. Delete the folder to go back to the generated look.
+This writes `textures/` (about 300 KB). Reload the game: brick, stone, planks, stucco, roof tiles, thatch, grass, sand, dirt, water, bark, leaves and window frames switch over automatically. The same set also gives interiors wood/tile/carpet floors and wallpaper or painted wall lining, painted double doors swung open at every entrance, and woven patterns (plaid, gingham, corduroy, houndstooth, diamond) on clothes plus upholstered/wooden furniture. Delete the folder to go back to the generated look.
+
+For anything the pack lacks (thatch, log walls, your own or AI-generated art), convert any image into a seamless pixel tile that replaces a texture by name:
+```
+python3 tools/pixelate.py my_thatch.png roof_thatch                 # 64 px, 24-colour palette
+python3 tools/pixelate.py cloth.png fab_plaid --grey --size 32       # tintable greyscale fabric
+```
+Names the game looks up are listed in `tools/build_textures.py` (`wall_*`, `roof_*`, `floor_*`, `int_*`, `fab_*`, `door_*`, `ground_*`).
 
 ## Layout
 `src/data` pure data (buildings, layouts, story, names) · `src/world` grid, A*, building lifecycle · `src/systems` economy, resources, logistics, construction, population, social, story, security · `src/sim` NPC state machine · `src/player` Sam + planning tools · `src/render` textures, meshes, rig/animator, post-process · `src/ui/UI.js` DOM · `src/core` input, clock, save · `tools/` headless Playwright scenarios (`window.__game`).

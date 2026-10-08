@@ -5,6 +5,7 @@ import { doorOffset } from '../data/layouts.js';
 import { facadeMaterial, signTexture, roofMaterial } from './Textures.js';
 import { makeFurniture, FURN } from './Furniture.js';
 import { mulberry32 } from '../util.js';
+import { Assets } from './Assets.js';
 
 const unit = new THREE.BoxGeometry(1, 1, 1);
 const mcache = {};
@@ -25,6 +26,31 @@ function prism(w, h, d) { // gable roof, ridge along z, base y=0
   const uv = []; for (const [x, y, z] of tris) uv.push((z * 0.55 + x * 0.12) , (y * 1.15 + Math.abs(x) * 0.35)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); return g;
 }
 
+/** Textured (or plain fallback) material for interiors; rx/ry = repeats. */
+const imat = {};
+function texMat(key, fallback, rx = 1, ry = 1, tint = 0xffffff, o = {}) {
+  const k = key + '|' + fallback + '|' + rx + '|' + ry + '|' + tint + JSON.stringify(o); if (imat[k]) return imat[k];
+  const map = key && Assets.has(key) ? Assets.tex(key, rx, ry) : null;
+  return (imat[k] = new THREE.MeshStandardMaterial({ color: map ? tint : fallback, map, roughness: 0.9, ...o }));
+}
+/** Floor + wall-lining look per interior layout. */
+const INTERIOR = {
+  hut: ['floor_wood_dark', 0x8a6a44, 'int_planks', 0xa98660], cabin: ['floor_wood_dark', 0x8a6a44, 'int_planks', 0xa98660], shed: ['floor_wood_dark', 0x8a6a44, 'int_planks', 0xa98660],
+  terminalhut: ['floor_wood_dark', 0x8a6a44, 'int_planks', 0xa98660], yard: ['ground_pavement', 0x999999, 'int_stucco', 0xc9bfa0],
+  tavern: ['floor_wood_dark', 0x7a5a3a, 'int_wallpaper_red', 0xa04a40], school: ['floor_wood', 0xa6825a, 'int_paint_yellow', 0xe0cf8a],
+  shop: ['floor_tile', 0xd8dade, 'int_paint_blue', 0x9ab4d0], clinic: ['floor_tile', 0xd8dade, 'int_paint_green', 0xa8d0b0], police: ['floor_tile_grey', 0xaaaeb4, 'int_paint_grey', 0xaab0b8],
+  office: ['floor_carpet_green', 0x6a8a70, 'int_wallpaper_white', 0xe6e2d8], lobby: ['floor_tile_grey', 0xaaaeb4, 'int_wallpaper_white', 0xe6e2d8], townhall: ['floor_carpet_red', 0x9a4a40, 'int_wallpaper_white', 0xe6e2d8],
+  factory: ['ground_pavement', 0x999999, 'int_paint_grey', 0xaab0b8], power: ['ground_pavement', 0x999999, 'int_paint_grey', 0xaab0b8], pump: ['ground_pavement', 0x999999, 'int_paint_grey', 0xaab0b8],
+  depot: ['ground_pavement', 0x999999, 'int_stucco', 0xc9bfa0], contractor: ['floor_wood', 0xa6825a, 'int_stucco', 0xc9bfa0],
+};
+const HOME_PAPER = [['int_wallpaper_green', 0x8ab48a], ['int_wallpaper_blue', 0x9ab0d0], ['int_wallpaper_red', 0xa04a40], ['int_paint_yellow', 0xe0cf8a]];
+/** Inward-facing wall lining plane (metre UVs: one texture tile = 3 m). */
+function lining(g, len, h, cx, cz, rotY, mat) {
+  const geo = new THREE.PlaneGeometry(len, h), uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * len / 3, uv.getY(i) * h / 3);
+  const m = new THREE.Mesh(geo, mat); m.position.set(cx, 0.12 + h / 2, cz); m.rotation.y = rotY; m.receiveShadow = true; g.add(m);
+}
+const RUSTIC = ['timber', 'logs', 'stone'];
 const shadeHex = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(f); return c.getHex(); };
 function addWall(g, cols, mat, cx, cz, sx, sz, h = null, y = 0) {
   const H = h; const m = new THREE.Mesh(wallGeo(sx, H, sz), mat); m.position.set(cx, y + H / 2, cz); m.castShadow = true; m.receiveShadow = true; g.add(m);
@@ -76,8 +102,9 @@ function buildExterior0(def, uid = 1) {
   const g = new THREE.Group(), roof = new THREE.Group(), cols = [];
   const mat = facadeMaterial(def.wall), door = doorOffset(def.w), dw = DOOR_W;
   box(g, W + 0.7, 0.3, D + 0.7, 0x9a9b9c, 0, -0.18, 0);                       // pavement slab
-  const floorCol = ['clinic', 'shop', 'lobby', 'office', 'townhall'].includes(def.layout) ? 0xcfd3d8 : 0xa6825a;
-  box(g, W - 0.1, 0.12, D - 0.1, floorCol, 0, 0.0, 0);                           // interior floor
+  const homey = ['house', 'apartments'].includes(def.layout), paper = HOME_PAPER[uid % HOME_PAPER.length];
+  const look = INTERIOR[def.layout] || (homey ? ['floor_wood', 0xa6825a, paper[0], paper[1]] : ['floor_wood', 0xa6825a, 'int_stucco', 0xc9bfa0]);
+  const floor = new THREE.Mesh(unit, texMat(look[0], look[1], W / 4, D / 4)); floor.scale.set(W - 0.1, 0.12, D - 0.1); floor.position.y = 0.06; floor.receiveShadow = true; g.add(floor);   // interior floor
   addWall(g, cols, mat, 0, -D / 2 + T / 2, W, T, H);                              // back
   addWall(g, cols, mat, -W / 2 + T / 2, 0, T, D - 2 * T, H);                      // left
   addWall(g, cols, mat, W / 2 - T / 2, 0, T, D - 2 * T, H);                       // right
@@ -89,6 +116,19 @@ function buildExterior0(def, uid = 1) {
   // ceiling (stays when the roof is cut away)
   const ceilH = Math.min(H, WALL_H * 1.7);
   box(g, W - 2 * T, 0.12, D - 2 * T, 0xe8e4da, 0, ceilH - 0.1, 0, { emissive: 0xfff2d0, emissiveIntensity: 0.55 });
+  // textured wall lining on the inside faces
+  const lm = texMat(look[2], look[3], 1, 1, 0xb8b2a6), lh = ceilH - 0.22, iz = D / 2 - T - 0.01, ix = W / 2 - T - 0.01;
+  lining(g, W - 2 * T, lh, 0, -D / 2 + T + 0.01, 0, lm);
+  lining(g, D - 2 * T, lh, -ix, 0, Math.PI / 2, lm); lining(g, D - 2 * T, lh, ix, 0, -Math.PI / 2, lm);
+  const fl0 = l1 - (-W / 2 + T), fr0 = (W / 2 - T) - r0;
+  if (fl0 > 0.1) lining(g, fl0, lh, (-W / 2 + T + l1) / 2, iz, Math.PI, lm); if (fr0 > 0.1) lining(g, fr0, lh, (r0 + W / 2 - T) / 2, iz, Math.PI, lm);
+  // open double doors, hinged at the jambs and swung into the room
+  const rustic = RUSTIC.includes(def.wall), dkey = rustic ? 'wall_planks' : (uid % 2 ? 'door_green' : 'door_blue'), dcol = rustic ? 0x7a5230 : (uid % 2 ? 0x4a7a50 : 0x3f6fae);
+  const dmat = texMat(dkey, dcol, 1, 1), lw = dw / 2 - 0.04, hingeZ = fz - T / 2 - 0.05;
+  for (const side of [-1, 1]) {
+    const geo = new THREE.BoxGeometry(lw, 2.45, 0.06); geo.translate(-side * lw / 2, 1.25, 0);
+    const leaf = new THREE.Mesh(geo, dmat); leaf.position.set(door + side * (dw / 2 - 0.02), 0.05, hingeZ); leaf.rotation.y = -side * 1.25; leaf.castShadow = true; g.add(leaf);
+  }
   // sign above the door
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture(def.name) }));
   sign.position.set(door, Math.min(2.95, H - 0.4), D / 2 + 0.02); g.add(sign);

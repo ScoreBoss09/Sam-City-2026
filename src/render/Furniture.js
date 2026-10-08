@@ -1,8 +1,14 @@
 import * as THREE from 'three';
+import { Assets } from './Assets.js';
 
 const unit = new THREE.BoxGeometry(1, 1, 1);
 const cache = {};
-function mat(c, o = {}) { const k = c + JSON.stringify(o); return cache[k] || (cache[k] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, ...o })); }
+// colours that stand in for wood / upholstery get the pack's greyscale textures, tinted by the colour
+const TEXOF = { 0x8a5a33: 'fab_wood', 0x6e4528: 'fab_wood', 0x3a5f8f: 'fab_padded', 0x2d4a73: 'fab_padded', 0x3f6fae: 'fab_plaid', 0xd9d4c4: 'fab_plain' };
+function mat(c, o = {}) {
+  const tk = o.tk || TEXOF[c], { tk: _t, ...rest } = o, k = c + JSON.stringify(rest) + (tk || ''); if (cache[k]) return cache[k];
+  return (cache[k] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, ...rest, map: tk && Assets.has(tk) ? Assets.tex(tk) : null }));
+}
 function box(g, w, h, d, c, x, y, z, o) { const m = new THREE.Mesh(unit, mat(c, o)); m.scale.set(w, h, d); m.position.set(x, y + h / 2, z); g.add(m); return m; }
 const WOOD = 0x8a5a33, DARK = 0x3a3d44, WHITE = 0xe9ebee, FAB = 0x3a5f8f, SCREEN = { emissive: 0x66ccff, emissiveIntensity: 1.1 };
 

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Assets } from './Assets.js';
 
 /**
  * Articulated low-poly person. Every limb segment is ONE merged, vertex-coloured mesh (cheap to draw),
@@ -6,19 +7,27 @@ import * as THREE from 'three';
  */
 const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
 const plain = {};
+/** One shared 8-cell atlas: cell 0 is plain white (no pattern); cells 1-7 are greyscale fabrics that the vertex colour tints. */
+const FAB_KEYS = ['fab_plaid', 'fab_gingham', 'fab_cord', 'fab_hound', 'fab_diamond', 'fab_padded', 'fab_plain'], CELLS = 8, CS = 32;
+export const FABRIC = { plaid: 1, gingham: 2, cord: 3, hound: 4, diamond: 5, padded: 6, plain: 7 };
+function fabricAtlas() {
+  const c = document.createElement('canvas'); c.width = CELLS * CS; c.height = CS; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = false;
+  FAB_KEYS.forEach((k, i) => { const im = Assets.img(k); if (im) x.drawImage(im, (i + 1) * CS, 0, CS, CS); });
+  const t = new THREE.CanvasTexture(c); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.colorSpace = THREE.SRGBColorSpace; return t;
+}
 const pm = (c) => plain[c] || (plain[c] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
 export const HIP_H = 0.93;
 
 class Merger {
-  constructor() { this.pos = []; this.nor = []; this.col = []; this.idx = []; this.n = 0; this.tmp = new THREE.Matrix4(); this.q = new THREE.Quaternion(); }
+  constructor() { this.pos = []; this.uv = []; this.cell = 0; this.nor = []; this.col = []; this.idx = []; this.n = 0; this.tmp = new THREE.Matrix4(); this.q = new THREE.Quaternion(); }
   box(w, h, d, x, y, z, hex, rx = 0, ry = 0, rz = 0) {
     const g = new THREE.BoxGeometry(w, h, d); this.tmp.compose(new THREE.Vector3(x, y, z), this.q.setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(1, 1, 1)); g.applyMatrix4(this.tmp);
-    const c = new THREE.Color(hex), p = g.attributes.position, nr = g.attributes.normal;
-    for (let i = 0; i < p.count; i++) { this.pos.push(p.getX(i), p.getY(i), p.getZ(i)); this.nor.push(nr.getX(i), nr.getY(i), nr.getZ(i)); this.col.push(c.r, c.g, c.b); }
+    const c = new THREE.Color(hex), p = g.attributes.position, nr = g.attributes.normal, uv = g.attributes.uv, cl = this.cell;
+    for (let i = 0; i < p.count; i++) { this.pos.push(p.getX(i), p.getY(i), p.getZ(i)); this.nor.push(nr.getX(i), nr.getY(i), nr.getZ(i)); this.col.push(c.r, c.g, c.b); this.uv.push((cl + 0.04 + uv.getX(i) * 0.92) / CELLS, 0.04 + uv.getY(i) * 0.92); }
     for (const i of g.index.array) this.idx.push(i + this.n); this.n += p.count; g.dispose(); return this;
   }
   mesh() {
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3)); g.setIndex(this.idx);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2)); g.setIndex(this.idx);
     const m = new THREE.Mesh(g, mat); m.matrixAutoUpdate = true; return m;
   }
 }
@@ -33,6 +42,8 @@ export function createRig(look = {}) {
     gender: 'm', skin: 0xe0b48f, hair: 0x3b2a1a, hairStyle: 'short', shirt: 0x3f8f5a, pants: 0x333a48, shoes: 0x2a2018, longSleeve: false, shorts: false, skirt: false, dress: false, facial: null, cane: false,
     hat: null, glasses: false, backpack: false, accessory: null, h: 1, w: 1, body: {}, ...look,
   };
+  if (!mat.map && Assets.ok) { mat.map = fabricAtlas(); mat.needsUpdate = true; }
+  const fab = L.fabric || 0, pfab = L.pantsFabric || 0;
   const B = { sw: 1, td: 1, hip: 1, lt: 1, belly: 0, headS: 1, ...L.body }, F = L.gender === 'f';
   const bust = F ? 1 : 0;
   const root = new THREE.Group(), body = new THREE.Group(), hips = new THREE.Group(); root.add(body); body.add(hips); hips.position.y = HIP_H;
@@ -42,15 +53,16 @@ export function createRig(look = {}) {
   const tw = 0.46 * B.sw * (F ? 0.9 : 1), td = 0.26 * B.td, hw = 0.42 * B.hip * (F ? 1.08 : 1);
 
   // pelvis / lower clothing
-  const pel = new Merger().box(hw, 0.2, 0.26 * B.td, 0, 0.0, 0, L.dress ? L.shirt : L.pants).box(hw + 0.01, 0.04, 0.27 * B.td, 0, 0.1, 0, L.dress ? shade(L.shirt, 0.8) : 0x2b2118);
+  const pel = new Merger(); pel.cell = L.dress ? fab : pfab; pel.box(hw, 0.2, 0.26 * B.td, 0, 0.0, 0, L.dress ? L.shirt : L.pants).box(hw + 0.01, 0.04, 0.27 * B.td, 0, 0.1, 0, L.dress ? shade(L.shirt, 0.8) : 0x2b2118);
   if (L.skirt || L.dress) pel.box(hw + 0.1, L.dress ? 0.52 : 0.3, 0.3 * B.td + 0.04, 0, L.dress ? -0.3 : -0.17, 0, L.dress ? L.shirt : L.pants).box(hw + 0.11, 0.04, 0.3 * B.td + 0.05, 0, L.dress ? -0.55 : -0.32, 0, shade(L.dress ? L.shirt : L.pants, 0.82));
   if (B.belly > 0) pel.box(hw * 0.96, 0.22, 0.2 * B.belly + 0.04, 0, 0.12, 0.12 + 0.07 * B.belly, L.dress ? L.shirt : L.pants);
   hips.add(pel.mesh());
   // spine / torso
   j.spine = grp(hips, 0, 0.08, 0);
-  const tor = new Merger().box(tw, 0.54, td, 0, 0.27, 0, L.shirt).box(0.12, 0.04, 0.12, 0, 0.56, 0.02, skinD);
+  const tor = new Merger(); tor.cell = fab; tor.box(tw, 0.54, td, 0, 0.27, 0, L.shirt).box(0.12, 0.04, 0.12, 0, 0.56, 0.02, skinD);
   if (B.belly > 0) tor.box(tw * 1.02, 0.3, 0.16 * B.belly + 0.04, 0, 0.14, td / 2 + 0.03 * B.belly, L.shirt);
   if (bust) tor.box(0.17, 0.12, 0.07, -0.1, 0.4, td / 2 + 0.02, L.shirt).box(0.17, 0.12, 0.07, 0.1, 0.4, td / 2 + 0.02, L.shirt);
+  tor.cell = 0;
   if (L.shirt2) tor.box(tw + 0.02, 0.05, td + 0.02, 0, 0.5, 0, L.shirt2);
   const acc = L.accessory, fz = td / 2 + 0.005;
   if (acc === 'tie') tor.box(0.06, 0.3, 0.012, 0, 0.36, fz + 0.002, 0xb02828).box(0.14, 0.04, 0.13, 0, 0.56, 0.02, 0xf2f2f2);
@@ -115,14 +127,14 @@ export function createRig(look = {}) {
   const lt = B.lt, sx = 0.3 * B.sw * (F ? 0.93 : 1) + (lt - 1) * 0.04;
   const arm = (side) => {
     const s = side === 'L' ? -1 : 1, sh = grp(j.spine, s * sx, 0.5, 0);
-    const up = new Merger().box(0.14 * lt, 0.31, 0.15 * lt, 0, -0.14, 0, L.shirt).box(0.15 * lt, 0.04, 0.16 * lt, 0, -0.01, 0, shade(L.shirt, 0.9)); sh.add(up.mesh());
-    const el = grp(sh, 0, -0.3, 0); el.add(new Merger().box(0.12 * lt, 0.27, 0.13 * lt, 0, -0.13, 0, L.longSleeve ? L.shirt : L.skin).mesh());
+    const up = new Merger(); up.cell = fab; up.box(0.14 * lt, 0.31, 0.15 * lt, 0, -0.14, 0, L.shirt).box(0.15 * lt, 0.04, 0.16 * lt, 0, -0.01, 0, shade(L.shirt, 0.9)); sh.add(up.mesh());
+    const el = grp(sh, 0, -0.3, 0); { const m = new Merger(); m.cell = L.longSleeve ? fab : 0; el.add(m.box(0.12 * lt, 0.27, 0.13 * lt, 0, -0.13, 0, L.longSleeve ? L.shirt : L.skin).mesh()); }
     const wr = grp(el, 0, -0.27, 0); wr.add(new Merger().box(0.1, 0.11, 0.1, 0, -0.05, 0, L.skin).mesh());
     const hand = grp(wr, 0, -0.1, 0.02); return { sh, el, wr, hand };
   };
   const leg = (side) => {
     const s = side === 'L' ? -1 : 1, th = grp(hips, s * (0.11 * B.hip + (lt - 1) * 0.03), -0.02, 0), bare = L.shorts || L.skirt || L.dress;
-    th.add(new Merger().box(0.18 * lt, 0.45, 0.2 * lt, 0, -0.21, 0, L.pants).mesh());
+    { const m = new Merger(); m.cell = pfab; th.add(m.box(0.18 * lt, 0.45, 0.2 * lt, 0, -0.21, 0, L.pants).mesh()); }
     const kn = grp(th, 0, -0.44, 0); kn.add(new Merger().box(0.15 * lt, 0.43, 0.17 * lt, 0, -0.21, 0, bare ? (L.dress ? shade(L.skin, 0.97) : L.skin) : L.pants).box(0.155 * lt, 0.05, 0.175 * lt, 0, -0.38, 0, L.shorts ? 0xf2f2f2 : shade(L.pants, 0.8)).mesh());
     const an = grp(kn, 0, -0.42, 0); an.add(new Merger().box(0.15 * lt, 0.08, 0.27, 0, -0.03, 0.05, L.shoes).box(0.15 * lt, 0.02, 0.27, 0, -0.07, 0.05, 0xdddddd).mesh());
     return { th, kn, an };

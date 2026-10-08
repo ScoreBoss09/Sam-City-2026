@@ -45,6 +45,12 @@ export class Population {
     if (!r && !child) { const h = rnd(); if (elder && g === 'm' && h < 0.5) L.hat = { type: pick(['flat', 'bowler']), color: pick([0x5a5a4a, 0x7a6a4a, 0x3a3a3a]) }; else if (elder && g === 'f' && h < 0.25) L.hat = { type: 'bonnet' }; else if (h < 0.12) L.hat = { type: pick(['cap', 'beanie', 'flat']), color: pick(tops) }; }
     if (!r && !child && rnd() < 0.08) L.backpack = true;
     if (kind === 'visitor') { L.backpack = true; L.hat = { type: 'sun' }; L.shorts = g === 'm'; L.skirt = g === 'f'; L.accessory = null; L.shirt = pick([0xf2c94c, 0xeb5757, 0x56ccf2, 0x6fcf97]); }
+    // woven patterns on civilian clothes (atlas cells: 1 plaid, 2 gingham, 3 corduroy, 4 houndstooth, 5 diamond)
+    if (!r && kind !== 'visitor' && !['coat', 'vest', 'uniform', 'apron'].includes(L.accessory)) {
+      const f = rnd();
+      if (f < 0.4) L.fabric = child ? pick([1, 2]) : g === 'f' ? pick([2, 2, 5, 4, 1]) : pick([1, 1, 4, 5, 2]);
+      if (!L.dress && !L.skirt && !L.shorts && rnd() < 0.22) L.pantsFabric = pick([3, 3, 4]);
+    }
     let nm;
     if (surname) { const pool = g === 'f' ? FEMALE : MALE; let first = pick(pool); for (let i = 0; i < 60 && this.names.has(first + ' ' + surname); i++) first = pick(pool); nm = { first, last: surname, name: first + ' ' + surname }; this.names.add(nm.name); }
     else nm = this.uniqueName(g);
