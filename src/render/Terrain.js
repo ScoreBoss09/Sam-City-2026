@@ -35,6 +35,9 @@ export class Terrain {
     this.water = new THREE.Mesh(new THREE.PlaneGeometry(1500, 1500), new THREE.MeshStandardMaterial({ map: wt, roughness: 0.35, metalness: 0.1, emissive: 0x0a2a55, emissiveIntensity: 0.5 }));
     this.water.rotation.x = -Math.PI / 2; this.water.position.set(size / 2, -0.5, size / 2); this.water.receiveShadow = true; scene.add(this.water);
 
+    const sp = document.createElement('canvas'); sp.width = sp.height = 64; const sx = sp.getContext('2d'); sx.fillStyle = '#000'; sx.fillRect(0, 0, 64, 64); for (let i = 0; i < 40; i++) { const a = 0.4 + Math.random() * 0.6; sx.fillStyle = `rgba(255,255,255,${a})`; sx.fillRect(Math.random() * 62 | 0, Math.random() * 62 | 0, 2, 1); }
+    this.sparkTex = new THREE.CanvasTexture(sp); this.sparkTex.wrapS = this.sparkTex.wrapT = THREE.RepeatWrapping; this.sparkTex.magFilter = this.sparkTex.minFilter = THREE.NearestFilter; this.sparkTex.repeat.set(26, 26);
+    this.spark = new THREE.Mesh(new THREE.PlaneGeometry(1500, 1500), new THREE.MeshBasicMaterial({ map: this.sparkTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.55 })); this.spark.rotation.x = -Math.PI / 2; this.spark.position.set(size / 2, -0.44, size / 2); scene.add(this.spark);
     this.paintAll(); this.buildRocks(); this.buildTrees();
     world.events.on('tile', (x, z) => this.paintAround(x, z));
     world.events.on('zone', () => { this.zDirty = true; });
@@ -149,7 +152,7 @@ export class Terrain {
   }
 
   update(dt, godMode) {
-    this.water.material.map.offset.x += dt * 0.004; this.water.material.map.offset.y += dt * 0.002;
+    this.water.material.map.offset.x += dt * 0.004; this.water.material.map.offset.y += dt * 0.002; this.sparkTex.offset.x -= dt * 0.012; this.sparkTex.offset.y += dt * 0.007; this.spark.material.opacity = 0.2 + 0.5 * (this.day ?? 1);
     this.zoneMesh.visible = godMode;
     if (this.zDirty) this.paintZones();
   }

@@ -40,6 +40,10 @@ export class Game {
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.planner = new Planner(this); this.social = new Social(this);
     this.god = new GodControls(this); this.ui = new UI(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
+    // objective beacon
+    this.beacon = new THREE.Group(); const bm = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.9, depthTest: false });
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 4), bm); cone.rotation.x = Math.PI; cone.renderOrder = 20; const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 40, 6), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.22, depthWrite: false }));
+    beam.position.y = 20; this.beacon.add(cone, beam); this.beacon.userData.cone = cone; this.beacon.visible = false; this.scene.add(this.beacon);
     this.setupCity(); this.resize(); window.addEventListener('resize', () => this.resize());
     canvas.addEventListener('click', () => { if (this.mode === 'sim' && !this.ui.modalOpen && this.started && !this.ending) this.input.lock(); });
     this.setMode('sim'); this.last = performance.now(); this.frames = 0;
@@ -117,7 +121,9 @@ export class Game {
     let focus;
     if (this.mode === 'god') { this.god.update(dt, inp, true); focus = this.god.target; }
     else { this.god.update(dt, inp, false); this.god.grid.visible = false; this.god.ghost.visible = false; this.god.tileBox.visible = false; this.player.placeCamera(this.camera); focus = { x: this.player.x, z: this.player.z }; }
-    this.elapsed += dt; this.terrain.update(dt, this.mode === 'god'); this.atmosphere.hideDome = this.mode === 'god'; this.atmosphere.update(dt, this.clock, focus, this.story, 0); this.decor.update(dt); this.decor.setNight(this.atmosphere.night); this.traffic.setNight(this.atmosphere.night); this.harbor.update(dt, this.elapsed);
+    { const o = this.story.currentObjective, t = o && o.target ? o.target(this) : null; const p = this.player;
+      if (t && this.started) { const near = this.mode === 'sim' && Math.hypot(t.x - p.x, t.z - p.z) < 7; this.beacon.visible = !near; const k = this.mode === 'god' ? this.god.dist / 40 : 1; this.beacon.position.set(t.x, 0, t.z); this.beacon.userData.cone.position.y = 5 + Math.sin(this.elapsed * 3) * 0.5; this.beacon.userData.cone.scale.setScalar(Math.max(1, k)); } else this.beacon.visible = false; }
+    this.elapsed += dt; this.terrain.day = this.atmosphere.dayLevel; this.terrain.update(dt, this.mode === 'god'); this.atmosphere.hideDome = this.mode === 'god'; this.atmosphere.update(dt, this.clock, focus, this.story, 0); this.decor.update(dt); this.decor.setNight(this.atmosphere.night); this.traffic.setNight(this.atmosphere.night); this.harbor.update(dt, this.elapsed);
     this.render(dt); inp.endFrame();
   }
   render() { if (!this.skipRender) this.post.render(this.scene, this.camera); }
