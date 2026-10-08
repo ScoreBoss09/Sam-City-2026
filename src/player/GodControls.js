@@ -32,15 +32,21 @@ export class GodControls {
     const g = this.game, cam = g.camera;
     if (active && !g.ui.modalOpen) {
       let mx = 0, mz = 0; if (inp.down('KeyW') || inp.down('ArrowUp')) mz -= 1; if (inp.down('KeyS') || inp.down('ArrowDown')) mz += 1; if (inp.down('KeyA') || inp.down('ArrowLeft')) mx -= 1; if (inp.down('KeyD') || inp.down('ArrowRight')) mx += 1;
+      if (inp.padActive && inp.pad) { const dzn = (v) => (Math.abs(v) < 0.2 ? 0 : (v - Math.sign(v) * 0.2) / 0.8); const ax = dzn(inp.pad.lx), az = dzn(inp.pad.ly); if (ax || az) { mx = ax * Math.abs(ax) * 1.2; mz = az * Math.abs(az) * 1.2; } }   // analogue pan: gentle near the centre
       const sp = this.dist * 0.9 * dt * (inp.down('ShiftLeft') ? 2 : 1), s = Math.sin(this.yaw), c = Math.cos(this.yaw);
       this.target.x += (mx * c + mz * s) * sp; this.target.z += (-mx * s + mz * c) * sp;
       if (inp.down('KeyQ')) this.yaw += dt * 1.4; if (inp.down('KeyE')) this.yaw -= dt * 1.4;
-      if (inp.mouse.wheel) this.dist = clamp(this.dist * (inp.mouse.wheel > 0 ? 1.12 : 0.89), 22, 230);
+      if (this._lastDist !== undefined && Math.abs(this.dist - this._lastDist) > 1e-6) this.distGoal = this.dist;   // someone set dist directly
+      if (this.distGoal === undefined) this.distGoal = this.dist;
+      if (inp.mouse.wheel) this.distGoal = clamp(this.distGoal * Math.pow(inp.mouse.wheel > 0 ? 1.14 : 0.88, Math.abs(inp.mouse.wheel)), 22, 230);
+      const P = inp.pad || {}; if (inp.padActive && P.zoom) this.distGoal = clamp(this.distGoal * Math.exp(P.zoom * dt * 1.7), 22, 230);
+      if (inp.padActive && P.turn) this.yaw -= P.turn * dt * 1.8;
+      this.dist += (this.distGoal - this.dist) * Math.min(1, dt * 9); this._lastDist = this.dist;
       if ((inp.mouse.right || inp.mouse.middle) && (inp.mouse.dx || inp.mouse.dy)) {
         if (inp.down('ShiftLeft') || inp.mouse.middle) { this.yaw -= inp.mouse.dx * 0.005; this.pitch = clamp(this.pitch + inp.mouse.dy * 0.004, 0.45, 1.5); }
         else { const k = this.dist * 0.0022; this.target.x -= (inp.mouse.dx * c + inp.mouse.dy * s) * k; this.target.z -= (-inp.mouse.dx * s + inp.mouse.dy * c) * k; }
       }
-      if (inp.hit('KeyF')) { this.target.set(80, 0, 82); this.dist = 215; this.pitch = 1.3; this.yaw = 0; }
+      if (inp.hit('KeyF')) { this.target.set(80, 0, 82); this.dist = this.distGoal = this._lastDist = 215; this.pitch = 1.3; this.yaw = 0; }
       if (inp.hit('KeyR')) this.prefRot = (this.prefRot + 1) % 4;
       if (inp.hit('Escape')) this.setTool('pan');
       const hs = { Digit1: ['bulldoze'], Digit2: ['road', 'dirt'], Digit3: ['zone', 'res'], Digit4: ['build'], Digit5: ['park'], Digit6: ['util'], Digit7: ['query'] };

@@ -62,7 +62,7 @@ export class Player {
       else { this.emote(g.ui.adult && Math.random() < 0.4 ? 'vsign' : 'facepalm'); g.ui.toast(pick(RACE_LOSE).replace('{h}', h).replace('{s}', stake), 5000); }
     }, 2800);
   }
-  jump() { if (this.jumpT > 0 || this.seat || this.sleeping || this.sedated > 0 || this.down > 0) return; this.jumpT = 0.62; Sfx.play('jump'); }
+  jump() { if (this.jumpT > 0 || this.seat || this.sleeping || this.sedated > 0 || this.down > 0) return; this.jumpT = 0.8; Sfx.play('jump'); }
 
   // ---------- backpack ----------
   invTotal() { let n = 0; for (const v of Object.values(this.inv)) n += v; return n; }
@@ -82,7 +82,8 @@ export class Player {
     const g = this.game, inp = g.input, sim = g.mode === 'sim' && !g.ui.modalOpen && !g.ending;
     this.moved = false; this.working = false; this.dist = 0; if (this.emoteT > 0) this.emoteT -= rawDt;
     if (this.callT > 0) this.callT -= rawDt; if (this.betT > 0) this.betT -= rawDt;
-    if (this.jumpT > 0) { this.jumpT = Math.max(0, this.jumpT - rawDt); const u = 1 - this.jumpT / 0.62; this.jumpY = Math.sin(u * Math.PI) * 0.75; } else this.jumpY = 0; if (this.strikeT > 0) this.strikeT -= rawDt; if (this.shake > 0) this.shake = Math.max(0, this.shake - rawDt * 1.5);
+    if (this.jumpT > 0 && this.jumpT - rawDt <= 0) { const w = this.game.world, hx = this.speed > 0.3 ? this.dirx : Math.sin(this.heading), hz = this.speed > 0.3 ? this.dirz : Math.cos(this.heading); if (w.collides(this.x, this.z, R)) for (let d = 0.1; d < 1.8; d += 0.1) { if (!w.collides(this.x + hx * d, this.z + hz * d, R)) { this.x += hx * d; this.z += hz * d; break; } } }   // landed on a fence: hop down the far side
+    if (this.jumpT > 0) { this.jumpT = Math.max(0, this.jumpT - rawDt); const u = 1 - this.jumpT / 0.8; this.jumpY = Math.sin(u * Math.PI) * 1.55; } else this.jumpY = 0; if (this.strikeT > 0) this.strikeT -= rawDt; if (this.shake > 0) this.shake = Math.max(0, this.shake - rawDt * 1.5);
     if (this.sedated > 0) { this.sedated -= rawDt; if (this.sedated <= 0) this.wakeFromSedation(); }
     if (this.down > 0) this.down -= rawDt; if (this.swingT > 0) this.swingT -= rawDt; if (this.swingT <= 0 && this.swingHit) this.swingHit = false;
     this.unstick();
@@ -116,6 +117,7 @@ export class Player {
       if (inp.hit('KeyG')) { this.emoteIdx = ((this.emoteIdx ?? -1) + 1) % EM.length; this.emote(EM[this.emoteIdx]); }
       for (let i = 1; i <= 8; i++) if (inp.hit('Digit' + i)) this.emote(EM[i]);
       if (inp.hit('Space')) this.jump();
+      if (inp.hit('KeyC')) { const d = this.nearDoor(); if (d) { d.doorHeld = !d.doorHeld; if (!d.doorHeld && this.game.buildings.doorRectHas(d, this.x, this.z, R + 0.1)) d.doorHeld = true; } }
       if (this.weapon && inp.hit('KeyF') && !(this.swingT > 0)) { this.swingT = 0.6; this.swingHit = false; }
       if (this.swingT > 0.3 && !this.swingHit && this.weapon) { this.swingHit = true; this.strike(); }
       if (inp.hit('KeyQ')) this.eat();
@@ -135,7 +137,7 @@ export class Player {
   }
   /** If a wall or furniture has appeared around Sam (a building just finished), step out to the nearest free spot. */
   unstick() {
-    const w = this.game.world; if (this.sleeping || !w.collides(this.x, this.z, R)) return;
+    const w = this.game.world; if (this.sleeping || this.jumpT > 0 || !w.collides(this.x, this.z, R)) return;
     const ins = this.game.buildings.list.find((b) => b.state === 'done' && b.colliders.some((c) => this.x > c.minx - R && this.x < c.maxx + R && this.z > c.minz - R && this.z < c.maxz + R));
     if (ins && ins.doorOut && !w.collides(ins.doorOut.x, ins.doorOut.z, R) && Math.hypot(ins.cx - this.x, ins.cz - this.z) < Math.max(ins.w, ins.d) * TILE) { this.x = ins.doorOut.x; this.z = ins.doorOut.z; return; }
     for (let r = 0.3; r < 8; r += 0.3) for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) { const x = this.x + Math.cos(a) * r, z = this.z + Math.sin(a) * r; if (!w.collides(x, z, R)) { this.x = x; this.z = z; return; } }
@@ -162,10 +164,28 @@ export class Player {
     if (this.sedated > 0 || this.down > 0) return; const g = this.game; this.down = sec; this.swingT = 0; this.energy = Math.max(0, this.energy - 10);
     if (this.invTotal()) { g.piles.add(this.x, this.z, { ...this.inv }); this.inv = {}; g.ui.toast('You are knocked down and your backpack spills!'); } else g.ui.toast('You are knocked to the ground!');
   }
+  /** The door Sam is nearest and facing (within 3 m). */
+  nearDoor() {
+    const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw); let best = null, bs = 1e9;
+    for (const b of this.game.buildings.list) {
+      if (!b.ext || !b.ext.doors || !b.ext.doors.length) continue; const dx = b.doorPos.x - this.x, dz = b.doorPos.z - this.z, d = Math.hypot(dx, dz); if (d > 3.1) continue;
+      const sc = d + (d > 0.3 ? (1 - (dx * fx + dz * fz) / d) * 1.2 : 0); if (sc < bs) { bs = sc; best = b; }
+    }
+    return best;
+  }
+  /** Closed front doors block Sam (press C to open them). */
+  doorBlocks(x, z, r) {
+    for (const b of this.game.buildings.list) {
+      if (!b.ext || !b.ext.doors || !b.ext.doors.length || (b.doorK || 0) > 0.6 || Math.abs(b.cx - x) > 14 || Math.abs(b.cz - z) > 14) continue;
+      const q = this.game.buildings.doorRect(b), cx = Math.max(q.minx, Math.min(x, q.maxx)), cz = Math.max(q.minz, Math.min(z, q.maxz));
+      if ((x - cx) ** 2 + (z - cz) ** 2 < r * r) return true;
+    }
+    return false;
+  }
   tryMove(dx, dz) {
-    const w = this.game.world;
-    if (!w.collides(this.x + dx, this.z, R)) this.x += dx;
-    if (!w.collides(this.x, this.z + dz, R)) this.z += dz;
+    const w = this.game.world, hit = (x, z) => w.collides(x, z, R, false, this.jumpY || 0) || this.doorBlocks(x, z, R);
+    if (!hit(this.x + dx, this.z)) this.x += dx;
+    if (!hit(this.x, this.z + dz)) this.z += dz;
   }
 
   // ---------- interaction ----------
@@ -185,6 +205,7 @@ export class Player {
     for (const it of g.tools.items) { if (it.taken) continue; const d = Math.hypot(it.x - px, it.z - pz); if (d < 2.5) consider({ kind: 'tool', item: it, text: `Pick up the ${TOOLS[it.id]}` }, d - 2); }
     { const cu = g.curios && g.curios.near(px, pz, 2.2); if (cu) consider({ kind: 'curio', item: cu, text: `Pick up something shiny...` }, Math.hypot(cu.x - px, cu.z - pz) - 1.5); }
     { const L = g.lift, h = L && L.ext && L.ext.hatch; if (h) { const [hx, hz] = L.toWorld(h.x, h.z), d = Math.hypot(hx - px, hz - pz); if (d < 2.2) consider({ kind: 'hatch', b: L, text: 'Order supplies on the Lift intercom' }, d - 1.0, hx, hz); } }
+    { const nd = this.nearDoor(); if (nd) { const d = Math.hypot(nd.doorPos.x - px, nd.doorPos.z - pz); consider({ kind: 'info', text: `Press C to ${(nd.doorK || 0) > 0.5 ? 'close' : 'open'} the door` }, d + 0.9); } }
     for (const p of g.piles.list) { const d = Math.hypot(p.x - px, p.z - pz); if (d < 2.2) consider({ kind: 'pile', pile: p, text: full ? 'Your backpack is full' : `Pick up ${Object.entries(p.items).map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }, d - 1.2); }
     for (const b of B) if (b.state === 'done' && b.def.park === 'camp' && (this.inv.food || 0) >= 2 && this.hunger > 15) { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 4.5) consider({ kind: 'cook', b, text: 'Cook a hot meal on the fire (uses 2 food)' }, d - 2.5); }
     for (const b of B) if (b.state === 'done' && b.spots.seat && (b.def.open || b.def.park || b === g.buildings.playerInside)) for (const s of b.spots.seat) { if (s.taken) continue; const d = Math.hypot(s.x - px, s.z - pz); if (d < (b.def.park === 'camp' ? 2.2 : 1.4)) consider({ kind: 'seat', seat: s, b, text: b.def.park === 'camp' ? 'Sit by the fire' : 'Sit down' }, d + 0.3, s.x, s.z); }
@@ -325,7 +346,11 @@ export class Player {
     g.ui.toast(['A proper stew! You feel brand new.', 'Fish on a stick, charred just right.', 'Berry crumble, campfire style. Delicious.', 'Toasted bread and hot jam. Lovely.'][Math.floor(Math.random() * 4)], 2800);
   }
   sitOn(seat, b) { seat.taken = 'player'; this.seat = Object.assign(seat, { b }); this.prevPos = { x: this.x, z: this.z }; this.x = seat.x; this.z = seat.z; this.heading = seat.heading; Sfx.play('ui'); this.game.workgame.stop(); this.lock = null; }
-  standUp() { const s = this.seat; if (!s) return; s.taken = null; this.seat = null; this.x = s.x + Math.sin(s.heading) * 0.8; this.z = s.z + Math.cos(s.heading) * 0.8; this.unstick(); }
+  standUp() {
+    const s = this.seat; if (!s) return; s.taken = null; this.seat = null; const w = this.game.world;
+    for (const a of [0, Math.PI / 2, -Math.PI / 2, Math.PI]) { const x = s.x + Math.sin(s.heading + a) * 0.85, z = s.z + Math.cos(s.heading + a) * 0.85; if (!w.collides(x, z, R)) { this.x = x; this.z = z; return; } }
+    this.x = s.x + Math.sin(s.heading) * 0.8; this.z = s.z + Math.cos(s.heading) * 0.8; this.unstick();
+  }
   /** A hot chain of golds spills over: the nearest unfinished sites get a little progress for free. */
   chainSpill(combo, t) {
     const g = this.game, frac = 0.003 * Math.min(combo, 10), sites = g.buildings.list.filter((b) => b.state === 'site' && b !== t.b).sort((a, c) => Math.hypot(a.cx - this.x, a.cz - this.z) - Math.hypot(c.cx - this.x, c.cz - this.z)).slice(0, 2);

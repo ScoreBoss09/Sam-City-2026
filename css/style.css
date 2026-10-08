@@ -155,3 +155,5 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 #journal .hint { font-size: 11px; color: #6a5a3a; margin-top: 8px; }
 @media (max-width: 600px) { .jstats, .cus { grid-template-columns: 1fr 1fr; } }
 #toast, #prompt, #query, #countdown, .wg, #sitelabels { pointer-events: none; }
+.jobsum { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0 8px; } .jobsum b.bad, td.bad { color: #ff8a7a; } td.ok { color: #8fd18f; }
+#terminal td.bad, #terminal b.bad { color: #d9534f; font-weight: bold; } #terminal td.ok { color: #3f9a4f; }
