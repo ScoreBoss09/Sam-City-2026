@@ -1,5 +1,6 @@
 import { ROLES } from '../data/buildings.js';
 import { FIRST, LAST, SKINS, HAIRS, SHIRTS, PANTS, TRAITS } from '../data/people.js';
+import { HAIR_STYLES } from '../render/SimRig.js';
 import { Sim } from '../sim/Sim.js';
 import { pick, clamp } from '../util.js';
 import { MAX_SIMS_HARD, MIN_SIMS } from '../config.js';
@@ -19,7 +20,16 @@ export class Population {
   vacancies() { const out = []; for (const b of this.game.buildings.list) { if (b.state !== 'done' || !b.def.jobs) continue; for (const [r, n] of Object.entries(b.def.jobs)) { const have = b.workers.filter((s) => s.role === r).length; for (let i = have; i < n; i++) out.push({ b, role: r }); } } return out; }
 
   uniqueName() { for (let i = 0; i < 40; i++) { const n = pick(FIRST) + ' ' + pick(LAST); if (!this.names.has(n)) { this.names.add(n); return n; } } return pick(FIRST) + ' ' + pick(LAST); }
-  lookFor(role) { const r = role && ROLES[role]; return { skin: pick(SKINS), hair: pick(HAIRS), shirt: r ? r.shirt : pick(SHIRTS), pants: r ? r.pants : pick(PANTS) }; }
+  lookFor(role, kind) {
+    const r = role && ROLES[role], rnd = Math.random;
+    const L = { skin: pick(SKINS), hair: pick(HAIRS), hairStyle: pick(HAIR_STYLES), shirt: r ? r.shirt : pick(SHIRTS), pants: r ? r.pants : pick(PANTS), longSleeve: rnd() < 0.45, shorts: !r && rnd() < 0.2, skirt: rnd() < 0.16, glasses: rnd() < 0.22, backpack: !r && rnd() < 0.15, h: 0.93 + rnd() * 0.14, w: 0.9 + rnd() * 0.2, hat: null, accessory: null };
+    if (L.skirt) L.shorts = false;
+    const acc = { shopkeeper: 'apron', clerk: rnd() < 0.6 ? 'tie' : 'badge', doctor: 'coat', guard: 'uniform', builder: 'vest', engineer: 'overalls', factory: 'overalls' }[role]; if (acc) L.accessory = acc;
+    if (role === 'builder') L.hat = { type: 'hard' }; else if (role === 'guard') L.hat = { type: 'police' }; else if (role === 'engineer') L.hat = { type: 'beanie', color: 0xd9732b }; else if (role === 'doctor' || role === 'shopkeeper' || role === 'clerk') L.skirt = L.skirt && role !== 'doctor';
+    if (!role && rnd() < 0.3) L.hat = { type: pick(['cap', 'beanie', 'sun']), color: pick(SHIRTS) };
+    if (kind === 'visitor') { L.backpack = true; L.hat = { type: 'sun' }; L.shorts = true; L.shirt = pick([0xf2c94c, 0xeb5757, 0x56ccf2]); }
+    return L;
+  }
 
   spawnAtLift(opts) {
     const g = this.game, lift = g.lift;
@@ -34,7 +44,7 @@ export class Population {
     const name = this.uniqueName();
     const s = this.spawnAtLift({ name, kind: 'resident', trait: pick(TRAITS), look: this.lookFor(role), actor: Math.random() });
     s.arrivalDay = g.clock.day; this.assignHome(s); this.assignJob(s, vacancy);
-    g.messages.push('Lift', `${name} arrived in Sam City${role ? ' as a ' + ROLES[role].name : ''}.`);
+    if (!g.demoMode && this.count() <= 14) g.messages.push('Lift', `${name} arrived in Sam City${role ? ' as a ' + ROLES[role].name : ''}.`);
     return s;
   }
   assignHome(s) {
@@ -47,7 +57,7 @@ export class Population {
   assignJob(s, v) {
     v = v || this.vacancies().find((x) => x.role === 'builder') || pick(this.vacancies()); if (!v) return false;
     v.b.workers.push(s); s.workplace = v.b; s.role = v.role; s.workSpot = v.b.workers.length - 1;
-    const r = ROLES[v.role]; s.look = { ...s.look, shirt: r.shirt, pants: r.pants }; s.rebuildMesh(); return true;
+    s.look = this.lookFor(v.role); s.look.skin = s.look.skin; s.rebuildMesh(); return true;
   }
   fire(s) { if (s.workplace) { const i = s.workplace.workers.indexOf(s); if (i >= 0) s.workplace.workers.splice(i, 1); s.workplace.workers.forEach((w, k) => (w.workSpot = k)); } s.workplace = null; s.role = null; s.abortJob(); }
 
@@ -79,7 +89,7 @@ export class Population {
       this.visitorTimer = 50 + Math.random() * 40;
       const vis = this.sims.filter((s) => s.kind === 'visitor').length;
       if (vis < 3 && g.clock.hour > 8 && g.clock.hour < 18 && this.sims.length < this.simCap && g.buildings.count('shop') + g.buildings.list.filter((b) => b.def.park).length > 0)
-        this.spawnAtLift({ name: 'Visitor ' + pick(FIRST), kind: 'visitor', look: this.lookFor(null), actor: 1 });
+        this.spawnAtLift({ name: 'Visitor ' + pick(FIRST), kind: 'visitor', look: this.lookFor(null, 'visitor'), actor: 1 });
     }
     // unemployment drift & emigration
     for (const s of this.residents()) if (!s.workplace && this.vacancies().length) this.assignJob(s);

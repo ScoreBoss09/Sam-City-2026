@@ -13,7 +13,7 @@ export const FURN = {
   terminal: { s: [1.8, 0.9], solid: true }, shelf: { s: [2.1, 0.55], solid: true }, crate: { s: [0.9, 0.9], solid: true },
   machine: { s: [2.2, 1.5], solid: true }, hbed: { s: [1.1, 2.0], solid: true }, plant: { s: [0.6, 0.6], solid: false },
   reception: { s: [2.8, 0.9], solid: true }, locker: { s: [0.9, 1.0], solid: true }, bench: { s: [2.0, 0.6], solid: false },
-  generator: { s: [2.2, 1.6], solid: true }, drafting: { s: [1.8, 1.0], solid: true },
+  generator: { s: [2.2, 1.6], solid: true }, drafting: { s: [1.8, 1.0], solid: true }, tv: { s: [1.2, 0.5], solid: true },
 };
 
 const MAKE = {
@@ -36,6 +36,7 @@ const MAKE = {
   plant: (g) => { box(g, 0.45, 0.4, 0.45, 0x8a5a33, 0, 0, 0); const m = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.1, 5), mat(0x2f7a3a)); m.position.y = 0.95; g.add(m); },
   reception: (g) => { box(g, 2.8, 1.05, 0.9, 0xc4b79d, 0, 0, 0); box(g, 2.9, 0.07, 1.0, 0x3b3f46, 0, 1.05, 0); box(g, 0.5, 0.35, 0.05, 0x1d2025, 0.6, 1.12, -0.1); },
   locker: (g) => { box(g, 0.9, 1.9, 0.6, 0x5a7aa8, 0, 0, 0); box(g, 0.04, 1.4, 0.02, 0x222, 0, 0.3, 0.31); },
+  tv: (g) => { box(g, 1.2, 0.5, 0.5, 0x5a4636, 0, 0, 0); box(g, 1.0, 0.65, 0.07, 0x15181d, 0, 0.55, -0.05); box(g, 0.9, 0.55, 0.02, 0x7ac4ff, 0, 0.6, -0.01, { emissive: 0x4a9ad8, emissiveIntensity: 0.9 }); },
   bench: (g) => { box(g, 2.0, 0.08, 0.5, WOOD, 0, 0.45, 0); box(g, 0.08, 0.45, 0.4, 0x333, -0.9, 0, 0); box(g, 0.08, 0.45, 0.4, 0x333, 0.9, 0, 0); box(g, 2.0, 0.45, 0.08, WOOD, 0, 0.5, -0.22); },
 };
 

@@ -60,6 +60,9 @@ export class Terrain {
         c = rgb(0x4a4d53); a = 10;
         const edgeN = !N && py < 2, edgeS = !S && py > PX - 3, edgeW = !W && px < 2, edgeE = !E && px > PX - 3;
         if (edgeN || edgeS || edgeW || edgeE) { c = rgb(0x9b9a93); a = 8; }
+        const cc = (x, z) => (roadAt(x, z - 1) ? 1 : 0) + (roadAt(x, z + 1) ? 1 : 0) + (roadAt(x + 1, z) ? 1 : 0) + (roadAt(x - 1, z) ? 1 : 0);
+        if (conns === 2 && N && S && ((roadAt(tx, tz - 1) && cc(tx, tz - 1) !== 2) || (roadAt(tx, tz + 1) && cc(tx, tz + 1) !== 2))) { const atN = cc(tx, tz - 1) !== 2; if (((atN && py >= 1 && py <= 3) || (!atN && py >= PX - 4 && py <= PX - 2)) && px >= 2 && px <= PX - 3 && px % 3 !== 2) { c = rgb(0xe6e6e0); a = 6; } }
+        if (conns === 2 && E && W && ((roadAt(tx - 1, tz) && cc(tx - 1, tz) !== 2) || (roadAt(tx + 1, tz) && cc(tx + 1, tz) !== 2))) { const atW = cc(tx - 1, tz) !== 2; if (((atW && px >= 1 && px <= 3) || (!atW && px >= PX - 4 && px <= PX - 2)) && py >= 2 && py <= PX - 3 && py % 3 !== 2) { c = rgb(0xe6e6e0); a = 6; } }
         else if (conns <= 2 && !(conns === 2 && N && E) && !(conns === 2 && N && W) && !(conns === 2 && S && E) && !(conns === 2 && S && W)) {
           const vert = (N || S) && !(E || W), horiz = (E || W) && !(N || S);
           if (vert && (px === 7 || px === 8) && (py % 8) < 4) { c = rgb(0xd9c24a); a = 0; }
@@ -70,6 +73,7 @@ export class Terrain {
         const sN = roadAt(tx, tz - 1) && py < 3, sS = roadAt(tx, tz + 1) && py > PX - 4, sW = roadAt(tx - 1, tz) && px < 3, sE = roadAt(tx + 1, tz) && px > PX - 4;
         if (sN || sS || sW || sE) { c = rgb(0xb9b6ab); a = 10; }
         else if (t === T.LAND && hash(tx * 16 + px, tz * 16 + py) > 0.93) { c = rgb(0x4a8a3a); a = 6; }
+        else if (t === T.LAND && hash(tx * 31 + px * 7, tz * 29 + py * 3) > 0.9975) { c = [rgb(0xf4e04a), rgb(0xf08aa8), rgb(0xffffff)][(tx + tz + px) % 3]; a = 0; }
       }
       const n = (hash(tx * PX + px + 3.1, tz * PX + py + 9.7) - 0.5) * a;
       d[o] = c[0] + n; d[o + 1] = c[1] + n; d[o + 2] = c[2] + n; d[o + 3] = 255;

@@ -57,8 +57,8 @@ export class UI {
   // ---------- messages / toasts ----------
   addMessage(m) {
     const el = document.createElement('div'); el.className = 'msg ' + (m.kind || ''); el.innerHTML = `<b>${m.from}:</b> ${m.text}`; const box = $('messages'); box.appendChild(el);
-    while (box.children.length > 5) box.removeChild(box.firstChild);
-    setTimeout(() => { el.style.transition = 'opacity 1s'; el.style.opacity = 0; setTimeout(() => el.remove(), 1000); }, 9000);
+    while (box.children.length > 3) box.removeChild(box.firstChild);
+    setTimeout(() => { el.style.transition = 'opacity 1s'; el.style.opacity = 0; setTimeout(() => el.remove(), 1000); }, 7000);
   }
   toast(text, ms = 2600) { const t = $('toast'); t.textContent = text; t.classList.remove('hidden'); clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.add('hidden'), ms); }
   fade(a, text = '') { $('fade').style.opacity = a; $('fade-text').textContent = text; }
@@ -82,7 +82,7 @@ export class UI {
     if (res.page) this.toast('Script page collected! (see terminal Notes)', 3500);
   }
   advanceDialogue() { const d = this.dialogue; if (!d) return; if (d.shown < d.full.length) { d.shown = d.full.length; } else this.closeDialogue(); }
-  closeDialogue() { if (!this.dialogue) return; this.dialogue.sim.frozen = false; this.dialogue = null; this.modalOpen = false; this.hide('dialogue'); }
+  closeDialogue() { if (!this.dialogue) return; this.dialogue.sim.frozen = false; this.dialogue.sim.talkingToPlayer = false; this.dialogue.sim.moodBoost += 0.1; this.dialogue = null; this.modalOpen = false; this.hide('dialogue'); }
 
   // ---------- terminal ----------
   openTerminal(b) { this.terminalB = b; this.modalOpen = true; this.game.input.unlock(); this.game.flags.terminalOpened = true; this.renderTerminal(); this.show('terminal'); }

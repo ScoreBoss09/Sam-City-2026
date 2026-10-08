@@ -14,6 +14,11 @@ import { Population } from './systems/Population.js';
 import { Story } from './systems/Story.js';
 import { Security } from './systems/Security.js';
 import { Planner } from './systems/Planner.js';
+import { Social } from './systems/Social.js';
+import { Decor } from './render/Decor.js';
+import { Traffic } from './systems/Traffic.js';
+import { Harbor } from './render/Harbor.js';
+import { generateDemo } from './systems/Demo.js';
 import { Player } from './player/Player.js';
 import { GodControls } from './player/GodControls.js';
 import { UI } from './ui/UI.js';
@@ -29,8 +34,8 @@ export class Game {
     this.input = new Input(canvas); this.clock = new Clock(); this.messages = new Messages();
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
     this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
-    this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.planner = new Planner(this);
-    this.god = new GodControls(this); this.ui = new UI(this);
+    this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.planner = new Planner(this); this.social = new Social(this);
+    this.god = new GodControls(this); this.ui = new UI(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
     this.setupCity(); this.resize(); window.addEventListener('resize', () => this.resize());
     canvas.addEventListener('click', () => { if (this.mode === 'sim' && !this.ui.modalOpen && this.started && !this.ending) this.input.lock(); });
@@ -67,9 +72,10 @@ export class Game {
     this.ui.renderObjectives(); this.ui.toast('Click the view to capture the mouse. TAB = planning view.', 4500);
   }
   startDialogue(sim) {
-    const res = this.story.dialogue(sim); sim.frozen = true; sim.heading = Math.atan2(this.player.x - sim.x, this.player.z - sim.z); this.player.heading = Math.atan2(sim.x - this.player.x, sim.z - this.player.z);
+    const res = this.story.dialogue(sim); sim.frozen = true; sim.talkingToPlayer = true; if (sim.chat) this.social.endChat(sim); sim.heading = Math.atan2(this.player.x - sim.x, this.player.z - sim.z); this.player.heading = Math.atan2(sim.x - this.player.x, sim.z - this.player.z);
     this.ui.openDialogue(sim, res);
   }
+  demo() { generateDemo(this); }
   escape() {
     if (this.ending) return; this.ending = true; this.ui.fade(1, ''); this.input.unlock(); this.messages.push('Sam (thought)', 'The gate is open. Keep walking.', 'story');
     setTimeout(() => { this.ui.fade(0); this.ui.showEnding(); }, 2500);
@@ -95,18 +101,18 @@ export class Game {
 
     const gdt = this.clock.tick(dt) * (ui.modalOpen && this.mode === 'sim' ? 1 : 1);
     const steps = Math.min(40, Math.max(1, Math.ceil(gdt / 0.1))), sdt = gdt / steps;
-    if (gdt > 0) for (let i = 0; i < steps; i++) { this.economy.update(sdt); this.logistics.update(sdt); this.population.update(sdt); this.planner.update(sdt); this.security.update(sdt); }
+    if (gdt > 0) for (let i = 0; i < steps; i++) { this.economy.update(sdt); this.logistics.update(sdt); this.population.update(sdt); this.social.update(sdt); this.traffic.update(sdt); this.planner.update(sdt); this.security.update(sdt); }
     else this.security.update(0);
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
     this.player.update(gdt, dt);
-    for (const s of this.population.sims) s.sync(dt);
+    for (const s of this.population.sims) s.sync(dt); this.social.render(dt);
     this.buildings.update(dt); this.story.update(dt); this.ui.update(dt);
 
     // camera
     let focus;
     if (this.mode === 'god') { this.god.update(dt, inp, true); focus = this.god.target; }
     else { this.god.update(dt, inp, false); this.god.grid.visible = false; this.god.ghost.visible = false; this.god.tileBox.visible = false; this.player.placeCamera(this.camera); focus = { x: this.player.x, z: this.player.z }; }
-    this.terrain.update(dt, this.mode === 'god'); this.atmosphere.update(dt, this.clock, focus, this.story, this.glitch);
+    this.elapsed += dt; this.terrain.update(dt, this.mode === 'god'); this.atmosphere.update(dt, this.clock, focus, this.story, this.glitch); this.decor.update(dt); this.decor.setNight(this.atmosphere.night); this.traffic.setNight(this.atmosphere.night); this.harbor.update(dt, this.elapsed);
     this.render(dt); inp.endFrame();
   }
   render() { if (!this.skipRender) this.renderer.render(this.scene, this.camera); }

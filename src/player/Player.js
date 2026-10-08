@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { TILE } from '../config.js';
 import { ROLES, MATERIALS } from '../data/buildings.js';
-import { makeSimModel, animateWalk } from '../render/SimModel.js';
-import { clamp } from '../util.js';
+import { createRig } from '../render/SimRig.js';
+import { Animator } from '../render/Animator.js';
+import { clamp, angleDiff } from '../util.js';
 
 const R = 0.4;
 
@@ -11,7 +12,8 @@ export class Player {
   constructor(game) {
     this.game = game; this.x = 0; this.z = 0; this.heading = 0; this.yaw = 0; this.pitch = -0.1; this.third = true; this.camDist = 5; this.energy = 100;
     this.carry = null; this.sleeping = false; this.sedated = 0; this.walkPhase = 0; this.moved = false; this.target = null; this.hold = 0; this.working = false; this.frozen = false;
-    this.mesh = makeSimModel({ shirt: 0xe8772e, pants: 0x2d3a55, skin: 0xe0b48f, hair: 0x3b2a1a, hat: 0xe8772e }); game.scene.add(this.mesh);
+    this.rig = createRig({ shirt: 0xe8772e, pants: 0x2d3a55, skin: 0xe0b48f, hair: 0x3b2a1a, hairStyle: 'side', hat: { type: 'cap', color: 0xe8772e }, longSleeve: false, accessory: null }); this.mesh = this.rig.root;
+    this.anim = new Animator(this.rig, { trait: 'cheerful', bounce: 1.1, swing: 1.1 }); this.speed = 0; this.dirx = 0; this.dirz = 0; this.emoteT = 0; this.lookYaw = 0; this.lookPitch = 0; this.dist = 0; game.scene.add(this.mesh);
     this.marker = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 4), new THREE.MeshBasicMaterial({ color: 0xffd23f })); this.marker.rotation.x = Math.PI; game.scene.add(this.marker);
   }
   teleport(x, z, heading) { this.x = x; this.z = z; if (heading !== undefined) { this.heading = heading; this.yaw = heading; } }
@@ -20,7 +22,7 @@ export class Player {
 
   update(dt, rawDt) {
     const g = this.game, inp = g.input, sim = g.mode === 'sim' && !g.ui.modalOpen && !g.ending;
-    this.moved = false; this.working = false;
+    this.moved = false; this.working = false; this.dist = 0; if (this.emoteT > 0) this.emoteT -= rawDt;
     if (this.sedated > 0) { this.sedated -= rawDt; if (this.sedated <= 0) this.wakeFromSedation(); }
     // look
     if (sim && !this.sleeping && this.sedated <= 0) {
@@ -29,16 +31,19 @@ export class Player {
       if (inp.down('ArrowUp')) this.pitch = clamp(this.pitch + 1.2 * rawDt, -1.3, 1.2); if (inp.down('ArrowDown')) this.pitch = clamp(this.pitch - 1.2 * rawDt, -1.3, 1.2);
       if (inp.hit('KeyV')) this.third = !this.third;
       if (inp.mouse.wheel && this.third) this.camDist = clamp(this.camDist + inp.mouse.wheel * 0.6, 2.5, 9);
-      // move
+      // move (with acceleration and smooth turning)
       let fx = 0, fz = 0; if (inp.down('KeyW')) fz += 1; if (inp.down('KeyS')) fz -= 1; if (inp.down('KeyA')) fx -= 1; if (inp.down('KeyD')) fx += 1;
-      if (fx || fz) {
-        const l = Math.hypot(fx, fz); fx /= l; fz /= l; const sp = (inp.down('ShiftLeft') || inp.down('ShiftRight')) ? 7.2 : 4.4;
-        // camera yaw: forward = (-sin yaw, -cos yaw)? we define forward as (sin(yaw+PI)...) -> use yaw so that yaw=0 looks toward -z
-        const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
-        const dx = (-sy * fz + cy * fx) * sp * rawDt, dz = (-cy * fz - sy * fx) * sp * rawDt;
-        this.tryMove(dx, dz); this.moved = true; this.heading = Math.atan2(dx, dz); this.hold = 0;
-        if (this.sleeping) this.wake();
+      const input = fx || fz, run = inp.down('ShiftLeft') || inp.down('ShiftRight');
+      if (input) {
+        const l = Math.hypot(fx, fz); fx /= l; fz /= l; const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
+        this.dirx = -sy * fz + cy * fx; this.dirz = -cy * fz - sy * fx; this.hold = 0; if (this.sleeping) this.wake();
       }
+      const target = input ? (run ? 7.2 : 4.4) : 0; this.speed += clamp(target - this.speed, -26 * rawDt, 20 * rawDt);
+      if (this.speed > 0.05) {
+        this.heading += clamp(angleDiff(this.heading, Math.atan2(this.dirx, this.dirz)), -13 * rawDt, 13 * rawDt);
+        const ox = this.x, oz = this.z; this.tryMove(this.dirx * this.speed * rawDt, this.dirz * this.speed * rawDt); this.dist = Math.hypot(this.x - ox, this.z - oz); this.moved = this.dist > 0.0005;
+      } else this.dist = 0;
+      if (inp.hit('KeyG') && this.emoteT <= 0) this.emoteT = 2.2;
       this.interact(rawDt);
     }
     // needs (game seconds)
@@ -144,19 +149,26 @@ export class Player {
 
   // ---------- visuals ----------
   syncMesh(dt) {
-    const g = this.game, m = this.mesh, godView = g.mode === 'god';
+    const g = this.game, m = this.mesh, godView = g.mode === 'god'; this.rig.lod.visible = false;
     m.visible = !(g.mode === 'sim' && !this.third && !this.sleeping);
-    m.position.set(this.x, 0, this.z); m.rotation.y = this.heading; const u = m.userData;
-    if (this.sleeping) { u.body.rotation.x = -Math.PI / 2; u.body.position.set(0, 0.72, 0.9); animateWalk(m, 0, 0); }
-    else if (this.sedated > 0) { u.body.rotation.x = -Math.PI / 2; u.body.position.set(0, 0.12, 0.9); }
+    m.position.set(this.x, 0, this.z); m.rotation.y = this.heading;
+    // look where the camera aims
+    const aim = Math.atan2(-Math.sin(this.yaw), -Math.cos(this.yaw)), ty = this.sleeping || this.sedated > 0 ? 0 : clamp(angleDiff(this.heading, aim), -1.1, 1.1), tp = -this.pitch * 0.8;
+    const k = Math.min(1, dt * 8); this.lookYaw += (ty - this.lookYaw) * k; this.lookPitch += (tp - this.lookPitch) * k;
+    let lower = 'stand', upper = 'idle', t = this.target;
+    if (this.sleeping) { lower = 'lie'; upper = 'sleep'; }
+    else if (this.sedated > 0) { lower = 'lie'; upper = 'sedated'; }
     else {
-      u.body.rotation.x = 0; u.body.position.set(0, 0, 0);
-      if (this.moved) { this.walkPhase += dt * (g.input.down('ShiftLeft') ? 12 : 8); animateWalk(m, this.walkPhase, 1); }
-      else if (this.working) { this.walkPhase += dt * 9; u.armR.rotation.x = -1.2 + Math.sin(this.walkPhase) * 0.6; u.armL.rotation.x = 0; u.legL.rotation.x = u.legR.rotation.x = 0; }
-      else animateWalk(m, 0, 0);
+      if (this.speed > 0.3 && this.moved) lower = 'walk';
+      if (this.working && t && t.kind === 'site') { lower = 'crouch'; upper = 'hammer'; }
+      else if (this.working && t && t.kind === 'work') { upper = { shopkeeper: 'tidy', clerk: 'type', doctor: 'clipboard', guard: 'guard', engineer: 'panel', factory: 'lever' }[t.role] || 'idle'; }
+      else if (this.carry) upper = 'carry';
+      else if (g.ui.terminalB) upper = 'type';
+      else if (g.ui.dialogue) upper = 'listen';
+      if (this.emoteT > 0 && !this.carry && lower !== 'crouch') upper = 'wave';
     }
-    if (this.carry) { if (!this.crate) { this.crate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), new THREE.MeshStandardMaterial({ color: MATERIALS[this.carry.mat].color })); this.crate.position.set(0, 1.15, 0.42); u.body.add(this.crate); } this.crate.material.color.setHex(MATERIALS[this.carry.mat].color); }
-    else if (this.crate) { this.crate.parent.remove(this.crate); this.crate = null; }
+    const carryCol = this.carry ? MATERIALS[this.carry.mat].color : undefined;
+    this.anim.update(dt, { lower, upper, dist: this.dist, speed: this.speed, run: this.speed > 5.6, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: 0.25, tired: this.energy < 25, crateColor: carryCol, speaking: g.ui.dialogue ? false : undefined });
     this.marker.visible = godView; this.marker.position.set(this.x, 5.2 + Math.sin(performance.now() / 300) * 0.4, this.z); this.marker.rotation.y += dt * 2;
   }
 

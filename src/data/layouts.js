@@ -37,7 +37,7 @@ const LAYOUTS = {
       const x = i < 3 ? bx[i] : -3.0, z = i < 3 ? -D / 2 + 1.7 : 0.6;
       l.furniture.push({ t: 'bed', x, z, r: 0 }); l.beds.push({ x, z, ax: x + (i < 3 ? 0 : 1.6), az: i < 3 ? z + 2.0 : z });
     }
-    l.furniture.push({ t: 'sofa', x: 2.6, z: 0.9, r: 3 }, { t: 'table', x: 0.6, z: 1.4, r: 0 }, { t: 'counter', x: W / 2 - 0.7, z: 2.4, r: 3 }, { t: 'plant', x: -W / 2 + 0.6, z: D / 2 - 0.7, r: 0 });
+    l.furniture.push({ t: 'sofa', x: 3.0, z: -0.1, r: 3 }, { t: 'tv', x: -3.4, z: -0.1, r: 1 }, { t: 'table', x: 0.6, z: 1.4, r: 0 }, { t: 'chair', x: -0.55, z: 1.4, r: 1 }, { t: 'chair', x: 1.75, z: 1.4, r: 3 }, { t: 'counter', x: W / 2 - 0.7, z: 2.4, r: 3 }, { t: 'plant', x: -W / 2 + 0.6, z: D / 2 - 0.7, r: 0 });
     l.idle.push({ x: 0.6, z: 2.6 }, { x: -1, z: 0.5 }, { x: 1.6, z: 0 });
     return l;
   },
