@@ -18,7 +18,7 @@ export class Wildlife {
     for (let i = 0; i < 18; i++) { const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: cols[i % cols.length], side: THREE.DoubleSide }); const l = new THREE.Mesh(wing, m), r = new THREE.Mesh(wing, m); r.scale.x = -1; g.add(l, r); g.userData = { l, r, ph: Math.random() * 6, ox: (Math.random() - 0.5) * 50, oz: (Math.random() - 0.5) * 50, sp: 0.5 + Math.random() * 0.6 }; g.visible = false; game.scene.add(g); this.flies.push(g); }
     const N = 60, pos = new Float32Array(N * 3); this.ffOff = Array.from({ length: N }, () => [(Math.random() - 0.5) * 60, 0.4 + Math.random() * 2.2, (Math.random() - 0.5) * 60, Math.random() * 6]);
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    this.fireflies = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xd8ff6a, size: 0.25, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); this.fireflies.frustumCulled = false; game.scene.add(this.fireflies);
+    this.fireflies = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xd8ff6a, size: 3, sizeAttenuation: false, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); this.fireflies.frustumCulled = false; game.scene.add(this.fireflies);
   }
   insects(dt) {
     const g = this.game, cam = g.camera.position, night = g.atmosphere.night || 0, rain = g.atmosphere.rain || 0, sim = g.mode === 'sim'; this.t += dt;
@@ -29,7 +29,7 @@ export class Wildlife {
       f.position.set(cam.x + u.ox, 0.6 + Math.abs(Math.sin(this.t * u.sp * 2 + u.ph * 0.05)) * 1.2, cam.z + u.oz); f.rotation.y = this.t * u.sp;
     }
     const k = sim ? Math.max(0, night - 0.3) * (1 - rain) : 0; this.fireflies.material.opacity = Math.min(0.95, k * 1.6); this.fireflies.visible = k > 0.02;
-    if (this.fireflies.visible) { const p = this.fireflies.geometry.attributes.position.array; this.ffOff.forEach((o, i) => { o[3] += dt; p[i * 3] = cam.x + o[0] + Math.sin(o[3] * 0.7) * 1.5; p[i * 3 + 1] = o[1] + Math.sin(o[3] * 1.3) * 0.4; p[i * 3 + 2] = cam.z + o[2] + Math.cos(o[3] * 0.6) * 1.5; }); this.fireflies.geometry.attributes.position.needsUpdate = true; this.fireflies.material.size = 0.18 + Math.abs(Math.sin(this.t * 3)) * 0.12; }
+    if (this.fireflies.visible) { const p = this.fireflies.geometry.attributes.position.array; this.ffOff.forEach((o, i) => { o[3] += dt; p[i * 3] = cam.x + o[0] + Math.sin(o[3] * 0.7) * 1.5; p[i * 3 + 1] = o[1] + Math.sin(o[3] * 1.3) * 0.4; p[i * 3 + 2] = cam.z + o[2] + Math.cos(o[3] * 0.6) * 1.5; }); this.fireflies.geometry.attributes.position.needsUpdate = true; this.fireflies.material.size = 2 + Math.abs(Math.sin(this.t * 3)) * 2; }
   }
   spawn(kind) {
     if (!this.spots.length) return; const [tx, tz] = this.spots[Math.floor(Math.random() * this.spots.length)], g = new THREE.Group(), legs = [];

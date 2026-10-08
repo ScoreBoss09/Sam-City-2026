@@ -140,3 +140,17 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 .dchoice span { display: inline-block; width: 18px; color: #ffd23f; font-weight: bold; } .dchoice.sel, .dchoice:hover { border-color: #ffd23f; background: #22324c; }
 #d-hint { font-size: 10px; color: #8d9bb3; margin-top: 6px; text-align: right; }
 #h-favours { font-size: 11px; color: #ffd23f; margin: 2px 0 4px; } #h-favours b { color: #fff; }
+
+#wg-bob { display: none; font: bold 20px 'Courier New', monospace; color: #8ab4ff; text-align: center; height: 30px; line-height: 30px; white-space: pre; }
+#workgame.fishing #wg-bob { display: block; } #workgame.fishing .wg-bar { display: none; }
+#workgame.bite { border-color: #ff4a3a !important; animation: wgshake .25s infinite; } #workgame.bite #wg-bob { color: #ff6b5a; }
+
+#journal { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 640px; max-width: calc(100vw - 32px); max-height: 86vh; overflow: auto; z-index: 30; padding: 14px 18px; background: #efe4c8; color: #2a2116; border-color: #8a6a3a; font-family: Georgia, serif; }
+#journal h2 { margin: 0 0 10px; font-size: 20px; color: #8a1f17; letter-spacing: 3px; display: flex; justify-content: space-between; align-items: center; }
+#journal button { background: #8a1f17; border: 2px solid #5a1410; color: #fff; font: bold 12px Georgia, serif; padding: 4px 10px; cursor: pointer; }
+.jstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .jstats div { background: #fbf6e8; border: 1px solid #c9b48a; padding: 6px 8px; text-align: center; } .jstats b { display: block; font-size: 22px; color: #8a1f17; } .jstats span { font-size: 11px; color: #6a5a3a; }
+.jsec { margin: 12px 0 4px; font-weight: bold; border-bottom: 1px solid #c9b48a; } .jfr { font-size: 13px; }
+.cus { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; } .cu { display: grid; grid-template-columns: 32px 1fr; grid-template-rows: auto auto; background: #fbf6e8; border: 1px dashed #c9b48a; padding: 4px 6px; opacity: .55; }
+.cu.has { opacity: 1; border-style: solid; } .cu .ic { grid-row: span 2; font-size: 22px; align-self: center; } .cu b { font-size: 13px; } .cu small { font-size: 11px; color: #6a5a3a; }
+#journal .hint { font-size: 11px; color: #6a5a3a; margin-top: 8px; }
+@media (max-width: 600px) { .jstats, .cus { grid-template-columns: 1fr 1fr; } }

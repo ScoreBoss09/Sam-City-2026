@@ -237,6 +237,8 @@ export class Sim {
   }
   doLeisure() {
     if (this.phase === 0 || (this.phase === 2 && this.timer <= 0)) {
+      const fe = this.game.events && this.game.events.fete;
+      if (fe && Math.random() < 0.75) { const a = Math.random() * 6.28, r = 2.5 + Math.random() * 3.5; if (this.goTo({ x: fe.x + Math.cos(a) * r, z: fe.z + Math.sin(a) * r, face: Math.atan2(-Math.cos(a), -Math.sin(a)) })) { this.timer = 20 + Math.random() * 25; return; } }
       const g = this.game, opts = [];
       const parks = g.buildings.list.filter((b) => b.def.park && b.state === 'done'), shops = g.buildings.byDef('shop');
       if (parks.length) opts.push('park', 'park', 'bench'); if (shops.length) opts.push('shop', 'shop'); if (this.home && this.home.state === 'done') opts.push('home', 'sofa'); opts.push('street', 'street');
