@@ -23,6 +23,7 @@ export class UI {
     $('terminal').addEventListener('click', (e) => this.terminalClick(e));
     game.messages.on('msg', (m) => this.addMessage(m));
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
+    $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
     this.refreshTools(); this.renderObjectives();
   }
   show(...ids) { for (const i of ids) $(i).classList.remove('hidden'); }
@@ -42,7 +43,7 @@ export class UI {
   // ---------- controller ----------
   /** Swap keyboard hints for controller buttons while a pad is in use. */
   keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, 'A').replace(/\bF\b/g, 'X').replace(/\bQ\b/g, 'Y').replace(/\bTAB\b/g, 'START').replace(/\bV\b/g, 'RB').replace(/\bG\b/g, 'B'); }
-  padScope() { if (!this.game.started) return $('title'); if (this.terminalB) return $('terminal'); return null; }
+  padScope() { if (!this.game.started) return $('title'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); return null; }
   padUpdate(inp, dt) {
     const P = inp.pad, g = this.game; if (!inp.padActive || !P.connected) { this.clearPadFocus(); return; }
     // menu focus (title screen, terminal)

@@ -14,7 +14,7 @@ console.log('title focus', await ev(() => document.querySelector('#title .padfoc
 await p.screenshot({ path: S + 'pad_title.png' });
 // focus New Game and press A
 for (let i = 0; i < 4; i++) { const t = await ev(() => document.querySelector('#title .padfocus') && document.querySelector('#title .padfocus').id); if (t === 'btn-new') break; await press(13); }
-await press(0); await p.waitForTimeout(600);
+await press(0); await p.waitForTimeout(600); await p.screenshot({ path: S + 'pad_howto.png' }); await press(0); await p.waitForTimeout(300);
 console.log('started', await ev(() => [window.__game.started, window.__game.mode]));
 await press(5); await press(5);   // RB twice -> roads
 console.log('tool', await ev(() => JSON.stringify(window.__game.god.tool)));
