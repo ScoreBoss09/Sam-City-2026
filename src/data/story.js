@@ -1,68 +1,82 @@
 // Story + dialogue data. Plain data so writers can edit it and Unity can load it as JSON/ScriptableObjects.
+// The deeper story is never announced: it surfaces only through small oddities in conversation and a few crumpled pages.
 
 export const SCRIPT_PAGES = [
-  'SCRIPT p.14 — "SAM never questions the sun. If SAM looks up for more than five seconds, cue clouds." (Cloud cue: Power Plant roof, panel C.)',
-  'SCRIPT p.31 — "The east tunnel is a CLOSED UTILITY CORRIDOR. Security rotates at 02:00 and the gate stays unmanned until 04:00. Nobody tells SAM."',
-  'SCRIPT p.47 — "If SAM reaches the edge of the set, trigger CONTINGENCY ZETA: sedate, return to Hospital or Town Square, resume episode."',
+  'Running order, day 412 — "SAM walks to the Town Hall. Nobody mentions the Lift. If SAM looks up for more than five seconds, bring in some cloud."',
+  'Staff notice — "The east tunnel is CLOSED, utility access only. Gate guards change over between 02:00 and 04:00. The gate is unmanned in that window. Nobody tells SAM."',
+  'Contingency sheet — "If SAM reaches the edge of the set: sedate, return to hospital or town square, resume the day as normal."',
 ];
 
 export const GREETINGS = {
-  cheerful: ['Morning, Sam! Isn\'t it a lovely day?', 'Sam! Great to see you. The city is looking good.', 'Hello there! I love this town.'],
-  grumpy: ['Hmph. Sam. What do you want?', 'Busy day. Make it quick.', 'The roads in this city are a disgrace. Not that I\'d leave.'],
-  shy: ['Oh! H-hi Sam.', 'Um... hello. Nice weather.', 'I was just, uh, walking. Hi.'],
-  busy: ['Can\'t talk long, Sam. Deadlines.', 'Hi Sam — I\'m late. As always.', 'Walk with me? No? Okay, bye!'],
+  cheerful: ['Morning, Sam! Lovely day for it.', 'Alright, Sam? Town\'s looking grand.', 'Hello there! Fancy a brew later?'],
+  grumpy: ['Hmph. Sam. What is it?', 'Busy day. Make it quick, will you?', 'Roads in this town. Disgraceful. Not that I\'d live anywhere else.'],
+  shy: ['Oh! Um, hello, Sam.', 'Morning... lovely weather, isn\'t it?', 'I was just, er, having a wander. Hello.'],
+  busy: ['Can\'t stop, Sam. Things to do.', 'Hiya, Sam — late as ever.', 'Walk and talk? No? Cheers, bye!'],
 };
 export const ROLE_LINES = {
-  builder: ['More timber at the depot would be nice.', 'Give me bricks and a plan and I\'ll give you a building.'],
-  shopkeeper: ['Fresh stock every day. Same stock every day, actually.', 'Business is good. Sales figures are... remarkably steady.'],
-  clerk: ['Filing, filing, filing. Somebody has to.', 'The paperwork never ends. Nobody reads it, either.'],
-  factory: ['The machines hum all day. Don\'t ask what we make.', 'Shift\'s long, but the pay is fair.'],
-  doctor: ['Everybody here is remarkably healthy. Suspiciously so.', 'If you feel faint, come see me.'],
-  guard: ['Keep to the roads, Sam. Away from the edges.', 'Nothing to report. Nothing ever to report.'],
-  engineer: ['Power is steady. Power is always steady.', 'Don\'t touch the panels, Sam.'],
+  builder: ['Give me timber and a plan and I\'ll give you a building.', 'Mind your head round the scaffolding.', 'Bit of rain and the whole site goes to mud.'],
+  lumberjack: ['Forest\'s thinning near the path. Plenty further in, mind.', 'Nothing like the smell of fresh-cut timber.', 'My back\'s killing me. Worth it for the wages.'],
+  forager: ['Good crop of blackberries this week.', 'Mind the thorns. Learnt that the hard way.', 'The bushes grow back, thank goodness.'],
+  fisher: ['Mackerel were biting this morning.', 'Quiet work, fishing. Suits me.', 'Seagulls nick half my catch.'],
+  quarryman: ['Dusty work, but honest.', 'Plenty of good stone out west.', 'Careful with those boulders, Sam.'],
+  farmer: ['Wheat\'s coming on nicely.', 'No rest for a farmer. Cows don\'t keep office hours.', 'Soil\'s good here. Strangely good.'],
+  brickmaker: ['Best clay on the island, that.', 'The kiln never goes cold.', 'Fired a hundred this week.'],
+  glassblower: ['Beach sand makes lovely glass.', 'Mind the furnace, it bites.', 'Windows for the whole town, soon enough.'],
+  smith: ['Iron from the hills, steel from my forge.', 'Good steel takes patience.', 'Hammer, anvil, repeat.'],
+  publican: ['Pint? Well, a cup of tea, in your case.', 'Stew\'s on. Same recipe as always.', 'Best seat\'s by the fire.'],
+  teacher: ['The children are coming along nicely.', 'Reading, writing and a bit of arithmetic.', 'Such bright little things.'],
+  shopkeeper: ['Fresh stock every day. Same stock every day, really.', 'Business is steady. Remarkably steady.', 'Anything I can get you, Sam?'],
+  clerk: ['Filing, filing, filing. Someone has to.', 'The paperwork never ends.', 'Forms in triplicate, as always.'],
+  factory: ['Machines hum all day. You get used to it.', 'Shift\'s long, but the pay is fair.', 'Don\'t ask what we make. I\'m not sure myself.'],
+  doctor: ['Everyone round here is remarkably healthy.', 'If you feel faint, come and see me.', 'Eat your greens, Sam.'],
+  guard: ['Keep to the roads, Sam. Away from the edges.', 'All quiet. It\'s always all quiet.', 'Nothing to report. Nothing ever to report.'],
+  engineer: ['Power\'s steady. It\'s always steady.', 'Don\'t touch the panels, Sam.', 'Lovely bit of kit, this.'],
 };
-export const NIGHT_LINES = ['Shouldn\'t you be asleep?', 'Late night, Sam. Streetlights make everything look like a set.'];
+export const NIGHT_LINES = ['Shouldn\'t you be in bed?', 'Late night, Sam. Streetlights make everything look like a stage set.', 'Can\'t sleep either, eh?'];
+export const HUNGRY_LINES = ['I\'m absolutely famished.', 'Is there any food at the Stockyard? My stomach\'s growling.', 'Haven\'t eaten since this morning, Sam.', 'Could murder a bacon sandwich.'];
+export const PARTNER_LINES = ['{p} and I are thinking of making things official.', 'Have you seen {p}? Best thing that ever happened to me.', '{p} says I work too hard. They might be right.'];
+export const CHILD_LINES = ['Are you the builder? Can I help?', 'I\'m going to be a lumberjack when I grow up!', 'Tag! You\'re it. Oh... you\'re too slow.', 'Mum says I\'m not allowed near the building site.'];
+export const ELDER_LINES = ['In my day this was all trees.', 'Knees aren\'t what they were, Sam.', 'I\'ve seen a lot in my time. Mostly the same Tuesday.'];
 
-/** Slip lines: the "actors" occasionally break character. Higher tiers appear as the story advances. */
+/** Slip lines: small oddities that grow as the story advances. Deliberately mundane at first. */
 export const SLIPS = [
   [],
   [
-    'Lovely weather! Same as yesterday. And the day before. Funny, that.',
-    'Sorry, I lost my — what was my line? Never mind!',
-    'I\'ve lived here my whole life. Since... Monday. I mean, since forever!',
-    'You know, nobody can remember what\'s past the east road. Isn\'t that odd?',
+    'Funny thing, I can never remember what\'s past the east road.',
+    'Lovely weather. Same as yesterday, mind. And the day before.',
+    'I\'ve lived here all my life. Well — since I arrived, anyway.',
+    'Don\'t know why, but I always feel like someone\'s watching the bus stop.',
   ],
   [
-    'Don\'t stare at the sky when the lights come on, Sam. They... prefer you didn\'t.',
-    'Someone changed the cue cards again — the, uh, menus. I meant the menus.',
-    'Between us? The sun is always exactly where it should be.',
-    'My contract says I can\'t discuss the... weather. Weather! Lovely weather.',
+    'Between us, the sun\'s always in exactly the right place.',
+    'Ever notice nobody round here ever gets a cold?',
+    'My contract — I mean, my tenancy — says I\'m not to talk about the weather.',
+    'The tide\'s always the same at six. Odd, that.',
   ],
   [
-    'You saw it too? The sky. I\'m not allowed to answer that.',
-    'They\'re watching more closely tonight. Stay away from the tunnel. Please.',
-    'My name isn\'t really what it says on my badge. Forget I said that.',
-    'Every time a tower goes up, the producers get nervous. Have you noticed?',
+    'You ever look up at night and feel the sky\'s a bit... close?',
+    'They don\'t like anyone going near the east tunnel. Take my word.',
+    'Strange thing: the Lift never seems to go back up with anyone in it.',
   ],
   [
-    'Go at night, when the guards rotate. I never said that. I was never here.',
-    'Take care, Sam. For what it\'s worth... I liked playing your neighbour.',
+    'Go at night, when the gate guards change over. I never said that.',
+    'Take care of yourself, Sam. You\'ve been good to us.',
   ],
 ];
 
 export const OBJECTIVES = [
-  { id: 'terminal', text: 'Walk to the Town Hall and use a computer terminal (E).', done: (g) => g.flags.terminalOpened, target: (g) => g.townhall && g.townhall.doorOut },
-  { id: 'order', text: 'At the terminal, order Timber and Brick (Materials tab).', done: (g) => g.flags.orderPlaced },
-  { id: 'permits', text: 'Request permits for a Cottage and a Builders\' Yard (Permits tab).', done: (g) => g.economy.isUnlocked('cottage') && g.economy.isUnlocked('contractor') },
-  { id: 'place', text: 'Press TAB for GOD MODE. Build a road, then place a Cottage next to it.', done: (g) => g.buildings.list.some((b) => b.id === 'cottage' && b !== g.starterHome) },
-  { id: 'build', text: 'Switch to Sam (TAB). Carry crates from the Depot (E) and build the site (hold E).', done: (g) => g.buildings.list.some((b) => b.id === 'cottage' && b !== g.starterHome && b.state === 'done'), target: (g) => nearestSite(g) },
-  { id: 'yard', text: 'Place and finish a Builders\' Yard so builders can be hired.', done: (g) => g.buildings.count('contractor') > 0, target: (g) => nearestSite(g) },
-  { id: 'grow10', text: 'Grow Sam City to 10 residents. Keep building homes.', done: (g) => g.population.count() >= 10 },
-  { id: 'services', text: 'Build a General Store, Hospital and Power Plant.', done: (g) => g.buildings.count('shop') && g.buildings.count('clinic') && g.buildings.count('power'), target: (g) => nearestSite(g) },
-  { id: 'grow30', text: 'Reach 30 residents.', done: (g) => g.population.count() >= 30 },
-  { id: 'towers', text: 'Build two Large buildings (Grand Hotel / Sam Tower).', done: (g) => g.largeCount() >= 2, target: (g) => nearestSite(g) },
-  { id: 'sky', text: 'Something is wrong with the sky. Talk to residents and collect 3 script pages.', done: (g) => g.story.clues >= 3 },
-  { id: 'escape', text: 'Reach the Service Tunnel between 02:00 and 04:00, while the guards rotate.', done: (g) => g.flags.escaped, target: (g) => g.tunnel && g.tunnel.doorOut },
+  { id: 'terminal', text: 'Visit the Surveyor\'s Hut and read the planning terminal (E).', done: (g) => g.flags.terminalOpened, target: (g) => g.townhall && g.townhall.doorOut },
+  { id: 'gather', text: 'Fell trees at the edge of the northern forest (hold E) and store 10 timber in the Stockyard.', done: (g) => (g.flags.stored || 0) >= 10, target: (g) => g.depot && g.depot.doorOut },
+  { id: 'hut', text: 'Press TAB for the planning view. Place a Wooden Hut beside a road.', done: (g) => g.buildings.list.some((b) => b.id === 'hut' && b !== g.starterHome) },
+  { id: 'buildhut', text: 'Back in the world (TAB): carry timber from the Stockyard to the site (E), then hold E to build.', done: (g) => g.buildings.list.filter((b) => b.id === 'hut' && b.state === 'done').length >= 2, target: (g) => nearestSite(g) },
+  { id: 'feed', text: 'Everyone needs to eat. Place a Campfire and a Forager\'s Hut, and build them.', done: (g) => g.buildings.count('campfire') && g.buildings.count('forager'), target: (g) => nearestSite(g) },
+  { id: 'settlers', text: 'Welcome settlers: reach 6 residents. They need beds, food and work.', done: (g) => g.population.count() >= 6 },
+  { id: 'yard', text: 'Request permits at the terminal for a Lumber Camp and a Builders\' Yard, and build both.', done: (g) => g.buildings.count('lumbercamp') && g.buildings.count('contractor'), target: (g) => nearestSite(g) },
+  { id: 'hamlet', text: 'Grow the hamlet to 15 residents: build Log Cabins, a Quarry and a Farm.', done: (g) => g.population.count() >= 15 && g.buildings.count('quarry') && g.buildings.count('farm'), target: (g) => nearestSite(g) },
+  { id: 'village', text: 'Raise a Tavern and a Brickworks, then begin on Stone Cottages.', done: (g) => g.buildings.count('tavern') && g.buildings.count('brickworks') && g.buildings.count('cottage') >= 1, target: (g) => nearestSite(g) },
+  { id: 'town', text: 'Reach 30 residents with a Town Hall and a Schoolhouse.', done: (g) => g.population.count() >= 30 && g.buildings.count('townhall') && g.buildings.count('school'), target: (g) => nearestSite(g) },
+  { id: 'city', text: 'Grow to 60 residents with a Glassworks, a Foundry and a Hospital.', done: (g) => g.population.count() >= 60 && g.buildings.count('glassworks') && g.buildings.count('foundry') && g.buildings.count('clinic'), target: (g) => nearestSite(g) },
+  { id: 'landmark', text: 'Crown the skyline with the Grand Hotel or Sam Tower.', done: (g) => g.largeCount() >= 1, target: (g) => nearestSite(g) },
 ];
 function nearestSite(g) {
   const s = g.buildings.list.filter((b) => b.state === 'site'); if (!s.length) return null;
@@ -70,6 +84,6 @@ function nearestSite(g) {
 }
 
 export const INTRO = [
-  ['Planning Office', 'Welcome to Sam City, Sam. The land is empty. The city is yours to grow, from the ground up.'],
-  ['Planning Office', 'Use the computer terminals in Town Hall to order materials and request permits. TAB switches to the planning view.'],
+  ['Planning Office', 'Welcome to Sam City, Sam. It is little more than a hut, a campfire and a lot of forest. Everything here will be built by hand.'],
+  ['Planning Office', 'Gather timber, feed your people, and the town will grow. Press TAB for the planning view.'],
 ];

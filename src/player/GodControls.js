@@ -4,7 +4,7 @@ import { BUILDINGS } from '../data/buildings.js';
 import { ZONE } from '../world/World.js';
 import { clamp } from '../util.js';
 
-const ROAD_COST = 15;
+const ROAD_COST = { dirt: 4, paved: 25 };
 
 /** God mode: orbit/pan camera over the city plus the planning tools (road, zone, build, bulldoze, query). */
 export class GodControls {
@@ -43,7 +43,7 @@ export class GodControls {
       if (inp.hit('KeyF')) { this.target.set(80, 0, 82); this.dist = 215; this.pitch = 1.3; this.yaw = 0; }
       if (inp.hit('KeyR')) this.prefRot = (this.prefRot + 1) % 4;
       if (inp.hit('Escape')) this.setTool('pan');
-      const hs = { Digit1: ['bulldoze'], Digit2: ['road'], Digit3: ['zone', 'res'], Digit4: ['build'], Digit5: ['park'], Digit6: ['util'], Digit7: ['query'] };
+      const hs = { Digit1: ['bulldoze'], Digit2: ['road', 'dirt'], Digit3: ['zone', 'res'], Digit4: ['build'], Digit5: ['park'], Digit6: ['util'], Digit7: ['query'] };
       for (const k of Object.keys(hs)) if (inp.hit(k)) this.setTool(hs[k][0], hs[k][1] || null), g.ui.openSub(hs[k][0]);
     }
     const half = MAP * TILE; this.target.x = clamp(this.target.x, 0, half); this.target.z = clamp(this.target.z, 0, half);
@@ -78,7 +78,7 @@ export class GodControls {
   }
   paint(tx, tz) {
     const g = this.game, w = g.world; if (!w.inBounds(tx, tz)) return; const key = tx + ',' + tz; if (this.lastTile === key) return; this.lastTile = key; const id = this.tool.id;
-    if (id === 'road') { if (w.canRoad(tx, tz)) { if (g.economy.spend(ROAD_COST)) w.addRoad(tx, tz); else g.ui.toast('Not enough funds.'); } }
+    if (id === 'road') { const type = this.tool.sub === 'paved' ? 2 : 1; if (type === 2 && g.population.count() < 15) { g.ui.toast('Paving needs 15 residents.'); return; } if (w.canRoad(tx, tz, type)) { if (g.economy.spend(ROAD_COST[type === 2 ? 'paved' : 'dirt'])) w.addRoad(tx, tz, type); else g.ui.toast('Not enough funds.'); } }
     else if (id === 'zone') { const z = { res: ZONE.RES, com: ZONE.COM, ind: ZONE.IND, none: ZONE.NONE }[this.tool.sub || 'res']; w.setZone(tx, tz, z); }
     else if (id === 'bulldoze') {
       const b = w.buildingAt(tx, tz);
@@ -90,7 +90,7 @@ export class GodControls {
   roadTouchesDoor() { return false; }
   describe(tx, tz) {
     const w = this.game.world, b = w.buildingAt(tx, tz); if (b) return `${b.def.name}${b.state === 'site' ? ` (building ${Math.round(b.progress * 100)}%)` : ''}`;
-    if (w.road[w.idx(tx, tz)]) return 'Road'; const z = w.zone[w.idx(tx, tz)]; if (z) return ['', 'Residential zone', 'Commercial zone', 'Industrial zone'][z];
+    if (w.road[w.idx(tx, tz)]) return w.road[w.idx(tx, tz)] === 2 ? 'Paved road' : 'Dirt track'; const z = w.zone[w.idx(tx, tz)]; if (z) return ['', 'Residential zone', 'Commercial zone', 'Industrial zone'][z];
     const t = w.terrain[w.idx(tx, tz)]; return ['Water', 'Open land', 'Forest', 'Beach'][t];
   }
   queryAt(p, tx, tz) {

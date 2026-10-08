@@ -36,6 +36,18 @@ export function facadeMaterial(style) {
   if (f.kind === 'bricks') { for (let y = 0; y < H; y += 4) { ctx.fillRect(0, y, W, 1); for (let x = (y / 4) % 2 ? 0 : 4; x < W; x += 8) ctx.fillRect(x, y, 1, 4); } }
   else if (f.kind === 'planks') { for (let y = 0; y < H; y += 5) ctx.fillRect(0, y, W, 1); }
   else if (f.kind === 'corrugated') { for (let x = 0; x < W; x += 3) ctx.fillRect(x, 0, 1, H); }
+  else if (f.kind === 'logs') {
+    for (let y = 0; y < H; y += 6) { ctx.fillStyle = f.line; ctx.fillRect(0, y, W, 1); ctx.fillStyle = 'rgba(255,220,160,.22)'; ctx.fillRect(0, y + 1, W, 1); ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(0, y + 4, W, 2);
+      for (let x = (y / 6) % 2 ? 6 : 14; x < W; x += 22) { ctx.fillStyle = f.line; ctx.fillRect(x, y + 1, 1, 4); } }
+  }
+  else if (f.kind === 'stones') {
+    ctx.fillStyle = f.line; for (let y = 0; y < H; y += 7) { ctx.fillRect(0, y, W, 1); let x = (y / 7) % 2 ? 3 : 0; while (x < W) { const w = 8 + (rnd() * 8 | 0); ctx.fillRect(x, y, 1, 7); ctx.fillStyle = `rgba(${rnd() > 0.5 ? '255,255,255' : '0,0,0'},.08)`; ctx.fillRect(x + 1, y + 1, w - 1, 5); ctx.fillStyle = f.line; x += w; } }
+  }
+  else if (f.kind === 'tudor') {
+    ctx.fillStyle = f.line; ctx.fillRect(0, 0, W, 3); ctx.fillRect(0, H - 3, W, 3); ctx.fillRect(0, 0, 3, H); ctx.fillRect(W - 3, 0, 3, H); ctx.fillRect(W / 2 - 1, 0, 3, H); ctx.fillRect(0, H / 2 - 1, W, 3);
+    for (let i = 0; i < 24; i++) { ctx.fillRect(3 + i, 3 + i, 2, 2); ctx.fillRect(W - 5 - i, 3 + i, 2, 2); }
+    ctx.fillStyle = 'rgba(0,0,0,.05)'; for (let i = 0; i < 60; i++) ctx.fillRect(rnd() * W | 0, rnd() * H | 0, 2, 1);
+  }
   else { for (let i = 0; i < 40; i++) ctx.fillRect(rnd() * W | 0, rnd() * H | 0, 2, 1); }
   const lit = () => rnd() > 0.3;
   if (f.kind === 'curtain') {
@@ -48,8 +60,7 @@ export function facadeMaterial(style) {
     ctx.fillStyle = f.frame; for (let gx = 0; gx <= 4; gx++) ctx.fillRect(Math.min(gx * 16, W - 1), 0, 1, H);
     for (let gy = 0; gy < 4; gy++) ctx.fillRect(0, 1 + gy * 16, W, 1);
   } else {
-    const n = f.wins; const xs = n === 2 ? [7, 39] : n === 1 ? [10] : [];
-    const ww = n === 1 ? 44 : 18;
+    const n = f.wins; const ww = f.kind === 'logs' ? 16 : n === 1 ? 44 : (f.kind === 'tudor' ? 14 : 18); const xs = n === 2 ? (f.kind === 'tudor' ? [9, 41] : [7, 39]) : n === 1 ? [Math.round((64 - ww) / 2)] : [];
     for (const x of xs) {
       const y = 12, h = 26;
       ctx.fillStyle = f.frame; ctx.fillRect(x - 2, y - 2, ww + 4, h + 4);
@@ -83,4 +94,17 @@ export function signTexture(text, bg = '#16222f', fg = '#ffffff') {
   ctx.strokeStyle = '#d6dde6'; ctx.lineWidth = 2; ctx.strokeRect(1, 1, 126, 30);
   ctx.fillStyle = fg; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(text.toUpperCase(), 64, 17, 120); return (signCache[k] = tex(c));
+}
+
+const roofCache = {};
+/** Tinted roof material: kind = tiles | thatch | slate | gravel. Texture is greyscale, colour comes from the tint. */
+export function roofMaterial(color, kind = 'tiles') {
+  const k = color + kind; if (roofCache[k]) return roofCache[k];
+  const c = mk(32, 32), ctx = c.getContext('2d'), rnd = mulberry32(color + kind.length);
+  noiseFill(ctx, 32, 32, '#d8d8d8', 14, rnd);
+  if (kind === 'tiles' || kind === 'slate') { for (let y = 0; y < 32; y += 4) { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(0, y, 32, 1); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(0, y + 1, 32, 1); for (let x = (y / 4) % 2 ? 0 : 4; x < 32; x += 8) { ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x, y, 1, 4); } } }
+  else if (kind === 'thatch') { ctx.fillStyle = 'rgba(0,0,0,.2)'; for (let i = 0; i < 70; i++) ctx.fillRect(rnd() * 32 | 0, (rnd() * 30 | 0), 1, 3 + (rnd() * 4 | 0)); ctx.fillStyle = 'rgba(255,255,230,.22)'; for (let i = 0; i < 50; i++) ctx.fillRect(rnd() * 32 | 0, (rnd() * 30 | 0), 1, 3 + (rnd() * 4 | 0)); for (let y = 0; y < 32; y += 8) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(0, y, 32, 1); } }
+  else { ctx.fillStyle = 'rgba(0,0,0,.15)'; for (let i = 0; i < 90; i++) ctx.fillRect(rnd() * 32 | 0, rnd() * 32 | 0, 1 + (rnd() * 2 | 0), 1); }
+  const m = new THREE.MeshStandardMaterial({ color, map: tex(c, true), roughness: 0.95, flatShading: true, side: THREE.DoubleSide });
+  return (roofCache[k] = m);
 }

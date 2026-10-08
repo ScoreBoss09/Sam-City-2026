@@ -3,14 +3,14 @@ import { Emitter } from '../util.js';
 export const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 export class Clock extends Emitter {
-  constructor() { super(); this.hour = START_HOUR; this.day = 1; this.month = START_MONTH; this.year = START_YEAR; this.speed = 1; this.sleepBoost = 0; }
+  constructor() { super(); this.hour = START_HOUR; this.day = 1; this.month = START_MONTH; this.year = START_YEAR; this.speed = 1; this.sleepBoost = 0; this.totalDays = 0; }
   get scale() { return this.sleepBoost || this.speed; }
   /** Advance by real dt; returns the scaled game dt in seconds. */
   tick(dt) {
-    const gdt = dt * this.scale;
-    this.hour += gdt * 24 / DAY_SECONDS;
+    const gdt = dt * this.scale, h0 = Math.floor(this.hour);
+    this.hour += gdt * 24 / DAY_SECONDS; if (Math.floor(this.hour) !== h0 && this.hour < 24) this.emit('hour');
     while (this.hour >= 24) {
-      this.hour -= 24; this.day++; this.emit('day');
+      this.hour -= 24; this.day++; this.totalDays++; this.emit('day');
       if (this.day > DAYS_PER_MONTH) { this.day = 1; this.month++; if (this.month > 11) { this.month = 0; this.year++; } this.emit('month'); }
     }
     return gdt;

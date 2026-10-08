@@ -1,7 +1,7 @@
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const pick = (arr, r = Math.random) => arr[Math.floor(r() * arr.length)];
-export const fmtMoney = (n) => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US');
+export const fmtMoney = (n) => (n < 0 ? '-£' : '£') + Math.abs(Math.round(n)).toLocaleString('en-US');
 export function mulberry32(a) {
   return function () {
     a |= 0; a = (a + 0x6d2b79f5) | 0;

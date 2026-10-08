@@ -13,6 +13,8 @@ export class World {
     this.zone = new Uint8Array(N);
     this.occ = new Int32Array(N);     // building uid occupying the tile (0 = none)
     this.block = new Uint8Array(N);   // 1 = pedestrians cannot walk here
+    this.res = new Int16Array(N);     // resource node seed id + 1 (rocks, ore, clay, berries): not buildable
+    this.nodeSeeds = [];
     this.buildings = new Map();
     this.colBuckets = new Map();      // tile index -> array of collider AABBs
     this.events = new Emitter();
@@ -58,6 +60,22 @@ export class World {
     // clearings for the Lift (north) and Service Tunnel (east)
     this.clear(15, 20, 1, 7); this.clear(30, 38, 17, 23);
     for (let z = 2; z <= 24; z++) for (let x = 15; x <= 24; x++) if (this.terrain[this.idx(x, z)] === T.WATER) this.terrain[this.idx(x, z)] = T.LAND;
+    this.seedResources();
+  }
+  /** Rocks, iron ore, clay pits and berry bushes are placed deterministically around the island. */
+  seedResources() {
+    const rnd = mulberry32(777), cands = [];
+    for (let z = 3; z < MAP - 3; z++) for (let x = 3; x < MAP - 3; x++) if (this.terrain[this.idx(x, z)] === T.LAND) cands.push([x, z]);
+    for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
+    const nearForest = (x, z) => { for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (this.inBounds(x + dx, z + dz) && this.terrain[this.idx(x + dx, z + dz)] === T.FOREST) return true; return false; };
+    const nearWater = (x, z) => { for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) if (this.inBounds(x + dx, z + dz) && this.terrain[this.idx(x + dx, z + dz)] === T.WATER) return true; return false; };
+    const startD = (x, z) => Math.hypot(x - 20, z - 15);
+    const used = []; const free = (x, z, gap) => !used.some(([a, b]) => Math.hypot(a - x, b - z) < gap) && !this.road[this.idx(x, z)] && !this.occ[this.idx(x, z)];
+    const place = (kind, n, pred, gap, amount, regen) => { let c = 0; for (const [x, z] of cands) { if (c >= n) break; if (!pred(x, z) || !free(x, z, gap)) continue; used.push([x, z]); const id = this.nodeSeeds.length; this.nodeSeeds.push({ kind, tx: x, tz: z, amount, max: amount, regen }); this.res[this.idx(x, z)] = id + 1; if (kind === 'rock' || kind === 'ore') this.block[this.idx(x, z)] = 1; c++; } };
+    place('rock', 9, (x, z) => startD(x, z) > 6 && startD(x, z) < 22 && !nearForest(x, z), 3, 10, 1 / 50);
+    place('ore', 4, (x, z) => nearForest(x, z) && x > 22 && z < 20, 4, 8, 1 / 90);
+    place('clay', 4, (x, z) => nearWater(x, z) && z > 20, 3, 20, 1 / 20);
+    place('berry', 12, (x, z) => nearForest(x, z) && startD(x, z) < 20, 3, 6, 1 / 30);
   }
   clear(x0, x1, z0, z1) {
     for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
@@ -66,10 +84,10 @@ export class World {
   }
 
   // ---- roads & zones
-  canRoad(x, z) { return this.isLand(x, z) && !this.occ[this.idx(x, z)] && !this.road[this.idx(x, z)]; }
-  addRoad(x, z) {
-    if (!this.canRoad(x, z)) return false;
-    this.road[this.idx(x, z)] = 1; this.events.emit('tile', x, z); return true;
+  canRoad(x, z, type = 1) { const i = this.idx(x, z); return this.isLand(x, z) && !this.occ[i] && !this.res[i] && this.road[i] < type; }
+  addRoad(x, z, type = 1) {
+    if (!this.canRoad(x, z, type)) return false;
+    this.road[this.idx(x, z)] = type; this.events.emit('tile', x, z); return true;
   }
   removeRoad(x, z) {
     if (!this.inBounds(x, z) || !this.road[this.idx(x, z)]) return false;
@@ -86,7 +104,7 @@ export class World {
     for (let z = z0; z < z0 + d; z++) for (let x = x0; x < x0 + w; x++) {
       if (!this.isLand(x, z)) return false;
       const i = this.idx(x, z);
-      if (this.occ[i] || this.road[i]) return false;
+      if (this.occ[i] || this.road[i] || this.res[i]) return false;
     }
     return true;
   }
@@ -147,7 +165,7 @@ export class World {
     return null;
   }
   findPath(sx, sz, ex, ez, roadOnly = false) {
-    const ok = (x, z) => this.inBounds(x, z) && (roadOnly ? this.road[this.idx(x, z)] === 1 : this.walkable(x, z));
+    const ok = (x, z) => this.inBounds(x, z) && (roadOnly ? this.road[this.idx(x, z)] > 0 : this.walkable(x, z));
     if (!ok(sx, sz)) { const n = this.nearestWalkable(sx, sz, roadOnly); if (!n) return null; [sx, sz] = n; }
     if (!ok(ex, ez)) { const n = this.nearestWalkable(ex, ez, roadOnly); if (!n) return null; [ex, ez] = n; }
     const g = this._g, f = this._f, came = this._came, st = this._state;

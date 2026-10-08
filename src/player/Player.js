@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TILE } from '../config.js';
 import { ROLES, MATERIALS } from '../data/buildings.js';
+import { T } from '../world/World.js';
 import { createRig } from '../render/SimRig.js';
 import { Animator } from '../render/Animator.js';
 import { clamp, angleDiff } from '../util.js';
@@ -72,7 +73,7 @@ export class Player {
     for (const b of B) {
       if (b.state === 'done') {
         for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: 'Use computer terminal', hold: false }, d); }
-        for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.carry ? 'Return crate to depot' : 'Take a crate from stock', hold: false }, d); }
+        for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.carry ? `Store ${this.carry.qty} ${MATERIALS[this.carry.mat].name} in the Stockyard` : 'Take a crate from the Stockyard', hold: false }, d); }
         if (b === g.starterHome && b.spots.bed[0]) { const s = b.spots.bed[0], d = Math.hypot(s.x - px, s.z - pz); if (d < 2.6) consider({ kind: 'bed', b, spot: s, text: 'Sleep in your bed', hold: false }, d); }
         if (b.def.jobs && b.id !== 'contractor') {
           const roles = Object.keys(b.def.jobs); const role = roles[0];
@@ -94,6 +95,23 @@ export class Player {
         }
       }
     }
+    // gatherable resources
+    const R = g.resources, w = g.world, carryOk = (mat) => !this.carry || (this.carry.mat === mat && this.carry.qty < 8);
+    const gtext = (verb, mat, extra = '') => !carryOk(mat) ? `Your hands are full. Store your load at the Stockyard (E).` : `${verb}  (hold E)${extra}`;
+    const addGather = (node, kind, verb, mat, time, per, upper, d, need) => { if (need && !g.buildings.count(need[0])) { consider({ kind: 'info', text: `${verb.split(' ')[0]}: you need a ${need[1]} to turn this into ${MATERIALS[mat].name.toLowerCase()}`, hold: false }, d + 1.5); return; } consider({ kind: 'gather', node, nk: kind, mat, time, per, upper, text: gtext(verb, mat), hold: carryOk(mat) }, d + 0.4); };
+    for (const t of g.terrain.trees) { if (!t.alive) continue; const d = Math.hypot(t.x - px, t.z - pz); if (d < 3.7) addGather(Object.assign(t, { kind: 'tree' }), 'tree', 'Chop tree', 'timber', 2.2, 1, 'chop', d); }
+    for (const n of R.nodes) {
+      if (n.amount < 1) continue; const d = Math.hypot(n.x - px, n.z - pz), reach = n.kind === 'field' ? 3.2 : 3.0; if (d > reach) continue;
+      if (n.kind === 'rock') addGather(n, 'rock', 'Break rocks', 'stone', 2.6, 1, 'mine', d);
+      else if (n.kind === 'ore') addGather(n, 'ore', 'Mine iron ore', 'steel', 3.0, 1, 'mine', d, ['foundry', 'Foundry']);
+      else if (n.kind === 'clay') addGather(n, 'clay', 'Dig clay', 'brick', 2.6, 1, 'dig', d, ['brickworks', 'Brickworks']);
+      else if (n.kind === 'berry') addGather(n, 'berry', 'Pick berries', 'food', 1.7, 2, 'harvest', d);
+      else if (n.kind === 'field') addGather(n, 'field', 'Harvest crops', 'food', 1.9, 2, 'harvest', d);
+    }
+    { const [tx, tz] = w.tileOf(px, pz), tt = w.inBounds(tx, tz) ? w.terrain[w.idx(tx, tz)] : 0;
+      if (tt === T.SAND && !w.road[w.idx(tx, tz)]) addGather({ kind: 'sand', infinite: true, amount: 999, x: px, z: pz }, 'sand', 'Dig sand', 'glass', 3.0, 1, 'dig', 2.5, ['glassworks', 'Glassworks']);
+      const fx = px - Math.sin(this.yaw) * 2.6, fz = pz - Math.cos(this.yaw) * 2.6, [ax, az] = w.tileOf(fx, fz);
+      if (w.inBounds(ax, az) && w.terrain[w.idx(ax, az)] === T.WATER && w.isLand(tx, tz)) addGather({ kind: 'fish', infinite: true, amount: 999, x: fx, z: fz }, 'fish', 'Fish', 'food', 3.2, 2, 'fish', 2.6); }
     return best;
   }
   interact(rawDt) {
@@ -103,6 +121,7 @@ export class Player {
     const e = inp.hit('KeyE'), held = inp.down('KeyE');
     if (t.kind === 'sim' && e) g.startDialogue(t.sim);
     else if (t.kind === 'terminal' && e) g.ui.openTerminal(t.b);
+    else if (t.kind === 'gather') this.doGather(t, rawDt, held);
     else if (t.kind === 'depot' && e) this.useDepot();
     else if (t.kind === 'bed' && e) this.trySleep(t.spot);
     else if (t.kind === 'site') {
@@ -111,12 +130,22 @@ export class Player {
     } else if (t.kind === 'work') {
       if (held) { this.working = true; const wage = 12; g.economy.earn(wage * rawDt); this.hold = (this.hold + rawDt * 0.2) % 1; } else this.hold = 0;
     }
-    if (!held && t.kind !== 'site') this.hold = 0;
+    if (!held && t.kind !== 'site' && t.kind !== 'gather') this.hold = 0;
+  }
+  doGather(t, dt, held) {
+    const g = this.game;
+    if (!held || !t.hold) { this.gatherT = 0; this.hold = 0; return; }
+    this.working = true; this.faceTo(t.node.x, t.node.z); this.gatherT = (this.gatherT || 0) + dt; this.hold = this.gatherT / t.time;
+    if (this.gatherT >= t.time) {
+      this.gatherT = 0; if (!g.resources.take(t.node)) return;
+      if (!this.carry) this.carry = { mat: t.mat, qty: 0 }; this.carry.qty = Math.min(8, this.carry.qty + t.per); g.flags.gathered = (g.flags.gathered || 0) + t.per;
+      if (this.carry.qty >= 8) g.ui.toast('You cannot carry any more. Store it at the Stockyard.');
+    }
   }
   faceTo(x, z) { this.heading = Math.atan2(x - this.x, z - this.z); }
   useDepot() {
     const g = this.game;
-    if (this.carry) { g.economy.stock[this.carry.mat] += this.carry.qty; const s = g.construction.sites.find((s) => s.reserved[this.carry.mat] > 0); if (s) s.reserved[this.carry.mat] = Math.max(0, s.reserved[this.carry.mat] - this.carry.qty); g.ui.toast('Crate returned'); this.carry = null; return; }
+    if (this.carry) { g.economy.add(this.carry.mat, this.carry.qty); if (this.carry.site) { const s = this.carry.site; s.reserved[this.carry.mat] = Math.max(0, (s.reserved[this.carry.mat] || 0) - this.carry.qty); } else g.flags.stored = (g.flags.stored || 0) + this.carry.qty; g.ui.toast(`Stored ${this.carry.qty} ${MATERIALS[this.carry.mat].name}`); this.carry = null; return; }
     const n = g.construction.nextMaterialFor(4);
     if (!n) { g.ui.toast(g.construction.sites.length ? 'Depot is out of the materials your sites need. Order more at a terminal.' : 'No construction sites need materials.'); return; }
     g.economy.stock[n.mat] -= n.qty; n.site.reserved[n.mat] = (n.site.reserved[n.mat] || 0) + n.qty; this.carry = { mat: n.mat, qty: n.qty, site: n.site };
@@ -160,7 +189,8 @@ export class Player {
     else if (this.sedated > 0) { lower = 'lie'; upper = 'sedated'; }
     else {
       if (this.speed > 0.3 && this.moved) lower = 'walk';
-      if (this.working && t && t.kind === 'site') { lower = 'crouch'; upper = 'hammer'; }
+      if (this.working && t && t.kind === 'gather') { upper = t.upper; lower = ['harvest', 'dig'].includes(upper) ? 'crouch' : 'stand'; }
+      else if (this.working && t && t.kind === 'site') { lower = 'crouch'; upper = 'hammer'; }
       else if (this.working && t && t.kind === 'work') { upper = { shopkeeper: 'tidy', clerk: 'type', doctor: 'clipboard', guard: 'guard', engineer: 'panel', factory: 'lever' }[t.role] || 'idle'; }
       else if (this.carry) upper = 'carry';
       else if (g.ui.terminalB) upper = 'type';

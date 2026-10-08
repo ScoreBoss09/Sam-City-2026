@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { TILE, WALL_H, WALL_T, DOOR_W } from '../config.js';
 import { FACADES } from '../data/buildings.js';
 import { doorOffset } from '../data/layouts.js';
-import { facadeMaterial, signTexture } from './Textures.js';
+import { facadeMaterial, signTexture, roofMaterial } from './Textures.js';
 import { makeFurniture, FURN } from './Furniture.js';
 import { mulberry32 } from '../util.js';
 
@@ -21,9 +21,11 @@ function wallGeo(w, h, d) {
 function prism(w, h, d) { // gable roof, ridge along z, base y=0
   const a = [-w / 2, 0, -d / 2], b = [w / 2, 0, -d / 2], c = [0, h, -d / 2], a2 = [-w / 2, 0, d / 2], b2 = [w / 2, 0, d / 2], c2 = [0, h, d / 2];
   const tris = [a, c, b, a2, b2, c2, a, a2, c2, a, c2, c, b, c, c2, b, c2, b2];
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(tris.flat(), 3)); g.computeVertexNormals(); return g;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(tris.flat(), 3)); g.computeVertexNormals();
+  const uv = []; for (const [x, y, z] of tris) uv.push((z * 0.55 + x * 0.12) , (y * 1.15 + Math.abs(x) * 0.35)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); return g;
 }
 
+const shadeHex = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(f); return c.getHex(); };
 function addWall(g, cols, mat, cx, cz, sx, sz, h = null, y = 0) {
   const H = h; const m = new THREE.Mesh(wallGeo(sx, H, sz), mat); m.position.set(cx, y + H / 2, cz); m.castShadow = true; m.receiveShadow = true; g.add(m);
   if (y === 0) cols.push({ cx, cz, sx, sz });
@@ -34,6 +36,7 @@ export function mergeByMaterial(root) {
   root.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), buckets = new Map(), remove = [];
   root.traverse((o) => {
     if (!o.isMesh || o.isInstancedMesh || !o.geometry || Array.isArray(o.material)) return;
+    for (let q = o; q && q !== root; q = q.parent) if (q.userData && q.userData.keep) return;
     const a = o.geometry.attributes, k = o.material.uuid + '|' + Object.keys(a).join(',') + '|' + !!o.geometry.index + '|' + o.castShadow + o.receiveShadow;
     let bk = buckets.get(k); if (!bk) buckets.set(k, bk = { mat: o.material, list: [], cast: o.castShadow, recv: o.receiveShadow, keys: Object.keys(a), indexed: !!o.geometry.index });
     bk.list.push(o); remove.push(o);
@@ -67,6 +70,8 @@ function buildExterior0(def, uid = 1) {
   if (def.id === 'lift') return buildLift(def);
   if (def.id === 'tunnel') return buildTunnel(def);
   if (def.park) return buildPark(def, uid);
+  if (def.special_ext === 'stockyard') return buildStockyard(def);
+  if (def.special_ext === 'farm') return buildFarm(def, uid);
   const W = def.w * TILE, D = def.d * TILE, H = def.floors * WALL_H, T = WALL_T, rnd = mulberry32(uid * 7919 + 13);
   const g = new THREE.Group(), roof = new THREE.Group(), cols = [];
   const mat = facadeMaterial(def.wall), door = doorOffset(def.w), dw = DOOR_W;
@@ -90,10 +95,13 @@ function buildExterior0(def, uid = 1) {
   // roof
   roof.position.y = H;
   const rc = def.roofColor || 0x666666;
-  if (def.roof === 'gable') {
-    const alongZ = D >= W; const p = new THREE.Mesh(prism(alongZ ? W + 0.9 : D + 0.9, 1.0 + Math.min(W, D) * 0.28, alongZ ? D + 0.9 : W + 0.9), stdMat(rc, { side: THREE.DoubleSide, flatShading: true }));
+  if (def.roof === 'gable' || def.roof === 'thatch') {
+    const thatch = def.roof === 'thatch', alongZ = D >= W, ov = thatch ? 1.5 : 0.9, rh = thatch ? 1.5 + Math.min(W, D) * 0.34 : 1.0 + Math.min(W, D) * 0.28;
+    const kind = thatch ? 'thatch' : (rc < 0x555566 ? 'slate' : 'tiles');
+    const p = new THREE.Mesh(prism(alongZ ? W + ov : D + ov, rh, alongZ ? D + ov : W + ov), roofMaterial(rc, kind));
     if (!alongZ) p.rotation.y = Math.PI / 2; p.castShadow = true; roof.add(p);
-    const chim = box(roof, 0.6, 1.8, 0.6, 0x7a4a3a, W * 0.2, 0.5, -D * 0.12);
+    if (thatch) { const ridge = new THREE.Mesh(new THREE.BoxGeometry(alongZ ? 0.25 : W + ov, 0.22, alongZ ? D + ov : 0.25), stdMat(shadeHex(rc, 0.8))); ridge.position.y = rh; roof.add(ridge); }
+    else if (def.id !== 'cottage' || true) box(roof, 0.6, 1.8, 0.6, 0x7a4a3a, W * 0.2, 0.5, -D * 0.12);
   } else {
     box(roof, W + 0.3, 0.35, D + 0.3, rc, 0, 0, 0);
     for (const [x, z, sx, sz] of [[0, D / 2 + 0.1, W + 0.5, 0.3], [0, -D / 2 - 0.1, W + 0.5, 0.3], [W / 2 + 0.1, 0, 0.3, D + 0.5], [-W / 2 - 0.1, 0, 0.3, D + 0.5]]) box(roof, sx, 0.55, sz, 0xf2f2ee, x, 0.35, z);
@@ -138,6 +146,10 @@ function buildPark(def, uid) {
     box(g, 0.5, 1.8, 0.5, 0xd6d0c0, 0, 0.7, 0); cols.push({ cx: 0, cz: 0, sx: 5.2, sz: 5.2 });
     tree(-W / 2 + 1.1, -D / 2 + 1.1, 1.0); tree(W / 2 - 1.1, -D / 2 + 1.1, 1.0); tree(-W / 2 + 1.1, D / 2 - 1.1, 1.0); tree(W / 2 - 1.1, D / 2 - 1.1, 1.0);
     box(g, 2, 0.1, 0.5, 0x8a5a33, -3.8, 0.45, 0.2); box(g, 2, 0.1, 0.5, 0x8a5a33, 3.8, 0.45, 0.2);
+  } else if (def.park === 'camp') {
+    return buildCamp(def, g, roof, cols);
+  } else if (def.park === 'well') {
+    return buildWell(def, g, roof, cols);
   } else { // ball field
     const dirt = new THREE.Mesh(new THREE.BoxGeometry(W * 0.62, 0.05, W * 0.62), stdMat(0xc79a62)); dirt.rotation.y = Math.PI / 4; dirt.position.set(0, 0.11, 1.0); g.add(dirt);
     const inner = new THREE.Mesh(new THREE.BoxGeometry(W * 0.38, 0.06, W * 0.38), stdMat(0x6aa64f)); inner.rotation.y = Math.PI / 4; inner.position.set(0, 0.12, 1.0); g.add(inner);
@@ -229,4 +241,68 @@ export function furnitureColliders(lay) {
     out.push({ cx: f.x, cz: f.z, sx: sx * 0.92, sz: sz * 0.92 });
   }
   return out;
+}
+
+// ---------- primitive-era pieces ----------
+function buildCamp(def, g, roof, cols) {
+  g.clear(); const W = def.w * TILE, D = def.d * TILE;
+  const dirt = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.6, 0.12, 14), stdMat(0x8a7656)); dirt.position.y = 0.05; dirt.receiveShadow = true; g.add(dirt);
+  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; const st = box(g, 0.45, 0.32, 0.4, i % 2 ? 0x8d8a82 : 0x77746c, Math.cos(a) * 1.0, 0.05, Math.sin(a) * 1.0); st.rotation.y = a; }
+  for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.4; const lg = box(g, 1.2, 0.18, 0.18, 0x4a3320, Math.cos(a) * 0.35, 0.12, Math.sin(a) * 0.35); lg.rotation.y = a; }
+  const fl = new THREE.Group(); fl.userData.keep = true; g.add(fl); const fm = new THREE.MeshBasicMaterial({ color: 0xff8a1a }), fm2 = new THREE.MeshBasicMaterial({ color: 0xffd24a });
+  const f1 = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.2, 5), fm); f1.position.y = 0.75; fl.add(f1); const f2 = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 5), fm2); f2.position.y = 0.6; fl.add(f2); const f3 = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 5), fm); f3.position.set(0.3, 0.6, 0.2); fl.add(f3);
+  // tripod + pot
+  for (const [x, z] of [[-1.5, 0.2], [1.2, 0.9], [0.3, -1.4]]) { const pl = box(g, 0.07, 2.0, 0.07, 0x3a2a1a, x * 0.55, 0.0, z * 0.55); pl.rotation.z = (x > 0 ? -1 : 1) * 0.28; }
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 0.3, 8), stdMat(0x222222)); pot.position.y = 1.05; pot.castShadow = true; g.add(pot);
+  for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4; const lg = box(g, 1.7, 0.4, 0.5, 0x6a4a2a, Math.cos(a) * 2.5, 0.0, Math.sin(a) * 2.5); lg.rotation.y = -a + Math.PI / 2; box(g, 0.2, 0.2, 0.52, 0x5a3a1c, Math.cos(a) * 2.5 + 0.6 * Math.sin(a), 0.4, Math.sin(a) * 2.5 - 0.6 * Math.cos(a)).rotation.y = -a + Math.PI / 2; }
+  cols.push({ cx: 0, cz: 0, sx: 2.4, sz: 2.4 });
+  const update = (dt, t) => { const k = 1 + Math.sin(t * 17) * 0.12 + Math.sin(t * 29) * 0.08; f1.scale.set(1 + Math.sin(t * 13) * 0.08, k, 1); f2.scale.set(1, 1 + Math.sin(t * 23 + 1) * 0.2, 1); f3.scale.set(1, 1 + Math.sin(t * 19 + 2) * 0.25, 1); };
+  return { group: g, roof, colliders: cols, height: 1.2, update, fire: { x: 0, y: 1.0, z: 0 }, smokeSrc: { x: 0, y: 1.6, z: 0 } };
+}
+function buildWell(def, g, roof, cols) {
+  g.clear(); const dirt = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.9, 0.1, 10), stdMat(0x8a8272)); dirt.position.y = 0.04; g.add(dirt);
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.02, 1.0, 10), stdMat(0x8d8a82, { flatShading: true })); ring.position.y = 0.5; ring.castShadow = true; g.add(ring);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.05, 10), stdMat(0x1f4f7a)); water.position.y = 0.95; g.add(water);
+  box(g, 0.14, 2.3, 0.14, 0x5a3b22, -0.95, 0.0, 0); box(g, 0.14, 2.3, 0.14, 0x5a3b22, 0.95, 0.0, 0); box(g, 2.3, 0.14, 0.14, 0x5a3b22, 0, 2.25, 0);
+  const rf = new THREE.Mesh(prism(2.7, 0.8, 1.7), roofMaterial(0x7a5a38, 'thatch')); rf.position.y = 2.3; rf.rotation.y = Math.PI / 2; rf.castShadow = true; g.add(rf);
+  box(g, 0.05, 0.9, 0.05, 0x3a2a1a, 0, 1.3, 0); box(g, 0.28, 0.28, 0.28, 0x6a4a2a, 0, 0.95, 0);
+  cols.push({ cx: 0, cz: 0, sx: 2.0, sz: 2.0 }); return { group: g, roof, colliders: cols, height: 2.5 };
+}
+function buildStockyard(def) {
+  const W = def.w * TILE, D = def.d * TILE, g = new THREE.Group(), roof = new THREE.Group(), cols = [], off = doorOffset(def.w);
+  box(g, W, 0.14, D, 0x8a7550, 0, -0.04, 0);
+  const post = (x, z) => box(g, 0.2, 1.6, 0.2, 0x5a3b22, x, 0, z);
+  for (let x = -W / 2 + 0.2; x <= W / 2 - 0.1; x += 2) { post(x, -D / 2 + 0.15); if (Math.abs(x - off) > 1.6) post(x, D / 2 - 0.15); }
+  for (let z = -D / 2 + 0.2; z <= D / 2 - 0.1; z += 2) { post(-W / 2 + 0.15, z); post(W / 2 - 0.15, z); }
+  for (const y of [0.6, 1.2]) { box(g, W, 0.1, 0.1, 0x7a5a38, 0, y, -D / 2 + 0.15); box(g, W / 2 + off - 1.2, 0.1, 0.1, 0x7a5a38, -W / 4 + off / 2 - 0.6 - 0.0, y, D / 2 - 0.15).position.x = (-W / 2 + (off - 1.2)) / 2; box(g, W / 2 - off - 1.2, 0.1, 0.1, 0x7a5a38, 0, y, D / 2 - 0.15).position.x = ((off + 1.2) + W / 2) / 2; box(g, 0.1, 0.1, D, 0x7a5a38, -W / 2 + 0.15, y, 0); box(g, 0.1, 0.1, D, 0x7a5a38, W / 2 - 0.15, y, 0); }
+  cols.push({ cx: 0, cz: -D / 2 + 0.15, sx: W, sz: 0.3 }, { cx: -W / 2 + 0.15, cz: 0, sx: 0.3, sz: D }, { cx: W / 2 - 0.15, cz: 0, sx: 0.3, sz: D }, { cx: (-W / 2 + (off - 1.2)) / 2, cz: D / 2 - 0.15, sx: off - 1.2 + W / 2, sz: 0.3 }, { cx: ((off + 1.2) + W / 2) / 2, cz: D / 2 - 0.15, sx: W / 2 - off - 1.2, sz: 0.3 });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: signTexture('Stockyard', '#3a2a14') })); sign.position.set(off, 1.9, D / 2 - 0.1); box(g, 0.12, 2.0, 0.12, 0x5a3b22, off - 1.3, 0, D / 2 - 0.1); box(g, 0.12, 2.0, 0.12, 0x5a3b22, off + 1.3, 0, D / 2 - 0.1); g.add(sign);
+  // dynamic piles
+  const piles = new THREE.Group(); piles.userData.keep = true; g.add(piles); const groups = {}; const mk = (mat, fn, n, x0, z0) => { const gr = new THREE.Group(); gr.position.set(x0, 0.05, z0); piles.add(gr); groups[mat] = []; for (let i = 0; i < n; i++) { const m = fn(i); m.visible = false; gr.add(m); groups[mat].push(m); } };
+  const bx = (w, h, d, c) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c));
+  mk('timber', (i) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2.6, 7), stdMat(i % 2 ? 0x8a5a33 : 0x7a4a28)); m.rotation.z = Math.PI / 2; const row = i < 5 ? 0 : i < 9 ? 1 : 2, k = row === 0 ? i : row === 1 ? i - 5 + 0.5 : i - 9 + 1; m.position.set(0, 0.2 + row * 0.35, (k - 2) * 0.42); return m; }, 12, -W / 2 + 2.2, -D / 2 + 1.6);
+  mk('stone', (i) => { const m = bx(0.8 + (i % 3) * 0.2, 0.5, 0.7, i % 2 ? 0x9a9a92 : 0x84847c); m.position.set(((i % 4) - 1.5) * 0.85, 0.25 + (i > 7 ? 0.5 : 0), ((i / 4) | 0) % 2 * 0.8 - 0.3); m.rotation.y = i * 0.7; return m; }, 12, -W / 6 - 0.2, -D / 2 + 1.5);
+  mk('brick', (i) => { const m = bx(0.45, 0.22, 0.22, 0xa8442f); const r = (i / 4) | 0; m.position.set(((i % 4) - 1.5) * 0.5, 0.11 + r * 0.23, 0); return m; }, 12, W / 6 + 0.6, -D / 2 + 1.4);
+  mk('steel', (i) => { const m = bx(0.14, 0.14, 2.2, 0x8b97a3); m.position.set(((i % 4) - 1.5) * 0.18, 0.1 + ((i / 4) | 0) * 0.15, 0); return m; }, 12, W / 2 - 1.5, -D / 2 + 1.5);
+  mk('glass', (i) => { const m = bx(0.8, 0.7, 0.5, 0x8fd0e8); m.material = stdMat(0x8fd0e8, { transparent: true, opacity: 0.8 }); m.position.set(((i % 3) - 1) * 0.9, 0.35 + ((i / 3) | 0) * 0.72, 0); return m; }, 9, -W / 2 + 1.6, 1.0);
+  mk('food', (i) => { const m = bx(0.55, 0.3, 0.4, i % 2 ? 0xd9c28a : 0xc9b27a); m.position.set(((i % 4) - 1.5) * 0.6, 0.15 + ((i / 8) | 0) * 0.3, ((i / 4) | 0) % 2 * 0.5); return m; }, 12, W / 2 - 2.2, 1.0);
+  const per = { timber: 2, stone: 2, brick: 6, steel: 2, glass: 2, food: 3 };
+  const update = (dt, t, stock) => { for (const [mat, list] of Object.entries(groups)) { const n = Math.min(list.length, Math.ceil((stock[mat] || 0) / per[mat])); for (let i = 0; i < list.length; i++) list[i].visible = i < n; } };
+  return { group: g, roof, colliders: cols, height: 2, update };
+}
+function buildFarm(def, uid) {
+  const W = def.w * TILE, D = def.d * TILE, g = new THREE.Group(), roof = new THREE.Group(), cols = [], rnd = mulberry32(uid * 17 + 3);
+  box(g, W, 0.12, D, 0x6b5a3a, 0, -0.04, 0);
+  // barn (back-left)
+  const bw = W * 0.5, bd = D * 0.5, bx = -W / 2 + bw / 2 + 0.2, bz = -D / 2 + bd / 2 + 0.2, mat = facadeMaterial('timber');
+  for (const [cx, cz, sx, sz] of [[bx, bz - bd / 2, bw, 0.3], [bx - bw / 2, bz, 0.3, bd], [bx + bw / 2, bz, 0.3, bd], [bx - bw * 0.3, bz + bd / 2, bw * 0.4, 0.3], [bx + bw * 0.3, bz + bd / 2, bw * 0.4, 0.3]]) { const m = new THREE.Mesh(wallGeo(sx, 3.6, sz), mat); m.position.set(cx, 1.8, cz); m.castShadow = true; g.add(m); cols.push({ cx, cz, sx, sz }); }
+  const rf = new THREE.Mesh(prism(bw + 1, 2.2, bd + 0.8), roofMaterial(0x8a3a2a, 'tiles')); rf.position.set(bx, 3.6, bz); rf.rotation.y = Math.PI / 2; rf.castShadow = true; roof.add(rf);
+  // fields
+  const fields = []; const fx0 = -W / 2 + bw + 1.2, plots = [];
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) plots.push([fx0 + 1.5 + c * 3.1, -D / 2 + 1.7 + r * 3.1]);
+  for (let c = 0; c < 4; c++) plots.push([-W / 2 + 1.7 + c * 3.1, D / 2 - 1.9]);
+  for (const [px, pz] of plots) { box(g, 2.7, 0.14, 2.7, 0x5a4026, px, 0, pz); const crops = new THREE.Group(); crops.userData.keep = true; crops.position.set(px, 0.1, pz); g.add(crops); const rows = []; for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1, 0.2), new THREE.MeshStandardMaterial({ color: 0x6aa63a, roughness: 1 })); m.position.set(0, 0, -1 + k * 0.66); crops.add(m); rows.push(m); } fields.push({ x: px, z: pz, rows }); }
+  for (let x = -W / 2; x <= W / 2; x += 2) box(g, 0.14, 0.9, 0.14, 0x6a4a2a, x, 0, D / 2 - 0.1); box(g, W, 0.08, 0.08, 0x7a5a38, 0, 0.7, D / 2 - 0.1);
+  const update = (dt, t, stock, b) => { for (let i = 0; i < fields.length; i++) { const f = fields[i], node = b && b.fieldNodes && b.fieldNodes[i], gr = node ? node.amount / node.max : 0.6; for (const r of f.rows) { r.scale.y = 0.15 + gr * 0.85; r.position.y = (0.15 + gr * 0.85) / 2; r.material.color.setHex(gr > 0.7 ? 0xc9b44a : 0x6aa63a); } } };
+  return { group: g, roof, colliders: cols, height: 4, update, fieldPlots: plots };
 }

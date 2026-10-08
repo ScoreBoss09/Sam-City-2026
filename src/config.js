@@ -5,7 +5,7 @@ export const WALL_H = 3.2;        // height of one storey
 export const WALL_T = 0.3;        // wall thickness
 export const DOOR_W = 2.0;        // doorway width
 export const DAY_SECONDS = 240;   // real seconds per in-game day at 1x
-export const START_FUNDS = 30000;
+export const START_FUNDS = 2500;
 export const START_HOUR = 6.5;
 export const START_MONTH = 4;     // 0-based (4 = May)
 export const START_YEAR = 2004;

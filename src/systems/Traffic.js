@@ -27,7 +27,7 @@ export class Traffic {
   }
   update(dt) {
     const g = this.game, w = g.world; this.timer -= dt;
-    const roads = w.road.reduce((a, v) => a + v, 0), want = Math.min(14, Math.floor(roads / 14));
+    const roads = w.road.reduce((a, v) => a + (v === 2 ? 1 : 0), 0), want = Math.min(14, Math.floor(roads / 14));
     if (this.timer <= 0 && this.cars.length < want && g.population.sims.length < g.population.simCap + 20) {
       this.timer = 3; const lift = g.lift; const mesh = this.makeCar(); const car = { mesh, x: lift.doorOut.x, z: lift.doorOut.z + 2, h: 0, v: 0, path: [], max: 5.5 + Math.random() * 3 };
       mesh.position.set(car.x, 0, car.z); g.scene.add(mesh); this.cars.push(car);

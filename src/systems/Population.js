@@ -12,10 +12,13 @@ export class Population {
     const w = game.world.events;
     w.on('building:done', (b) => this.onBuildingDone(b));
     w.on('building:removed', (b) => this.onBuildingRemoved(b));
+    game.clock.on('day', () => this.dailyTick()); game.clock.on('hour', () => game.economy.hourly());
   }
-  residents() { return this.sims.filter((s) => s.kind === 'resident' && !s.remove); }
+  residents() { return this.sims.filter((s) => (s.kind === 'resident' || s.kind === 'child') && !s.remove); }
+  adults() { return this.sims.filter((s) => s.kind === 'resident' && !s.remove); }
   count() { return this.residents().length; }
   employed() { return this.residents().filter((s) => s.workplace).length; }
+  canWork(s) { return s.kind === 'resident' && s.age >= 18 && s.age < 66; }
   freeBeds() { let n = 0; for (const b of this.game.buildings.list) if (b.state === 'done' && b.def.beds) n += b.def.beds - b.residents.length - (b.reservedForPlayer ? 1 : 0); return Math.max(0, n); }
   vacancies() { const out = []; for (const b of this.game.buildings.list) { if (b.state !== 'done' || !b.def.jobs) continue; for (const [r, n] of Object.entries(b.def.jobs)) { const have = b.workers.filter((s) => s.role === r).length; for (let i = have; i < n; i++) out.push({ b, role: r }); } } return out; }
 
@@ -50,16 +53,62 @@ export class Population {
     const s = new Sim(g, { x: lift.doorIn.x, z: lift.doorIn.z, inside: lift, ...opts }); s.heading = Math.PI; this.sims.push(s);
     return s;
   }
+  makeResident(opts = {}) {
+    const g = this.game, P = this.makePerson(opts), s = this.spawnAtLift({ name: P.name, kind: opts.age != null && opts.age < 16 ? 'child' : 'resident', trait: pick(TRAITS), look: P.look, gender: P.gender, age: P.age, first: P.first, surname: P.surname, actor: Math.random() });
+    s.arrivalDay = g.clock.day; return s;
+  }
   arrive() {
-    const g = this.game; if (this.sims.length >= this.simCap) return null;
+    const g = this.game; if (this.sims.length >= this.simCap - 1) return null;
+    const free = this.freeBeds(), pop = this.count(), roll = Math.random();
+    if (free >= 2 && pop >= 3 && roll < 0.3) return this.arriveCouple(roll < 0.12);
     const vac = this.vacancies(), builderSites = g.construction.sites.length;
     let role = null, vacancy = null;
     if (vac.length) { vacancy = vac.find((v) => v.role === 'builder' && builderSites) || pick(vac); role = vacancy.role; }
-    const P = this.makePerson({ role }), name = P.name;
-    const s = this.spawnAtLift({ name, kind: 'resident', trait: pick(TRAITS), look: P.look, gender: P.gender, age: P.age, first: P.first, surname: P.surname, actor: Math.random() });
-    s.arrivalDay = g.clock.day; this.assignHome(s); this.assignJob(s, vacancy);
-    if (!g.demoMode && this.count() <= 14) g.messages.push('Lift', `${name} arrived in Sam City${role ? ' as a ' + ROLES[role].name : ''}.`);
+    const s = this.makeResident({ role, age: role ? 20 + Math.floor(Math.random() * 38) : null });
+    this.assignHome(s); this.assignJob(s, vacancy);
+    if (!g.demoMode && this.count() <= 16) g.messages.push('Lift', `${s.name} arrived in Sam City${role ? ' as a ' + ROLES[role].name.toLowerCase() : ''}.`);
     return s;
+  }
+  /** A couple (sometimes with a child) arrives together and shares a home. */
+  arriveCouple(withKid) {
+    const g = this.game, sur = pick(SURNAMES), a = this.makeResident({ gender: 'm', age: 22 + Math.floor(Math.random() * 30), surname: sur }), b = this.makeResident({ gender: 'f', age: 22 + Math.floor(Math.random() * 28), surname: sur });
+    a.partner = b; b.partner = a; a.single = b.single = false; a.coupleDay = b.coupleDay = g.clock.totalDays; a.orient = b.orient = 'h';
+    this.assignHome(a); if (b.home !== a.home || !b.home) { if (a.home && a.home.residents.length < a.home.def.beds - (a.home.reservedForPlayer ? 1 : 0)) this.rehome(b, a.home); else this.assignHome(b); }
+    const vac = this.vacancies(); if (vac.length) this.assignJob(a, vac[0]); const vac2 = this.vacancies(); if (vac2.length) this.assignJob(b, pick(vac2));
+    let kid = null; if (withKid && this.freeBedsIn(a.home) > 0) { kid = this.makeResident({ age: 5 + Math.floor(Math.random() * 7), surname: sur }); kid.parents = [a, b]; if (a.home) this.rehome(kid, a.home); }
+    if (!g.demoMode) g.messages.push('Lift', `${a.name} and ${b.name} arrived together${kid ? ' with their child ' + kid.first : ''}.`);
+    return a;
+  }
+  freeBedsIn(h) { return h && h.state === 'done' && h.def.beds ? h.def.beds - h.residents.length - (h.reservedForPlayer ? 1 : 0) : 0; }
+  /** Move a citizen into another home (partners move in together). */
+  rehome(s, to) {
+    if (s.home) { const i = s.home.residents.indexOf(s); if (i >= 0) s.home.residents.splice(i, 1); const sp = s.home.spots.bed.find((x) => x.taken === s); if (sp) sp.taken = null; }
+    if (s.pose === 'sleep') { s.pose = 'stand'; if (s.bedSpot) { s.x = s.bedSpot.ax; s.z = s.bedSpot.az; } } s.bedSpot = null; s.phase = 0;
+    s.home = to; to.residents.push(s); const sp = to.spots.bed.find((x) => !x.taken); if (sp) sp.taken = s;
+  }
+  moveIn(a, b) { if (a.home === b.home) return; if (this.freeBedsIn(b.home) > 0) this.rehome(a, b.home); else if (this.freeBedsIn(a.home) > 0) this.rehome(b, a.home); }
+  dailyTick() {
+    const g = this.game, today = g.clock.totalDays;
+    for (const s of this.residents()) { for (const [id, v] of s.rel) { const nv = v * 0.97; if (nv < 1) s.rel.delete(id); else s.rel.set(id, nv); } }
+    // babies
+    for (const a of this.adults()) {
+      const b = a.partner; if (!b || a.id > b.id || b.remove || a.home !== b.home || !a.home || today - (a.coupleDay || today) < 4) continue;
+      const kids = this.sims.filter((k) => k.kind === 'child' && k.home === a.home).length;
+      if (kids < 2 && this.freeBedsIn(a.home) > 0 && g.economy.stock.food >= 10 && Math.max(a.age, b.age) < 46 && Math.random() < 0.2 && this.sims.length < this.simCap - 1) this.spawnChild(a, b);
+    }
+    // children grow up (one year every four days)
+    for (const c of this.sims.filter((k) => k.kind === 'child')) { c.age += 0.25; if (c.age >= 16) this.growUp(c); }
+  }
+  spawnChild(a, b) {
+    const g = this.game, P = this.makePerson({ age: 5, surname: a.surname }), home = a.home;
+    const c = new Sim(g, { name: P.name, kind: 'child', trait: pick(TRAITS), look: P.look, gender: P.gender, age: 5, first: P.first, surname: P.surname, x: home.doorIn.x, z: home.doorIn.z, inside: home });
+    c.parents = [a, b]; this.sims.push(c); this.rehome(c, home); c.hunger = 30;
+    g.messages.push('Town', `${a.name} and ${b.name} have a new addition to the family: ${c.first}!`, 'good');
+  }
+  growUp(c) {
+    const P = this.makePerson({ gender: c.gender, age: 17, surname: c.surname }); this.names.delete(P.name);
+    c.look = { ...P.look, hair: c.look.hair, skin: c.look.skin }; c.kind = 'resident'; c.age = 17; c.rebuildMesh(); this.game.messages.push('Town', `${c.name} has grown up.`);
+    if (this.vacancies().length) this.assignJob(c);
   }
   assignHome(s) {
     for (const b of this.game.buildings.list) {
@@ -69,6 +118,7 @@ export class Population {
     return false;
   }
   assignJob(s, v) {
+    if (!this.canWork(s)) return false;
     v = v || this.vacancies().find((x) => x.role === 'builder') || pick(this.vacancies()); if (!v) return false;
     v.b.workers.push(s); s.workplace = v.b; s.role = v.role; s.workSpot = v.b.workers.length - 1;
     this.reclothe(s, v.role); return true;
@@ -79,6 +129,7 @@ export class Population {
 
   onBuildingDone(b) {
     for (const s of this.residents()) { if (!s.home) this.assignHome(s); if (!s.workplace) this.assignJob(s); }
+    for (const s of this.adults()) if (s.partner && s.home !== s.partner.home) this.moveIn(s, s.partner);
   }
   onBuildingRemoved(b) {
     for (const s of this.sims) {
@@ -98,7 +149,7 @@ export class Population {
     const rate = clamp(1 + (power ? 0.5 : 0) + (water ? 0.3 : 0) + parks * 0.1, 1, 2.5);
     if (this.timer <= 0) {
       this.timer = (this.invites > 0 ? 4 : 26) / rate;
-      const can = this.freeBeds() > 0 && (this.vacancies().length > 0 || this.count() < 4 || this.invites > 0);
+      const can = this.freeBeds() > 0 && g.economy.stock.food >= 3 && (this.vacancies().length > 0 || this.count() < 4 || this.invites > 0);
       if (can && this.sims.length < this.simCap) { this.arrive(); if (this.invites > 0) this.invites--; }
     }
     if (this.visitorTimer <= 0) {
@@ -108,7 +159,7 @@ export class Population {
         this.spawnAtLift({ ...(() => { const P = this.makePerson({ kind: 'visitor' }); return { name: P.name, look: P.look, gender: P.gender, age: P.age, first: P.first, surname: P.surname }; })(), kind: 'visitor', actor: 1 });
     }
     // unemployment drift & emigration
-    for (const s of this.residents()) if (!s.workplace && this.vacancies().length) this.assignJob(s);
+    for (const s of this.residents()) if (!s.workplace && this.canWork(s) && this.vacancies().length) this.assignJob(s);
     // update sims
     for (const s of this.sims) { s.think(dt); s.step(dt); }
     for (const s of this.sims) if (s.remove) { this.release(s); s.dispose(); }
@@ -124,6 +175,7 @@ export class Population {
     }
   }
   release(s) {
+    if (s.partner) { s.partner.partner = null; s.partner.single = true; s.partner = null; }
     if (s.home) { const i = s.home.residents.indexOf(s); if (i >= 0) s.home.residents.splice(i, 1); const sp = s.home.spots.bed.find((x) => x.taken === s); if (sp) sp.taken = null; }
     this.fire(s); this.names.delete(s.name);
   }

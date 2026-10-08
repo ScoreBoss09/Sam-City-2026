@@ -13,7 +13,7 @@ export class Logistics {
     return g;
   }
   dispatch(order) {
-    const g = this.game, lift = g.lift, depot = g.buildings.list.find((b) => b.id === 'depot' && b.state === 'done');
+    const g = this.game, lift = g.lift, depot = g.depot;
     if (!depot) { g.economy.deliverToDepot(order); return; }
     const to = g.world.findPath(lift.doorTile.x, lift.doorTile.z, depot.doorTile.x, depot.doorTile.z, true);
     if (!to) { g.messages.push('Logistics', 'Truck could not reach the depot (no road). Goods held at the Lift dock.', 'warn'); g.economy.deliverToDepot(order); return; }

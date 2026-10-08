@@ -46,17 +46,23 @@ export class Terrain {
   paintTile(tx, tz) {
     const w = this.world, i = w.idx(tx, tz), t = w.terrain[i];
     const img = this.ctx.createImageData(PX, PX), d = img.data;
-    const roadAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] === 1;
+    const roadAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] > 0, pavedAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] === 2;
     const N = roadAt(tx, tz - 1), S = roadAt(tx, tz + 1), E = roadAt(tx + 1, tz), W = roadAt(tx - 1, tz);
     let base, amt = 18;
     if (t === T.WATER) { this.ctx.clearRect(tx * PX, tz * PX, PX, PX); return; }
     base = t === T.FOREST ? rgb(0x2f5d2c) : t === T.SAND ? rgb(0xd9c28a) : rgb(0x5d9a48);
-    const isRoad = w.road[i] === 1;
+    const rs = w.res[i] ? w.nodeSeeds[w.res[i] - 1] : null; if (rs && rs.kind === 'clay') base = rgb(0xb0794a);
+    if (rs && rs.kind === 'ore') base = rgb(0x6d6a60);
+    const isRoad = w.road[i] > 0, paved = w.road[i] === 2;
     const conns = (N ? 1 : 0) + (S ? 1 : 0) + (E ? 1 : 0) + (W ? 1 : 0);
     for (let py = 0; py < PX; py++) for (let px = 0; px < PX; px++) {
       let c = base, a = amt;
       const o = (py * PX + px) * 4;
-      if (isRoad) {
+      if (isRoad && !paved) {
+        const ed = (!N && py < 3) || (!S && py > PX - 4) || (!W && px < 3) || (!E && px > PX - 4), rut = ((N || S) && (px === 4 || px === 11)) || ((E || W) && (py === 4 || py === 11));
+        c = ed ? (hash(tx * 16 + px, tz * 16 + py) > 0.45 ? rgb(0x7a6a42) : base) : rut ? rgb(0x7a5e3a) : rgb(0xa88a5c); a = 22;
+        if (!ed && hash(tx * 16 + px * 3, tz * 16 + py * 5) > 0.96) { c = rgb(0x6a6a62); a = 8; }
+      } else if (isRoad) {
         c = rgb(0x4a4d53); a = 10;
         const edgeN = !N && py < 2, edgeS = !S && py > PX - 3, edgeW = !W && px < 2, edgeE = !E && px > PX - 3;
         if (edgeN || edgeS || edgeW || edgeE) { c = rgb(0x9b9a93); a = 8; }
@@ -70,7 +76,7 @@ export class Terrain {
         }
       } else if (t !== T.FOREST) {
         // sidewalk strip beside roads
-        const sN = roadAt(tx, tz - 1) && py < 3, sS = roadAt(tx, tz + 1) && py > PX - 4, sW = roadAt(tx - 1, tz) && px < 3, sE = roadAt(tx + 1, tz) && px > PX - 4;
+        const sN = pavedAt(tx, tz - 1) && py < 3, sS = pavedAt(tx, tz + 1) && py > PX - 4, sW = pavedAt(tx - 1, tz) && px < 3, sE = pavedAt(tx + 1, tz) && px > PX - 4;
         if (sN || sS || sW || sE) { c = rgb(0xb9b6ab); a = 10; }
         else if (t === T.LAND && hash(tx * 16 + px, tz * 16 + py) > 0.93) { c = rgb(0x4a8a3a); a = 6; }
         else if (t === T.LAND && hash(tx * 31 + px * 7, tz * 29 + py * 3) > 0.9975) { c = [rgb(0xf4e04a), rgb(0xf08aa8), rgb(0xffffff)][(tx + tz + px) % 3]; a = 0; }
@@ -114,18 +120,25 @@ export class Terrain {
     const w = this.world, rnd = mulberry32(99), pts = [];
     for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) {
       if (w.terrain[w.idx(x, z)] !== T.FOREST) continue;
-      for (let k = 0; k < 4; k++) pts.push([(x + rnd()) * TILE, (z + rnd()) * TILE, 0.8 + rnd() * 0.9]);
+      for (let k = 0; k < 4; k++) pts.push({ x: (x + rnd()) * TILE, z: (z + rnd()) * TILE, s: 0.8 + rnd() * 0.9, tx: x, tz: z, hue: rnd(), light: rnd(), alive: true, amount: 3, reserved: null, pine: rnd() < 0.7 });
     }
-    const fg = new THREE.ConeGeometry(1.5, 3.4, 6), tg = new THREE.CylinderGeometry(0.22, 0.28, 1.2, 5);
-    const fm = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), pts.length);
-    const tm = new THREE.InstancedMesh(tg, new THREE.MeshStandardMaterial({ color: 0x5a3b22, roughness: 1 }), pts.length);
-    const m = new THREE.Matrix4(), c = new THREE.Color();
-    pts.forEach(([x, z, s], k) => {
-      m.makeScale(s, s, s).setPosition(x, 1.2 * s + 1.4 * s, z); fm.setMatrixAt(k, m);
-      c.setHSL(0.3 + rnd() * 0.05, 0.45, 0.2 + rnd() * 0.1); fm.setColorAt(k, c);
-      m.makeScale(s, s, s).setPosition(x, 0.6 * s, z); tm.setMatrixAt(k, m);
-    });
-    fm.castShadow = true; this.scene.add(fm, tm);
+    this.trees = pts; this.treeAlive = new Map(); for (const t of pts) { const k = t.tz * MAP + t.tx; this.treeAlive.set(k, (this.treeAlive.get(k) || 0) + 1); }
+    const fg = new THREE.ConeGeometry(1.5, 3.4, 6), tg = new THREE.CylinderGeometry(0.22, 0.28, 1.2, 5), sg = new THREE.CylinderGeometry(0.28, 0.34, 0.45, 6);
+    this.foliage = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), pts.length);
+    this.trunks = new THREE.InstancedMesh(tg, new THREE.MeshStandardMaterial({ color: 0x5a3b22, roughness: 1 }), pts.length);
+    this.stumps = new THREE.InstancedMesh(sg, new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 1 }), pts.length); this.stumps.count = 0; this.stumpN = 0;
+    this._m = new THREE.Matrix4(); const c = new THREE.Color();
+    pts.forEach((t, k) => { t.idx = k; this.setTree(k, 1); c.setHSL(0.27 + t.hue * 0.06, 0.45, 0.2 + t.light * 0.1); this.foliage.setColorAt(k, c); });
+    this.foliage.castShadow = true; this.scene.add(this.foliage, this.trunks, this.stumps);
+  }
+  setTree(k, f) { const t = this.trees[k], m = this._m, s = t.s * f; m.makeScale(s, s, s).setPosition(t.x, 1.2 * s + 1.4 * s, t.z); this.foliage.setMatrixAt(k, m); m.makeScale(s, s, s).setPosition(t.x, 0.6 * s, t.z); this.trunks.setMatrixAt(k, m); this.foliage.instanceMatrix.needsUpdate = this.trunks.instanceMatrix.needsUpdate = true; }
+  /** One chop: shrink the tree; when it is felled leave a stump, and clear the forest tile when empty. */
+  chopTree(t) {
+    t.amount--; if (t.amount > 0) { this.setTree(t.idx, 0.55 + 0.15 * t.amount); return false; }
+    t.alive = false; this.setTree(t.idx, 0.0001); this._m.makeTranslation(t.x, 0.22, t.z); this.stumps.setMatrixAt(this.stumpN++, this._m); this.stumps.count = this.stumpN; this.stumps.instanceMatrix.needsUpdate = true;
+    const k = t.tz * MAP + t.tx, n = (this.treeAlive.get(k) || 1) - 1; this.treeAlive.set(k, n);
+    if (n <= 0) { this.world.terrain[k] = T.LAND; this.world.events.emit('tile', t.tx, t.tz); this.world.events.emit('cleared', t.tx, t.tz); }
+    return true;
   }
 
   update(dt, godMode) {

@@ -36,7 +36,7 @@ export class Atmosphere {
     setWindowGlow(Math.min(1, this.night + Math.min(0.6, dusk * 0.5)));
     // dome
     const a = story.domeAlpha, flick = glitch > 0 ? (Math.random() > 0.5 ? 0.4 : 0) : 0;
-    this.dome.material.opacity = a * (0.06 + this.night * 0.05) + flick * 0.2; this.wire.material.opacity = a * (0.10 + this.night * 0.12) + flick * 0.5;
-    this.dome.visible = this.wire.visible = a > 0.01;
+    this.dome.material.opacity = a * (0.012 + this.night * 0.015); this.wire.material.opacity = a * (0.015 + this.night * 0.05);
+    this.dome.visible = this.wire.visible = a > 0.01 && !this.hideDome;
   }
 }

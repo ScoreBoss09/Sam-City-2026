@@ -14,6 +14,7 @@ import { Population } from './systems/Population.js';
 import { Story } from './systems/Story.js';
 import { Security } from './systems/Security.js';
 import { Planner } from './systems/Planner.js';
+import { Resources } from './systems/Resources.js';
 import { Social } from './systems/Social.js';
 import { Decor } from './render/Decor.js';
 import { Traffic } from './systems/Traffic.js';
@@ -33,7 +34,7 @@ export class Game {
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.2, 700);
     this.input = new Input(canvas); this.clock = new Clock(); this.messages = new Messages();
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
-    this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
+    this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.planner = new Planner(this); this.social = new Social(this);
     this.god = new GodControls(this); this.ui = new UI(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
@@ -41,20 +42,21 @@ export class Game {
     canvas.addEventListener('click', () => { if (this.mode === 'sim' && !this.ui.modalOpen && this.started && !this.ending) this.input.lock(); });
     this.setMode('sim'); this.last = performance.now(); this.frames = 0;
   }
-  get depot() { return this.buildings.list.find((b) => b.id === 'depot' && b.state === 'done') || null; }
-  get townhall() { return this.buildings.list.find((b) => b.id === 'townhall') || null; }
+  get depot() { return this.buildings.list.find((b) => b.def.stores && b.state === 'done') || null; }
+  get townhall() { return this.buildings.list.find((b) => b.id === 'surveyor') || this.buildings.list.find((b) => b.id === 'townhall') || null; }
   largeCount() { return this.buildings.list.filter((b) => b.def.large && b.state === 'done').length; }
 
   setupCity() {
     const w = this.world, B = this.buildings;
-    const road = (x0, z0, x1, z1) => { for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) w.addRoad(x, z); };
-    // place buildings first (roads cannot overlap footprints), then roads
+    const road = (x0, z0, x1, z1) => { for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) w.addRoad(x, z, 1); };
+    // everything starts primitive: a surveyor's hut, a stockyard, a campfire, Sam's hut and a dirt track from the Lift
     this.lift = B.place('lift', 18, 2, 0, { instant: true });
-    this.townhall0 = B.place('townhall', 20, 12, 0, { instant: true });
-    B.place('depot', 11, 13, 0, { instant: true });
-    this.starterHome = B.place('cottage', 23, 16, 2, { instant: true });
+    this.surveyor = B.place('surveyor', 20, 13, 0, { instant: true });
+    B.place('stockyard', 12, 13, 0, { instant: true });
+    this.starterHome = B.place('hut', 23, 16, 2, { instant: true });
+    B.place('campfire', 15, 17, 0, { instant: true });
     this.tunnel = B.place('tunnel', 34, 19, 3, { instant: true });
-    road(19, 5, 19, 24); road(9, 15, 30, 15); road(19, 20, 33, 20);
+    road(19, 5, 19, 16); road(12, 15, 26, 15);
     this.starterHome.reservedForPlayer = true; this.starterHome.spots.bed[0].taken = 'player';
     this.plaza = { x: 19.5 * TILE, z: 17.5 * TILE };
     this.security.init();
@@ -101,7 +103,7 @@ export class Game {
 
     const gdt = this.clock.tick(dt) * (ui.modalOpen && this.mode === 'sim' ? 1 : 1);
     const steps = Math.min(40, Math.max(1, Math.ceil(gdt / 0.1))), sdt = gdt / steps;
-    if (gdt > 0) for (let i = 0; i < steps; i++) { this.economy.update(sdt); this.logistics.update(sdt); this.population.update(sdt); this.social.update(sdt); this.traffic.update(sdt); this.planner.update(sdt); this.security.update(sdt); }
+    if (gdt > 0) for (let i = 0; i < steps; i++) { this.economy.update(sdt); this.logistics.update(sdt); this.population.update(sdt); this.resources.update(sdt); this.social.update(sdt); this.traffic.update(sdt); this.planner.update(sdt); this.security.update(sdt); }
     else this.security.update(0);
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
     this.player.update(gdt, dt);
@@ -112,7 +114,7 @@ export class Game {
     let focus;
     if (this.mode === 'god') { this.god.update(dt, inp, true); focus = this.god.target; }
     else { this.god.update(dt, inp, false); this.god.grid.visible = false; this.god.ghost.visible = false; this.god.tileBox.visible = false; this.player.placeCamera(this.camera); focus = { x: this.player.x, z: this.player.z }; }
-    this.elapsed += dt; this.terrain.update(dt, this.mode === 'god'); this.atmosphere.update(dt, this.clock, focus, this.story, this.glitch); this.decor.update(dt); this.decor.setNight(this.atmosphere.night); this.traffic.setNight(this.atmosphere.night); this.harbor.update(dt, this.elapsed);
+    this.elapsed += dt; this.terrain.update(dt, this.mode === 'god'); this.atmosphere.hideDome = this.mode === 'god'; this.atmosphere.update(dt, this.clock, focus, this.story, 0); this.decor.update(dt); this.decor.setNight(this.atmosphere.night); this.traffic.setNight(this.atmosphere.night); this.harbor.update(dt, this.elapsed);
     this.render(dt); inp.endFrame();
   }
   render() { if (!this.skipRender) this.renderer.render(this.scene, this.camera); }

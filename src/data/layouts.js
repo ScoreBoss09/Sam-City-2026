@@ -31,6 +31,43 @@ function fillWork(def, lay, min) {
 
 const LAYOUTS = {
   none: () => empty(),
+  hut(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    for (let i = 0; i < def.beds; i++) { const x = -1.7 + i * 3.4, z = -D / 2 + 1.5; l.furniture.push({ t: 'strawbed', x, z, r: 0 }); l.beds.push({ x, z, ax: x, az: z + 2.0 }); }
+    l.furniture.push({ t: 'firepit', x: 0.4, z: 0.4, r: 0 }, { t: 'table', x: 2.8, z: 1.4, r: 0 }, { t: 'stool', x: 1.5, z: 1.4, r: 1 }, { t: 'stool', x: 4.0 - 0.3, z: 1.4, r: 3 }, { t: 'chest', x: -W / 2 + 0.7, z: 1.0, r: 1 }, { t: 'barrel', x: -W / 2 + 0.7, z: 2.6, r: 0 });
+    l.idle.push({ x: -1.5, z: 1.8 }, { x: 0.4, z: 2.4 }); return l;
+  },
+  cabin(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    for (let i = 0; i < def.beds; i++) { const x = -2.7 + i * 1.8, z = -D / 2 + 1.6; l.furniture.push({ t: 'strawbed', x, z, r: 0 }); l.beds.push({ x, z, ax: x, az: z + 2.0 }); }
+    l.furniture.push({ t: 'hearth', x: W / 2 - 0.6, z: 0.4, r: 3 }, { t: 'table', x: -0.6, z: 1.6, r: 0 }, { t: 'chair', x: -1.8, z: 1.6, r: 1 }, { t: 'chair', x: 0.6, z: 1.6, r: 3 }, { t: 'chest', x: -W / 2 + 0.6, z: 0.2, r: 1 }, { t: 'barrel', x: -W / 2 + 0.6, z: -0.9, r: 0 });
+    l.idle.push({ x: -1.0, z: 2.8 }, { x: 1.4, z: 0.4 }); return l;
+  },
+  shed(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE; const n = Math.max(2, Object.values(def.jobs || {}).reduce((a, b) => a + b, 0));
+    l.furniture.push({ t: 'workbench', x: -W / 4, z: -D / 2 + 0.8, r: 0 }, { t: 'rack', x: W / 4, z: -D / 2 + 0.5, r: 0 }, { t: 'barrel', x: -W / 2 + 0.6, z: 0.4, r: 0 }, { t: 'crate', x: W / 2 - 0.7, z: 0.5, r: 0 }, { t: 'crate', x: W / 2 - 0.7, z: 1.5, r: 0 }, { t: 'stool', x: -W / 4 + 1.4, z: -D / 2 + 1.6, r: 0 });
+    for (let i = 0; i < n; i++) l.work.push({ x: -W / 4 + i * 1.6, z: -D / 2 + 2.0 }); l.idle.push({ x: 0, z: 1.2 }); return l;
+  },
+  tavern(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'bar', x: 0, z: -D / 2 + 1.2, r: 0 }, { t: 'hearth', x: W / 2 - 0.6, z: 0.5, r: 3 }, { t: 'barrel', x: -W / 2 + 0.7, z: -D / 2 + 0.8, r: 0 }, { t: 'barrel', x: W / 2 - 0.7, z: -D / 2 + 0.8, r: 0 });
+    l.work.push({ x: -0.8, z: -D / 2 + 2.0 }, { x: 0.8, z: -D / 2 + 2.0 });
+    for (const [x, z] of [[-3.6, 0.4], [-3.6, 3.4], [2.2, 3.4], [-0.2, 3.4]]) { l.furniture.push({ t: 'table', x, z, r: 0 }, { t: 'chair', x: x - 1.15, z, r: 1 }, { t: 'chair', x: x + 1.15, z, r: 3 }); }
+    for (const x of [-1.2, 0, 1.2]) l.furniture.push({ t: 'stool', x, z: -D / 2 + 2.4, r: 2 });
+    l.idle.push({ x: 0.6, z: 1.6 }, { x: -2, z: 2 }); l.visit.push({ x: 0.6, z: 1.6 }); return l;
+  },
+  school(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'board', x: 0, z: -D / 2 + 0.3, r: 0 }, { t: 'desk', x: -4.2, z: -D / 2 + 1.2, r: 0 }); l.work.push({ x: -4.2, z: -D / 2 + 2.2 }); l.furniture.push({ t: 'chair', x: -4.2, z: -D / 2 + 2.2, r: 2 });
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) { const x = -3.6 + c * 2.4, z = -0.4 + r * 2.0; l.furniture.push({ t: 'desk', x, z, r: 0 }, { t: 'chair', x, z: z + 0.9, r: 2 }); }
+    l.idle.push({ x: 0, z: 3 }); return l;
+  },
+  terminalhut(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'terminal', x: -1.4, z: -D / 2 + 0.9, r: 0 }, { t: 'chair', x: -1.4, z: -D / 2 + 1.9, r: 2 }, { t: 'table', x: 1.8, z: -0.4, r: 0 }, { t: 'stool', x: 1.8, z: 0.9, r: 2 }, { t: 'crate', x: W / 2 - 0.7, z: D / 2 - 1.2, r: 0 }, { t: 'rack', x: 1.6, z: -D / 2 + 0.4, r: 0 });
+    l.terminals.push({ x: -1.4, z: -D / 2 + 2.3 }); l.idle.push({ x: 0, z: 1.8 }); return l;
+  },
+  yard(def) { const l = empty(); l.pickup.push({ x: 0, z: 0.4 }); l.idle.push({ x: -2, z: 1.2 }, { x: 2, z: 1.2 }); return l; },
   house(def) {
     const l = empty(), W = def.w * TILE, D = def.d * TILE, bx = [-2.4, 0, 2.4, 2.4];
     for (let i = 0; i < def.beds; i++) {

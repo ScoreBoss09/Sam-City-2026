@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { pick, angleDiff } from '../util.js';
 
-const CHAT_LINES = ['Hi!', 'Nice day', 'Ha ha!', 'Really?', 'Hmm...', 'Oh no', 'Lunch?', 'Did you hear?', 'No way!', 'Same here', 'Ha!', 'Right?', 'Well...', 'Good one'];
-const GREET = { cheerful: ['Hi Sam!', 'Morning!', 'Hey Sam!'], grumpy: ['Hmph.', '...', 'Sam.'], shy: ['H-hi', 'Oh, hi...', '...hi'], busy: ['Hey!', 'Hi, bye!', 'Sam!'] };
+const CHAT_LINES = ['Alright?', 'Lovely day', 'Ha ha!', 'Really?', 'Hmm...', 'Blimey!', 'Fancy a brew?', 'Did you hear?', 'No way!', 'Same here', 'Cheers!', 'Right?', 'Well...', 'Spot on', 'Bit nippy', 'Typical!'];
+const GREET = { cheerful: ['Morning, Sam!', 'Alright, Sam?', 'Lovely day!'], grumpy: ['Hmph.', 'Sam.', 'Oh. It\'s you.'], shy: ['Oh, um, hi', 'Hello...', 'Morning...'], busy: ['Sam! Can\'t stop!', 'Hiya, bye!', 'Cheers, Sam!'] };
 const texCache = {};
 function bubbleTexture(text, kind) {
   const k = text + kind; if (texCache[k]) return texCache[k];
@@ -15,7 +15,9 @@ function bubbleTexture(text, kind) {
 }
 function makeSprite(text, kind) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture(text, kind), transparent: true, depthWrite: false })); s.scale.set(3.0, 1.0, 1); s.renderOrder = 10; return s; }
 
-/** Conversations, greetings, speech bubbles and name tags. */
+const COMPAT = { cheerful: { cheerful: 0.8, grumpy: 0.2, shy: 0.6, busy: 0.5 }, grumpy: { cheerful: 0.2, grumpy: 0.45, shy: 0.3, busy: 0.4 }, shy: { cheerful: 0.6, grumpy: 0.3, shy: 0.75, busy: 0.4 }, busy: { cheerful: 0.5, grumpy: 0.4, shy: 0.4, busy: 0.6 } };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+/** Conversations, relationships, greetings, speech bubbles and name tags. */
 export class Social {
   constructor(game) { this.game = game; this.timer = 0; this.sprites = new Set(); }
   say(sim, text, dur = 2.4) {
@@ -23,13 +25,32 @@ export class Social {
     const sprite = makeSprite(text, 'say'); this.game.scene.add(sprite); sim.bubble = { sprite, t: dur, dur };
   }
   startChat(a, b) {
-    const dur = 9 + Math.random() * 18, first = Math.random() < 0.5;
+    const dur = 4 + Math.random() * 7, first = Math.random() < 0.5;
     a.chat = { partner: b, t: dur, speaker: first, turn: 1.5 + Math.random() * 2, laugh: 0 }; b.chat = { partner: a, t: dur, speaker: !first, turn: 2, laugh: 0 };
     for (const [s, o] of [[a, b], [b, a]]) { s.faceGoal = Math.atan2(o.x - s.x, o.z - s.z); s.chatCool = 40 + Math.random() * 60; }
-    this.say(first ? a : b, pick(['Hi!', 'Hey you!', 'Oh, hello!']), 2);
+    this.say(first ? a : b, pick(['Alright?', 'Oh, hello!', 'Fancy seeing you!']), 2);
+  }
+  /** Chatting builds (or damages) relationships; friends can become couples. */
+  relate(a, b) {
+    const comp = (COMPAT[a.trait] || {})[b.trait] ?? 0.5; let d = 3 + comp * 8 + Math.random() * 3;
+    if (comp < 0.35 && Math.random() < 0.3) d = -7;
+    const old = a.rel.get(b.id) || 0, nv = clamp(old + d, 0, 100); a.rel.set(b.id, nv); b.rel.set(a.id, clamp((b.rel.get(a.id) || 0) + d, 0, 100));
+    const aff = Math.min(nv, b.rel.get(a.id));
+    if (old < 35 && aff >= 35 && !a.partner) { this.say(a, 'Good mate!', 2); this.game.messages.push('Town', `${a.name} and ${b.name} have become friends.`); }
+    if (d < 0) this.say(a, pick(['Hmph!', 'Honestly...']), 1.8);
+    if (aff >= 60 && this.canDate(a, b)) this.startCouple(a, b);
+  }
+  canDate(a, b) {
+    if (a.partner || b.partner || a.kind !== 'resident' || b.kind !== 'resident' || a.age < 18 || b.age < 18 || a.age > 68 || b.age > 68) return false;
+    if (a.parents.includes(b) || b.parents.includes(a) || (a.parents.length && a.parents.some((p) => b.parents.includes(p)))) return false;
+    const same = a.gender === b.gender; return same ? a.orient !== 'h' && b.orient !== 'h' : a.orient !== 'g' && b.orient !== 'g';
+  }
+  startCouple(a, b) {
+    a.partner = b; b.partner = a; a.single = b.single = false; a.coupleDay = b.coupleDay = this.game.clock.totalDays; this.say(a, '♥', 3); this.say(b, '♥', 3);
+    this.game.messages.push('Town', `${a.name} and ${b.name} are now a couple.`, 'good'); this.game.population.moveIn(a, b);
   }
   endChat(s) {
-    const c = s.chat; if (!c) return; s.chat = null; s.moodBoost += 0.12 * (s.style.soc + 0.3); s.faceGoal = undefined;
+    const c = s.chat; if (!c) return; if (c.partner && c.partner.chat && s.id < c.partner.id) this.relate(s, c.partner); s.chat = null; s.moodBoost += 0.12 * (s.style.soc + 0.3); s.faceGoal = undefined;
     if (c.partner && c.partner.chat && c.partner.chat.partner === s) { c.partner.chat = null; c.partner.moodBoost += 0.12; c.partner.faceGoal = undefined; }
   }
   update(dt) {
@@ -39,7 +60,7 @@ export class Social {
       const c = s.chat; if (!c) continue;
       if (!c.partner || c.partner.remove || !c.partner.chat) { s.chat = null; continue; }
       c.t -= dt; c.turn -= dt; c.laugh = Math.max(0, c.laugh - dt);
-      if (c.turn <= 0) { c.speaker = !c.speaker; c.turn = 1.6 + Math.random() * 2.6; if (c.speaker) { if (Math.random() < 0.22) { c.laugh = 1.6; c.partner.chat.laugh = 1.6; this.say(s, pick(['Ha ha!', 'Ha!', 'Good one']), 1.8); } else this.say(s, pick(CHAT_LINES), 2.2); } }
+      if (c.turn <= 0) { c.speaker = !c.speaker; c.turn = 1.6 + Math.random() * 2.6; if (c.speaker) { if (s.partner === c.partner && Math.random() < 0.4) this.say(s, pick(['Love you', 'Darling', '♥', 'Missed you']), 2); else if (Math.random() < 0.22) { c.laugh = 1.6; c.partner.chat.laugh = 1.6; this.say(s, pick(['Ha ha!', 'Ha!', 'Good one!']), 1.8); } else this.say(s, pick(CHAT_LINES), 2.2); } }
       if (c.t <= 0) this.endChat(s);
     }
     // look for new chats
@@ -56,12 +77,13 @@ export class Social {
         }
       }
     }
-    // Truman-style cracks in the performance
+    if (this.timer > 1.1) for (const s of sims) if (s.partner && s.id < s.partner.id && !s.bubble && !s.sleeping && Math.hypot(s.x - s.partner.x, s.z - s.partner.z) < 3.5 && s.inside === s.partner.inside && Math.random() < 0.08) this.say(s, '♥', 2);
+    // cracks in the performance in the performance
     const stage = g.story.stage, cam = g.camera.position;
     if (stage >= 2 && this.timer > 1.1) for (const s of sims) {
       if (s.kind !== 'resident' || s.sleeping || (s.inside && s.inside !== g.buildings.playerInside) || !s.mesh.visible) continue;
-      if (Math.random() < 0.0035 * (stage - 1) && !s.glanceCam) { s.glanceTarget = { x: cam.x, z: cam.z, y: cam.y + 3 }; s.glanceT = 1.1; s.glanceCam = true; setTimeout(() => (s.glanceCam = false), 20000); }
-      if (stage >= 3 && Math.random() < 0.0012) { s.freezeT = 0.9; this.say(s, '...', 1.2); }
+      if (Math.random() < 0.0009 * (stage - 1) && !s.glanceCam) { s.glanceTarget = { x: cam.x, z: cam.z, y: cam.y + 3 }; s.glanceT = 1.1; s.glanceCam = true; setTimeout(() => (s.glanceCam = false), 20000); }
+      if (stage >= 3 && Math.random() < 0.0003) { s.freezeT = 0.7; }
     }
     // greet the player
     const p = g.player;
@@ -75,14 +97,7 @@ export class Social {
       }
     }
   }
-  /** Everyone looks up when the dome is revealed, then pretends nothing happened. */
-  skyReaction() {
-    for (const s of this.game.population.sims) {
-      if (s.kind !== 'resident' || s.sleeping || (s.inside && !s.inside.def.open)) continue;
-      s.anim.fid = 'lookup'; s.anim.fidT = 0; s.anim.fidDur = 3.2; s.glanceTarget = { x: s.x, z: s.z, y: 40 }; s.glanceT = 3;
-      setTimeout(() => { if (!s.remove) this.say(s, pick(['Nothing to see!', 'Lovely day!', 'What sky?', 'Back to it...']), 2.4); }, 3200 + Math.random() * 1500);
-    }
-  }
+  skyReaction() {}
   render(dt) {
     const g = this.game, cam = g.camera.position, godFar = g.mode === 'god' && g.god.dist > 85, p = g.player;
     for (const s of g.population.sims) {

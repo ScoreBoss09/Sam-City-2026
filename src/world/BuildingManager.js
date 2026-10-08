@@ -33,8 +33,9 @@ export class BuildingManager {
       const fits = this.world.canPlace(x0, z0, w, d);
       const needRoad = def.needsRoad !== false;
       const [dtx, dtz] = geo.doorTile;
-      const roadOk = !needRoad || (this.world.inBounds(dtx, dtz) && this.world.road[this.world.idx(dtx, dtz)] === 1);
-      const cand = { ok: fits && roadOk, reason: !fits ? 'Blocked' : (!roadOk ? 'Needs road frontage' : ''), rot, x0, z0, w, d, geo };
+      const roadOk = !needRoad || (this.world.inBounds(dtx, dtz) && this.world.road[this.world.idx(dtx, dtz)] > 0);
+      let shoreOk = true; if (def.needsShore && fits) { shoreOk = false; for (let zz = z0 - 1; zz <= z0 + d && !shoreOk; zz++) for (let xx = x0 - 1; xx <= x0 + w; xx++) if (this.world.inBounds(xx, zz) && this.world.terrain[this.world.idx(xx, zz)] === 0) { shoreOk = true; break; } }
+      const cand = { ok: fits && roadOk && shoreOk, reason: !fits ? 'Blocked' : (!roadOk ? 'Needs road frontage' : (!shoreOk ? 'Must be on the shore' : '')), rot, x0, z0, w, d, geo };
       if (cand.ok) return cand; if (!fallback || (fits && !fallback.fits)) { cand.fits = fits; fallback = cand; }
     }
     return fallback;
@@ -97,22 +98,33 @@ export class BuildingManager {
     // seats (chairs, sofas, benches) so sims can sit
     b.spots.seat = []; const head = (r) => (b.rot + r) * Math.PI / 2;
     const addSeat = (lx, lz, r, kind) => { const [x, z] = b.toWorld(lx, lz); b.spots.seat.push({ x, z, heading: head(r), kind, taken: null, b }); };
-    const layoutKind = def.layout === 'house' ? 'dining' : (['clinic', 'townhall', 'police'].includes(def.layout) ? 'waiting' : 'desk');
+    const layoutKind = ['house', 'hut', 'cabin', 'tavern', 'apartments'].includes(def.layout) ? 'dining' : (['clinic', 'townhall', 'police'].includes(def.layout) ? 'waiting' : 'desk');
     for (const f of L.furniture) {
       const rr = (f.r || 0) * Math.PI / 2, c = Math.round(Math.cos(rr)), sn = Math.round(Math.sin(rr));
-      if (f.t === 'chair') addSeat(f.x, f.z, f.r || 0, layoutKind);
+      if (f.t === 'chair' || f.t === 'stool') addSeat(f.x, f.z, f.r || 0, f.t === 'stool' && def.layout === 'tavern' ? 'dining' : layoutKind);
       else if (f.t === 'sofa') for (const o of [-0.55, 0.55]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'sofa');
       else if (f.t === 'bench') for (const o of [-0.5, 0.5]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'waiting');
     }
     if (def.park === 'park') addSeat(1.4, 0.35, 0, 'bench');
+    if (def.park === 'camp') for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4, lx = Math.cos(a) * 2.5, lz = Math.sin(a) * 2.5; const [x, z] = b.toWorld(lx, lz); const [cx0, cz0] = b.toWorld(0, 0); b.spots.seat.push({ x, z, heading: Math.atan2(cx0 - x, cz0 - z), kind: 'bench', taken: null, b }); }
     if (def.park === 'plaza') { addSeat(-3.8, 0.3, 0, 'bench'); addSeat(3.8, 0.3, 0, 'bench'); }
-    if (def.park) { b.spots.idle = [0.2, -0.2].map((o, i) => { const [x, z] = b.toWorld((i ? 1.4 : -1.4), 0.4 + o); return { x, z, b }; }); }
+    if (def.park === 'camp') { b.spots.idle = [[3.0, 0], [-3.0, 0], [0, 3.0], [0, -3.0]].map(([lx, lz]) => { const [x, z] = b.toWorld(lx, lz); return { x, z, b }; }); }
+    else if (def.park === 'well') { b.spots.idle = [[1.4, 1.2], [-1.4, 1.2]].map(([lx, lz]) => { const [x, z] = b.toWorld(lx, lz); return { x, z, b }; }); }
+    else if (def.park) { b.spots.idle = [0.2, -0.2].map((o, i) => { const [x, z] = b.toWorld((i ? 1.4 : -1.4), 0.4 + o); return { x, z, b }; }); }
     if (def.id === 'tunnel') { const [x, z] = b.toWorld(0, 3.6); b.trigger = { x, z }; }
     if (def.id === 'lift') { const [x, z] = b.toWorld(0, 0.5); b.trigger = { x, z }; }
+    // chimney / smoke source (local coords) for the Decor smoke system
+    const H = def.floors * 3.2, W = def.w * TILE, D = def.d * TILE; b.smoke = null;
+    if (def.roof === 'thatch') b.smoke = { lx: 0, ly: H + 2.6, lz: 0 }; else if (def.roof === 'gable' && !def.special_ext) b.smoke = { lx: W * 0.2, ly: H + 2.4, lz: -D * 0.12 };
+    else if (def.roof === 'factory') b.smoke = { lx: W / 2 - 1.5, ly: H + 8.4, lz: -D / 2 + 1.5 }; else if (def.roof === 'plant') b.smoke = { lx: -3.2, ly: H + 8, lz: -1.5 };
+    if (ext.smokeSrc) b.smoke = { lx: ext.smokeSrc.x, ly: ext.smokeSrc.y, lz: ext.smokeSrc.z };
+    if (ext.fire) b.fire = ext.fire;
+    if (ext.fieldPlots && this.game.resources) this.game.resources.addFields(b, ext.fieldPlots);
     this.world.events.emit('building:done', b);
   }
 
   remove(b) {
+    if (this.game.resources) this.game.resources.removeFields(b);
     if (b.ext) { this.scene.remove(b.ext.group, b.ext.roof); }
     if (b.siteVis) this.scene.remove(b.siteVis.group);
     if (b.interior) this.scene.remove(b.interior);
@@ -137,6 +149,8 @@ export class BuildingManager {
       if (b.interior) b.interior.visible = !!near;
     }
     // warm interior light follows the player indoors
+    this._acc = (this._acc || 0) + dt; this.t = (this.t || 0) + dt; const tick = this._acc > 0.25; if (tick) this._acc = 0;
+    for (const b of this.list) if (b.ext && b.ext.update && b.state === 'done') { if (b.def.park === 'camp' || tick) b.ext.update(dt, this.t, this.game.economy.stock, b); }
     const L = this.interiorLight;
     if (inside) { L.position.set(inside.cx, 2.6, inside.cz); L.intensity = 38; } else L.intensity = 0;
   }
