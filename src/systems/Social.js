@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { pick, angleDiff } from '../util.js';
 
-const CHAT_LINES = ['Alright?', 'Lovely day', 'Ha ha!', 'Really?', 'Hmm...', 'Blimey!', 'Fancy a brew?', 'Did you hear?', 'No way!', 'Same here', 'Cheers!', 'Right?', 'Well...', 'Spot on', 'Bit nippy', 'Typical!'];
-const GREET = { cheerful: ['Morning, Sam!', 'Alright, Sam?', 'Lovely day!'], grumpy: ['Hmph.', 'Sam.', 'Oh. It\'s you.'], shy: ['Oh, um, hi', 'Hello...', 'Morning...'], busy: ['Sam! Can\'t stop!', 'Hiya, bye!', 'Cheers, Sam!'] };
+const CHAT_LINES = ['Nice weather.', 'Did you hear?', 'No way!', 'Really?', 'Lovely!', 'Busy day...', 'Cup of tea?', 'You don\'t say!', 'Ooh, go on then.', 'Mustn\'t grumble.', 'Typical!', 'Bless him.', 'Cheeky!',
+  'Have you seen the new cabin?', 'My knees, honestly.', 'Same again tomorrow.', 'Blimey.', 'She never!', 'Fancy that.', 'Proper job.', 'Not bad, you?', 'Put the kettle on.', 'Mind you...', 'I said to him, I said...',
+  'Shocking.', 'Smashing!', 'Champion.', 'Bit nippy.', 'Did you get any berries?', 'Lovely bit of timber, that.', 'The Lift was late again.', 'Where\'s Sam off to?', 'Quiz night?', 'Ta-ra then!', 'Sorry, sorry.', 'Who\'s got the biscuits?'];
+const GREET = { cheerful: ['Morning, Sam!', 'Alright, Sam?', 'Lovely day!', 'Hiya, Sam!', 'Ey up, Sam!', 'There\'s our Sam!', 'Cooee!'], grumpy: ['Hmph.', 'Sam.', 'Oh. It\'s you.', 'What now?', 'Mm.', 'Don\'t track mud in.'], shy: ['Oh, um, hi', 'Hello...', 'Morning...', '*waves*', 'Oh! Sam.'], busy: ['Sam! Can\'t stop!', 'Hiya, bye!', 'Cheers, Sam!', 'Late, late, late!', 'Morning! Gotta dash!'] };
 const texCache = {};
 function bubbleTexture(text, kind) {
   const k = text + kind; if (texCache[k]) return texCache[k];

@@ -48,7 +48,7 @@ export class Security {
       const exempt = tun && !this.tunnelOnDuty() && g.story.clues >= 3;
       if (onIt && !exempt && this.cool <= 0) {
         if (!this.count[b.id]) { this.count[b.id] = 10; g.flags.guardsOut = true; g.messages.push(tun ? 'Gate Guard' : 'Lift Guard', tun ? 'Oi! Out of the tunnel, Sam. Now.' : 'Off the platform, Sam. You have ten seconds.', 'alarm'); }
-        this.count[b.id] -= dt / Math.max(1, g.clock.speed); g.ui.setCountdown(Math.ceil(this.count[b.id]), tun ? 'LEAVE THE TUNNEL' : 'GET OFF THE LIFT');
+        if (!g.ui.modalOpen) this.count[b.id] -= dt / Math.max(1, g.clock.speed); g.ui.setCountdown(Math.ceil(this.count[b.id]), tun ? 'LEAVE THE TUNNEL' : 'GET OFF THE LIFT');
         if (this.count[b.id] <= 0) {
           this.count[b.id] = 0; g.ui.setCountdown(null);
           const guard = this.guards.filter((s) => s.zone === b.id && !s.hidden).sort((a, c) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(c.x - p.x, c.z - p.z))[0];

@@ -158,7 +158,7 @@ export class Player {
     }
     for (const b of B) {
       if (b.state === 'done') {
-        if (b.id === 'postbox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) { const n = g.mail.unread(); consider({ kind: 'post', b, text: n ? `Check the post (✉ ${n} new)` : 'Check the post' }, d - 0.3, b.cx, b.cz); } }
+        if (b.id === 'postbox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) { const n = g.mail.unread(); consider({ kind: 'post', b, text: n ? `Check the post (✉ ${n} new)` : 'Check the post' }, d - 1.0, b.cx, b.cz); } }
         for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: 'Use computer terminal' }, d); }
         for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.invTotal() ? `Store ${this.invText()} in the Stockyard` : 'Take what the building sites need from the Stockyard' }, d); }
         if (b === g.starterHome && b.spots.bed[0]) { const s = b.spots.bed[0], d = Math.hypot(s.x - px, s.z - pz); if (d < 2.6) consider({ kind: 'bed', b, spot: s, text: 'Sleep in your bed' }, d); }

@@ -15,7 +15,7 @@ export function serialize(g) {
     terrain: Array.from(w.terrain).join(''), roads: Array.from(w.road).join(''), zones: Array.from(w.zone).join(''),
     trees: g.terrain.trees.map((t) => (t.alive ? t.amount : 0)).join(''), nodes: g.resources.nodes.filter((n) => n.kind !== 'field').map((n) => +n.amount.toFixed(1)),
     buildings: g.buildings.list.map((b) => ({ id: b.id, x0: b.x0, z0: b.z0, rot: b.rot, state: b.state, progress: b.progress, have: b.have, starter: b === g.starterHome })),
-    sims: sims.map((s) => ({ name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.look, hunger: s.hunger, orient: s.orient, mood: s.moodBoost, actor: s.actor, talk: s.talkCount, gaveClue: !!s.gaveClue,
+    sims: sims.map((s) => ({ name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.look, hunger: s.hunger, orient: s.orient, mood: s.moodBoost, actor: s.actor, talk: s.talkCount, gaveClue: !!s.gaveClue, samRel: s.samRel || 0,
       home: s.home ? g.buildings.list.indexOf(s.home) : -1, work: s.workplace ? g.buildings.list.indexOf(s.workplace) : -1, role: s.role, partner: s.partner ? idOf.get(s.partner) : -1, parents: s.parents.map((p) => idOf.get(p)).filter((i) => i !== undefined), coupleDay: s.coupleDay || 0,
       rel: [...s.rel.entries()].map(([id, v]) => { const o = g.population.sims.find((q) => q.id === id); return o && idOf.has(o) ? [idOf.get(o), Math.round(v)] : null; }).filter(Boolean) })),
     raids: g.raids.serialize(), post: g.mail.serialize(), roadPlans: g.roadPlans.serialize(), toolsTaken: g.tools.takenIds(),
@@ -54,7 +54,7 @@ export function restore(g, d) {
   const sims = d.sims.map((s) => {
     const home = made[s.home]; const x = home ? home.doorIn.x : g.plaza.x, z = home ? home.doorIn.z : g.plaza.z;
     const sim = new Sim(g, { name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.look, x, z, inside: home || null, actor: s.actor });
-    sim.hunger = s.hunger; sim.orient = s.orient; sim.moodBoost = s.mood || 0; sim.talkCount = s.talk || 0; sim.gaveClue = s.gaveClue; sim.coupleDay = s.coupleDay; P.names.add(s.name); P.sims.push(sim); return sim;
+    sim.hunger = s.hunger; sim.orient = s.orient; sim.moodBoost = s.mood || 0; sim.talkCount = s.talk || 0; sim.samRel = s.samRel || 0; sim.gaveClue = s.gaveClue; sim.coupleDay = s.coupleDay; P.names.add(s.name); P.sims.push(sim); return sim;
   });
   d.sims.forEach((s, i) => {
     const sim = sims[i]; if (s.home >= 0 && made[s.home]) { sim.home = made[s.home]; made[s.home].residents.push(sim); const sp = made[s.home].spots.bed.find((q) => !q.taken); if (sp) sp.taken = sim; }

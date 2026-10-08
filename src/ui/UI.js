@@ -21,7 +21,7 @@ export class UI {
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; game.clock.speed = +b.dataset.s; });
-    $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('inventory').addEventListener('click', (e) => this.invClick(e));
+    $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('d-choices').addEventListener('click', (e) => { const b = e.target.closest('.dchoice'); if (b) this.say(b.dataset.topic); }); $('inventory').addEventListener('click', (e) => this.invClick(e));
     game.messages.on('msg', (m) => this.addMessage(m));
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
     $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
@@ -118,12 +118,30 @@ export class UI {
   flashObjective() { const o = $('objectives'); o.classList.remove('flash'); void o.offsetWidth; o.classList.add('flash'); this.renderObjectives(); }
 
   // ---------- dialogue ----------
+  /** Conversation box: their words (typed out) and a menu of things Sam can say. */
   openDialogue(sim, res) {
-    this.dialogue = { sim, full: res.text, shown: 0 }; this.modalOpen = true; this.game.input.unlock();
-    $('d-name').textContent = `${sim.name} — ${sim.roleName}`; $('d-text').textContent = ''; this.show('dialogue');
+    this.dialogue = { sim, full: res.text, shown: 0, choice: 0 }; this.modalOpen = true; this.game.input.unlock();
+    $('d-name').textContent = `${sim.name} — ${sim.roleName}`; $('d-text').textContent = ''; this.renderChoices(); this.show('dialogue');
     if (res.page) this.toast('Crumpled page collected! (see Notes in the post)', 3500);
   }
-  advanceDialogue() { const d = this.dialogue; if (!d) return; if (d.shown < d.full.length) { d.shown = d.full.length; } else this.closeDialogue(); }
+  renderChoices() {
+    const d = this.dialogue, el = $('d-choices'); if (!d) return; const T = this.game.talk.topics(d.sim); d.choice = Math.min(d.choice, T.length - 1);
+    el.innerHTML = T.map(([k, label], i) => `<button class="dchoice ${i === d.choice ? 'sel' : ''}" data-topic="${k}"><span>${i + 1}</span>${label}</button>`).join('');
+    $('d-hint').textContent = this.game.input.padActive ? 'D-pad to choose · A to say it · B to leave' : '1-6 or W/S + E to choose · click works too · Esc to leave';
+  }
+  say(topic) {
+    const d = this.dialogue; if (!d) return; if (topic === 'bye') { const r = this.game.talk.reply(d.sim, 'bye'); this.closeDialogue(); this.game.social.say(d.sim, r.text, 2.2); return; }
+    const r = this.game.talk.reply(d.sim, topic); d.full = r.text; d.shown = 0; Sfx.play('ui'); if (r.page) this.toast('Crumpled page collected! (see Notes in the post)', 3500); this.renderChoices();
+  }
+  dialogueKeys(inp) {
+    const d = this.dialogue; if (!d) return; const T = this.game.talk.topics(d.sim);
+    if (inp.hit('Escape') || inp.padHit(1)) { this.closeDialogue(); return; }
+    for (let i = 0; i < T.length; i++) if (inp.hit('Digit' + (i + 1))) { this.say(T[i][0]); return; }
+    const up = inp.hit('KeyW') || inp.hit('ArrowUp') || inp.padHit(12), down = inp.hit('KeyS') || inp.hit('ArrowDown') || inp.padHit(13);
+    if (up || down) { d.choice = (d.choice + (down ? 1 : -1) + T.length) % T.length; this.renderChoices(); }
+    if (inp.hit('KeyE') || inp.hit('Space') || inp.hit('Enter')) { if (d.shown < d.full.length) d.shown = d.full.length; else this.say(T[d.choice][0]); }
+  }
+  advanceDialogue() { const d = this.dialogue; if (!d) return; if (d.shown < d.full.length) d.shown = d.full.length; else this.closeDialogue(); }
   closeDialogue() { if (!this.dialogue) return; this.dialogue.sim.frozen = false; this.dialogue.sim.talkingToPlayer = false; this.dialogue.sim.moodBoost += 0.1; this.dialogue = null; this.modalOpen = false; this.hide('dialogue'); }
 
   // ---------- terminal ----------
@@ -225,7 +243,7 @@ export class UI {
     $('h-tier').textContent = tierOf(P.count());
     $('b-hunger').style.width = Math.round(100 - g.player.hunger) + '%'; $('b-hunger').style.background = g.player.hunger > 70 ? '#ff6b6b' : '#e8b44a'; $('h-tools').textContent = [...g.player.tools].map((t) => TOOL_NAMES[t]).join(', ') || 'none yet';
     $('b-energy').style.width = Math.round(g.player.energy) + '%'; $('b-energy').style.background = g.player.energy < 25 ? '#ff6b6b' : '#7be08f';
-    $('h-carry').textContent = `${g.player.invTotal()}/${BACKPACK}`; $('h-pack').textContent = g.player.invText(); $('b-pack').style.width = (g.player.invTotal() / BACKPACK * 100) + '%'; $('h-keys').textContent = g.input.padActive ? 'D-pad ↑ backpack · D-pad ↓ drop · Y eat' : 'I backpack · R drop · Q eat';
+    $('h-carry').textContent = `${g.player.invTotal()}/${BACKPACK}`; $('h-pack').textContent = g.player.invText(); $('b-pack').style.width = (g.player.invTotal() / BACKPACK * 100) + '%'; const F = g.favours.list; $('h-favours').innerHTML = F.length ? '<b>Favours</b><br>' + F.map((f) => `! ${f.sim.first}${f.asked ? `: ${f.n} ${f.mat}` : ' wants a word'}`).join('<br>') : ''; $('h-keys').textContent = g.input.padActive ? 'D-pad ↑ backpack · D-pad ↓ drop · Y eat' : 'I backpack · R drop · Q eat';
     if (this.helpT > 0) { this.helpT -= 0.25; if (this.helpT <= 0) $('help').classList.add('hidden'); }
     if (this._padWas !== g.input.padActive) { this._padWas = g.input.padActive; this.setMode(g.mode); }
     $('crosshair').classList.toggle('hidden', g.mode === 'god' && !g.input.padActive); $('crosshair').classList.toggle('godcur', g.mode === 'god');
