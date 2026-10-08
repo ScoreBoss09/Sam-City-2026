@@ -16,7 +16,7 @@ python3 -m http.server 8000
 `?scale=0.75` gives a crisper render (default 0.6 = chunky pixel look), `?post=0` turns the pixel-art outline pass off, `?auto` skips the title screen, `?auto&demo` (or the **Demo City** button) builds a lively sandbox town. Progress autosaves in the browser; use **Continue** on the title screen.
 
 ## Controls
-**Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact, Q eat, I backpack, R drop what you carry, J journal, H hide the help bar, F swing the club (raids only), G wave, M big map, TAB planning view.
+**Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact, Q eat, I backpack, R drop what you carry, J journal, H hide the help bar, F swing the club (raids only), Space jump, 1-8 emotes (dance, cheer, shrug, facepalm, two fingers, air guitar, clap, think), G cycles emotes, M big map, TAB planning view.
 **Keyboard and mouse, planning view:** WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, F frame the island, 1-7 tools, R rotate the ghost, Esc cancel, TAB back to Sam. P pauses; the clock buttons set 1x/2x/4x.
 
 **Controller (Xbox/PlayStation layout, plug it in and press any button):**
@@ -25,8 +25,9 @@ python3 -m http.server 8000
 | Left stick | walk | move the map (the yellow cursor is the centre of the screen) |
 | Right stick | look | rotate (left/right) and zoom (up/down) |
 | A / Cross | interact, tap in the green to work | place, or hold and move to paint paths |
-| B / Circle | wave | cancel tool |
+| B / Circle | emote (press again for the next one) | cancel tool |
 | X / Square, RT | swing the club | frame the island |
+| LT / L2 | jump | zoom in |
 | Y / Triangle | eat | rotate the building |
 | LB / L1 | sprint | previous tool |
 | RB / R1 | first/third person | next tool |
@@ -46,6 +47,13 @@ Chopping, mining, digging, picking, fishing and building show a timing bar. Tap 
 - **Curios**: 14 odd little things glint on the ground around the island. Your journal (J) keeps them, with your friends and records.
 - **Village fête** every few days at a park or the campfire: bunting, stalls, a tune, and a happier town.
 - **Post**: the red Postbox brings monthly accounts, permit replies, the local paper and notes from neighbours.
+- **Order supplies** on the yellow intercom post beside the Lift. The goods cage comes down with your crates; a truck takes them to the Stockyard, or they wait on the dock for you to carry. A Post Office knocks 20% off.
+- **Phone Box**: 10p for a random call. **Bookies**: £20 on a horse with a silly name. **The Red Lion**: sit down for a pint.
+- **Church** on Sunday mornings (bells), the **brass band** at the Bandstand in the evening, pub banter every night.
+- **Combos spread**: perfect taps in a row on a building site also nudge the two nearest unfinished sites along a little, even without materials. A site with no materials won't start the timing bar.
+
+## Humour
+The title screen has an **Adult humour (18+)** tick box, on by default: 1990s British telly-and-pub humour with swearing, innuendo, Del Boy, Euro 96, Teletext, Oasis vs Blur, rude phone calls and cheeky letters. Untick it (or add `?clean`) for the family version. Children always stay clean.
 
 ## Backpack
 Sam carries up to 12 things in a backpack (I to open). Gathered goods go in it; press E at a building site to deliver what it needs, E at the Stockyard to store everything (or, with an empty pack, to pack what the sites need). R drops the pack on the ground as a pile you can pick up again.
@@ -62,14 +70,15 @@ The minimap (bottom right in Sam's view) shows a yellow star where the current o
 
 ## How the town grows
 1. Settlers arrive through the Supply Lift when there are free beds, work and food.
-2. **Hamlet** (6) → **Village** (15) → **Town** (30) → **City** (60): each tier unlocks new buildings (Log Cabins, Quarry, Farm, Tavern, Brickworks, Stone Cottages, School, Town Hall, Glassworks, Foundry, Hospital, Power, Hotel, Tower...). Paths can be paved once the village is big enough (1 stone per tile).
+2. **Hamlet** (6) → **Village** (15) → **Town** (30) → **City** (60). Like any city builder, you only see buildings once the population reaches their milestone; the Council then writes to say which new permit forms you can post. There are 45+ buildings to find, from Log Cabins, Allotments and a Newsagent up through the Bakery, Chip Shop, The Red Lion pub, Village Hall, Post Office, St Sam's Church, Launderette, Video Rental and Bookies, to Council Flats, the Hospital, Power Plant, Grand Hotel and Sam Tower. Paths can be paved once the village is big enough (1 stone per tile).
 3. Gatherers work raw resources (forest, rocks, iron ore, clay pits, berry bushes, fields, the sea and beach) and carry them to the Stockyard. You can trade surplus with the Lift for money, or buy goods at a premium.
-4. Citizens get hungry (meals at home, the campfire or the tavern; workers pack lunch), sleep in their own beds, chat, become friends, couple up and move in together, have children who go to school and grow up. Mood affects whether people stay.
+4. Parks, the church, the pub, the bandstand and the village hall lift everyone's mood; bakeries and allotments make food; shops, the pub and the bookies pay rates each month.
+5. Citizens get hungry (meals at home, the campfire, the pub or the chippy; workers pack lunch), sleep in their own beds, chat, become friends, couple up and move in together, have children who go to school and grow up. Mood affects whether people stay.
 
 There is more going on in Sam City than a town. You will have to explore to find out.
 
 ## Life & look
-Citizens are English men, women, children and elders in a range of heights and builds, each with a face, hairstyle, hat and clothes, driven by a procedural animator with ~40 behaviours (walking, running, carrying, chopping, mining, harvesting, fishing, digging, hammering, typing, reading, eating, sleeping, gesturing, fidgeting, waving) and speech bubbles. The renderer draws to a low-res target and adds a pixel-art outline, colour grade and dithered palette (`src/render/Post.js`). Day/night, moonlight, campfire light, chimney smoke, clouds and their shadows, harbour boats, seagulls, traffic and dogs add life.
+Citizens are English men, women, children and elders in a range of heights and builds, each with a face, hairstyle, hat and clothes, driven by a procedural animator with ~40 behaviours (walking, running, carrying, chopping, mining, harvesting, fishing, digging, hammering, typing, reading, eating, drinking, praying, sleeping, gesturing, fidgeting, waving, dancing, cheering, clapping, shrugging, facepalming and the odd V-sign) and speech bubbles. The renderer draws to a low-res target and adds a pixel-art outline, colour grade and dithered palette (`src/render/Post.js`). Day/night, moonlight, campfire light, chimney smoke, clouds and their shadows, harbour boats, seagulls, traffic and dogs add life.
 
 ## Raids (optional, off with the title-screen tick box or `?noraids`)
 Weapons are part of the story, not the game. Once the town has 10 residents and a few days behind it, a small band occasionally lands from the sea, heads for the Stockyard and the food stores and shoves anyone in their way. Nobody is ever killed: victims are knocked down and get back up (faster with a Clinic). Citizens run indoors, the gate guards sedate raiders with darts near their posts, and a Police Station sends its officers after raiders anywhere. Sam can take a club from the Stockyard during a raid (E) and swing it with F; it is hung back up afterwards. Raiders caught are marched off and drop what they stole; the rest row away with it. Later raids carry pistols. The actors' lines slip now and then, as ever. Test with `window.__game.raids.trigger()` or `node tools/raid.mjs`.
