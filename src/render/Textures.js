@@ -113,6 +113,8 @@ export function signTexture(text, bg = '#16222f', fg = '#ffffff') {
 
 const roofCache = {};
 /** Tinted roof material: kind = tiles | thatch | slate | gravel. Texture is greyscale, colour comes from the tint. */
+/** All roof materials made so far (the seasons dust them with snow). */
+export function allRoofMaterials() { return Object.values(roofCache); }
 export function roofMaterial(color, kind = 'tiles') {
   const k = color + kind; if (roofCache[k]) return roofCache[k];
   if (Assets.ok) {

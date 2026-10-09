@@ -35,6 +35,7 @@ import { Decor } from './render/Decor.js';
 import { Traffic } from './systems/Traffic.js';
 import { Harbor } from './render/Harbor.js';
 import { Tech } from './systems/Tech.js';
+import { Seasons } from './render/Seasons.js';
 import { generateDemo } from './systems/Demo.js';
 import { Post } from './render/Post.js';
 import * as SaveGame from './core/Save.js';
@@ -62,6 +63,7 @@ export class Game {
     const cone = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 4), bm); cone.rotation.x = Math.PI; cone.renderOrder = 20; const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 40, 6), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.22, depthWrite: false }));
     beam.position.y = 20; this.beacon.add(cone, beam); this.beacon.userData.cone = cone; this.beacon.visible = false; this.scene.add(this.beacon);
     this.setupCity(); this.resize(); window.addEventListener('resize', () => this.resize());
+    this.input.allowLock = () => this.mode === 'sim' && this.started && !this.ui.modalOpen && !this.ending;
     canvas.addEventListener('click', () => { if (this.mode === 'sim' && !this.ui.modalOpen && this.started && !this.ending) this.input.lock(); });
     this.setMode('god'); this.last = performance.now(); this.frames = 0;
   }
@@ -115,6 +117,8 @@ export class Game {
     if (!this.skipRender) this.fps += ((1 / Math.max(raw, 0.001)) - this.fps) * 0.05;
     inp.pollPad(dt, !this.started || ui.modalOpen ? 'menu' : this.mode); ui.padUpdate(inp, dt);
     if (!this.started) { this.render(dt); inp.endFrame(); return; }
+    // the mouse may only be captured while walking around as Sam (a late capture after switching views would hide the cursor in planning)
+    if (inp.locked && (this.mode !== 'sim' || ui.modalOpen || this.ending)) inp.unlock();
     // modal / toggles
     if (ui.dialogue) ui.dialogueKeys(inp);
     if (ui.terminalB && inp.hit('Escape')) ui.closeTerminal();
@@ -133,7 +137,7 @@ export class Game {
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
     this.player.update(gdt, dt);
     for (const s of this.population.sims) s.sync(dt); this.social.render(dt);
-    this.buildings.update(dt); this.tools.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt); this.resources.animate(dt); this.mail.update(); this.weather.update(dt); if (this.started) this.favours.update(dt * this.clock.speed); if (this.curios) this.curios.update(dt); if (this.started) this.events.update(dt); if (this.wildlife) this.wildlife.update(dt);
+    this.buildings.update(dt); this.tools.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt); this.resources.animate(dt); this.mail.update(); this.weather.update(dt); if (!this.seasons && this.decor) this.seasons = new Seasons(this); if (this.seasons) this.seasons.update(dt); if (this.started) this.favours.update(dt * this.clock.speed); if (this.curios) this.curios.update(dt); if (this.started) this.events.update(dt); if (this.wildlife) this.wildlife.update(dt);
 
     // camera
     let focus;
@@ -147,5 +151,17 @@ export class Game {
   render() { if (!this.skipRender) this.post.render(this.scene, this.camera); }
   /** Test/automation helper: run the simulation without rendering. */
   advance(seconds, step = 0.1) { this.skipRender = true; for (let t = 0; t < seconds; t += step) this.update(step); this.skipRender = false; }
-  run() { const loop = (t) => { const raw = (t - this.last) / 1000; this.last = t; try { this.update(raw); } catch (e) { console.error(e); } requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+  run() {
+    const loop = (t) => {
+      const raw = (t - this.last) / 1000; this.last = t;
+      try { this.update(raw); } catch (e) {
+        console.error(e); this.ui.reportError && this.ui.reportError(e);
+        // keep the planning tools and the picture alive even if some other system tripped up this frame
+        try { if (this.started && this.mode === 'god') this.god.update(Math.min(0.1, raw), this.input, true); this.render(raw); } catch (e2) { console.error(e2); }
+        this.input.endFrame();
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
 }
