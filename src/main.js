@@ -1,9 +1,11 @@
 import { Sfx } from './core/Sfx.js';
 import { Game } from './Game.js';
 import { Assets } from './render/Assets.js';
+import { VERSION } from './version.js';
 import { installPack, clearStored } from './core/TexturePack.js';
 
 const params = new URLSearchParams(location.search);
+document.getElementById('ver').textContent = 'version ' + VERSION;
 await Assets.load();
 const game = new Game(document.getElementById('view'), { scale: parseFloat(params.get('scale')) || 0.6, post: params.get('post') !== '0' });
 window.__game = game;
