@@ -88,5 +88,14 @@
   </div>
 </div>
 <script type="module" src="src/main.js"></script>
+<script>
+// If the game's code can't run, say why on the title screen instead of leaving dead buttons.
+(function () {
+  var errs = []; window.addEventListener('error', function (e) { errs.push((e.message || 'error') + (e.filename ? ' (' + e.filename.split('/').slice(-2).join('/') + ':' + e.lineno + ')' : '')); });
+  function note(html) { var box = document.querySelector('#title .box'); if (!box || document.getElementById('loadnote')) return; var d = document.createElement('div'); d.id = 'loadnote'; d.innerHTML = html; d.style.cssText = 'background:#7a1a14;color:#fff;border:3px solid #ffd23f;padding:12px 14px;margin:0 0 12px;text-align:left;font:14px/1.45 sans-serif'; box.insertBefore(d, box.firstChild); }
+  if (location.protocol === 'file:') { note('<b>The game can\'t start when index.html is opened directly.</b><br>Close this tab, go to the Sam City folder and double-click <b>play.bat</b> (on a Mac or Linux: <b>play.sh</b>). A black window opens: leave it open, and the game opens in your browser.<br>It needs <b>Node.js</b> or <b>Python</b> installed (just one).'); return; }
+  setTimeout(function () { if (!window.__game) note('<b>The game didn\'t finish loading.</b><br>Try pressing <b>Ctrl+F5</b>, or use Chrome or Edge. If it still won\'t start, send Claude this:<br><code style="font-size:12px">' + (errs.length ? errs.slice(0, 3).join('<br>') : 'no error message') + ' · ' + navigator.userAgent.slice(0, 120) + '</code>'); }, 9000);
+})();
+</script>
 </body>
 </html>
