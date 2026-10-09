@@ -46,7 +46,7 @@ export class Input {
           this.mouse.dx += P.rx * 1000 * dt; this.mouse.dy += P.ry * 800 * dt;
           if (cur[0]) want.add('KeyE'); if (cur[2] || cur[7]) want.add('KeyF'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[11]) want.add('KeyM'); if (cur[12]) want.add('KeyI'); if (cur[13]) want.add('KeyR'); if (cur[14]) want.add('KeyJ'); if (cur[6]) want.add('Space'); if (cur[15]) want.add('KeyC');
         } else if (mode === 'god') {
-          if (cur[3]) want.add('KeyR'); if (cur[2]) want.add('KeyF'); if (cur[1]) want.add('Escape');
+          if (cur[3]) want.add('KeyR'); if (cur[2]) want.add('KeyB'); if (cur[11]) want.add('KeyF'); if (cur[1]) want.add('Escape');
           // smooth analogue rotate / zoom (read by GodControls) instead of key taps and wheel clicks
           const dz = (v) => (Math.abs(v) < 0.22 ? 0 : (v - Math.sign(v) * 0.22) / 0.78);
           P.turn = dz(P.rx); P.zoom = dz(P.ry) + (cur[6] ? -1 : 0) + (cur[7] ? 1 : 0);

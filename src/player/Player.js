@@ -214,7 +214,7 @@ export class Player {
       const p0 = g.roadPlans.at(px, pz); let rp = p0, rd = 0; if (!rp) { for (const q of g.roadPlans.plans.values()) { const d = Math.hypot(q.cx - px, q.cz - pz); if (d < 3.4 && (!rp || d < rd)) { rp = q; rd = d; } } }
       if (rp) consider(this.tools.has('shovel') ? { kind: 'road', plan: rp, work: 'dig', text: `Dig the ${rp.type === 2 ? 'paved road (uses 1 stone)' : 'path'}` } : { kind: 'info', text: 'You need the Shovel to dig paths. Pick it up from the Tool Rack.' }, rd + 0.3);
     }
-    for (const b of B) {
+    for (const b of g.upgrades.orders.length ? B.concat(g.upgrades.orders) : B) {
       if (b.state === 'done') {
         if (b.id === 'phonebox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) consider({ kind: 'phone', b, text: 'Make a call (10p)' }, d - 0.8, b.cx, b.cz); }
         if (b.id === 'bookies' && b.spots.visit[0]) { const v = b.spots.visit[0], d = Math.hypot(v.x - px, v.z - pz); if (d < 2.2) consider({ kind: 'bet', b, text: 'Have a flutter on the horses (£20)' }, d - 0.6, v.x, v.z); }

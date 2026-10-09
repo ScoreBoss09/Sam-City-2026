@@ -17,7 +17,7 @@ python3 -m http.server 8000
 
 ## Controls
 **Keyboard and mouse, Sam:** WASD move, Shift sprint, mouse look (click the view to capture) or arrow keys, V first/third person, E interact, Q eat, I backpack, R drop what you carry, J journal, H hide the help bar, F swing the club (raids only), C open/close a door, Space jump (high enough to clear a fence), 1-8 emotes (dance, cheer, shrug, facepalm, two fingers, air guitar, clap, think), G cycles emotes, M big map, TAB planning view.
-**Keyboard and mouse, planning view:** WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, F frame the island, 1-7 tools, R rotate the ghost, Esc cancel, TAB back to Sam. P pauses; the clock buttons set 1x/2x/4x.
+**Keyboard and mouse, planning view:** B opens the Planning menu, WASD pan, Q/E rotate, wheel zoom, right-drag pan, Shift+right-drag tilt, F frame the island, 1-7 tools, R rotate the ghost, Esc cancel, TAB back to Sam. P pauses; the clock buttons set 1x/2x/4x.
 
 **Controller (Xbox/PlayStation layout, plug it in and press any button):**
 | Button | Sam | Planning view |
@@ -26,7 +26,8 @@ python3 -m http.server 8000
 | Right stick | look | rotate (left/right) and zoom (up/down), smooth |
 | A / Cross | interact, tap in the green to work | place, or hold and move to paint paths |
 | B / Circle | emote (press again for the next one) | cancel tool |
-| X / Square, RT | swing the club | frame the island |
+| X / Square | swing the club | **Planning menu** |
+| RT / R2 | swing the club | zoom out |
 | LT / L2 | jump | zoom in |
 | Y / Triangle | eat | rotate the building |
 | LB / L1 | sprint | previous tool |
@@ -34,8 +35,14 @@ python3 -m http.server 8000
 | D-pad | up: backpack, down: drop, left: journal, right: open/close a door | up/down: pick a building, left/right: building tab |
 | Start | planning view / Sam | planning view / Sam |
 | Back / Select | pause | pause |
-| R3 | big map | |
-Menus and the terminal: D-pad or stick to move, A to press, B to close.
+| R3 | big map | frame the whole island |
+Menus and the terminal: D-pad or stick to move (it jumps to the nearest button in that direction, so grids work too), A to press, B to close. In the Planning menu LB/RB change page and LT/RT change category.
+
+## The Planning menu (B, or X on the controller, in the planning view)
+One big menu that works the same with a controller or a mouse:
+- **Build**: every building you can place, by category, as big cards. A green ✓ (and ×2, ×3...) means you already have that type; 🏗️ means one is being built. Locked ones say why, and if the town is big enough you can request the permit right there. Pick one and you're back on the map to place it.
+- **Work queue**: the builders' to-do list, in order. Everyone helps with the top job first (fetching its materials, then building) and only moves down when it's waiting on something. ⤒ Top, ▲ and ▼ reorder it; all the paths count as one entry. 👁 shows you where it is.
+- **Upgrades**: grouped by building type. **Homes** get *Upstairs rooms* (a second storey, more beds; people go up to sleep) and then a *Tudor makeover* (black-and-white timber framing, a tiled roof, another bed and happier residents). **Gathering yards** (forager, lumber camp, quarry, fisher, farm, brickworks, glassworks, foundry) get *Hand carts* (workers pull a cart and bring back twice as much) and then *Wagons and steel tools* (three times the load, a quarter faster). The **Builders' Yard** gets *Wheelbarrows* (twice the haul) and *Steel tools and scaffolding* (30% faster building). Upgrades cost materials and builder time, show scaffolding while they're done, join the Work queue, and Sam can deliver to them and hammer away too.
 
 ## Working (the timing bar)
 Chopping, mining, digging, picking, fishing and building show a timing bar. Tap E (A) when the white marker is in the green; gold is perfect and perfects in a row build a combo. Holding E still works, just slowly.

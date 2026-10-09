@@ -76,6 +76,7 @@ export class BuildingManager {
       b.siteVis = buildSite(def); b.siteVis.group.position.set(b.cx, 0, b.cz); b.siteVis.group.rotation.y = rot * Math.PI / 2; this.scene.add(b.siteVis.group);
       b.siteVis.update(0, 0, needT || 1);
     }
+    if (b.state === 'site' && this.game.construction) b.prio = this.game.construction.nextPrio();
     this.world.events.emit('building:added', b);
     return b;
   }
@@ -96,13 +97,13 @@ export class BuildingManager {
     const cap = this.supply(b); const before = b.progress;
     b.progress = Math.max(b.progress, Math.min(cap, b.progress + amount / Math.max(1, b.def.work)));
     if (b.progress !== before) this.refreshSite(b);
-    if (b.progress >= 0.999 && cap >= 0.999) this.finish(b);
+    if (b.progress >= 0.999 && cap >= 0.999) { if (b.upgradeOf) this.game.upgrades.complete(b); else this.finish(b); }
   }
 
   /** Chain bonus from Sam's minigame: a little progress even without materials (never completes a site that lacks them). */
   bonusWork(b, frac) {
     if (b.state !== 'site') return 0; const before = b.progress; b.progress = Math.max(b.progress, Math.min(Math.max(0.92, this.supply(b)), b.progress + frac)); this.refreshSite(b);
-    if (b.progress >= 0.999 && this.supply(b) >= 0.999) this.finish(b); return b.progress - before;
+    if (b.progress >= 0.999 && this.supply(b) >= 0.999) { if (b.upgradeOf) this.game.upgrades.complete(b); else this.finish(b); } return b.progress - before;
   }
   finish(b) {
     if (b.siteVis) { this.scene.remove(b.siteVis.group); b.siteVis = null; }
@@ -160,12 +161,13 @@ export class BuildingManager {
   /** Modernise a building: same footprint, colliders and people, new fittings for the new era. */
   restyle(b, era) {
     if (b.state !== 'done' || !b.ext || b.def.special || b.def.park) { b.era = era; return; }
-    b.era = era; this.scene.remove(b.ext.group, b.ext.roof); disposeOwned(b.ext.group); disposeOwned(b.ext.roof); this.mountExterior(b); b.doorK = 0;
+    b.era = era; this.scene.remove(b.ext.group, b.ext.roof); disposeOwned(b.ext.group); disposeOwned(b.ext.roof); this.mountExterior(b); b.doorK = 0; if (b.def.cart && this.game.upgrades) this.game.upgrades.cartProp(b);
     if (b.interior) { this.scene.remove(b.interior); b.interior = null; }
     const g = this.game; if (g.particles) g.particles.burst(b.cx, (b.def.floors || 1) * 3.2 + 1, b.cz, 0xfff3a0, 14, 2.5, 3, 0.18);
   }
   remove(b) {
     if (this.game.resources) this.game.resources.removeFields(b);
+    if (this.game.upgrades) { const o = this.game.upgrades.orderFor(b); if (o) this.game.upgrades.drop(o); }
     if (b.ext) { this.scene.remove(b.ext.group, b.ext.roof); disposeOwned(b.ext.group); disposeOwned(b.ext.roof); }
     if (b.siteVis) this.scene.remove(b.siteVis.group);
     if (b.interior) this.scene.remove(b.interior);
