@@ -411,7 +411,7 @@ export class Sim {
     m.visible = !hidden; if (hidden && !init) { this.working = false; return; }
     m.position.set(this.x, 0, this.z); m.rotation.y = this.heading;
     const cam = g.camera.position, d = Math.hypot(cam.x - this.x, cam.z - this.z) + (g.mode === 'god' ? cam.y * 0.6 : 0);
-    const far = d > (g.mode === 'god' ? 70 : 60);
+    const far = d > (g.mode === 'god' ? 64 : 42);
     if (far !== this.lowDetail || init) { this.lowDetail = far; this.rig.lod.visible = far; for (const p of this.rig.parts) p.visible = !far; if (!far) this.rig.lids.visible = false; }
     if (far) { this.rig.lod.position.y = this.moved ? Math.abs(Math.sin(this.game.clock.hour * 900)) * 0.04 : 0; if (this.pose === 'sleep') { this.rig.lod.rotation.x = -Math.PI / 2; this.rig.lod.position.set(0, 0.7, 0.9); } else { this.rig.lod.rotation.x = 0; this.rig.lod.position.z = 0; } this.working = false; return; }
     if (this.emote) { this.emote.t -= dt; if (this.emote.t <= 0) this.emote = null; }
@@ -446,5 +446,5 @@ export class Sim {
     this.computeStyle(); this.game.scene.remove(this.mesh); this.rig = createRig(this.look); this.mesh = this.rig.root; this.anim = new Animator(this.rig, { trait: this.trait, bounce: this.style.bounce, slouch: this.style.slouch, swing: this.style.swing, stride: this.style.stride, fidget: this.style.fidget, sway: this.style.sway });
     this.game.scene.add(this.mesh); this.lowDetail = null; this.sync(0.016, true);
   }
-  dispose() { this.standUp(); this.game.scene.remove(this.mesh); if (this.dog) this.dog.dispose(); }
+  dispose() { this.standUp(); this.game.scene.remove(this.mesh); this.mesh.traverse((o) => { if (o.geometry && o.geometry.userData.own) o.geometry.dispose(); }); if (this.bubble) { this.game.scene.remove(this.bubble.sprite); this.bubble.sprite.material.dispose(); this.bubble = null; } if (this.dog) this.dog.dispose(); }
 }

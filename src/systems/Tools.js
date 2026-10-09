@@ -31,7 +31,7 @@ export class ToolRack {
   update() {
     const g = this.game, gl = this.glow; if (!gl) return; let want = false;
     if (this.untaken.length && g.mode === 'sim') {
-      const o = g.story.currentObjective, t = o && o.target ? o.target(g) : null;
+      const t = g.story.target();
       want = (t && Math.hypot(t.x - this.x, t.z - this.z) < 4) || (g.player.needToolT || 0) > g.elapsed;
     }
     gl.visible = want; if (want) gl.material.opacity = 0.12 + (Math.sin(g.elapsed * 4) + 1) * 0.08;

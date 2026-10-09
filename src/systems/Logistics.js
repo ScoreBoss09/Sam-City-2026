@@ -45,7 +45,7 @@ export class Logistics {
       if (d > 0.1) { let da = ang - t.mesh.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da)); t.mesh.rotation.y += da * Math.min(1, dt * 8); }
       if (d <= step) { t.mesh.position.x = p.x; t.mesh.position.z = p.z; t.path.shift(); } else { t.mesh.position.x += dx / d * step; t.mesh.position.z += dz / d * step; }
     }
-    for (const t of this.trucks) if (t.done) this.game.scene.remove(t.mesh);
+    for (const t of this.trucks) if (t.done) { this.game.scene.remove(t.mesh); t.mesh.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
     this.trucks = this.trucks.filter((t) => !t.done);
   }
 }

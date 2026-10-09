@@ -6,6 +6,11 @@ import { pick } from '../util.js';
 export class Story {
   constructor(game) { this.game = game; this.stage = 0; this.objective = 0; this.clues = 0; this.pages = []; this.domeRevealed = false; this.domeAlpha = 0; }
   get currentObjective() { return OBJECTIVES[this.objective] || null; }
+  /** Where the current goal wants Sam (worked out a few times a second, not every frame). */
+  target() {
+    const now = performance.now(); if (this._tT && now - this._tT < 300 && this._tObj === this.objective) return this._t;
+    const o = this.currentObjective; this._tT = now; this._tObj = this.objective; this._t = o && o.target ? o.target(this.game) : null; return this._t;
+  }
 
   update(dt) {
     const g = this.game, o = this.currentObjective;
