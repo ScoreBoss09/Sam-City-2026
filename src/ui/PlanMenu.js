@@ -49,7 +49,7 @@ export class PlanMenu {
   }
   renderQueue(Q) {
     const g = this.game, builders = g.population.sims.filter((s) => s.role === 'builder' && !s.remove), busy = builders.filter((s) => s.job).length; this.q = Q;
-    if (!Q.length) return '<div class="pnote">Nothing to build. Place buildings, draw paths or order upgrades and they appear here in order.</div>';
+    if (!Q.length && !g.piles.list.length) return '<div class="pnote">Nothing to build. Place buildings, draw paths or order upgrades and they appear here in order.</div>';
     const rows = Q.map((it, i) => {
       let name, info, frac = 0;
       if (it.kind === 'roads') { const n = g.roadPlans.count; name = '🛣️ Paths and roads'; info = `${n} tile${n > 1 ? 's' : ''} to dig`; }
@@ -59,7 +59,8 @@ export class PlanMenu {
       return `<div class="qrow ${i === 0 ? 'top' : ''}"><span class="qn">${i + 1}</span><div class="qi"><b>${name}</b><small>${info}</small><i><u style="width:${Math.round(frac * 100)}%"></u></i></div>
         <button data-a="q" data-m="top" data-i="${i}" ${i === 0 ? 'disabled' : ''} title="Do this first">⤒ Top</button><button data-a="q" data-m="up" data-i="${i}" ${i === 0 ? 'disabled' : ''}>▲</button><button data-a="q" data-m="down" data-i="${i}" ${i === Q.length - 1 ? 'disabled' : ''}>▼</button>${it.s ? `<button data-a="q" data-m="show" data-i="${i}">👁</button>` : ''}${it.kind === 'upgrade' ? `<button data-a="q" data-m="cancel" data-i="${i}">✖</button>` : ''}</div>`;
     }).join('');
-    return `<div class="pnote">Builders work from the top down: everyone helps with the top job first (fetching its materials, then building), and only moves down the list when it's waiting for something. ${builders.length ? `Builders: ${builders.length} (${busy} busy).` : '<b>No builders yet: build a Builders\' Yard, or do it yourself as Sam.</b>'}</div>${rows}`;
+    const dock = g.construction.dockPiles ? g.piles.list.filter((p) => g.lift && Math.hypot(p.x - g.logistics.dock().x, p.z - g.logistics.dock().z) < 7) : [], dockTxt = dock.length ? `<div class="qrow"><span class="qn">📦</span><div class="qi"><b>Goods waiting at the Lift</b><small>${dock.map((p) => Object.entries(p.items).map(([m, n]) => n + ' ' + m).join(', ')).join(', ')} · ${g.population.sims.filter((q) => q.job && q.job.type === 'fetch').length} builder(s) carting it to the Stockyard${g.depot ? '' : ' (no Stockyard yet!)'}</small></div></div>` : '';
+    return `<div class="pnote">Builders work from the top down: everyone helps with the top job first (fetching its materials, then building), and only moves down the list when it's waiting for something. ${builders.length ? `Builders: ${builders.length} (${busy} busy).` : '<b>No builders yet: build a Builders\' Yard, or do it yourself as Sam.</b>'}</div>${dockTxt}${rows}`;
   }
   renderUpgrades(ups) {
     const g = this.game, U = g.upgrades;

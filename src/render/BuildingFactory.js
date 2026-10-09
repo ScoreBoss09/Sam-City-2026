@@ -299,33 +299,34 @@ function buildLift(def) {
   for (const x of [-W / 2 + 0.6, W / 2 - 0.6]) { box(g, 1.0, 7, 1.0, 0x59616d, x, 0, D / 2 - 1); cols.push({ cx: x, cz: D / 2 - 1, sx: 1, sz: 1 }); box(g, 0.5, 0.5, 0.5, 0xffa500, x, 7, D / 2 - 1, { emissive: 0xffa500, emissiveIntensity: 1.4 }); }
   box(g, W - 1, 0.7, 0.7, 0x59616d, 0, 6.4, D / 2 - 1);
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.2), new THREE.MeshBasicMaterial({ map: signTexture('THE LIFT - STAFF ONLY', '#3a1010') })); sign.position.set(0, 5.6, D / 2 - 0.62); g.add(sign);
-  // gantry + the goods cage that comes down with deliveries
-  box(g, W - 2, 0.6, 0.8, 0x2e343c, 0, 11.4, 0.5); for (const x of [-W / 2 + 1.2, W / 2 - 1.2]) { box(g, 0.6, 11.4, 0.6, 0x2e343c, x, 0, 0.5); cols.push({ cx: x, cz: 0.5, sx: 0.6, sz: 0.6 }); }
-  const cage = new THREE.Group(); cage.userData.keep = true; g.add(cage); const REST = 9.6; cage.position.set(0, REST, 0.5);
+  // the shaft: a dark pit in the deck with a hazard-striped frame; the cage rises out of it and sinks back down
+  const pit = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 5.6), new THREE.MeshBasicMaterial({ color: 0x07090c })); pit.rotation.x = -Math.PI / 2; pit.position.set(0, 0.185, 0.5); g.add(pit);
+  for (let i = 0; i < 8; i++) { const c = i % 2 ? 0x1a1a1a : 0xf1c40f; box(g, 0.75, 0.06, 0.35, c, -2.6 + i * 0.75, 0.17, -2.3); box(g, 0.75, 0.06, 0.35, c, -2.6 + i * 0.75, 0.17, 3.3); box(g, 0.35, 0.06, 0.75, c, -3.0, 0.17, -2.0 + i * 0.75); box(g, 0.35, 0.06, 0.75, c, 3.0, 0.17, -2.0 + i * 0.75); }
+  for (const [x, z] of [[-3.0, -2.3], [3.0, -2.3], [-3.0, 3.3], [3.0, 3.3]]) { box(g, 0.22, 1.1, 0.22, 0xf1c40f, x, 0.17, z); box(g, 0.26, 0.18, 0.26, 0xff8a1a, x, 1.27, z, { emissive: 0xff6a1a, emissiveIntensity: 0.6 }); }
+  const cage = new THREE.Group(); cage.userData.keep = true; g.add(cage); const REST = -4.2; cage.position.set(0, REST, 0.5);
   const cm = (w, h, d, c, x, y, z, o) => { const m = new THREE.Mesh(unit, stdMat(c, o)); m.scale.set(w, h, d); m.position.set(x, y + h / 2, z); m.castShadow = true; cage.add(m); return m; };
-  cm(5.2, 0.2, 5.2, 0x3a4048, 0, 0, 0); for (const [x, z] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) cm(0.14, 2.6, 0.14, 0xf1c40f, x, 0.2, z); cm(5.2, 0.16, 5.2, 0x3a4048, 0, 2.8, 0);
-  for (const z of [-2.5, 2.5]) cm(5.2, 0.08, 0.06, 0xf1c40f, 0, 1.3, z);
-  const lamp = cm(0.3, 0.2, 0.3, 0xff8a1a, 0, 2.96, 0, { emissive: 0xff6a1a, emissiveIntensity: 0.2 });
+  cm(5.2, 0.2, 5.2, 0x3a4048, 0, -0.2, 0); for (const [x, z] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) cm(0.14, 2.6, 0.14, 0xf1c40f, x, 0, z); cm(5.2, 0.16, 5.2, 0x3a4048, 0, 2.6, 0);
+  for (const z of [-2.5]) cm(5.2, 0.08, 0.06, 0xf1c40f, 0, 1.1, z); for (const x of [-2.5, 2.5]) cm(0.06, 0.08, 5.2, 0xf1c40f, x, 1.1, 0);
+  const lamp = cm(0.3, 0.2, 0.3, 0xff8a1a, 0, 2.76, 0, { emissive: 0xff6a1a, emissiveIntensity: 0.2 });
   const crates = new THREE.Group(); cage.add(crates);
-  const cable = new THREE.Mesh(unit, stdMat(0x1a1a1a)); cable.userData.keep = true; g.add(cable);
   // intercom post outside the platform: Sam can order goods here
   const ix = W / 2 + 0.9, iz = D / 2 - 0.4; box(g, 0.14, 1.3, 0.14, 0x59616d, ix, 0, iz); box(g, 0.45, 0.6, 0.25, 0xf1c40f, ix, 1.2, iz); box(g, 0.3, 0.2, 0.03, 0x1a1a1a, ix, 1.45, iz + 0.13); box(g, 0.12, 0.12, 0.04, 0xc0392b, ix, 1.28, iz + 0.13, { emissive: 0xc0392b, emissiveIntensity: 0.8 });
-  const anim = { t: -1, load: null, onLand: null };
-  const deliver = (colors, onLand) => { anim.t = 0; anim.onLand = onLand; crates.clear(); colors.slice(0, 9).forEach((c, i) => { const m = new THREE.Mesh(unit, stdMat(c)); m.scale.set(0.9, 0.8, 0.9); m.position.set(-1.1 + (i % 3) * 1.1, 0.6 + Math.floor(i / 9) * 0.8, -1.1 + Math.floor(i / 3) * 1.1); m.castShadow = true; crates.add(m); }); };
+  // state machine: down -> rising -> open -> sinking -> down. Deliveries open for 2 s; a passenger ride stays open until released.
+  const anim = { st: 'down', t: 0, onOpen: null, hold: false, onDown: null };
+  const call = (onOpen, hold) => { anim.st = 'rising'; anim.t = 0; anim.onOpen = onOpen; anim.hold = !!hold; };
+  const deliver = (colors, onLand) => { crates.clear(); colors.slice(0, 9).forEach((c, i) => { const m = new THREE.Mesh(unit, stdMat(c)); m.scale.set(0.9, 0.8, 0.9); m.position.set(-1.1 + (i % 3) * 1.1, 0.4, -1.1 + Math.floor(i / 3) * 1.1); m.castShadow = true; crates.add(m); }); call(() => { if (onLand) onLand(); crates.clear(); }, false); };
+  const release = (onDown) => { if (anim.st !== 'open') return false; anim.st = 'sinking'; anim.t = 0; anim.onDown = onDown; return true; };
+  const ease = (k) => (1 - Math.cos(Math.min(1, k) * Math.PI)) / 2;
   const update = (dt) => {
-    let y = REST;
-    if (anim.t >= 0) {
-      anim.t += dt; const T = anim.t;
-      if (T < 3) y = REST - (REST - 0.2) * (1 - Math.cos(Math.min(1, T / 3) * Math.PI)) / 2;
-      else if (T < 5) { y = 0.2; if (anim.onLand) { const f = anim.onLand; anim.onLand = null; f(); crates.clear(); } }
-      else if (T < 8) y = 0.2 + (REST - 0.2) * (1 - Math.cos(Math.min(1, (T - 5) / 3) * Math.PI)) / 2;
-      else anim.t = -1;
-      lamp.material.emissiveIntensity = anim.t >= 0 && Math.sin(T * 10) > 0 ? 1.6 : 0.2;
-    }
-    cage.position.y = y; const top = 11.4, len = Math.max(0.1, top - (y + 2.96)); cable.scale.set(0.08, len, 0.08); cable.position.set(0, y + 2.96 + len / 2, 0.5);
+    let y = REST; anim.t += dt; const T = anim.t;
+    if (anim.st === 'rising') { y = REST + (0.17 - REST) * ease(T / 3); if (T >= 3) { anim.st = 'open'; anim.t = 0; if (anim.onOpen) { const f = anim.onOpen; anim.onOpen = null; f(); } } }
+    else if (anim.st === 'open') { y = 0.17; if (!anim.hold && T >= 2) { anim.st = 'sinking'; anim.t = 0; } }
+    else if (anim.st === 'sinking') { y = 0.17 + (REST - 0.17) * ease(T / 3); if (T >= 3) { anim.st = 'down'; if (anim.onDown) { const f = anim.onDown; anim.onDown = null; f(); } } }
+    lamp.material.emissiveIntensity = anim.st !== 'down' && Math.sin(T * 10) > 0 ? 1.6 : 0.2;
+    cage.position.y = y; cage.visible = y > REST + 0.3;
   };
   update(0);
-  return { group: g, roof, colliders: cols, height: 11, update, everyFrame: true, deliver, hatch: { x: ix, z: iz + 0.9 }, busy: () => anim.t >= 0 };
+  return { group: g, roof, colliders: cols, height: 11, update, everyFrame: true, deliver, call, release, cageY: () => cage.position.y, state: () => anim.st, hatch: { x: ix, z: iz + 0.9 }, busy: () => anim.st !== 'down' };
 }
 
 function buildTunnel(def) {

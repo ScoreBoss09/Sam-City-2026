@@ -4,7 +4,7 @@ import { Sim } from '../sim/Sim.js';
 /**
  * Two guards at the Supply Lift. Standing on the platform starts a 10-second countdown, then a sedative dart.
  * Between 02:00 and 04:00 the guards change shift and the platform is unwatched: with all three crumpled pages,
- * Sam can ride the Lift up. That is the escape.
+ * Sam can ride the Lift down and away. That is the escape.
  */
 export class Security {
   constructor(game) { this.game = game; this.guards = []; this.darts = []; this.warned = {}; this.count = {}; this.cool = 0; this.rideT = 0; }

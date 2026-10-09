@@ -23,6 +23,7 @@ import { Celebrations } from './systems/Celebrations.js';
 import { Fireworks } from './render/Fireworks.js';
 import { Upgrades } from './systems/Upgrades.js';
 import { PerfMonitor } from './core/PerfMonitor.js';
+import { LiftRides } from './systems/LiftRides.js';
 import { Particles } from './render/Particles.js';
 import { Piles } from './systems/Piles.js';
 import { Mail } from './systems/Mail.js';
@@ -60,7 +61,7 @@ export class Game {
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.3, 600);
     this.input = new Input(canvas); this.clock = new Clock(); this.messages = new Messages();
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
-    this.tech = new Tech(this); this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.upgrades = new Upgrades(this); this.perf = new PerfMonitor(this); this.logistics = new Logistics(this);
+    this.tech = new Tech(this); this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.upgrades = new Upgrades(this); this.perf = new PerfMonitor(this); this.liftRides = new LiftRides(this); this.logistics = new Logistics(this);
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.raids = new Raids(this); this.planner = new Planner(this); this.social = new Social(this);
     this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.skills = new Skills(this); this.challenges = new Challenges(this); this.celebrations = new Celebrations(this); this.fireworks = new Fireworks(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.mail = new Mail(this); this.talk = new Talk(this); this.favours = new Favours(this); this.events = new Events(this); this.weather = new Weather(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
@@ -149,7 +150,7 @@ export class Game {
     this.player.update(gdt, dt); this.perf.lap('Sam');
     for (const s of this.population.sims) s.sync(dt); this.social.render(dt);
     this.perf.lap('people anim');
-    this.buildings.update(dt); this.tools.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt); this.resources.animate(dt); this.mail.update(); this.challenges.update(dt); this.weather.update(dt); if (!this.seasons && this.decor) this.seasons = new Seasons(this); if (this.seasons) this.seasons.update(dt); if (this.started) this.favours.update(dt * this.clock.speed); if (this.curios) this.curios.update(dt); if (this.started) this.events.update(dt); this.celebrations.update(dt); this.fireworks.update(dt); this.atmosphere.flash = Math.max(this.fireworks.flash || 0, this.weather.flash || 0); this.atmosphere.flashCol = (this.weather.flash || 0) > (this.fireworks.flash || 0) ? 0xdfe8ff : this.fireworks.flashCol; if (this.wildlife) this.wildlife.update(dt);
+    this.buildings.update(dt); this.tools.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.workgame.update(dt); this.particles.update(dt); this.resources.animate(dt); this.mail.update(); this.challenges.update(dt); this.weather.update(dt); if (!this.seasons && this.decor) this.seasons = new Seasons(this); if (this.seasons) this.seasons.update(dt); if (this.started) this.favours.update(dt * this.clock.speed); if (this.curios) this.curios.update(dt); if (this.started) this.events.update(dt); this.celebrations.update(dt); this.liftRides.update(this.clock.speed > 0 ? dt : 0); this.fireworks.update(dt); this.atmosphere.flash = Math.max(this.fireworks.flash || 0, this.weather.flash || 0); this.atmosphere.flashCol = (this.weather.flash || 0) > (this.fireworks.flash || 0) ? 0xdfe8ff : this.fireworks.flashCol; if (this.wildlife) this.wildlife.update(dt);
 
     this.perf.lap('town systems');
     // camera

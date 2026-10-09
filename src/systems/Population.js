@@ -59,6 +59,7 @@ export class Population {
   spawnAtLift(opts) {
     const g = this.game, lift = g.lift;
     const s = new Sim(g, { x: lift.doorIn.x, z: lift.doorIn.z, inside: lift, ...opts }); s.heading = Math.PI; this.sims.push(s);
+    if (g.liftRides && !g.demoMode && g.started) g.liftRides.arrive(s);   // up out of the shaft in the cage
     return s;
   }
   makeResident(opts = {}) {
@@ -188,7 +189,7 @@ export class Population {
   /** Soft personal space: sims (and Sam) gently push apart instead of walking through each other. */
   separate(dt) {
     const w = this.game.world, R = 0.58, grid = new Map(), k = Math.min(1, dt * 12), P = this.game.player;
-    const movable = (s) => !s.remove && !s.sitting && s.pose !== 'sleep' && !(s.down > 0) && !s.glide && !s.hidden;
+    const movable = (s) => !s.remove && !s.riding && !s.sitting && s.pose !== 'sleep' && !(s.down > 0) && !s.glide && !s.hidden;
     const list = this.sims.filter(movable);
     for (const s of list) { const key = Math.floor(s.x / 1.2) + ',' + Math.floor(s.z / 1.2) + ',' + (s.inside ? s.inside.uid : 0); (grid.get(key) || grid.set(key, []).get(key)).push(s); }
     const push = (a, dx, dz, f) => { const nx = a.x + dx * f, nz = a.z + dz * f; if (!w.collides(nx, nz, 0.3)) { a.x = nx; a.z = nz; } else if (!w.collides(nx, a.z, 0.3)) a.x = nx; else if (!w.collides(a.x, nz, 0.3)) a.z = nz; };
