@@ -40,7 +40,7 @@ export class Dog {
     if (ahead > 1.3 && d > 0.05) { speed = Math.min(6, 1.6 + (ahead - 1.3) * 1.6); const want = Math.atan2(dx, dz); let dh = want - this.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); this.h += dh * Math.min(1, dt * 10); const st = Math.min(d, speed * dt); this.x += dx / d * st; this.z += dz / d * st; this.still = 0; }
     else { this.still += dt; if (this.still > 0.6) { const fo = Math.atan2(o.x - this.x, o.z - this.z); let dh = fo - this.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); this.h += dh * Math.min(1, dt * 3); } }
     // hidden (like people) when it's inside a house Sam isn't in
-    const inB = g.buildings.buildingAtPoint(this.x, this.z), hidden = (inB && !inB.def.open && inB !== g.buildings.playerInside) || (!o.mesh.visible && !inB);
+    const inB = g.buildings.buildingAtPoint(this.x, this.z), hidden = (inB && !inB.def.open && !g.buildings.canSeeInto(inB)) || (!o.mesh.visible && !inB);
     this.root.visible = !hidden; if (hidden) return;
     const sitting = this.still > 2.5; this.sit += ((sitting ? 1 : 0) - this.sit) * Math.min(1, dt * 6);
     this.ph += speed * dt * 4.2; const run = Math.min(1, speed / 3), s = Math.sin(this.ph);
