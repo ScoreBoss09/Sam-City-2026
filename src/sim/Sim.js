@@ -58,14 +58,14 @@ export class Sim {
     let sx = this.x, sz = this.z;
     if (this.inside && this.inside !== dest.b) {
       const b = this.inside;
-      if (!b.def.open) wp.push(...this.game.buildings.navPath(b, this.x, this.z, b.doorIn.x, b.doorIn.z), { x: b.doorPos.x, z: b.doorPos.z, exit: true });
-      sx = b.doorOut.x; sz = b.doorOut.z; wp.push({ x: sx, z: sz, exit: true });
+      if (!b.def.open) wp.push(...this.game.buildings.navPath(b, this.x, this.z, b.doorIn.x, b.doorIn.z).map((q, i, a) => (i === a.length - 1 ? { ...q, door: b } : q)), { x: b.doorPos.x, z: b.doorPos.z, exit: true, door: b });
+      sx = b.doorOut.x; sz = b.doorOut.z; wp.push({ x: sx, z: sz, exit: true, door: b.def.open ? null : b });
     }
     if (dest.b && dest.b !== this.inside && !dest.b.def.park) {
       const b = dest.b, t = w.findPath(Math.floor(sx / TILE), Math.floor(sz / TILE), b.doorTile.x, b.doorTile.z);
       if (!t) return false;
       for (let i = 1; i < t.length; i++) wp.push({ x: (t[i][0] + 0.5) * TILE, z: (t[i][1] + 0.5) * TILE });
-      wp.push({ x: b.doorOut.x, z: b.doorOut.z }, { x: b.doorPos.x, z: b.doorPos.z, enter: b }, { x: b.doorIn.x, z: b.doorIn.z });
+      wp.push({ x: b.doorOut.x, z: b.doorOut.z, door: b }, { x: b.doorPos.x, z: b.doorPos.z, enter: b, door: b }, { x: b.doorIn.x, z: b.doorIn.z, door: b });
       if (dest.x !== undefined) wp.push(...this.game.buildings.navPath(b, b.doorIn.x, b.doorIn.z, dest.x, dest.z));
     } else if (dest.b && dest.b === this.inside) {
       wp.push(...this.game.buildings.navPath(dest.b, this.x, this.z, dest.x, dest.z));
@@ -101,6 +101,7 @@ export class Sim {
       this.vel = Math.max(0, this.vel - 9 * dt); if (!this.frozen && !this.chat && !this.path.length && this.phase === 1) this.arrive(); this.dist = Math.hypot(this.x - prevX, this.z - prevZ); return;
     }
     const p = this.path[0], dx = p.x - this.x, dz = p.z - this.z, d = Math.hypot(dx, dz), exact = p.enter || p.exit || this.path.length === 1;
+    if (p.door && Math.hypot(this.x - p.door.doorPos.x, this.z - p.door.doorPos.z) < 2.6) p.door.doorUseT = 0.7;   // only open the door while actually going through it
     const want = Math.atan2(dx, dz), dh = angleDiff(this.heading, want), rate = 8;
     this.heading += Math.max(-rate * dt, Math.min(rate * dt, dh));
     const hurry = this.hurry || this.panic ? 1.55 : 1, max = this.style.speed * hurry * (this.carry ? 0.8 : 1) * (this.kind === 'security' ? 1.4 : 1) * (this.kind === 'raider' ? 1.1 : 1);

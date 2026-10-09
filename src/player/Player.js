@@ -117,7 +117,7 @@ export class Player {
       if (inp.hit('KeyG')) { this.emoteIdx = ((this.emoteIdx ?? -1) + 1) % EM.length; this.emote(EM[this.emoteIdx]); }
       for (let i = 1; i <= 8; i++) if (inp.hit('Digit' + i)) this.emote(EM[i]);
       if (inp.hit('Space')) this.jump();
-      if (inp.hit('KeyC')) { const d = this.nearDoor(); if (d) { d.doorHeld = !d.doorHeld; if (!d.doorHeld && this.game.buildings.doorRectHas(d, this.x, this.z, R + 0.1)) d.doorHeld = true; } }
+      if (inp.hit('KeyC')) { const d = this.nearDoor(); if (d) { const open = (d.doorK || 0) > 0.5 || d.doorHeld; if (open && !this.game.buildings.doorRectHas(d, this.x, this.z, R + 0.1)) { d.doorHeld = false; d.doorUseT = 0; } else d.doorHeld = true; } }   // C: shut it if it's open (even if folk are inside), otherwise open it
       if (this.weapon && inp.hit('KeyF') && !(this.swingT > 0)) { this.swingT = 0.6; this.swingHit = false; }
       if (this.swingT > 0.3 && !this.swingHit && this.weapon) { this.swingHit = true; this.strike(); }
       if (inp.hit('KeyQ')) this.eat();
@@ -127,7 +127,7 @@ export class Player {
     } else { this.game.workgame.stop(); this.ring.visible = false; }
     // needs (game seconds)
     if (g.started && !this.sleeping) {
-      this.hunger = Math.min(100, this.hunger + dt * 0.22); this.energy = Math.max(0, this.energy - dt * 0.2 * (this.hunger > 85 ? 1.8 : 1));
+      this.hunger = Math.min(100, this.hunger + dt * 0.22); this.energy = Math.max(0, this.energy - dt * g.clock.rate() * 4.4 * (this.hunger > 85 ? 1.8 : 1));   // tiredness follows the clock: about one good sleep a night
       if (this.hunger > 65 && !this.hungerWarn) { this.hungerWarn = true; g.ui.toast('You are hungry. Press Q to eat food from your backpack, or eat by the Stockyard or a campfire.', 5200); }
       if (this.hunger < 40) this.hungerWarn = false;
       if (this.hunger >= 100) this.starveT += dt; else this.starveT = 0;
