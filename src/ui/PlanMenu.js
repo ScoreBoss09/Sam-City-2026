@@ -28,7 +28,7 @@ export class PlanMenu {
     const tabs = [['build', '🏗️ Build'], ['queue', `📋 Work queue (${Q.length})`], ['upgrades', `⬆️ Upgrades${canUp ? ` (${canUp})` : ''}`]];
     let body = '';
     if (this.tab === 'build') body = this.renderBuild(); else if (this.tab === 'queue') body = this.renderQueue(Q); else body = this.renderUpgrades(ups);
-    $('planmenu').innerHTML = `<div class="pwin"><div class="phead"><b>📐 PLANNING</b><span class="funds">Funds ${fmtMoney(g.economy.funds)}</span><button data-a="close">✖ Close${pad ? ' (B)' : ' (Esc)'}</button></div>
+    $('planmenu').innerHTML = `<div class="pwin"><div class="phead"><b>📐 PLANNING</b><span class="funds">Funds ${fmtMoney(g.economy.funds)}</span><button data-a="perf">📊 Report</button><button data-a="close">✖ Close${pad ? ' (B)' : ' (Esc)'}</button></div>
       <div class="ptabs">${tabs.map(([k, n]) => `<button data-a="tab" data-k="${k}" class="${k === this.tab ? 'on' : ''}">${n}</button>`).join('')}<span class="hint">${pad ? 'LB/RB page · LT/RT category · A choose' : 'B opens this · Esc closes'}</span></div>${body}</div>`;
     if (this.focusFirst) { this.focusFirst = false; g.ui._pfIdx = 4; }
   }
@@ -43,7 +43,7 @@ export class PlanMenu {
       else if (pop < d.permit.pop) { status = `needs ${d.permit.pop} residents`; act = 'none'; }
       else { status = `permit ${fmtMoney(d.permit.cost)}: press to request`; act = 'permit'; }
       const tick = n ? `<span class="tick">✓${n > 1 ? ' ×' + n : ''}</span>` : sites ? '<span class="tick site">🏗️</span>' : '';
-      return `<button class="card ${n ? 'built' : ''} ${un ? '' : 'locked'}" data-a="${act}" data-k="${k}"><span class="ic">${ICON[k] || '🏠'}</span>${tick}<b>${d.name}</b><small>${status}</small></button>`;
+      return `<button class="card ${n ? 'built' : ''} ${un ? '' : 'locked'} ${g.god.tool.sub === k ? 'on' : ''}" data-a="${act}" data-k="${k}"><span class="ic">${ICON[k] || '🏠'}</span>${tick}<b>${d.name}</b><small>${status}</small></button>`;
     }).join('');
     return `<div class="pcats">${cats}</div><div class="pcards">${cards || '<div class="pnote">Nothing here yet. Grow the town.</div>'}</div>${next ? `<div class="pnote">🔒 More buildings at ${next} residents.</div>` : ''}<div class="pnote">✓ = you have one already. Pick a building, then place it on the map (${g.input.padActive ? 'A to place, Y to rotate, B to cancel' : 'click to place, R rotates, Esc cancels'}).</div>`;
   }
@@ -78,6 +78,7 @@ export class PlanMenu {
   click(e) {
     const btn = e.target.closest('button'); if (!btn || btn.disabled) return; const g = this.game, a = btn.dataset.a, k = btn.dataset.k;
     if (a === 'close') return this.close();
+    if (a === 'perf') { this.close(); g.ui.togglePerf(); return; }
     if (a === 'tab') { this.tab = k; this.focusFirst = true; }
     if (a === 'cat') { this.cat = k; }
     if (a === 'place') { const cat = CATS.find((c) => c[1].includes(k)), tool = cat ? cat[2] : 'build'; if (tool === 'build') g.ui.buildTab = cat[0]; g.god.setTool(tool, k); g.ui.openSub(tool); this.close(); g.ui.toast(`Place the ${BUILDINGS[k].name}: ${g.input.padActive ? 'move the cursor, A to place, Y to rotate' : 'click on the map, R rotates'}.`, 3200); return; }
