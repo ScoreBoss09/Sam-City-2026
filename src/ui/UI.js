@@ -25,7 +25,7 @@ export class UI {
     this.plan = new PlanMenu(game);
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; if (b.dataset.menu) { this.plan.show(); return; } const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
-    $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; game.clock.speed = +b.dataset.s; });
+    $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'btn-perf') { this.togglePerf(); return; } game.clock.speed = +b.dataset.s; }); $('perf').addEventListener('click', (e) => this.perfClick(e));
     $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); });
     game.messages.on('msg', (m) => this.addMessage(m));
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
@@ -33,7 +33,7 @@ export class UI {
     this.refreshTools(); this.renderObjectives();
   }
   /** A window is open (talking, the post, the backpack, the journal, the how-to card): worked out fresh each time so it can't get stuck. */
-  get modalOpen() { return !!((this.plan && this.plan.open) || this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
+  get modalOpen() { return !!(this.perfOpen || (this.plan && this.plan.open) || this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
   set modalOpen(v) { /* derived; kept so old callers stay harmless */ }
   get mouseOverCanvas() { return this.game.input.overCanvas !== false; }
   /** Something broke: say so on screen (once in a while) instead of silently freezing. */
@@ -59,7 +59,7 @@ export class UI {
   // ---------- controller ----------
   /** Swap keyboard hints for controller buttons while a pad is in use. */
   keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, 'A').replace(/\bF\b/g, 'X').replace(/\bQ\b/g, 'Y').replace(/\bTAB\b/g, 'START').replace(/\bV\b/g, 'RB').replace(/\bG\b/g, 'B').replace(/\bR\b/g, 'D-pad ↓').replace(/\bC\b/g, 'D-pad →'); }
-  padScope() { if (!this.game.started) return $('title'); if (this.plan && this.plan.open) return $('planmenu'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); if (this.invOpen) return $('inventory'); if (this.journalOpen) return $('journal'); return null; }
+  padScope() { if (this.perfOpen) return $('perf'); if (!this.game.started) return $('title'); if (this.plan && this.plan.open) return $('planmenu'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); if (this.invOpen) return $('inventory'); if (this.journalOpen) return $('journal'); return null; }
   padUpdate(inp, dt) {
     const P = inp.pad, g = this.game; if (!inp.padActive || !P.connected) { this.clearPadFocus(); return; }
     // menu focus (title screen, terminal)
@@ -174,6 +174,18 @@ export class UI {
   closeTerminal() { this.terminalB = null; this.hide('terminal'); this.calm(); }
   /** After closing a window, ignore 'use' for a moment so the same press doesn't reopen it. */
   calm() { if (this.game.player) this.game.player.interactCD = 0.4; }
+
+  // ---------- performance report ----------
+  togglePerf() { if (this.perfOpen) return this.closePerf(); this.perfOpen = true; this.game.input.unlock(); const txt = this.game.perf.report();
+    $('perf').innerHTML = `<div class="pwin"><h2><span>📊 Performance report</span><button data-p="close">Close (Esc)</button></h2><p>Press <b>Copy</b>, then paste the whole thing into your chat with Claude. It says how smoothly the game runs on your computer and what's taking the time. Nothing is sent anywhere by itself.</p><textarea readonly spellcheck="false"></textarea><div class="prow"><button data-p="copy">📋 Copy</button><button data-p="refresh">🔄 Refresh</button><span class="ok"></span></div></div>`;
+    $('perf').querySelector('textarea').value = txt; this.show('perf'); Sfx.play('ui'); }
+  closePerf() { this.perfOpen = false; this.hide('perf'); this.calm(); }
+  perfClick(e) {
+    const b = e.target.closest('button'); if (!b) return; const a = b.dataset.p, ta = $('perf').querySelector('textarea'), ok = $('perf').querySelector('.ok');
+    if (a === 'close') return this.closePerf();
+    if (a === 'refresh') { ta.value = this.game.perf.report(); ok.textContent = 'Updated.'; }
+    if (a === 'copy') { const done = () => { ok.textContent = '✓ Copied! Now paste it to Claude.'; }; ta.select(); try { navigator.clipboard.writeText(ta.value).then(done, () => { document.execCommand('copy'); done(); }); } catch (err) { document.execCommand('copy'); done(); } }
+  }
 
   // ---------- journal ----------
   openJournal() { this.journalOpen = true; this.modalOpen = true; this.game.input.unlock(); this.renderJournal(); this.show('journal'); Sfx.play('ui'); }
