@@ -83,6 +83,9 @@ The town starts in the **Steam & candle** age: no electricity, ledgers instead o
 
 The west-shore jetties, boats and (later) cranes only appear once you build a **Harbour**.
 
+## Seasons
+The calendar turns the town: blossom in spring, golden street trees and drifting leaves in autumn, and in winter snow on the ground and roofs, frosted pines, falling snow and snowmen built by the children. In December every home and shop gets fairy lights and a big tree goes up by the campfire or plaza. The clock shows the season.
+
 ## Life & look
 Citizens are English men, women, children and elders in a range of heights and builds, each with a face, hairstyle, hat and clothes, driven by a procedural animator with ~40 behaviours (walking, running, carrying, chopping, mining, harvesting, fishing, digging, hammering, typing, reading, eating, drinking, praying, sleeping, gesturing, fidgeting, waving, dancing, cheering, clapping, shrugging, facepalming and the odd V-sign) and speech bubbles. The renderer draws to a low-res target and adds a pixel-art outline, colour grade and dithered palette (`src/render/Post.js`). Day/night, moonlight, campfire light, chimney smoke, clouds and their shadows, harbour boats, seagulls, traffic and dogs add life.
 
