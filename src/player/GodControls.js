@@ -82,6 +82,11 @@ export class GodControls {
         else if (!ev.ok) g.ui.toast(ev.reason);
         else { const b = g.buildings.place(this.tool.sub, ev.x0, ev.z0, ev.rot); this.prefRot = ev.rot; g.messages.push('Planning Office', `${def.name} planned. It needs materials and workers.`); g.ui.toast(`${def.name} placed - needs building!`); }
       }
+    } else if ((id === 'build' || id === 'park' || id === 'util') && !this.tool.sub) {
+      // a tool is picked but not a building yet: still show where the cursor is, and say what to do
+      this.tileBox.visible = g.world.inBounds(tx, tz); this.tileBox.scale.set(TILE, 0.2, TILE); this.tileBox.position.set((tx + 0.5) * TILE, 0.15, (tz + 0.5) * TILE); this.tileBox.material.color.setHex(0xffd23f);
+      g.ui.setHover(g.input.padActive ? 'Pick a building: D-pad up/down, then A to place it' : '👈 Pick a building from the list first, then click here to place it');
+      if (inp.mouse.down) g.ui.toast('Choose a building from the list on the left first.');
     } else if (id === 'query') {
       if (inp.mouse.down) g.ui.query(this.queryAt(p, tx, tz));
     }
