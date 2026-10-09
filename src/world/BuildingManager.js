@@ -173,6 +173,11 @@ export class BuildingManager {
     this.world.events.emit('building:removed', b);
   }
 
+  /** Can Sam see the people inside? Yes when Sam is in there, or the front door is open and Sam is nearby. */
+  canSeeInto(b) {
+    if (b === this.playerInside) return true; const g = this.game; if (g.mode !== 'sim' || !(b.doorK > 0.15) || !b.doorPos) return false;
+    return Math.hypot(g.player.x - b.doorPos.x, g.player.z - b.doorPos.z) < 32;
+  }
   /** World-space box of a building's front doorway (what a closed door blocks). */
   doorRect(b) {
     if (b.doorRectC) return b.doorRectC; const def = b.def, D = def.d * TILE, off = b.geo.off, hw = 1.0, pts = [[off - hw, D / 2 - 0.42], [off + hw, D / 2 - 0.42], [off - hw, D / 2 + 0.05], [off + hw, D / 2 + 0.05]].map(([x, z]) => b.toWorld(x, z));

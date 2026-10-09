@@ -15,7 +15,7 @@ const STYLES = {
   shy:      { speed: 2.55, bounce: 0.85, slouch: 0.6, swing: 0.6, fidget: 1.4, soc: 0.35, mood: 0.1 },
   busy:     { speed: 3.3,  bounce: 1.0, slouch: 0.1, swing: 1.1, fidget: 0.9, soc: 0.4, mood: 0.0 },
 };
-const ROLE_UPPER = { publican: 'tidy', teacher: 'clipboard', brickmaker: 'idle', smith: 'idle', shopkeeper: 'tidy', doctor: 'clipboard', guard: 'guard', engineer: 'panel', factory: 'lever', clerk: 'clipboard', builder: 'idle' };
+const ROLE_UPPER = { publican: 'tidy', teacher: 'clipboard', brickmaker: 'saw', smith: 'hammer', shopkeeper: 'tidy', doctor: 'clipboard', guard: 'guard', engineer: 'panel', factory: 'lever', clerk: 'type', builder: 'hammer', baker: 'harvest', fryer: 'saw', vicar: 'read', librarian: 'browse', glassblower: 'panel', farmer: 'harvest', fisher: 'fish', lumberjack: 'saw', quarryman: 'hammer', forager: 'harvest' };
 const SEAT_UPPER = { desk: 'type', sofa: 'watch', bench: 'idle', dining: 'eat', waiting: 'read', pew: 'pray' };
 
 /**
@@ -126,7 +126,7 @@ export class Sim {
   wantActivity(h) {
     const alert = this.game.raids && this.game.raids.alert;
     if (this.kind === 'raider') return 'raid';
-    if (this.kind === 'visitor') return alert ? 'leave' : 'visit';
+    if (this.kind === 'visitor') return alert || this.leaving ? 'leave' : 'visit';
     if (this.kind === 'security') return 'guard';
     if (this.leaving) return 'leave';
     const night = h >= 22 || h < 6;
@@ -145,7 +145,7 @@ export class Sim {
   think(dt) {
     const g = this.game, h = g.clock.hour; this.timer -= dt; this.chatCool -= dt;
     this.tired = h >= 21 || h < 6.5; this.eatCD -= dt;
-    this.hunger = Math.min(100, this.hunger + dt * (this.pose === 'sleep' ? 0.16 : 0.6));
+    this.hunger = Math.min(100, this.hunger + dt * g.clock.rate() * (this.pose === 'sleep' ? 1.6 : 6));   // per game hour, so long days don't mean extra meals
     if (this.hunger >= 97) { this.starveT += dt; if (this.starveT > 140 && !this.leaving && this.kind === 'resident') { this.leaving = true; g.messages.push('Lift', `${this.name} has left Sam City, hungry and fed up.`, 'warn'); } } else this.starveT = Math.max(0, this.starveT - dt);
     if (this.mood < -0.6 && this.kind === 'resident' && !this.leaving) { this.sadT += dt; if (this.sadT > 220) { this.leaving = true; g.messages.push('Lift', `${this.name} has packed up and left for good.`, 'warn'); } } else this.sadT = Math.max(0, this.sadT - dt * 0.5);
     // mood drifts around the personality baseline
@@ -171,7 +171,7 @@ export class Sim {
       case 'shelter': this.doShelter(); break;
       case 'raid': this.game.raids.drive(this, dt); break;
       case 'defend': break;
-      case 'leave': this.doLeave(); break;
+      case 'leave': this.doLeave(dt); break;
       default: break;
     }
     if (this.hurry && this.activity !== 'work') this.hurry = false;
@@ -294,10 +294,11 @@ export class Sim {
       if (!ok) { this.phase = 2; this.visitDo = null; }
     }
   }
-  doLeave() {
+  doLeave(dt = 0.1) {
     const lift = this.game.lift;
     if (this.phase === 0) this.goTo({ b: lift, x: lift.doorIn.x, z: lift.doorIn.z });
     if (this.inside === lift && !this.path.length) this.remove = true;
+    this.leaveT = (this.leaveT || 0) + dt; if (this.phase === 0 && this.leaveT > 40 && this.kind === 'visitor') this.remove = true;   // couldn't find the way: they've gone home anyway
   }
   doWork(dt) {
     const wp = this.workplace;
@@ -316,12 +317,17 @@ export class Sim {
       this.jobCheck = (this.jobCheck || 0) - dt; if (this.jobCheck > 0) return; this.jobCheck = 2;
       const node = R.findNode(gd.node, wp.cx, wp.cz, this); const stand = node && R.standPoint(node, this);
       if (node && stand) { if (!node.infinite) node.reserved = this; this.job = { type: 'gather', gd, node, stand, step: 0, units: 0, t: 0 }; this.phase = 0; this.idleSet = true; }
-      else if (!this.idleSet) { this.idleSet = true; const i = pick(wp.spots.idle.length ? wp.spots.idle : wp.spots.work); this.goTo({ b: wp, x: i.x, z: i.z }); }
+      else if (gd.node === 'field' && wp.fieldNodes && wp.fieldNodes.length) {   // nothing ripe: tend the crops (weeding, watering), which helps them along
+        const f = pick(wp.fieldNodes.filter((n) => !n.reserved) || []); const st = f && R.standPoint(f, this);
+        if (f && st) { f.reserved = this; this.job = { type: 'gather', tend: true, gd, node: f, stand: st, step: 0, units: 0, t: 0, dur: 8 + Math.random() * 8 }; this.phase = 0; this.idleSet = true; }
+      }
+      else if (!this.idleSet) { this.idleSet = true; const i = pick(wp.spots.idle.length ? wp.spots.idle : wp.spots.work); if (!this.goTo({ b: wp, x: i.x, z: i.z })) this.phase = 2; }
       return;
     }
     const j = this.job;
     if (j.step === 0) { if (this.phase === 0) { const fc = Math.atan2(j.node.x - j.stand.x, j.node.z - j.stand.z); if (!this.goTo({ x: j.stand.x, z: j.stand.z, face: fc })) { this.abortJob(); return; } } if (this.phase === 2) j.step = 1; }
     else if (j.step === 1) {
+      if (j.tend) { this.working = true; this.faceGoal = Math.atan2(j.node.x - this.x, j.node.z - this.z); j.node.amount = Math.min(j.node.max, j.node.amount + dt * 0.04); j.t += dt; if (j.t >= j.dur) { j.step = 4; } return; }
       if (j.node.kind !== 'tree' && !j.node.infinite && j.node.amount < 1) { j.step = j.units > 0 ? 2 : 4; return; }
       if (j.node.kind === 'tree' && !j.node.alive) { j.step = j.units > 0 ? 2 : 4; return; }
       this.working = true; this.faceGoal = Math.atan2(j.node.x - this.x, j.node.z - this.z); j.t += dt;
@@ -401,7 +407,7 @@ export class Sim {
     return { lower, upper, speaking };
   }
   sync(dt, init = false) {
-    const g = this.game, m = this.mesh, hidden = this.hidden || (this.inside && !this.inside.def.open && this.inside !== g.buildings.playerInside);
+    const g = this.game, m = this.mesh, hidden = this.hidden || (this.inside && !this.inside.def.open && !g.buildings.canSeeInto(this.inside));
     m.visible = !hidden; if (hidden && !init) { this.working = false; return; }
     m.position.set(this.x, 0, this.z); m.rotation.y = this.heading;
     const cam = g.camera.position, d = Math.hypot(cam.x - this.x, cam.z - this.z) + (g.mode === 'god' ? cam.y * 0.6 : 0);

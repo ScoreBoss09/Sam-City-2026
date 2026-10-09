@@ -127,7 +127,7 @@ export class Player {
     } else { this.game.workgame.stop(); this.ring.visible = false; }
     // needs (game seconds)
     if (g.started && !this.sleeping) {
-      this.hunger = Math.min(100, this.hunger + dt * 0.22); this.energy = Math.max(0, this.energy - dt * g.clock.rate() * 4.4 * (this.hunger > 85 ? 1.8 : 1));   // tiredness follows the clock: about one good sleep a night
+      this.hunger = Math.min(100, this.hunger + dt * g.clock.rate() * 4); this.energy = Math.max(0, this.energy - dt * g.clock.rate() * 4.4 * (this.hunger > 85 ? 1.8 : 1));   // tiredness follows the clock: about one good sleep a night
       if (this.hunger > 65 && !this.hungerWarn) { this.hungerWarn = true; g.ui.toast('You are hungry. Press Q to eat food from your backpack, or eat by the Stockyard or a campfire.', 5200); }
       if (this.hunger < 40) this.hungerWarn = false;
       if (this.hunger >= 100) this.starveT += dt; else this.starveT = 0;
