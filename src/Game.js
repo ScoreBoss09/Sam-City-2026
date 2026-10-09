@@ -24,6 +24,7 @@ import { Fireworks } from './render/Fireworks.js';
 import { Upgrades } from './systems/Upgrades.js';
 import { PerfMonitor } from './core/PerfMonitor.js';
 import { LiftRides } from './systems/LiftRides.js';
+import { Autopilot } from './player/Autopilot.js';
 import { Particles } from './render/Particles.js';
 import { Piles } from './systems/Piles.js';
 import { Mail } from './systems/Mail.js';
@@ -61,7 +62,7 @@ export class Game {
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.3, 600);
     this.input = new Input(canvas); this.clock = new Clock(); this.messages = new Messages();
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
-    this.tech = new Tech(this); this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.upgrades = new Upgrades(this); this.perf = new PerfMonitor(this); this.liftRides = new LiftRides(this); this.logistics = new Logistics(this);
+    this.tech = new Tech(this); this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.upgrades = new Upgrades(this); this.perf = new PerfMonitor(this); this.liftRides = new LiftRides(this); this.autopilot = new Autopilot(this); this.logistics = new Logistics(this);
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.raids = new Raids(this); this.planner = new Planner(this); this.social = new Social(this);
     this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.skills = new Skills(this); this.challenges = new Challenges(this); this.celebrations = new Celebrations(this); this.fireworks = new Fireworks(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.mail = new Mail(this); this.talk = new Talk(this); this.favours = new Favours(this); this.events = new Events(this); this.weather = new Weather(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
@@ -91,6 +92,10 @@ export class Game {
   }
 
   setMode(mode) {
+    if (mode === 'sim' && this.autopilot && this.autopilot.on) {   // take the controls back from Sam's autopilot
+      const n = this.autopilot.note; this.autopilot.on = false; this.autopilot.stop();
+      if (this.player.sleeping) { this.clock.sleepBoost = 8; this.ui.fade(0.55, 'Zzz...'); } else if (n && this.started) this.ui.toast('Sam was ' + n + '.', 2600);
+    }
     this.mode = mode; if (mode === 'sim') this.flags.sawSim = true; this.camera.fov = mode === 'god' ? 38 : 72; this.camera.updateProjectionMatrix();
     this.ui.setMode(mode); if (mode === 'god') { this.ui.setPrompt(null); this.god.setTool('pan'); }
   }
