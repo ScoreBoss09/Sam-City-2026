@@ -1,3 +1,4 @@
+import { PlanMenu } from './PlanMenu.js';
 import { CHALLENGES } from '../systems/Challenges.js';
 import { SKILLS } from '../systems/Skills.js';
 import { BUILDINGS, MATERIALS, ROLES, TOOL_MENUS, ALL_BUILDABLE, tierOf } from '../data/buildings.js';
@@ -20,8 +21,9 @@ export class UI {
     this.game = game; this.adult = true; this.terminalTab = 'permits'; this.buildTab = 'Homes'; this.terminalB = null; this.dialogue = null; this.acc = 0; this.hoverTimer = 0;
 
     // toolbox
-    $('toolbox').innerHTML = TOOLS.map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('');
-    $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
+    $('toolbox').innerHTML = TOOLS.map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('') + '<button class="tool wide" data-menu="1"><span class="ic">📐</span>Planning menu <small>B / pad X</small></button>';
+    this.plan = new PlanMenu(game);
+    $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; if (b.dataset.menu) { this.plan.show(); return; } const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; game.clock.speed = +b.dataset.s; });
     $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); });
@@ -31,7 +33,7 @@ export class UI {
     this.refreshTools(); this.renderObjectives();
   }
   /** A window is open (talking, the post, the backpack, the journal, the how-to card): worked out fresh each time so it can't get stuck. */
-  get modalOpen() { return !!(this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
+  get modalOpen() { return !!((this.plan && this.plan.open) || this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
   set modalOpen(v) { /* derived; kept so old callers stay harmless */ }
   get mouseOverCanvas() { return this.game.input.overCanvas !== false; }
   /** Something broke: say so on screen (once in a while) instead of silently freezing. */
@@ -48,7 +50,7 @@ export class UI {
     const god = mode === 'god';
     ['toolbox'].forEach((i) => $(i).classList.toggle('hidden', !god)); if (!god) this.hide('submenu', 'hover');
     $('crosshair').classList.toggle('hidden', god); $('simhud').classList.toggle('hidden', god); $('stock').classList.remove('hidden');
-    $('help').classList.remove('hidden'); this.helpMode = mode; this.helpT = 14; $('help').textContent = this.game.input.padActive ? (god ? 'GOD MODE · START: control Sam · Left stick pan · Right stick rotate/zoom · A place/paint · B cancel · Y rotate · LB/RB tool · D-pad item' : 'SAM · START planning view · Left stick move · Right stick look · A use / tap in the green · D-pad ↑ backpack · D-pad ↓ drop · Y eat · LB sprint · RB camera') : god ? 'GOD MODE · TAB: control Sam · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SAM · TAB planning view · WASD move · Shift sprint · E use / tap in the green to work · I backpack · R drop · Q eat · V camera · M map · click to capture mouse';
+    $('help').classList.remove('hidden'); this.helpMode = mode; this.helpT = 14; $('help').textContent = this.game.input.padActive ? (god ? 'GOD MODE · START: control Sam · X planning menu · Left stick pan · Right stick rotate/zoom · A place/paint · B cancel · Y rotate · LB/RB tool · D-pad item · R3 whole island' : 'SAM · START planning view · Left stick move · Right stick look · A use / tap in the green · D-pad ↑ backpack · D-pad ↓ drop · Y eat · LB sprint · RB camera') : god ? 'GOD MODE · TAB: control Sam · B planning menu · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SAM · TAB planning view · WASD move · Shift sprint · E use / tap in the green to work · I backpack · R drop · Q eat · V camera · M map · click to capture mouse';
     $('c-mode').textContent = god ? 'PLANNING VIEW' : 'SAM (' + (this.game.player.third ? '3rd' : '1st') + ' person)';
     if (god) this.game.input.unlock();
   }
@@ -57,7 +59,7 @@ export class UI {
   // ---------- controller ----------
   /** Swap keyboard hints for controller buttons while a pad is in use. */
   keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, 'A').replace(/\bF\b/g, 'X').replace(/\bQ\b/g, 'Y').replace(/\bTAB\b/g, 'START').replace(/\bV\b/g, 'RB').replace(/\bG\b/g, 'B').replace(/\bR\b/g, 'D-pad ↓').replace(/\bC\b/g, 'D-pad →'); }
-  padScope() { if (!this.game.started) return $('title'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); if (this.invOpen) return $('inventory'); if (this.journalOpen) return $('journal'); return null; }
+  padScope() { if (!this.game.started) return $('title'); if (this.plan && this.plan.open) return $('planmenu'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); if (this.invOpen) return $('inventory'); if (this.journalOpen) return $('journal'); return null; }
   padUpdate(inp, dt) {
     const P = inp.pad, g = this.game; if (!inp.padActive || !P.connected) { this.clearPadFocus(); return; }
     // menu focus (title screen, terminal)
@@ -65,9 +67,11 @@ export class UI {
     if (scope) {
       const btns = [...scope.querySelectorAll('button')].filter((b) => !b.disabled && b.offsetParent !== null); if (!btns.length) return;
       this._pfIdx = Math.min(this._pfIdx || 0, btns.length - 1);
-      this._navT = (this._navT || 0) - dt; let d = 0; const sy = Math.abs(P.ly) > 0.6 ? Math.sign(P.ly) : Math.abs(P.lx) > 0.6 ? Math.sign(P.lx) : 0;
-      if (P.hitB[12] || P.hitB[14]) d = -1; else if (P.hitB[13] || P.hitB[15]) d = 1; else if (sy && this._navT <= 0) { d = sy; this._navT = 0.22; } if (!sy) this._navT = 0;
-      if (d) this._pfIdx = (this._pfIdx + d + btns.length) % btns.length;
+      if (scope.id === 'planmenu') { if (P.hitB[4] || P.hitB[5]) { this.plan.cycleTab(P.hitB[5] ? 1 : -1); return; } if (P.hitB[6] || P.hitB[7]) { this.plan.cycleCat(P.hitB[7] ? 1 : -1); return; } }
+      // D-pad / stick move the highlight to the nearest button in that direction (works for grids as well as lists)
+      this._navT = (this._navT || 0) - dt; let dir = null; const stick = Math.hypot(P.lx, P.ly) > 0.6 ? (Math.abs(P.lx) > Math.abs(P.ly) ? [Math.sign(P.lx), 0] : [0, Math.sign(P.ly)]) : null;
+      if (P.hitB[12]) dir = [0, -1]; else if (P.hitB[13]) dir = [0, 1]; else if (P.hitB[14]) dir = [-1, 0]; else if (P.hitB[15]) dir = [1, 0]; else if (stick && this._navT <= 0) { dir = stick; this._navT = 0.22; } if (!stick) this._navT = 0;
+      if (dir) this._pfIdx = this.navFrom(btns, this._pfIdx, dir);
       for (const b of scope.querySelectorAll('button.padfocus')) if (b !== btns[this._pfIdx]) b.classList.remove('padfocus'); btns[this._pfIdx].classList.add('padfocus'); btns[this._pfIdx].scrollIntoView({ block: 'nearest' });
       if (P.hitB[0]) { btns[this._pfIdx].click(); inp.pressed.delete('KeyE'); this.calm(); } return;
     }
@@ -77,6 +81,12 @@ export class UI {
     if (P.hitB[5] || P.hitB[4]) { const n = ids[(cur + (P.hitB[5] ? 1 : -1) + ids.length) % ids.length]; g.god.setTool(n, n === 'zone' ? 'res' : n === 'road' ? 'dirt' : null); this.openSub(n); this.toast(TOOLS.find((t) => t[0] === n)[2] + ' tool', 1200); }
     const list = this.padItems(); if (list.length && (P.hitB[12] || P.hitB[13])) { const i = list.indexOf(g.god.tool.sub), n = list[(i + (P.hitB[13] ? 1 : -1) + list.length + (i < 0 ? 1 : 0)) % list.length]; g.god.setTool(g.god.tool.id, n); this.openSub(g.god.tool.id); }
     if (g.god.tool.id === 'build' && (P.hitB[14] || P.hitB[15])) { const tabs = TOOL_MENUS.build.map(([n]) => n), i = tabs.indexOf(this.buildTab); this.buildTab = tabs[(i + (P.hitB[15] ? 1 : -1) + tabs.length) % tabs.length]; g.god.setTool('build', null); this.openSub('build'); }
+  }
+  /** Nearest button in a direction from the current one; falls back to next/previous in the list. */
+  navFrom(btns, i, [dx, dy]) {
+    const r0 = btns[i].getBoundingClientRect(), cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2; let best = -1, bs = Infinity;
+    btns.forEach((b, j) => { if (j === i) return; const r = b.getBoundingClientRect(), x = r.left + r.width / 2 - cx, y = r.top + r.height / 2 - cy, along = x * dx + y * dy; if (along <= 6) return; const perp = Math.abs(x * dy - y * dx), sc = along + perp * 2.2; if (sc < bs) { bs = sc; best = j; } });
+    return best >= 0 ? best : (i + (dx + dy > 0 ? 1 : -1) + btns.length) % btns.length;
   }
   padItems() { const t = this.game.god.tool.id, vis = (l) => l.filter((k) => this.game.economy.visible(k)); if (t === 'build') return vis((TOOL_MENUS.build.find(([n]) => n === this.buildTab) || TOOL_MENUS.build[0])[1]); if (t === 'park' || t === 'util') return vis(TOOL_MENUS[t]); if (t === 'road') return ['dirt', 'paved']; if (t === 'zone') return ['res', 'com', 'ind', 'none']; return []; }
   clearPadFocus() { if (this._pfOn) { document.querySelectorAll('.padfocus').forEach((b) => b.classList.remove('padfocus')); this._pfOn = false; } if (this.padScope()) this._pfOn = true; }
@@ -97,7 +107,7 @@ export class UI {
     sm.innerHTML = (tabs ? `<div class="tabrow">${tabs}</div>` : '') + (list.length ? '' : '<div class="sub locked teaser">Nothing here yet<small>grow the village</small></div>') + list.map((k) => {
       const d = BUILDINGS[k], un = g.economy.isUnlocked(k), p = g.economy.permits[k], mats = Object.entries(d.mat).map(([m, n]) => n + ' ' + m).join(', ');
       const status = un ? mats : (p === 'pending' ? 'permit pending…' : pop < d.permit.pop ? `needs ${d.permit.pop} residents` : `permit £${d.permit.cost} (Postbox form)`);
-      return `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${un ? '' : 'locked'}" data-s="${k}">${d.name}<small>${status}</small></button>`;
+      const nb = g.buildings.count(k); return `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${un ? '' : 'locked'} ${nb ? 'built' : ''}" data-s="${k}">${nb ? `<span class="tick">✓${nb > 1 ? ' ×' + nb : ''}</span>` : ''}${d.name}<small>${status}</small></button>`;
     }).join('') + more; sm.classList.remove('hidden'); this.subOpen = id;
   }
   refreshSub() { const sm = $('submenu'); if (this.subOpen && sm && !sm.classList.contains('hidden') && this.game.mode === 'god') this.openSub(this.subOpen);
@@ -274,6 +284,7 @@ export class UI {
 
   // ---------- per-frame ----------
   update(dt) {
+    if (this.plan.open && this.plan.tab !== 'build') { this._planT = (this._planT || 0) - dt; if (this._planT <= 0) { this._planT = 1; this.plan.render(); } }
     const g = this.game;
     if (this.hoverTimer > 0) { this.hoverTimer -= dt; if (this.hoverTimer <= 0 || g.mode !== 'god') $('hover').classList.add('hidden'); }
     if (this.dialogue) { const d = this.dialogue; d.shown = Math.min(d.full.length, d.shown + dt * 55); $('d-text').textContent = d.full.slice(0, Math.floor(d.shown)); }

@@ -21,6 +21,7 @@ import { Skills } from './systems/Skills.js';
 import { Challenges } from './systems/Challenges.js';
 import { Celebrations } from './systems/Celebrations.js';
 import { Fireworks } from './render/Fireworks.js';
+import { Upgrades } from './systems/Upgrades.js';
 import { Particles } from './render/Particles.js';
 import { Piles } from './systems/Piles.js';
 import { Mail } from './systems/Mail.js';
@@ -58,7 +59,7 @@ export class Game {
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.3, 600);
     this.input = new Input(canvas); this.clock = new Clock(); this.messages = new Messages();
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
-    this.tech = new Tech(this); this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.logistics = new Logistics(this);
+    this.tech = new Tech(this); this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.upgrades = new Upgrades(this); this.logistics = new Logistics(this);
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.raids = new Raids(this); this.planner = new Planner(this); this.social = new Social(this);
     this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.skills = new Skills(this); this.challenges = new Challenges(this); this.celebrations = new Celebrations(this); this.fireworks = new Fireworks(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.mail = new Mail(this); this.talk = new Talk(this); this.favours = new Favours(this); this.events = new Events(this); this.weather = new Weather(this); this.siteLabels = new SiteLabels(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('month', () => this.economy.monthly());
@@ -125,6 +126,8 @@ export class Game {
     if (inp.locked && (this.mode !== 'sim' || ui.modalOpen || this.ending)) inp.unlock();
     // modal / toggles
     if (ui.dialogue) ui.dialogueKeys(inp);
+    if (ui.plan.open && (inp.hit('Escape') || inp.hit('KeyB'))) { ui.plan.close(); inp.pressed.delete('KeyB'); inp.pressed.delete('Escape'); }
+    else if (this.mode === 'god' && this.started && !ui.modalOpen && inp.hit('KeyB')) ui.plan.show();
     if (ui.terminalB && inp.hit('Escape')) ui.closeTerminal();
     if (ui.invOpen && (inp.hit('Escape') || inp.hit('KeyI'))) { ui.closeInventory(); inp.pressed.delete('KeyI'); }
     if (ui.journalOpen && (inp.hit('Escape') || inp.hit('KeyJ'))) { ui.closeJournal(); inp.pressed.delete('KeyJ'); }

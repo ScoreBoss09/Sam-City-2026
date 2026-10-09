@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TILE } from '../config.js';
 import { ROLES, GATHER } from '../data/buildings.js';
+import { makeCart, updateCart } from '../render/Carts.js';
 import { createRig } from '../render/SimRig.js';
 import { Animator } from '../render/Animator.js';
 import { pick, angleDiff } from '../util.js';
@@ -100,6 +101,9 @@ export class Sim {
     if (this.frozen || this.chat || this.sitting || !this.path.length) {
       this.vel = Math.max(0, this.vel - 9 * dt); if (!this.frozen && !this.chat && !this.path.length && this.phase === 1) this.arrive(); this.dist = Math.hypot(this.x - prevX, this.z - prevZ); return;
     }
+    // jammed in a crowd (barely moved for a second while trying to walk)? slip through the others for a moment
+    if (this.ghostT > 0) this.ghostT -= dt;
+    this.jamT = (this.jamT || 0) + dt; if (this.jamT >= 1) { if (Math.hypot(this.x - (this.jamX ?? this.x), this.z - (this.jamZ ?? this.z)) < 0.45 && this.vel > 0.3) this.ghostT = 2.2; this.jamT = 0; this.jamX = this.x; this.jamZ = this.z; }
     const p = this.path[0], dx = p.x - this.x, dz = p.z - this.z, d = Math.hypot(dx, dz), exact = p.enter || p.exit || this.path.length === 1;
     if (p.door && Math.hypot(this.x - p.door.doorPos.x, this.z - p.door.doorPos.z) < 2.6) p.door.doorUseT = 0.7;   // only open the door while actually going through it
     const want = Math.atan2(dx, dz), dh = angleDiff(this.heading, want), rate = 8;
@@ -151,7 +155,7 @@ export class Sim {
     if (this.mood < -0.6 && this.kind === 'resident' && !this.leaving) { this.sadT += dt; if (this.sadT > 220) { this.leaving = true; g.messages.push('Lift', `${this.name} has packed up and left for good.`, 'warn'); } } else this.sadT = Math.max(0, this.sadT - dt * 0.5);
     // mood drifts around the personality baseline
     this.moodBoost *= Math.exp(-dt * 0.02);
-    this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + Math.min(0.2, this.friendCount() * 0.04) + (this.kind !== 'visitor' ? g.buildings.townJoy() : 0);
+    this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + ((this.home && this.home.def.homeJoy) || 0) + Math.min(0.2, this.friendCount() * 0.04) + (this.kind !== 'visitor' ? g.buildings.townJoy() : 0);
     if (this.down > 0) return;
     const want = this.wantActivity(h);
     if (want !== this.activity) { if (this.chat) g.social.endChat(this); this.endActivity(); this.activity = want; this.phase = 0; this.timer = 0; this.hurry = want === 'work' && h > (this.role === 'builder' ? 7.2 : 8.2) && this.trait !== 'shy' && Math.random() < 0.6; }
@@ -338,7 +342,7 @@ export class Sim {
       if (j.node.kind !== 'tree' && !j.node.infinite && j.node.amount < 1) { j.step = j.units > 0 ? 2 : 4; return; }
       if (j.node.kind === 'tree' && !j.node.alive) { j.step = j.units > 0 ? 2 : 4; return; }
       this.working = true; this.faceGoal = Math.atan2(j.node.x - this.x, j.node.z - this.z); j.t += dt;
-      if (j.t >= gd.time) { j.t = 0; if (R.take(j.node)) { j.units += gd.per; this.carry = { mat: gd.mat, qty: j.units }; } if (j.units >= gd.cap) j.step = 2; }
+      if (j.t >= gd.time / (wp.def.toolSpeed || 1)) { j.t = 0; if (R.take(j.node)) { j.units += gd.per; this.carry = { mat: gd.mat, qty: j.units }; } if (j.units >= gd.cap * (wp.def.carry || 1)) j.step = 2; }
     } else if (j.step === 2) {
       const dep = g.depot; if (!dep) { this.abortJob(); return; } if (j.node && j.node.reserved === this) j.node.reserved = null; this.phase = 0;
       if (!this.goTo({ x: dep.doorOut.x, z: dep.doorOut.z, face: dep.rot * Math.PI / 2 + Math.PI })) { this.abortJob(); return; } j.step = 3;
@@ -375,13 +379,15 @@ export class Sim {
       if (!g.roadPlans.has(p.x, p.z)) { this.job = null; this.idleSet = false; return; }
       if (j.step === 0) { if (!this.goTo({ x: p.cx + (Math.random() - 0.5) * 1.4, z: p.cz + (Math.random() - 0.5) * 1.4 })) { this.abortJob(); return; } j.step = 1; }
       else if (j.step === 1 && this.phase === 2) { j.step = 2; j.tool = 'dig'; this.faceGoal = Math.atan2(p.cx - this.x, p.cz - this.z); }
-      else if (j.step === 2) { this.working = true; if (g.roadPlans.work(p, dt * 0.9)) { this.job = null; this.idleSet = false; } }
+      else if (j.step === 2) { this.working = true; if (g.roadPlans.work(p, dt * 0.9 * (wp.def.buildSpeed || 1))) { this.job = null; this.idleSet = false; } else { j.recheck = (j.recheck || 0) - dt; if (j.recheck <= 0) { j.recheck = 5; const f = c.focus(); if (f && f.kind !== 'roads' && (f.prio ?? 1e9) < (g.flags.roadPrio ?? 1e9)) { if (p.reserved === this) p.reserved = null; this.job = null; this.idleSet = false; } } } }
     } else if (j.type === 'build') {
       if (j.step === 0) { const p = c.perimeterPoint(j.site, this); if (!this.goTo({ x: p.x, z: p.z })) { this.abortJob(); return; } j.step = 1; j.site.builders = (j.site.builders || 0) + 1; }
       else if (j.step === 1 && this.phase === 2) { j.step = 2; j.tool = Math.random() < 0.7 ? 'hammer' : 'saw'; this.faceGoal = Math.atan2(j.site.cx - this.x, j.site.cz - this.z); }
       else if (j.step === 2) {
         const s = j.site; if (s.state !== 'site' || s.progress >= g.buildings.supply(s) - 0.0005) { s.builders = Math.max(0, (s.builders || 0) - 1); this.job = null; this.idleSet = false; return; }
-        this.working = true; g.buildings.addWork(s, dt * 0.85);
+        // something higher up the work list needs hands? go and help there instead
+        j.recheck = (j.recheck || 0) - dt; if (j.recheck <= 0) { j.recheck = 4; const f = c.focus(); if (f && f.s !== s && (f.prio ?? 1e9) < (s.prio ?? 1e9)) { s.builders = Math.max(0, (s.builders || 0) - 1); this.job = null; this.idleSet = false; return; } }
+        this.working = true; g.buildings.addWork(s, dt * 0.85 * (wp.def.buildSpeed || 1));
       }
     }
   }
@@ -396,7 +402,7 @@ export class Sim {
     else if (this.working) lower = 'crouch';
     const gj = this.job && this.job.type === 'gather' ? this.job : null;
     if (this.working) { if (gj && gj.step === 1) { upper = gj.gd.upper; lower = ['harvest', 'dig'].includes(upper) ? 'crouch' : 'stand'; } else if (this.job && this.job.tool === 'dig') { upper = 'dig'; lower = 'crouch'; } else upper = this.job && this.job.tool === 'saw' ? 'saw' : this.job && this.job.tool === 'dig' ? 'dig' : 'hammer'; }
-    else if (this.carry && !this.sitting) upper = this.carry.mat === 'food' ? 'carry' : 'carry';
+    else if (this.carry && !this.sitting) upper = this.cart && this.cart.visible ? 'pull' : 'carry';
     else if (this.bag && lower === 'walk') upper = 'bag';
     else if (!this.sitting && this.activity === 'work' && !this.moved && this.role && this.phase === 2) upper = ROLE_UPPER[this.role] || 'idle';
     else if (this.kind === 'security') upper = this.moved ? 'idle' : 'guard';
@@ -414,9 +420,13 @@ export class Sim {
     return { lower, upper, speaking };
   }
   sync(dt, init = false) {
-    const g = this.game, m = this.mesh, hidden = this.hidden || (this.inside && !this.inside.def.open && !g.buildings.canSeeInto(this.inside));
+    const g = this.game, m = this.mesh, hidden = this.hidden || (this.pose === 'sleep' && this.bedSpot && this.bedSpot.upstairs) || (this.inside && !this.inside.def.open && !g.buildings.canSeeInto(this.inside));
     m.visible = !hidden; if (hidden && !init) { this.working = false; return; }
     m.position.set(this.x, 0, this.z); m.rotation.y = this.heading;
+    const wpc = this.workplace && this.workplace.def.cart && (GATHER[this.role] || this.role === 'builder') && this.activity === 'work' ? this.workplace.def.cart : 0, useCart = !!(wpc && this.carry && !this.inside);
+    if (useCart && (!this.cart || this.cart.userData.level !== wpc)) { if (this.cart) m.remove(this.cart); this.cart = makeCart(wpc); this.cart.position.z = wpc >= 2 ? -1.5 : -1.25; m.add(this.cart); }
+    if (this.cart) { this.cart.visible = useCart; if (useCart) updateCart(this.cart, this.carry.mat, this.carry.qty, this.moved ? this.dist || 0 : 0); }
+    this.useCart = useCart;
     const cam = g.camera.position, d = Math.hypot(cam.x - this.x, cam.z - this.z) + (g.mode === 'god' ? cam.y * 0.6 : 0);
     const far = d > (g.mode === 'god' ? 64 : 42);
     if (far !== this.lowDetail || init) { this.lowDetail = far; this.rig.lod.visible = far; for (const p of this.rig.parts) p.visible = !far; if (!far) this.rig.lids.visible = false; }
@@ -426,7 +436,7 @@ export class Sim {
     if (this.freezeT > 0) dt = 0;
     if (this.fireT > 0) this.fireT -= dt;
     this.updateLook(dt);
-    const a = this.decideAnim(), carryCol = this.carry ? ({ timber: 0xb5834a, brick: 0xa8442f, steel: 0x7b8794, glass: 0x7ec8e3 }[this.carry.mat]) : undefined;
+    const a = this.decideAnim(), carryCol = this.carry && !this.useCart ? ({ timber: 0xb5834a, brick: 0xa8442f, steel: 0x7b8794, glass: 0x7ec8e3 }[this.carry.mat]) : undefined;
     this.anim.update(dt, { ...a, dist: this.moved ? (this.dist || 0) : 0, speed: this.vel, run: this.vel > 3.6 || (this.hurry && this.vel > 2.8), turning: this.turning && !this.moved, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: this.mood, tired: this.tired, crateColor: carryCol,
       prop: this.kind === 'raider' && this.down <= 0 ? { handR: this.weapon } : this.kind === 'security' && this.fireT > 0 ? { handR: 'pistol' } : this.bag && a.lower === 'walk' ? { handR: 'bag' } : (this.look.cane && !this.sitting && this.pose !== 'sleep' && (a.upper === 'idle') ? { handR: 'cane' } : undefined), lean: this.vel > 0.5 ? 0 : 0 });
     this.working = false;

@@ -84,6 +84,8 @@ export class Animator {
     const still = this.lower !== 'walk';
     switch (u) {
       case 'idle': if (still && this.lower === 'stand') { this.fidgets(dt, o); if (this.fid === 'phone') props.handR = 'phone'; } else if (this.lower === 'sit') this.sitFidgets(dt, o); break;
+      case 'pull':   // hauling a cart: hands back on the handles, leaning into it
+        T[I.SLX] = T[I.SRX] = 0.38; T[I.SLZ] = 0.12; T[I.SRZ] = -0.12; T[I.ELL] = T[I.ERR] = -0.15; T[I.SPX] += 0.16; T[I.HDX] = -0.05; break;
       case 'carry':
         T[I.SLX] = T[I.SRX] = -1.3; T[I.SLZ] = 0.2; T[I.SRZ] = -0.2; T[I.ELL] = T[I.ERR] = -0.85; T[I.SPX] += 0.0; T[I.HDX] = 0.05; props.chest = 'crate'; break;
       case 'hammer': {

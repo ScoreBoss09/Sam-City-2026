@@ -33,6 +33,8 @@ export class Social {
     for (const [s, o] of [[a, b], [b, a]]) { s.faceGoal = Math.atan2(o.x - s.x, o.z - s.z); s.chatCool = 40 + Math.random() * 60; }
     this.say(first ? a : b, pick(['Alright?', 'Oh, hello!', 'Fancy seeing you!']), 2);
   }
+  /** Standing in or right in front of a doorway, where a chat would block everyone. */
+  inDoorway(s) { for (const b of this.game.buildings.list) { const d = b.doorPos || b.doorOut; if (d && Math.abs(d.x - s.x) < 2.2 && Math.abs(d.z - s.z) < 2.2) return true; } return false; }
   /** Chatting builds (or damages) relationships; friends can become couples. */
   relate(a, b) {
     const comp = (COMPAT[a.trait] || {})[b.trait] ?? 0.5; let d = 3 + comp * 8 + Math.random() * 3;
@@ -77,7 +79,7 @@ export class Social {
         for (const o of sims) {
           if (o === s || o.chat || o.sleeping || (o.kind === 'security' || o.kind === 'raider' || o.down > 0 || o.activity === 'shelter') || o.chatCool > 0 || o.frozen || o.job || o.carry || o.inside !== s.inside) continue;
           if (!['leisure', 'visit', 'home'].includes(o.activity) && !(o.activity === 'work' && o.phase === 2)) continue;
-          if (Math.hypot(o.x - s.x, o.z - s.z) < 3.0 && !s.sitting && !o.sitting) { this.startChat(s, o); break; }
+          if (Math.hypot(o.x - s.x, o.z - s.z) < 3.0 && !s.sitting && !o.sitting && !s.path.length && !o.path.length && !this.inDoorway(s) && !this.inDoorway(o)) { this.startChat(s, o); break; }
         }
       }
     }

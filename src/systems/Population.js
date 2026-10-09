@@ -199,11 +199,12 @@ export class Population {
         for (const b of arr) {
           if (b.id <= a.id) continue; let dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz); if (d >= R) continue;
           if (d < 0.001) { dx = Math.random() - 0.5; dz = Math.random() - 0.5; d = Math.hypot(dx, dz); } const f = (R - d) * 0.5 * k / d;
-          if (!a.frozen && !a.chat) push(a, -dx, -dz, f); if (!b.frozen && !b.chat) push(b, dx, dz, f);
+          if (a.ghostT > 0 || b.ghostT > 0) continue;   // someone squeezing past a crowd
+          if (!a.frozen) push(a, -dx, -dz, a.chat ? f * 0.35 : f); if (!b.frozen) push(b, dx, dz, b.chat ? f * 0.35 : f);
         }
       }
       if (P && (a.inside || null) === (this.game.buildings.playerInside || null) && !P.sleeping) {
-        const dx = a.x - P.x, dz = a.z - P.z, d = Math.hypot(dx, dz); if (d < R && d > 0.001 && !a.frozen) push(a, dx, dz, (R - d) * k / d);
+        const dx = a.x - P.x, dz = a.z - P.z, d = Math.hypot(dx, dz); if (d < R && d > 0.001 && !a.frozen && !(a.ghostT > 0)) push(a, dx, dz, (R - d) * k / d);
       }
     }
   }

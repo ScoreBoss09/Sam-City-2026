@@ -162,3 +162,25 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 .ver { font-size: 11px; color: #8d9bb3; margin: -6px 0 10px; }
 
 .chal { display: grid; grid-template-columns: 34px 1fr; gap: 6px; padding: 6px; margin: 6px 0; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.04); } .chal .ic { font-size: 24px; align-self: center; } .chal i { display: block; height: 6px; background: rgba(255,255,255,.12); margin: 4px 0 2px; } .chal u { display: block; height: 100%; background: #f2c94c; }
+/* ticks for building types you already have */
+.sub { position: relative; } .sub .tick, .card .tick { position: absolute; top: 3px; right: 4px; background: #3f9a4f; color: #fff; font: bold 11px "Courier New", monospace; padding: 0 4px; border-radius: 3px; } .card .tick.site { background: #c98a2a; }
+.sub.built { border-color: #3f7a4f; }
+.tool.wide { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 6px; } .tool.wide .ic { display: inline; font-size: 18px; } .tool.wide small { color: var(--dim); }
+/* the planning menu */
+#planmenu { position: absolute; inset: 0; background: rgba(5,10,20,.62); display: flex; align-items: center; justify-content: center; z-index: 25; }
+#planmenu .pwin { width: min(980px, 96vw); max-height: 90vh; overflow: auto; background: #101c2e; border: 3px solid #3a5a86; box-shadow: 0 0 40px rgba(0,0,0,.6); color: #e6eefc; padding: 12px 14px; font: 13px "Courier New", monospace; }
+#planmenu .phead { display: flex; align-items: center; gap: 12px; font-size: 18px; } #planmenu .phead .funds { margin-left: auto; font-size: 13px; color: #f2c94c; }
+#planmenu button { background: #1a2c46; border: 2px solid #2d4262; color: #e6eefc; font: 13px "Courier New", monospace; padding: 6px 10px; cursor: pointer; border-radius: 3px; }
+#planmenu button:hover:not(:disabled) { border-color: #ffd23f; } #planmenu button.on { background: #2d4f80; border-color: #ffd23f; } #planmenu button:disabled { opacity: .35; cursor: default; }
+#planmenu .ptabs, #planmenu .pcats { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 6px; align-items: center; } #planmenu .ptabs button { font-size: 15px; padding: 8px 14px; } #planmenu .hint { margin-left: auto; color: #8ea3c4; font-size: 12px; }
+#planmenu .pcats button small { color: #8ea3c4; }
+#planmenu .pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 6px; }
+#planmenu .card { position: relative; text-align: left; display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto auto; min-height: 62px; }
+#planmenu .card .ic { grid-row: span 2; font-size: 26px; align-self: center; } #planmenu .card b { font-size: 13px; padding-right: 34px; } #planmenu .card small { color: #a9bad6; font-size: 11px; }
+#planmenu .card.locked { opacity: .6; } #planmenu .card.built { border-color: #3f7a4f; background: #16301f; }
+#planmenu .pnote { color: #a9bad6; margin: 8px 0; line-height: 1.4; } #planmenu .pnote b { color: #f2c94c; }
+#planmenu .qrow { display: flex; align-items: center; gap: 6px; padding: 6px; margin: 4px 0; background: #14233a; border: 1px solid #2d4262; } #planmenu .qrow.top { border-color: #f2c94c; }
+#planmenu .qn { width: 30px; text-align: center; font-size: 18px; color: #f2c94c; } #planmenu .qi { flex: 1; min-width: 0; } #planmenu .qi small { display: block; color: #a9bad6; } #planmenu .qi em { color: #ff9a7a; font-style: normal; }
+#planmenu .qi i { display: block; height: 5px; background: #23344f; margin-top: 4px; } #planmenu .qi u { display: block; height: 100%; background: #f2c94c; }
+#planmenu .st { color: #f2c94c; font-size: 12px; } #planmenu .stars { color: #f2c94c; }
+@media (max-width: 600px) { #planmenu .qrow { flex-wrap: wrap; } }
