@@ -47,7 +47,9 @@ Chopping, mining, digging, picking, fishing and building show a timing bar. Tap 
 - **Curios**: 14 odd little things glint on the ground around the island. Your journal (J) keeps them, with your friends and records.
 - **Village fête** every few days at a park or the campfire: bunting, stalls, a tune, and a happier town.
 - **Post**: the red Postbox brings monthly accounts, permit replies, the local paper and notes from neighbours. Its **Jobs** page shows every workplace, how many jobs are filled, who works where and who is looking for work.
-- **Doors** stay shut until Sam presses C (D-pad right). Villagers open them for themselves.
+- **Doors** are shut by default. Sam opens or shuts them with C (D-pad right), even with people inside; villagers only open a door for the moment they walk through it.
+- **Days and nights**: daylight (06:00-20:00) lasts 10 real minutes, the night 3. Sam needs about one sleep a night. A month is 8 days.
+- **Dogs** trot along behind their owners through the doors and indoors.
 - **Order supplies** on the yellow intercom post beside the Lift. The goods cage comes down with your crates; a truck takes them to the Stockyard, or they wait on the dock for you to carry. A Post Office knocks 20% off.
 - **Phone Box**: 10p for a random call. **Bookies**: £20 on a horse with a silly name. **The Red Lion**: sit down for a pint.
 - **Church** on Sunday mornings (bells), the **brass band** at the Bandstand in the evening, pub banter every night.

@@ -28,10 +28,20 @@ export class Dog {
   }
   update(dt) {
     const o = this.owner, g = this.game; this.t += dt;
-    const hidden = o.hidden || !o.mesh.visible || (o.inside && !o.inside.def.open && o.inside !== g.buildings.playerInside);
-    this.root.visible = !hidden; if (hidden) { this.x = o.x - Math.sin(o.heading) * 1.2; this.z = o.z - Math.cos(o.heading) * 1.2; return; }
-    const tx = o.x - Math.sin(o.heading) * 1.25 + Math.cos(o.heading) * 0.5, tz = o.z - Math.cos(o.heading) * 1.25 - Math.sin(o.heading) * 0.5, dx = tx - this.x, dz = tz - this.z, d = Math.hypot(dx, dz);
-    let speed = 0; if (d > 0.35) { speed = Math.min(5.2, 1.4 + d * 2.2); const want = Math.atan2(dx, dz); let dh = want - this.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); this.h += dh * Math.min(1, dt * 9); this.x += Math.sin(this.h) * speed * dt; this.z += Math.cos(this.h) * speed * dt; this.still = 0; } else this.still += dt;
+    // follow the owner's footsteps (like on a lead) so the dog goes through doors instead of walls
+    const tr = this.trail || (this.trail = []), last = tr[tr.length - 1];
+    if (!last || Math.hypot(o.x - last.x, o.z - last.z) > 0.3) { tr.push({ x: o.x, z: o.z }); if (tr.length > 120) tr.shift(); }
+    const far = Math.hypot(o.x - this.x, o.z - this.z) > 18;
+    if (far || o.hidden) { this.x = o.x - Math.sin(o.heading) * 1.2; this.z = o.z - Math.cos(o.heading) * 1.2; tr.length = 0; }
+    while (tr.length > 1 && Math.hypot(tr[0].x - this.x, tr[0].z - this.z) < 0.35) tr.shift();
+    let ahead = 0, px = this.x, pz = this.z; for (const q of tr) { ahead += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; } ahead += Math.hypot(o.x - px, o.z - pz);
+    const tgt = tr.length ? tr[0] : { x: o.x, z: o.z }, dx = tgt.x - this.x, dz = tgt.z - this.z, d = Math.hypot(dx, dz);
+    let speed = 0;
+    if (ahead > 1.3 && d > 0.05) { speed = Math.min(6, 1.6 + (ahead - 1.3) * 1.6); const want = Math.atan2(dx, dz); let dh = want - this.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); this.h += dh * Math.min(1, dt * 10); const st = Math.min(d, speed * dt); this.x += dx / d * st; this.z += dz / d * st; this.still = 0; }
+    else { this.still += dt; if (this.still > 0.6) { const fo = Math.atan2(o.x - this.x, o.z - this.z); let dh = fo - this.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); this.h += dh * Math.min(1, dt * 3); } }
+    // hidden (like people) when it's inside a house Sam isn't in
+    const inB = g.buildings.buildingAtPoint(this.x, this.z), hidden = (inB && !inB.def.open && inB !== g.buildings.playerInside) || (!o.mesh.visible && !inB);
+    this.root.visible = !hidden; if (hidden) return;
     const sitting = this.still > 2.5; this.sit += ((sitting ? 1 : 0) - this.sit) * Math.min(1, dt * 6);
     this.ph += speed * dt * 4.2; const run = Math.min(1, speed / 3), s = Math.sin(this.ph);
     this.legs[0].rotation.x = s * 0.9 * run; this.legs[1].rotation.x = -s * 0.9 * run; this.legs[2].rotation.x = -s * 0.9 * run + this.sit * -1.2; this.legs[3].rotation.x = s * 0.9 * run + this.sit * -1.2;

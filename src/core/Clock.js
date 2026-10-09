@@ -1,4 +1,4 @@
-import { DAY_SECONDS, DAYS_PER_MONTH, START_HOUR, START_MONTH, START_YEAR } from '../config.js';
+import { DAYLIGHT_SECONDS, NIGHT_SECONDS, DAWN, DUSK, DAYS_PER_MONTH, START_HOUR, START_MONTH, START_YEAR } from '../config.js';
 import { Emitter } from '../util.js';
 export const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
@@ -8,13 +8,15 @@ export class Clock extends Emitter {
   /** Advance by real dt; returns the scaled game dt in seconds. */
   tick(dt) {
     const gdt = dt * this.scale, h0 = Math.floor(this.hour);
-    this.hour += gdt * 24 / DAY_SECONDS; if (Math.floor(this.hour) !== h0 && this.hour < 24) this.emit('hour');
+    this.hour += gdt * this.rate(); if (Math.floor(this.hour) !== h0 && this.hour < 24) this.emit('hour');
     while (this.hour >= 24) {
       this.hour -= 24; this.day++; this.totalDays++; this.emit('day');
       if (this.day > DAYS_PER_MONTH) { this.day = 1; this.month++; if (this.month > 11) { this.month = 0; this.year++; } this.emit('month'); }
     }
     return gdt;
   }
+  /** Game hours per (scaled) second right now: days pass slowly, nights quickly. */
+  rate(h = this.hour) { return h >= DAWN && h < DUSK ? (DUSK - DAWN) / DAYLIGHT_SECONDS : (24 - DUSK + DAWN) / NIGHT_SECONDS; }
   get hhmm() { const h = Math.floor(this.hour), m = Math.floor((this.hour - h) * 60); return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'); }
   get isNight() { return this.hour < 5.5 || this.hour >= 19.5; }
   serialize() { return { hour: this.hour, day: this.day, month: this.month, year: this.year, totalDays: this.totalDays }; }

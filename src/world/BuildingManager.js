@@ -228,8 +228,9 @@ export class BuildingManager {
       const D = b.ext && b.ext.doors; if (!D || !D.length || b.state !== 'done') continue;
       if (Math.hypot(cam.x - b.cx, cam.z - b.cz) > 90) continue;
       const dp = b.doorPos; if (b.doorHeld && Math.hypot(pl.x - dp.x, pl.z - dp.z) > 10) b.doorHeld = false;   // Sam wandered off: it swings shut
-      let want = !!b.doorHeld || (sim && b.doorK > 0 && this.doorRectHas(b, pl.x, pl.z, 0.55));
-      if (!want) for (const q of sims) { if (!q.hidden && Math.abs(q.x - dp.x) < 2.6 && Math.abs(q.z - dp.z) < 2.6) { want = true; break; } }
+      if (b.doorUseT > 0) b.doorUseT -= dt;
+      // closed unless Sam opened it (C), someone is walking through it right now, or Sam is standing in the doorway
+      const want = !!b.doorHeld || b.doorUseT > 0 || (sim && b.doorK > 0 && this.doorRectHas(b, pl.x, pl.z, 0.55));
       const k = b.doorK || 0, nk = Math.max(0, Math.min(1, k + (want ? 4 : -2.2) * dt));
       if (nk !== k) { if (k === 0 && nk > 0 && sim && Math.hypot(pl.x - dp.x, pl.z - dp.z) < 14) Sfx.play('door'); b.doorK = nk; const e = nk * nk * (3 - 2 * nk); for (const d of D) d.pivot.rotation.y = d.open * e; }
     }
