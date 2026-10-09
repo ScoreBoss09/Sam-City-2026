@@ -124,7 +124,7 @@ export class Player {
       if (inp.hit('KeyR')) this.drop();
       if (inp.hit('KeyI')) g.ui.openInventory(); if (inp.hit('KeyJ')) g.ui.openJournal();
       this.interact(rawDt);
-    } else { this.game.workgame.stop(); this.ring.visible = false; }
+    } else { this.game.workgame.stop(); this.ring.visible = false; if (g.autopilot) g.autopilot.update(dt); }   // planning view: Sam gets on with life by himself
     // needs (game seconds)
     if (g.started && !this.sleeping) {
       this.hunger = Math.min(100, this.hunger + dt * g.clock.rate() * 4); this.energy = Math.max(0, this.energy - dt * g.clock.rate() * 4.4 * (this.hunger > 85 ? 1.8 : 1));   // tiredness follows the clock: about one good sleep a night
