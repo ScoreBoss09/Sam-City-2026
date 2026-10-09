@@ -5,8 +5,8 @@ const p = await b.newPage({ viewport: { width: 1280, height: 760 } }); const log
 await p.goto('http://localhost:8123/index.html?auto&demo&scale=0.5&noraids'); await p.waitForTimeout(900);
 const ev = (f, a) => p.evaluate(f, a);
 console.log(await ev(() => { const g = window.__game; g.favours.timer = 0; g.favours.update(0.1); const f = g.favours.list[0]; if (!f) return 'no favour'; const s = f.sim; g.setMode('sim'); g.player.teleport(s.x + 1, s.z); g.startDialogue(s); window.__f = f; return `${s.name} favour ${f.n} ${f.mat}`; }));
-await p.waitForTimeout(300); await p.keyboard.press('Digit1'); await p.waitForTimeout(200); console.log('ask:', await ev(() => window.__game.ui.dialogue.full));
-await ev(() => { const g = window.__game, f = window.__f; g.player.inv = { [f.mat]: f.n + 1 }; }); await p.keyboard.press('Digit1'); await p.waitForTimeout(200);
-console.log('give:', await ev(() => window.__game.ui.dialogue.full), 'left', await ev(() => window.__game.favours.list.length), 'inv', await ev(() => window.__game.player.invText()));
+await p.waitForTimeout(300); console.log('ask:', await ev(() => window.__game.ui.dialogue.lines.join(' / ')));
+await ev(() => { const g = window.__game, f = window.__f; g.player.inv = { [f.mat]: f.n + 1 }; g.ui.closeDialogue(); g.startDialogue(f.sim); }); await p.waitForTimeout(200);
+console.log('give:', await ev(() => window.__game.ui.dialogue.lines.join(' / ')), 'left', await ev(() => window.__game.favours.list.length), 'inv', await ev(() => window.__game.player.invText()));
 await p.screenshot({ path: S + 'fav.png' });
 console.log(logs.join('\n')); await b.close();

@@ -7,8 +7,7 @@ await p.goto('http://localhost:8123/index.html?auto&demo&scale=0.5&noraids'); aw
 const ev = (f, a) => p.evaluate(f, a);
 for (let k = 0; k < 3; k++) {
   const who = await ev((k) => { const g = window.__game, s = g.population.residents().filter((q) => q.kind === 'resident' || q.kind === 'child')[k * 7]; g.setMode('sim'); g.player.teleport(s.x + 1, s.z); g.startDialogue(s); return `${s.name} (${s.roleName}, ${s.trait}, ${Math.floor(s.age)})`; }, k);
-  await p.waitForTimeout(300); console.log('\n== ' + who + '\n  > ' + await ev(() => window.__game.ui.dialogue.full));
-  for (let i = 1; i <= 5; i++) { await p.keyboard.press('Digit' + i); await p.waitForTimeout(150); console.log(`  [${i}] ` + await ev(() => window.__game.ui.dialogue && window.__game.ui.dialogue.full)); }
+  await p.waitForTimeout(300); console.log('\n== ' + who + '\n  ' + (await ev(() => window.__game.ui.dialogue.lines.map((l, i) => `[${i + 1}] ${l}`).join('\n  '))));
   if (k === 0) await p.screenshot({ path: S + 'talk.png' });
   await p.keyboard.press('Digit6'); await p.waitForTimeout(150);
 }

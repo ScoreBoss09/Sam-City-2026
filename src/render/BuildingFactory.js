@@ -90,10 +90,10 @@ export function mergeByMaterial(root) {
   return root;
 }
 
-export function buildExterior(def, uid = 1) {
-  const r = buildExterior0(def, uid); mergeByMaterial(r.group); mergeByMaterial(r.roof); return r;
+export function buildExterior(def, uid = 1, era = 2) {
+  const r = buildExterior0(def, uid, era); mergeByMaterial(r.group); mergeByMaterial(r.roof); return r;
 }
-function buildExterior0(def, uid = 1) {
+function buildExterior0(def, uid = 1, era = 2) {
   if (def.id === 'lift') return buildLift(def);
   if (def.id === 'tunnel') return buildTunnel(def);
   if (def.park) return buildPark(def, uid);
@@ -135,12 +135,13 @@ function buildExterior0(def, uid = 1) {
         if (homey2 && fl === 0 && rnd() < 0.8) { box(g, ww * 0.85, 0.22, 0.26, 0x6a4a2a, cx2, y0 + 0.02, fz2 + 0.15); for (let i = 0; i < 5; i++) box(g, 0.13, 0.13, 0.13, flowers[(uid + i + k) % flowers.length], cx2 - ww * 0.34 + i * ww * 0.17, y0 + 0.24, fz2 + 0.15 + (i % 2 ? 0.05 : -0.05)); box(g, ww * 0.8, 0.08, 0.2, 0x3a7a3a, cx2, y0 + 0.22, fz2 + 0.15); }
       }
     }
-    if ((def.wall === 'brick' || def.wall === 'tan' || def.wall === 'grey') && def.cat === 'res' && rnd() < 0.45) { const sx = W / 2 - 0.6, sy = Math.min(H - 0.5, 4.6); box(g, 0.06, 0.06, 0.4, 0x666666, sx, sy, D / 2 + 0.2); const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.2, 0.08, 10), stdMat(0xd8d8d0)); dish.rotation.x = Math.PI / 2 - 0.4; dish.rotation.z = 0.3; dish.position.set(sx, sy, D / 2 + 0.44); g.add(dish); }
+    if (era >= 2 && (def.wall === 'brick' || def.wall === 'tan' || def.wall === 'grey') && def.cat === 'res' && rnd() < 0.45) { const sx = W / 2 - 0.6, sy = Math.min(H - 0.5, 4.6); box(g, 0.06, 0.06, 0.4, 0x666666, sx, sy, D / 2 + 0.2); const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.2, 0.08, 10), stdMat(0xd8d8d0)); dish.rotation.x = Math.PI / 2 - 0.4; dish.rotation.z = 0.3; dish.position.set(sx, sy, D / 2 + 0.44); g.add(dish); }
+    if (era >= 2 && !rustic0(def) && rnd() < 0.5) { box(g, 0.42, 0.42, 0.14, [0x2a5ab0, 0xe8c020, 0xc0392b][uid % 3], -W / 2 + 0.7, Math.min(H - 0.7, 2.7), D / 2 + 0.06); box(g, 0.3, 0.08, 0.15, 0xeeeeee, -W / 2 + 0.7, Math.min(H - 0.7, 2.7) + 0.3, D / 2 + 0.07); }   // burglar alarm box
     // downpipe on the front corner
     if (!rustic0(def)) box(g, 0.1, H, 0.1, 0x2a2d33, W / 2 - 0.12, 0, D / 2 + 0.08);
   }
   // front doors on hinges: shut until somebody walks up, then they swing outwards (never into the furniture)
-  const rustic = RUSTIC.includes(def.wall), dkey = rustic ? 'wall_planks' : (uid % 2 ? 'door_green' : 'door_blue'), dcol = rustic ? 0x7a5230 : [0x4a7a50, 0x3f6fae, 0x8a2a2a, 0x2a2a2a, 0xd9c26a][uid % 5];
+  const rustic = RUSTIC.includes(def.wall), upvc = era >= 2 && !rustic && def.cat === 'res' && uid % 3 !== 0, dkey = upvc ? null : rustic ? 'wall_planks' : (uid % 2 ? 'door_green' : 'door_blue'), dcol = upvc ? 0xeeeee8 : rustic ? 0x7a5230 : [0x4a7a50, 0x3f6fae, 0x8a2a2a, 0x2a2a2a, 0xd9c26a][uid % 5];
   const single = def.w === 1, dmat = texMat(dkey, dcol, 1, 1), lw = single ? dw - 0.06 : dw / 2 - 0.03, doors = [];
   for (const side of single ? [-1] : [-1, 1]) {
     const pivot = new THREE.Group(); pivot.userData.keep = true; pivot.position.set(door + side * (dw / 2 - 0.02), 0.15, fz + T / 2 - 0.04); g.add(pivot);
@@ -161,7 +162,7 @@ function buildExterior0(def, uid = 1) {
   }
   // door step and a little lamp over the door
   box(g, dw + 0.6, 0.16, 0.6, 0x8d8a82, door, -0.02, D / 2 + 0.3);
-  if (!def.shopping && !def.dining) { const lamp = box(g, 0.22, 0.3, 0.22, 0xfff0b0, door + dw / 2 + 0.45, 2.3, D / 2 + 0.12, { emissive: 0xffd080, emissiveIntensity: 0.9 }); lamp.castShadow = false; }
+  if (!def.shopping && !def.dining) { const lamp = era >= 1 ? box(g, 0.22, 0.3, 0.22, 0xfff0b0, door + dw / 2 + 0.45, 2.3, D / 2 + 0.12, { emissive: 0xffd080, emissiveIntensity: 0.9 }) : box(g, 0.16, 0.24, 0.16, 0xffb050, door + dw / 2 + 0.45, 2.3, D / 2 + 0.12, { emissive: 0xff9a30, emissiveIntensity: 0.6 }); lamp.castShadow = false; }
   // striped shop awning over the door
   if (def.shopping || def.dining) {
     const cols2 = { chippy: [0x2a6aa8, 0xffffff], bakery: [0xd98a3a, 0xf4ecd9], newsagent: [0x2a7a3a, 0xf4ecd9], video: [0x2a3a8a, 0xf1c40f], bookies: [0x2a6a3a, 0xf4ecd9], tavern: [0x7a2a2a, 0xe8d8a8] }[def.id] || [0xc0392b, 0xf4ecd9];
@@ -192,7 +193,7 @@ function buildExterior0(def, uid = 1) {
     const p = new THREE.Mesh(prism(alongZ ? W + ov : D + ov, rh, alongZ ? D + ov : W + ov), roofMaterial(rc, kind));
     if (!alongZ) p.rotation.y = Math.PI / 2; p.castShadow = true; roof.add(p);
     if (thatch) { const ridge = new THREE.Mesh(new THREE.BoxGeometry(alongZ ? 0.25 : W + ov, 0.22, alongZ ? D + ov : 0.25), stdMat(shadeHex(rc, 0.8))); ridge.position.y = rh; roof.add(ridge); }
-    else if (def.id !== 'cottage' || true) { box(roof, 0.6, 1.8, 0.6, 0x7a4a3a, W * 0.2, 0.5, -D * 0.12); for (const cx of [-0.13, 0.13]) box(roof, 0.16, 0.32, 0.16, 0xb0603a, W * 0.2 + cx, 2.3, -D * 0.12); if (def.cat === 'res' && (uid % 3)) { box(roof, 0.05, 1.4, 0.05, 0x333333, W * 0.2 + 0.4, 1.6, -D * 0.12); box(roof, 1.0, 0.04, 0.04, 0x333333, W * 0.2 + 0.4, 2.8, -D * 0.12); box(roof, 0.04, 0.04, 0.6, 0x333333, W * 0.2 + 0.4, 2.6, -D * 0.12); } }
+    else if (def.id !== 'cottage' || true) { box(roof, 0.6, 1.8, 0.6, 0x7a4a3a, W * 0.2, 0.5, -D * 0.12); for (const cx of [-0.13, 0.13]) box(roof, 0.16, 0.32, 0.16, 0xb0603a, W * 0.2 + cx, 2.3, -D * 0.12); if (era >= 1 && def.cat === 'res' && (uid % 3)) { box(roof, 0.05, 1.4, 0.05, 0x333333, W * 0.2 + 0.4, 1.6, -D * 0.12); box(roof, 1.0, 0.04, 0.04, 0x333333, W * 0.2 + 0.4, 2.8, -D * 0.12); box(roof, 0.04, 0.04, 0.6, 0x333333, W * 0.2 + 0.4, 2.6, -D * 0.12); } }
     if (!thatch) { const ew = alongZ ? W + ov : D + ov, el = alongZ ? D + ov : W + ov; for (const sd of [-1, 1]) { if (alongZ) box(roof, 0.14, 0.14, el, 0x2a2d33, sd * ew / 2, -0.08, 0); else box(roof, el, 0.14, 0.14, 0x2a2d33, 0, -0.08, sd * ew / 2); } }
   } else {
     box(roof, W + 0.3, 0.35, D + 0.3, rc, 0, 0, 0);
@@ -364,7 +365,8 @@ export function buildInterior(b) {
   const g = new THREE.Group(), lay = b.layout;
   if (!lay) return g;
   for (const f of lay.furniture) {
-    const m = makeFurniture(f.t); m.position.set(f.x, 0.06, f.z); m.rotation.y = (f.r || 0) * Math.PI / 2; g.add(m);
+    const era = b.era ?? 2, t = era < 2 && f.t === 'terminal' ? 'ledger' : era < 2 && f.t === 'reception' ? 'reception0' : era < 1 && f.t === 'tv' ? 'radio' : f.t;
+    const m = makeFurniture(t); m.position.set(f.x, 0.06, f.z); m.rotation.y = (f.r || 0) * Math.PI / 2; g.add(m);
   }
   return g;
 }

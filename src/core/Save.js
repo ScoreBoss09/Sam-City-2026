@@ -11,10 +11,10 @@ export function serialize(g) {
   const w = g.world, sims = g.population.sims.filter((s) => s.kind === 'resident' || s.kind === 'child');
   const idOf = new Map(sims.map((s, i) => [s, i]));
   return {
-    v: 1, t: Date.now(), clock: g.clock.serialize(), economy: g.economy.serialize(), story: g.story.serialize(), flags: g.flags,
+    v: 1, t: Date.now(), tech: g.tech.serialize(), clock: g.clock.serialize(), economy: g.economy.serialize(), story: g.story.serialize(), flags: g.flags,
     terrain: Array.from(w.terrain).join(''), roads: Array.from(w.road).join(''), zones: Array.from(w.zone).join(''),
     trees: g.terrain.trees.map((t) => (t.alive ? t.amount : 0)).join(''), nodes: g.resources.nodes.filter((n) => n.kind !== 'field').map((n) => +n.amount.toFixed(1)),
-    buildings: g.buildings.list.map((b) => ({ id: b.id, x0: b.x0, z0: b.z0, rot: b.rot, state: b.state, progress: b.progress, have: b.have, starter: b === g.starterHome })),
+    buildings: g.buildings.list.map((b) => ({ id: b.id, x0: b.x0, z0: b.z0, rot: b.rot, state: b.state, progress: b.progress, have: b.have, starter: b === g.starterHome, era: b.era })),
     sims: sims.map((s) => ({ name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.look, hunger: s.hunger, orient: s.orient, mood: s.moodBoost, actor: s.actor, talk: s.talkCount, gaveClue: !!s.gaveClue, samRel: s.samRel || 0,
       home: s.home ? g.buildings.list.indexOf(s.home) : -1, work: s.workplace ? g.buildings.list.indexOf(s.workplace) : -1, role: s.role, partner: s.partner ? idOf.get(s.partner) : -1, parents: s.parents.map((p) => idOf.get(p)).filter((i) => i !== undefined), coupleDay: s.coupleDay || 0,
       rel: [...s.rel.entries()].map(([id, v]) => { const o = g.population.sims.find((q) => q.id === id); return o && idOf.has(o) ? [idOf.get(o), Math.round(v)] : null; }).filter(Boolean) })),
@@ -42,7 +42,7 @@ export function restore(g, d) {
   const made = []; g.starterHome = null; g.flags.noStarter = true;
   for (const s of d.buildings) {
     if (s.id === 'tunnel') continue;   // older saves: the tunnel is gone
-    const b = B.place(s.id, s.x0, s.z0, s.rot, { instant: s.state === 'done' });
+    const b = B.place(s.id, s.x0, s.z0, s.rot, { instant: s.state === 'done', era: s.era ?? (d.tech ? d.tech.era : 0) });
     if (s.state !== 'done') { b.progress = s.progress; b.have = s.have || {}; B.refreshSite(b); }
     if (s.id === 'lift') g.lift = b; if (s.id === 'surveyor') g.surveyor = b; if (s.starter) { g.starterHome = b; b.reservedForPlayer = true; if (b.spots.bed[0]) b.spots.bed[0].taken = 'player'; }
     made.push(b);
@@ -50,7 +50,7 @@ export function restore(g, d) {
   delete g.flags.noStarter; g.security.guards = []; g.security.init(); g.raids.reset(); g.raids.load(d.raids); g.mail.load(d.post); g.curios.load(d.curios);
   g.roadPlans.load(d.roadPlans); g.tools.build(g.tools.x, g.tools.z, d.toolsTaken || []); g.player.tools = new Set((d.player && d.player.tools) || []); if (d.player && d.player.hunger != null) g.player.hunger = d.player.hunger;
   // economy, clock, story
-  g.economy.load(d.economy); g.clock.load(d.clock); g.story.load(d.story); Object.assign(g.flags, d.flags);
+  g.tech.load(d.tech); g.economy.load(d.economy); g.clock.load(d.clock); g.story.load(d.story); Object.assign(g.flags, d.flags);
   // citizens
   const sims = d.sims.map((s) => {
     const home = made[s.home]; const x = home ? home.doorIn.x : g.plaza.x, z = home ? home.doorIn.z : g.plaza.z;

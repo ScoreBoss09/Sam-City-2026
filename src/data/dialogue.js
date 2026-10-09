@@ -52,6 +52,7 @@ export const REASON = {
 };
 
 export const WORK = {
+  librarian: ['Shh. Sorry, habit.', 'The young ones are reading about electricity again. Mark my words, we\'ll all have computers one day.', 'Overdue books are the bane of my life.'],
   baker: ['Up at four every morning. The bread won\'t bake itself.', 'Fresh loaves, iced buns, Cornish pasties. Help yourself. Well, pay first.', 'Flour gets everywhere. I sneeze dough.'],
   fryer: ['Cod, chips, mushy peas. The holy trinity.', 'Salt and vinegar? Course you do.', 'The fryer\'s hotter than the sun. I\'ve got no eyebrows left.'],
   vicar: ['Sunday service at ten. There\'s tea after. That\'s the real draw.', 'I pray for this village every night. Some nights harder than others.', 'Bless you, Sam. Have you thought about the church roof fund?'],

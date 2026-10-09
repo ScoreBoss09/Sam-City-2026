@@ -12,7 +12,7 @@ export class Population {
     const w = game.world.events;
     w.on('building:done', (b) => this.onBuildingDone(b));
     w.on('building:removed', (b) => this.onBuildingRemoved(b));
-    game.clock.on('day', () => this.dailyTick()); game.clock.on('hour', () => game.economy.hourly());
+    game.clock.on('day', () => this.dailyTick()); game.clock.on('hour', () => { game.economy.hourly(); if (game.tech) game.tech.hourly(); });
   }
   residents() { return this.sims.filter((s) => (s.kind === 'resident' || s.kind === 'child') && !s.remove); }
   adults() { return this.sims.filter((s) => s.kind === 'resident' && !s.remove); }

@@ -29,6 +29,21 @@ export class Talk {
     const f = this.game.favours.forSim(s), fav = f ? [['favour', f.asked ? `Here's your ${f.n} ${f.mat}.` : 'You look like you need something?']] : [];
     return [...fav, ['how', 'How are you doing?'], ['work', kid ? 'What are you up to?' : vis ? 'Enjoying your visit?' : 'How\'s work?'], ['news', 'Heard any news or gossip?'], ['about', kid ? 'What\'s your favourite thing?' : 'Tell me about yourself.'], ['help', 'Any advice for me?'], ['bye', 'See you later.']];
   }
+  /**
+   * One short conversation, no menus: a greeting, a favour if they have one, then two or three things
+   * that suit who they are (how they feel, their work, gossip, their life, a tip), and a goodbye.
+   */
+  conversation(s) {
+    const lines = [this.greet(s)], f = this.game.favours.forSim(s); let page = null;
+    const add = (topic) => { const r = this.reply(s, topic); lines.push(r.text); if (r.page) page = r.page; };
+    if (f) add('favour');
+    const pool = s.kind === 'child' ? ['how', 'about', 'work'] : ['how', 'work', 'news', 'news', 'about', 'help'];
+    if ((s.samRel || 0) < 8 && s.kind !== 'child') pool.push('about');
+    const n = f ? 1 : 2 + (Math.random() < 0.35 ? 1 : 0), used = new Set();
+    while (used.size < n && used.size < new Set(pool).size) { const t = pick(pool); if (used.has(t)) continue; used.add(t); add(t); }
+    lines.push(this.reply(s, 'bye').text);
+    return { lines, page };
+  }
   greet(s) {
     const g = this.game, h = g.clock.hour, rel = s.samRel || 0; let lines;
     if (s.kind === 'child') lines = D.GREET.child; else if (s.kind === 'visitor') lines = D.GREET.visitor;

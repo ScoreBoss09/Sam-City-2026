@@ -22,7 +22,7 @@ export class UI {
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; game.clock.speed = +b.dataset.s; });
-    $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('d-choices').addEventListener('click', (e) => { const b = e.target.closest('.dchoice'); if (b) this.say(b.dataset.topic); }); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); });
+    $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); });
     game.messages.on('msg', (m) => this.addMessage(m));
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
     $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
@@ -61,7 +61,7 @@ export class UI {
       if (P.hitB[12] || P.hitB[14]) d = -1; else if (P.hitB[13] || P.hitB[15]) d = 1; else if (sy && this._navT <= 0) { d = sy; this._navT = 0.22; } if (!sy) this._navT = 0;
       if (d) this._pfIdx = (this._pfIdx + d + btns.length) % btns.length;
       for (const b of scope.querySelectorAll('button.padfocus')) if (b !== btns[this._pfIdx]) b.classList.remove('padfocus'); btns[this._pfIdx].classList.add('padfocus'); btns[this._pfIdx].scrollIntoView({ block: 'nearest' });
-      if (P.hitB[0]) { btns[this._pfIdx].click(); } return;
+      if (P.hitB[0]) { btns[this._pfIdx].click(); inp.pressed.delete('KeyE'); this.calm(); } return;
     }
     this.clearPadFocus();
     if (g.mode !== 'god' || this.modalOpen || !g.started) return;
@@ -126,39 +126,40 @@ export class UI {
   flashObjective() { const o = $('objectives'); o.classList.remove('flash'); void o.offsetWidth; o.classList.add('flash'); this.renderObjectives(); }
 
   // ---------- dialogue ----------
-  /** Conversation box: their words (typed out) and a menu of things Sam can say. */
+  /** Conversation box: one little chat that plays line by line (E / A for the next line, Esc / B to leave). */
   openDialogue(sim, res) {
-    this.dialogue = { sim, full: res.text, shown: 0, choice: 0 }; this.modalOpen = true; this.game.input.unlock();
+    this.dialogue = { sim, lines: res.lines, idx: 0, full: res.lines[0], shown: 0 }; this.game.input.unlock();
     $('d-name').textContent = `${sim.name} — ${sim.roleName}`; $('d-text').textContent = ''; this.renderChoices(); this.show('dialogue');
     if (res.page) this.toast('Crumpled page collected! (see Notes in the post)', 3500);
   }
   renderChoices() {
-    const d = this.dialogue, el = $('d-choices'); if (!d) return; const T = this.game.talk.topics(d.sim); d.choice = Math.min(d.choice, T.length - 1);
-    el.innerHTML = T.map(([k, label], i) => `<button class="dchoice ${i === d.choice ? 'sel' : ''}" data-topic="${k}"><span>${i + 1}</span>${label}</button>`).join('');
-    $('d-hint').textContent = this.game.input.padActive ? 'D-pad to choose · A to say it · B to leave' : '1-6 or W/S + E to choose · click works too · Esc to leave';
+    const d = this.dialogue; if (!d) return; $('d-choices').innerHTML = '';
+    const last = d.idx >= d.lines.length - 1, pad = this.game.input.padActive;
+    $('d-hint').textContent = `${'•'.repeat(d.idx + 1)}${'·'.repeat(Math.max(0, d.lines.length - d.idx - 1))}   ${pad ? (last ? 'A to finish' : 'A for more') : (last ? 'E to finish' : 'E for more')} · ${pad ? 'B' : 'Esc'} to leave`;
   }
-  say(topic) {
-    const d = this.dialogue; if (!d) return; if (topic === 'bye') { const r = this.game.talk.reply(d.sim, 'bye'); this.closeDialogue(); this.game.social.say(d.sim, r.text, 2.2); return; }
-    const r = this.game.talk.reply(d.sim, topic); d.full = r.text; d.shown = 0; Sfx.play('ui'); if (r.page) this.toast('Crumpled page collected! (see Notes in the post)', 3500); this.renderChoices();
+  /** Next line of the chat (or finish it). */
+  nextLine() {
+    const d = this.dialogue; if (!d) return; if (d.shown < d.full.length) { d.shown = d.full.length; return; }
+    if (d.idx >= d.lines.length - 1) { this.closeDialogue(); return; }
+    d.idx++; d.full = d.lines[d.idx]; d.shown = 0; Sfx.play('ui'); this.renderChoices();
   }
   dialogueKeys(inp) {
-    const d = this.dialogue; if (!d) return; const T = this.game.talk.topics(d.sim);
+    const d = this.dialogue; if (!d) return;
     if (inp.hit('Escape') || inp.padHit(1)) { this.closeDialogue(); return; }
-    for (let i = 0; i < T.length; i++) if (inp.hit('Digit' + (i + 1))) { this.say(T[i][0]); return; }
-    const up = inp.hit('KeyW') || inp.hit('ArrowUp') || inp.padHit(12), down = inp.hit('KeyS') || inp.hit('ArrowDown') || inp.padHit(13);
-    if (up || down) { d.choice = (d.choice + (down ? 1 : -1) + T.length) % T.length; this.renderChoices(); }
-    if (inp.hit('KeyE') || inp.hit('Space') || inp.hit('Enter')) { if (d.shown < d.full.length) d.shown = d.full.length; else this.say(T[d.choice][0]); }
+    if (inp.hit('KeyE') || inp.hit('Space') || inp.hit('Enter')) this.nextLine();
   }
-  advanceDialogue() { const d = this.dialogue; if (!d) return; if (d.shown < d.full.length) d.shown = d.full.length; else this.closeDialogue(); }
-  closeDialogue() { if (!this.dialogue) return; this.dialogue.sim.frozen = false; this.dialogue.sim.talkingToPlayer = false; this.dialogue.sim.moodBoost += 0.1; this.dialogue = null; this.modalOpen = false; this.hide('dialogue'); }
+  advanceDialogue() { this.nextLine(); }
+  closeDialogue() { if (!this.dialogue) return; this.dialogue.sim.frozen = false; this.dialogue.sim.talkingToPlayer = false; this.dialogue.sim.moodBoost += 0.1; this.dialogue = null; this.hide('dialogue'); this.calm(); }
 
   // ---------- terminal ----------
   openTerminal(b, mode = 'computer') { this.terminalB = b; this.termMode = mode; this.terminalTab = mode === 'post' ? 'letters' : mode === 'hatch' ? 'materials' : (this.terminalTab === 'letters' ? 'permits' : this.terminalTab); this.modalOpen = true; this.game.input.unlock(); if (mode === 'post') this.game.flags.postRead = true; else this.game.flags.terminalOpened = true; this.renderTerminal(); this.show('terminal'); $('terminal').classList.toggle('post', mode === 'post'); }
-  closeTerminal() { this.terminalB = null; this.modalOpen = false; this.hide('terminal'); }
+  closeTerminal() { this.terminalB = null; this.hide('terminal'); this.calm(); }
+  /** After closing a window, ignore 'use' for a moment so the same press doesn't reopen it. */
+  calm() { if (this.game.player) this.game.player.interactCD = 0.4; }
 
   // ---------- journal ----------
   openJournal() { this.journalOpen = true; this.modalOpen = true; this.game.input.unlock(); this.renderJournal(); this.show('journal'); Sfx.play('ui'); }
-  closeJournal() { this.journalOpen = false; this.modalOpen = false; this.hide('journal'); }
+  closeJournal() { this.journalOpen = false; this.hide('journal'); this.calm(); }
   renderJournal() {
     const g = this.game, f = g.flags, cur = g.curios, P = g.population;
     const friends = P.sims.filter((s) => (s.samRel || 0) >= 40 && !s.remove).map((s) => s.name), acq = P.sims.filter((s) => (s.samRel || 0) >= 8 && (s.samRel || 0) < 40 && !s.remove).length;
@@ -173,7 +174,7 @@ export class UI {
 
   // ---------- backpack ----------
   openInventory() { this.invOpen = true; this.modalOpen = true; this.game.input.unlock(); this.renderInventory(); this.show('inventory'); Sfx.play('ui'); }
-  closeInventory() { this.invOpen = false; this.modalOpen = false; this.hide('inventory'); }
+  closeInventory() { this.invOpen = false; this.hide('inventory'); this.calm(); }
   renderInventory() {
     const g = this.game, P = g.player, n = P.invTotal();
     const tools = Object.keys(TOOL_NAMES).map((t) => `<div class="slot ${P.tools.has(t) ? 'has' : 'empty'}"><span class="ic">${TOOL_ICON[t]}</span>${TOOL_NAMES[t]}</div>`).join('');
@@ -222,12 +223,12 @@ export class UI {
     } else if (tab === 'report') {
       const r = e.lastReport, P = g.population;
       body = `<table><tr><td>Funds</td><td>${fmtMoney(e.funds)}</td></tr><tr><td>Residents</td><td>${P.count()}</td></tr><tr><td>Buildings</td><td>${g.buildings.list.filter((b) => b.state === 'done').length} (+${g.buildings.list.filter((b) => b.state === 'site').length} under construction)</td></tr>
-        <tr><td>Power</td><td>${g.buildings.count('power') ? 'ONLINE' : 'none'}</td></tr><tr><td>Water</td><td>${g.buildings.count('water') ? 'ONLINE' : 'none'}</td></tr>
+        <tr><td>Age</td><td>${g.tech.status().name}${g.tech.era < 2 ? ` · research ${g.tech.status().research}/${g.tech.status().need} for computers${g.tech.era < 1 ? ' (needs power too)' : ''}` : ''}</td></tr><tr><td>Power</td><td>${g.buildings.count('power') ? 'ONLINE' : 'none'}</td></tr><tr><td>Water</td><td>${g.buildings.count('water') ? 'ONLINE' : 'none'}</td></tr>
         <tr><td>Last month</td><td>${r ? `income ${fmtMoney(r.income)} · costs ${fmtMoney(r.cost)} · net ${fmtMoney(r.net)}` : 'no report yet'}</td></tr></table>`;
     } else if (tab === 'notes') {
       const pg = g.story.pages; body = pg.length ? pg.map((p) => `<div class="page">${p}</div>`).join('') : '<div class="note">No notes yet. Talk to residents regularly — some of them know more than they should.</div>';
     }
-    T.innerHTML = `<div class="win"><h2><span>${hatch ? '☎ LIFT INTERCOM · "Dave speaking"' : post ? '✉ THE POST · SAM CITY' : 'SAM CITY - PLANNING TERMINAL'}</span><button data-act="close">Close [Esc]</button></h2><div class="tabs">${tabs.map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}<span style="margin-left:auto">Funds: <b>${fmtMoney(e.funds)}</b></span></div>${body}</div>`;
+    T.innerHTML = `<div class="win"><h2><span>${hatch ? '☎ LIFT INTERCOM · "Dave speaking"' : post ? '✉ THE POST · SAM CITY' : (g.tech.computers ? 'SAM CITY - PLANNING TERMINAL' : '📖 SAM CITY - PLANNING LEDGER')}</span><button data-act="close">Close [Esc]</button></h2><div class="tabs">${tabs.map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}<span style="margin-left:auto">Funds: <b>${fmtMoney(e.funds)}</b></span></div>${body}</div>`;
   }
   terminalClick(e) {
     const b = e.target.closest('button'); if (!b) return; const g = this.game, a = b.dataset.act; let r = null;

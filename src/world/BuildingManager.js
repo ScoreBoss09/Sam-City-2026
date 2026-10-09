@@ -56,13 +56,14 @@ export class BuildingManager {
     return fallback;
   }
 
-  place(id, x0, z0, rot, { instant = false } = {}) {
+  place(id, x0, z0, rot, { instant = false, era } = {}) {
     const def = { ...BUILDINGS[id], id }; const geo = geometry(def, x0, z0, rot);
     const b = {
       uid: this.nextUid++, id, def, x0, z0, w: geo.w, d: geo.d, rot, cx: geo.cx, cz: geo.cz, geo, toWorld: geo.toWorld,
       state: 'site', progress: 0, need: { ...(def.mat || {}) }, have: {}, reserved: {}, workers: [], residents: [], colliders: [],
       spots: { bed: [], work: [], idle: [], visit: [], pickup: [], terminal: [] }, ext: null, siteVis: null, interior: null, builders: 0,
     };
+    if (era !== undefined) b.era = era;
     b.doorOut = { x: geo.doorOut[0], z: geo.doorOut[1] }; b.doorTile = { x: geo.doorTile[0], z: geo.doorTile[1] };
     const dp = geo.toWorld(geo.off, def.d * TILE / 2 - 0.3); b.doorPos = { x: dp[0], z: dp[1] };
     const di = geo.toWorld(geo.off, def.d * TILE / 2 - 2.2); b.doorIn = { x: di[0], z: di[1] };
@@ -103,11 +104,8 @@ export class BuildingManager {
   }
   finish(b) {
     if (b.siteVis) { this.scene.remove(b.siteVis.group); b.siteVis = null; }
-    const def = b.def, ext = buildExterior(def, b.uid); b.ext = ext;
-    ext.group.position.set(b.cx, 0, b.cz); ext.group.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.group);
-    ext.roof.position.add(new THREE.Vector3(b.cx, 0, b.cz)); ext.roof.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.roof);
-    if (!def.park && !def.special) { const W = def.w * TILE, D = def.d * TILE; const dec = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 5), contactMat()); dec.rotation.x = -Math.PI / 2; dec.position.y = 0.045; dec.renderOrder = 1; ext.group.add(dec); }
-    ext.group.traverse((o) => { if (o.isMesh) o.matrixAutoUpdate = true; });
+    const def = b.def; if (b.era === undefined) b.era = this.game.tech ? this.game.tech.era : 0;
+    const ext = this.mountExterior(b);
     b.state = 'done'; b.progress = 1; b.layout = layoutFor(def);
     const odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h }; };
     b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout).map(conv));
@@ -148,6 +146,22 @@ export class BuildingManager {
     this.world.events.emit('building:done', b);
   }
 
+  /** Build and place the outside of a finished building (in the style of its era). */
+  mountExterior(b) {
+    const def = b.def, ext = buildExterior(def, b.uid, b.era ?? 0); b.ext = ext;
+    ext.group.position.set(b.cx, 0, b.cz); ext.group.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.group);
+    ext.roof.position.add(new THREE.Vector3(b.cx, 0, b.cz)); ext.roof.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.roof);
+    if (!def.park && !def.special) { const W = def.w * TILE, D = def.d * TILE; const dec = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 5), contactMat()); dec.rotation.x = -Math.PI / 2; dec.position.y = 0.045; dec.renderOrder = 1; ext.group.add(dec); }
+    ext.group.traverse((o) => { if (o.isMesh) o.matrixAutoUpdate = true; });
+    return ext;
+  }
+  /** Modernise a building: same footprint, colliders and people, new fittings for the new era. */
+  restyle(b, era) {
+    if (b.state !== 'done' || !b.ext || b.def.special || b.def.park) { b.era = era; return; }
+    b.era = era; this.scene.remove(b.ext.group, b.ext.roof); this.mountExterior(b); b.doorK = 0;
+    if (b.interior) { this.scene.remove(b.interior); b.interior = null; }
+    const g = this.game; if (g.particles) g.particles.burst(b.cx, (b.def.floors || 1) * 3.2 + 1, b.cz, 0xfff3a0, 14, 2.5, 3, 0.18);
+  }
   remove(b) {
     if (this.game.resources) this.game.resources.removeFields(b);
     if (b.ext) { this.scene.remove(b.ext.group, b.ext.roof); }
