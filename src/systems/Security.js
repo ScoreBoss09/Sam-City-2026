@@ -37,7 +37,7 @@ export class Security {
     const b = g.lift, d = Math.hypot(p.x - b.trigger.x, p.z - b.trigger.z), warnR = 7;
     if (d < warnR && !this.warned.lift && duty) { this.warned.lift = true; g.flags.guardsOut = true; g.messages.push('Lift Guard', 'Staff only beyond this point, Sam. Please step back.', 'warn'); g.ui.toast('RESTRICTED AREA AHEAD'); }
     if (d > warnR + 5) this.warned.lift = false;
-    const onIt = p.x > b.x0 * 4 - 0.5 && p.x < (b.x0 + b.w) * 4 + 0.5 && p.z > b.z0 * 4 - 0.5 && p.z < (b.z0 + b.d) * 4 + 0.5;
+    const onIt = g.buildings.onBuilding(b, p.x, p.z, 0.5);
     if (onIt && !duty && g.story.clues >= 3) {   // the platform is unwatched and Sam knows it: three seconds to step into the cage
       this.rideT += dt / Math.max(1, g.clock.speed); g.ui.setCountdown(Math.max(1, Math.ceil(3 - this.rideT)), 'THE LIFT IS UNGUARDED...'); if (this.rideT >= 3) { g.ui.setCountdown(null); g.escape(); } return;
     }

@@ -27,7 +27,7 @@ export class Traffic {
   }
   update(dt) {
     const g = this.game, w = g.world; this.timer -= dt;
-    const roads = w.road.reduce((a, v) => a + (v === 2 ? 1 : 0), 0), want = g.tech && g.tech.era < 1 ? 0 : Math.min(14, Math.floor(roads / 14));   // no motor cars before the power comes on
+    const roads = w.road.reduce((a, v) => a + (v === 2 ? 1 : 0), 0), want = g.tech && g.tech.era < 1 ? 0 : Math.min(14, Math.floor(roads / 8));   // no motor cars before the power comes on
     if (this.timer <= 0 && this.cars.length < want && g.population.sims.length < g.population.simCap + 20) {
       this.timer = 3; const lift = g.lift; const mesh = this.makeCar(); const car = { mesh, x: lift.doorOut.x, z: lift.doorOut.z + 2, h: 0, v: 0, path: [], max: 5.5 + Math.random() * 3 };
       mesh.position.set(car.x, 0, car.z); g.scene.add(mesh); this.cars.push(car);
@@ -36,8 +36,8 @@ export class Traffic {
       if (!c.path.length) { c.wait = (c.wait || 0) - dt; if (c.wait <= 0) { c.path = this.pickRoute(c) || []; c.wait = 1 + Math.random() * 2; } c.v = Math.max(0, c.v - 8 * dt); }
       else {
         const p = c.path[0]; let dx = p.x - c.x, dz = p.z - c.z; const d = Math.hypot(dx, dz), nx = c.path[1];
-        // keep to the right-hand lane
-        const sx = dx / (d || 1), sz = dz / (d || 1), tx = p.x + sz * 1.0, tz = p.z - sx * 1.0; dx = tx - c.x; dz = tz - c.z;
+        // keep to the left-hand lane (this is England)
+        const sx = dx / (d || 1), sz = dz / (d || 1), tx = p.x + sz * 1.3, tz = p.z - sx * 1.3; dx = tx - c.x; dz = tz - c.z;
         const want = Math.atan2(dx, dz); let dh = want - c.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.h += Math.max(-3 * dt, Math.min(3 * dt, dh));
         const target = Math.abs(dh) > 0.6 ? 2 : c.max; c.v += Math.max(-10 * dt, Math.min(5 * dt, target - c.v));
         // yield to other cars ahead

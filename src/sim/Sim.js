@@ -65,7 +65,7 @@ export class Sim {
     if (dest.b && dest.b !== this.inside && !dest.b.def.park) {
       const b = dest.b, t = w.findPath(Math.floor(sx / TILE), Math.floor(sz / TILE), b.doorTile.x, b.doorTile.z);
       if (!t) return false;
-      for (let i = 1; i < t.length; i++) wp.push({ x: (t[i][0] + 0.5) * TILE, z: (t[i][1] + 0.5) * TILE });
+      wp.push(...w.walkway(t));
       wp.push({ x: b.doorOut.x, z: b.doorOut.z, door: b }, { x: b.doorPos.x, z: b.doorPos.z, enter: b, door: b }, { x: b.doorIn.x, z: b.doorIn.z, door: b });
       if (dest.x !== undefined) wp.push(...this.game.buildings.navPath(b, b.doorIn.x, b.doorIn.z, dest.x, dest.z));
     } else if (dest.b && dest.b === this.inside) {
@@ -73,7 +73,7 @@ export class Sim {
     } else {
       const t = w.findPath(Math.floor(sx / TILE), Math.floor(sz / TILE), Math.floor(dest.x / TILE), Math.floor(dest.z / TILE));
       if (!t) return false;
-      for (let i = 1; i < t.length; i++) wp.push({ x: (t[i][0] + 0.5) * TILE, z: (t[i][1] + 0.5) * TILE });
+      wp.push(...w.walkway(t));
       wp.push({ x: dest.x, z: dest.z });
     }
     this.path = wp; this.dest = dest; this.phase = 1; return true;

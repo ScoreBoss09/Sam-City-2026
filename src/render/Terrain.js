@@ -6,7 +6,7 @@ import { mulberry32 } from '../util.js';
 import { Assets } from './Assets.js';
 const CAT = { forest: 'ground_forest', sand: 'ground_sand', clay: 'ground_clay', rock: 'ground_rock', dirt: 'ground_dirt', asphalt: 'ground_asphalt', pavement: 'ground_pavement' };
 
-const PX = 16;
+const PX = 32;   // pixels per 8 m tile (0.25 m a pixel)
 const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
 const vn = (x, z, sc) => { const gx = x / sc, gz = z / sc, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz, a = hash(ix, iz), b = hash(ix + 1, iz), c = hash(ix, iz + 1), d = hash(ix + 1, iz + 1), u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; };
 const rgb = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
@@ -74,28 +74,35 @@ export class Terrain {
     for (let py = 0; py < PX; py++) for (let px = 0; px < PX; px++) {
       let c = base, a = amt, cat = defCat, mult = 1;
       const o = (py * PX + px) * 4;
+      const H = PX / 2, ax = px - H + 0.5, az = py - H + 0.5;   // pixel offset from the tile centre
       if (isRoad && !paved) {
-        const ed = (!N && py < 3) || (!S && py > PX - 4) || (!W && px < 3) || (!E && px > PX - 4), rut = ((N || S) && (px === 4 || px === 11)) || ((E || W) && (py === 4 || py === 11));
-        c = ed ? (hash(tx * 16 + px, tz * 16 + py) > 0.45 ? rgb(0x7a6a42) : base) : rut ? rgb(0x7a5e3a) : rgb(0xa88a5c); a = 22;
-        cat = ed ? 'grass' : 'dirt'; if (rut && !ed) mult = 0.78;
-        if (!ed && hash(tx * 16 + px * 3, tz * 16 + py * 5) > 0.96) { c = rgb(0x6a6a62); a = 8; cat = null; }
+        // a dirt cart track about 4.5 m wide down the middle (and out along each connection), grass verges either side
+        const half = 9, inTrack = (Math.abs(ax) < half && Math.abs(az) < half) || ((N && az < 0 || S && az > 0) && Math.abs(ax) < half) || ((W && ax < 0 || E && ax > 0) && Math.abs(az) < half);
+        const edge = inTrack && ((Math.abs(ax) >= half - 2 && !((W && ax < 0 || E && ax > 0) && Math.abs(az) < half)) || (Math.abs(az) >= half - 2 && !((N && az < 0 || S && az > 0) && Math.abs(ax) < half)));
+        const rut = inTrack && (((N || S) && (Math.abs(Math.abs(ax) - 4.5) < 1)) || ((E || W) && (Math.abs(Math.abs(az) - 4.5) < 1)));
+        if (!inTrack) { cat = 'grass'; }
+        else { c = edge ? (hash(tx * PX + px, tz * PX + py) > 0.45 ? rgb(0x7a6a42) : rgb(0x8f7a4c)) : rut ? rgb(0x7a5e3a) : rgb(0xa88a5c); a = 22; cat = edge ? 'grass' : 'dirt'; if (rut && !edge) mult = 0.78; if (!edge && hash(tx * PX + px * 3, tz * PX + py * 5) > 0.97) { c = rgb(0x6a6a62); a = 8; cat = null; } }
       } else if (isRoad) {
-        c = rgb(0x4a4d53); a = 10; cat = 'asphalt';
-        const edgeN = !N && py < 2, edgeS = !S && py > PX - 3, edgeW = !W && px < 2, edgeE = !E && px > PX - 3;
-        if (edgeN || edgeS || edgeW || edgeE) { c = rgb(0x9b9a93); a = 8; cat = 'pavement'; }
-        const cc = (x, z) => (roadAt(x, z - 1) ? 1 : 0) + (roadAt(x, z + 1) ? 1 : 0) + (roadAt(x + 1, z) ? 1 : 0) + (roadAt(x - 1, z) ? 1 : 0);
-        if (conns === 2 && N && S && ((roadAt(tx, tz - 1) && cc(tx, tz - 1) !== 2) || (roadAt(tx, tz + 1) && cc(tx, tz + 1) !== 2))) { const atN = cc(tx, tz - 1) !== 2; if (((atN && py >= 1 && py <= 3) || (!atN && py >= PX - 4 && py <= PX - 2)) && px >= 2 && px <= PX - 3 && px % 3 !== 2) { c = rgb(0xe6e6e0); a = 6; cat = null; } }
-        if (conns === 2 && E && W && ((roadAt(tx - 1, tz) && cc(tx - 1, tz) !== 2) || (roadAt(tx + 1, tz) && cc(tx + 1, tz) !== 2))) { const atW = cc(tx - 1, tz) !== 2; if (((atW && px >= 1 && px <= 3) || (!atW && px >= PX - 4 && px <= PX - 2)) && py >= 2 && py <= PX - 3 && py % 3 !== 2) { c = rgb(0xe6e6e0); a = 6; cat = null; } }
-        else if (conns <= 2 && !(conns === 2 && N && E) && !(conns === 2 && N && W) && !(conns === 2 && S && E) && !(conns === 2 && S && W)) {
-          const vert = (N || S) && !(E || W), horiz = (E || W) && !(N || S);
-          if (vert && (px === 7 || px === 8) && (py % 8) < 4) { c = rgb(0xd9c24a); a = 0; cat = null; }
-          if (horiz && (py === 7 || py === 8) && (px % 8) < 4) { c = rgb(0xd9c24a); a = 0; cat = null; }
+        // a proper street: pavement (1.5 m) and kerb wherever the road doesn't carry on, two lanes with a dashed centre line
+        const roadAt2 = (dx, dz) => roadAt(tx + dx, tz + dz), PW = 6, side = (!N && py < PW) || (!S && py >= PX - PW) || (!W && px < PW) || (!E && px >= PX - PW);
+        const corner = (N && W && !roadAt2(-1, -1) && px < PW && py < PW) || (N && E && !roadAt2(1, -1) && px >= PX - PW && py < PW) || (S && W && !roadAt2(-1, 1) && px < PW && py >= PX - PW) || (S && E && !roadAt2(1, 1) && px >= PX - PW && py >= PX - PW);
+        const kerb = !side && !corner && ((!N && py === PW) || (!S && py === PX - PW - 1) || (!W && px === PW) || (!E && px === PX - PW - 1));
+        if (side || corner) { c = (px + py) % 8 === 0 || (Math.floor(px / 4) + Math.floor(py / 4)) % 2 && (px % 4 === 0 || py % 4 === 0) ? rgb(0x8f8c84) : rgb(0xb9b6ab); a = 8; cat = 'pavement'; }
+        else if (kerb) { c = rgb(0xd6d3c8); a = 4; cat = null; }
+        else {
+          c = rgb(0x4a4d53); a = 10; cat = 'asphalt';
+          const straightNS = (N || S) && !E && !W, straightEW = (E || W) && !N && !S;
+          if (straightNS && (px === H - 1 || px === H) && (py % 12) < 6) { c = rgb(0xe8e6dc); a = 0; cat = null; }
+          if (straightEW && (py === H - 1 || py === H) && (px % 12) < 6) { c = rgb(0xe8e6dc); a = 0; cat = null; }
+          // give-way lines where a straight road meets a junction
+          const cc = (x, z) => (roadAt(x, z - 1) ? 1 : 0) + (roadAt(x, z + 1) ? 1 : 0) + (roadAt(x + 1, z) ? 1 : 0) + (roadAt(x - 1, z) ? 1 : 0);
+          if (straightNS && N && roadAt(tx, tz - 1) && cc(tx, tz - 1) > 2 && py <= 1 && px < H && px % 3 !== 2) { c = rgb(0xe8e6dc); a = 0; cat = null; }
+          if (straightNS && S && roadAt(tx, tz + 1) && cc(tx, tz + 1) > 2 && py >= PX - 2 && px >= H && px % 3 !== 2) { c = rgb(0xe8e6dc); a = 0; cat = null; }
+          if (straightEW && W && roadAt(tx - 1, tz) && cc(tx - 1, tz) > 2 && px <= 1 && py >= H && py % 3 !== 2) { c = rgb(0xe8e6dc); a = 0; cat = null; }
+          if (straightEW && E && roadAt(tx + 1, tz) && cc(tx + 1, tz) > 2 && px >= PX - 2 && py < H && py % 3 !== 2) { c = rgb(0xe8e6dc); a = 0; cat = null; }
         }
       } else if (t !== T.FOREST) {
-        // sidewalk strip beside roads
-        const sN = pavedAt(tx, tz - 1) && py < 3, sS = pavedAt(tx, tz + 1) && py > PX - 4, sW = pavedAt(tx - 1, tz) && px < 3, sE = pavedAt(tx + 1, tz) && px > PX - 4;
-        if (sN || sS || sW || sE) { c = rgb(0xb9b6ab); a = 10; cat = 'pavement'; }
-        else if (t === T.LAND && hash(tx * 16 + px, tz * 16 + py) > 0.93) { c = rgb(0x4a8a3a); a = 6; cat = null; }
+        if (t === T.LAND && hash(tx * PX + px, tz * PX + py) > 0.93) { c = rgb(0x4a8a3a); a = 6; cat = null; }
         else if (t === T.LAND && hash(tx * 31 + px * 7, tz * 29 + py * 3) > 0.9992) { c = [rgb(0xf4e04a), rgb(0xf08aa8), rgb(0xffffff)][(tx + tz + px) % 3]; a = 0; cat = null; }
       }
       if (cat && Assets.ok) { const gx = tx * PX + px, gz = tz * PX + py; const nm = cat === 'grass' ? (vn(gx, gz, 30) > 0.5 ? 'ground_grass_a' : 'ground_grass_b') : CAT[cat]; const sm = Assets.sample(nm, gx, gz); if (sm) { c = sm; a = 0; } }
@@ -139,11 +146,11 @@ export class Terrain {
     const w = this.world, rnd = mulberry32(99), pts = [];
     for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) {
       if (w.terrain[w.idx(x, z)] !== T.FOREST) continue;
-      for (let k = 0; k < 4; k++) pts.push({ x: (x + rnd()) * TILE, z: (z + rnd()) * TILE, s: 0.8 + rnd() * 0.9, tx: x, tz: z, hue: rnd(), light: rnd(), alive: true, amount: 3, reserved: null, pine: rnd() < 0.7 });
+      for (let k = 0, n = Math.round(TILE * TILE / 9.5); k < n; k++) pts.push({ x: (x + rnd()) * TILE, z: (z + rnd()) * TILE, s: 0.8 + rnd() * 0.9, tx: x, tz: z, hue: rnd(), light: rnd(), alive: true, amount: 3, reserved: null, pine: rnd() < 0.7 });
     }
     // a few lone trees out in the meadows (real, choppable ones)
     for (let z = 2; z < MAP - 2; z++) for (let x = 2; x < MAP - 2; x++) {
-      if (w.terrain[w.idx(x, z)] !== T.LAND || w.res[w.idx(x, z)] || rnd() > 0.05) continue;
+      if (w.terrain[w.idx(x, z)] !== T.LAND || w.res[w.idx(x, z)] || rnd() > 0.05 * TILE * TILE / 16) continue;
       pts.push({ x: (x + 0.3 + rnd() * 0.4) * TILE, z: (z + 0.3 + rnd() * 0.4) * TILE, s: 0.9 + rnd() * 0.6, tx: x, tz: z, hue: rnd() * 0.5 + 0.5, light: rnd(), alive: true, amount: 3, reserved: null, pine: false, lone: true });
     }
     this.trees = pts; this.treeAlive = new Map(); for (const t of pts) { const k = t.tz * MAP + t.tx; this.treeAlive.set(k, (this.treeAlive.get(k) || 0) + 1); }

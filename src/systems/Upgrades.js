@@ -3,7 +3,7 @@ import { BUILDINGS, MATERIALS } from '../data/buildings.js';
 import { upgradesFor } from '../data/upgrades.js';
 import { makeCart } from '../render/Carts.js';
 import { Sfx } from '../core/Sfx.js';
-import { TILE } from '../config.js';
+import { UNIT } from '../config.js';
 
 const unit = new THREE.BoxGeometry(1, 1, 1), poleMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.6, metalness: 0.3 }), plankMat = new THREE.MeshStandardMaterial({ color: 0xa8804a, roughness: 0.9 });
 
@@ -61,11 +61,11 @@ export class Upgrades {
   }
   /** A cart parked beside the yard once it has carts. */
   cartProp(b) {
-    if (!b.def.cart || !b.ext) return; const c = makeCart(b.def.cart); c.position.set(b.w * TILE / 2 + 0.9, 0, b.d * TILE / 2 - 1.2); c.rotation.y = 0.3; b.ext.group.add(c); b.ext.cart = c;
+    if (!b.def.cart || !b.ext) return; const c = makeCart(b.def.cart); c.position.set(b.def.w * UNIT / 2 + 0.9, 0, b.def.d * UNIT / 2 - 1.2); c.rotation.y = 0.3; b.ext.group.add(c); b.ext.cart = c;
   }
   /** Poles and planks around the building while the work goes on. */
   scaffold(b) {
-    const W = b.w * TILE, D = b.d * TILE, H = ((b.def.floors || 1) + 1) * 3.2, parts = [];
+    const W = b.def.w * UNIT, D = b.def.d * UNIT, H = ((b.def.floors || 1) + 1) * 3.2, parts = [];
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) parts.push([sx * (W / 2 + 0.5), H / 2, sz * (D / 2 + 0.5), 0.12, H, 0.12, poleMat]);
     for (let y = 1.6; y < H; y += 1.6) { parts.push([0, y, -(D / 2 + 0.5), W + 1.2, 0.08, 0.5, plankMat], [0, y, D / 2 + 0.5, W + 1.2, 0.08, 0.5, plankMat], [-(W / 2 + 0.5), y, 0, 0.5, 0.08, D + 1.2, plankMat], [W / 2 + 0.5, y, 0, 0.5, 0.08, D + 1.2, plankMat]); }
     const grp = new THREE.Group(); for (const [x, y, z, w, h, d, m] of parts) { const o = new THREE.Mesh(unit, m); o.position.set(x, y, z); o.scale.set(w, h, d); o.castShadow = true; grp.add(o); }

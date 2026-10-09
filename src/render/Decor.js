@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TILE, MAP } from '../config.js';
+import { TILE, UNIT, MAP } from '../config.js';
 import { T } from '../world/World.js';
 import { Assets } from './Assets.js';
 import { mulberry32 } from '../util.js';
@@ -21,8 +21,8 @@ export class Decor {
     const tuft = new THREE.BufferGeometry(), tp = [], tc = [];
     for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2, r = 0.12, h = 0.35 + (i % 2) * 0.15, x = Math.cos(a) * r, z = Math.sin(a) * r; tp.push(x - 0.04, 0, z, x + 0.04, 0, z, x * 2.2, h, z * 2.2); }
     tuft.setAttribute('position', new THREE.Float32BufferAttribute(tp, 3)); tuft.computeVertexNormals();
-    this.tufts = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, side: THREE.DoubleSide }), 4000);
-    this.flowers = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), new THREE.MeshStandardMaterial({ roughness: 0.8 }), 1500);
+    this.tufts = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, side: THREE.DoubleSide }), 7000);
+    this.flowers = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), new THREE.MeshStandardMaterial({ roughness: 0.8 }), 2600);
     for (const m of [this.tufts, this.flowers]) { m.frustumCulled = false; m.receiveShadow = true; sc.add(m); }
     for (const m of [this.pole, this.head, this.trunk, this.crown, this.bush]) { m.frustumCulled = false; m.castShadow = m === this.crown || m === this.pole; sc.add(m); }
     // smoke puffs
@@ -65,12 +65,12 @@ export class Decor {
       const i = w.idx(x, z);
       if (w.road[i]) {
         const n = roadAt(x, z - 1), s = roadAt(x, z + 1), e = roadAt(x + 1, z), wv = roadAt(x - 1, z), cn = n + s + e + wv;
-        if (paved(x, z) && cn === 2 && ((n && s) || (e && wv)) && (x + z) % 3 === 0) {
+        if (paved(x, z) && cn === 2 && ((n && s) || (e && wv)) && (x + z) % 2 === 0) {
           const side = hash(x, z) < 0.5 ? 1 : -1;
-          const px = (x + 0.5) * TILE + (n && s ? side * 2.1 : 0), pz = (z + 0.5) * TILE + (e && wv ? side * 2.1 : 0);
+          const px = (x + 0.5) * TILE + (n && s ? side * 3.4 : 0), pz = (z + 0.5) * TILE + (e && wv ? side * 3.4 : 0);   // on the pavement, by the kerb
           if (free(Math.floor(px / TILE), Math.floor(pz / TILE)) || true) {
             const ox = Math.floor(px / TILE), oz = Math.floor(pz / TILE);
-            if (w.inBounds(ox, oz) && !w.occ[w.idx(ox, oz)] && nl < 400) { m.makeTranslation(px, 2.1, pz); this.pole.setMatrixAt(nl, m); const hx = n && s ? -side * 0.3 : 0, hz = e && wv ? -side * 0.3 : 0; q.setFromEuler(new THREE.Euler(0, n && s ? Math.PI / 2 : 0, 0)); m.compose(new THREE.Vector3(px + hx, 4.2, pz + hz), q, new THREE.Vector3(1, 1, 1)); this.head.setMatrixAt(nl, m); this.lampPos.push({ x: px + hx, z: pz + hz }); nl++; }
+            if (w.inBounds(ox, oz) && !w.occ[w.idx(ox, oz)] && nl < 400) { m.makeTranslation(px, 2.1, pz); this.pole.setMatrixAt(nl, m); const hx = n && s ? -side * 0.9 : 0, hz = e && wv ? -side * 0.9 : 0; q.setFromEuler(new THREE.Euler(0, n && s ? Math.PI / 2 : 0, 0)); m.compose(new THREE.Vector3(px + hx, 4.2, pz + hz), q, new THREE.Vector3(1, 1, 1)); this.head.setMatrixAt(nl, m); this.lampPos.push({ x: px + hx, z: pz + hz }); nl++; }
           }
         }
         continue;
@@ -93,15 +93,15 @@ export class Decor {
     let ng = 0, nf = 0; const FL = [0xf2e35a, 0xffffff, 0xe86aa0, 0x9a7ae0, 0xff8a3a];
     for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) {
       const i = w.idx(x, z); if (w.terrain[i] !== T.LAND || w.road[i] || w.occ[i]) continue;
-      const nearRoad = roadAt(x + 1, z) || roadAt(x - 1, z) || roadAt(x, z + 1) || roadAt(x, z - 1), n = nearRoad ? 3 : 7;
-      for (let k = 0; k < n && ng < 4000; k++) { const px = (x + hash(x * 7 + k, z)) * TILE, pz = (z + hash(z * 5 + k, x + 3)) * TILE, s = 0.7 + hash(x + k, z * 3) * 0.9; m.compose(new THREE.Vector3(px, 0.02, pz), q.setFromEuler(new THREE.Euler(0, hash(k, x + z) * 6, 0)), new THREE.Vector3(s, s, s)); this.tufts.setMatrixAt(ng, m); c.setHSL(0.24 + hash(x, z + k) * 0.08, 0.45, 0.3 + hash(k + 1, x) * 0.12); this.tufts.setColorAt(ng, c); ng++; }
-      if (hash(x * 13, z * 17) < 0.35) for (let k = 0; k < 4 && nf < 1500; k++) { const px = (x + hash(x + k * 3, z * 2)) * TILE, pz = (z + hash(z + k * 5, x * 2)) * TILE; m.makeTranslation(px, 0.22, pz); this.flowers.setMatrixAt(nf, m); c.setHex(FL[Math.floor(hash(x * 3 + k, z) * FL.length)]); this.flowers.setColorAt(nf, c); nf++; }
+      const nearRoad = roadAt(x + 1, z) || roadAt(x - 1, z) || roadAt(x, z + 1) || roadAt(x, z - 1), n = nearRoad ? 4 : 9;
+      for (let k = 0; k < n && ng < 5000; k++) { const px = (x + hash(x * 7 + k, z)) * TILE, pz = (z + hash(z * 5 + k, x + 3)) * TILE, s = 0.7 + hash(x + k, z * 3) * 0.9; m.compose(new THREE.Vector3(px, 0.02, pz), q.setFromEuler(new THREE.Euler(0, hash(k, x + z) * 6, 0)), new THREE.Vector3(s, s, s)); this.tufts.setMatrixAt(ng, m); c.setHSL(0.24 + hash(x, z + k) * 0.08, 0.45, 0.3 + hash(k + 1, x) * 0.12); this.tufts.setColorAt(ng, c); ng++; }
+      if (hash(x * 13, z * 17) < 0.45) for (let k = 0; k < 7 && nf < 1800; k++) { const px = (x + hash(x + k * 3, z * 2)) * TILE, pz = (z + hash(z + k * 5, x * 2)) * TILE; m.makeTranslation(px, 0.22, pz); this.flowers.setMatrixAt(nf, m); c.setHex(FL[Math.floor(hash(x * 3 + k, z) * FL.length)]); this.flowers.setColorAt(nf, c); nf++; }
     }
     this.tufts.count = ng; this.flowers.count = nf; for (const im of [this.tufts, this.flowers]) { im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
     // shrubs hugging building walls
     for (const b of this.game.buildings.list) {
       if (b.state !== 'done' || b.def.park || b.def.special || nb > 880) continue;
-      const D = b.def.d * TILE, W = b.def.w * TILE;
+      const D = b.def.d * UNIT, W = b.def.w * UNIT;
       for (const [lx, lz] of [[-W / 2 + 0.6, -D / 2 - 0.7], [W / 2 - 0.6, -D / 2 - 0.7], [-W / 2 - 0.7, 0], [W / 2 + 0.7, 0], [-W / 2 + 0.2, D / 2 + 0.7], [W / 2 - 0.2, D / 2 + 0.7]]) {
         const [px, pz] = b.toWorld(lx, lz), tx = Math.floor(px / TILE), tz = Math.floor(pz / TILE);
         if (!w.inBounds(tx, tz) || w.road[w.idx(tx, tz)] || (w.occ[w.idx(tx, tz)] && w.occ[w.idx(tx, tz)] !== b.uid) || !w.isLand(tx, tz)) continue;

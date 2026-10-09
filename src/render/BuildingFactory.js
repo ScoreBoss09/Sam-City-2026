@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TILE, WALL_H, WALL_T, DOOR_W } from '../config.js';
+import { UNIT, WALL_H, WALL_T, DOOR_W } from '../config.js';
 import { FACADES } from '../data/buildings.js';
 import { doorOffset } from '../data/layouts.js';
 import { facadeMaterial, signTexture, roofMaterial } from './Textures.js';
@@ -118,7 +118,7 @@ function buildExterior0(def, uid = 1, era = 2) {
   if (def.park) return buildPark(def, uid);
   if (def.special_ext === 'stockyard') return buildStockyard(def);
   if (def.special_ext === 'farm') return buildFarm(def, uid);
-  const W = def.w * TILE, D = def.d * TILE, H = def.floors * WALL_H, T = WALL_T, rnd = mulberry32(uid * 7919 + 13);
+  const W = def.w * UNIT, D = def.d * UNIT, H = def.floors * WALL_H, T = WALL_T, rnd = mulberry32(uid * 7919 + 13);
   const g = new THREE.Group(), roof = new THREE.Group(), cols = [];
   const mat = facadeMaterial(def.wall), door = doorOffset(def.w), dw = DOOR_W;
   box(g, W + 0.7, 0.3, D + 0.7, 0x9a9b9c, 0, -0.2, 0);                       // pavement slab
@@ -251,7 +251,7 @@ function pubSignTexture() {
   const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace; return (_pubTex = t);
 }
 function buildPark(def, uid) {
-  const W = def.w * TILE, D = def.d * TILE, rnd = mulberry32(uid * 31 + 5), g = new THREE.Group(), roof = new THREE.Group();
+  const W = def.w * UNIT, D = def.d * UNIT, rnd = mulberry32(uid * 31 + 5), g = new THREE.Group(), roof = new THREE.Group();
   const lawn = new THREE.Mesh(new THREE.BoxGeometry(W - 0.3, 0.12, D - 0.3), stdMat(def.park === 'field' ? 0x6aa64f : 0x66a74e)); lawn.position.y = 0.04; lawn.receiveShadow = true; g.add(lawn);
   const tree = (x, z, s = 1) => { box(g, 0.35 * s, 1.2 * s, 0.35 * s, 0x5a3b22, x, 0, z); const c = new THREE.Mesh(new THREE.ConeGeometry(1.4 * s, 3 * s, 6), stdMat(0x2f7a3a, { flatShading: true })); c.position.set(x, 2.4 * s, z); c.castShadow = true; g.add(c); };
   const cols = [];
@@ -290,7 +290,7 @@ function buildPark(def, uid) {
 }
 
 function buildLift(def) {
-  const W = def.w * TILE, D = def.d * TILE, g = new THREE.Group(), roof = new THREE.Group(), cols = [];
+  const W = def.w * UNIT, D = def.d * UNIT, g = new THREE.Group(), roof = new THREE.Group(), cols = [];
   box(g, W, 0.35, D, 0x464c55, 0, -0.18, 0);
   const ring = new THREE.Mesh(new THREE.RingGeometry(3.4, 4.2, 28), new THREE.MeshBasicMaterial({ color: 0xf1c40f })); ring.rotation.x = -Math.PI / 2; ring.position.set(0, 0.2, 0.5); g.add(ring);
   box(g, W, 11, 1.2, 0x39414b, 0, 0, -D / 2 + 0.6); cols.push({ cx: 0, cz: -D / 2 + 0.6, sx: W, sz: 1.2 });
@@ -330,7 +330,7 @@ function buildLift(def) {
 }
 
 function buildTunnel(def) {
-  const W = def.w * TILE, D = def.d * TILE, g = new THREE.Group(), roof = new THREE.Group(), cols = [];
+  const W = def.w * UNIT, D = def.d * UNIT, g = new THREE.Group(), roof = new THREE.Group(), cols = [];
   box(g, W, 0.3, D, 0x55595f, 0, -0.16, 0);
   box(g, W + 4, 6, 6.5, 0x56704a, 0, 0, -D / 2 + 3.25); box(g, W + 1, 3, 5.2, 0x45603f, 0, 6, -D / 2 + 3.0); box(g, W - 3, 2, 4, 0x6f8a58, 0, 9, -D / 2 + 2.8);
   for (const [tx, tz, s] of [[-5, -5, 1], [4, -4.5, 1.2], [0, -5.5, 0.9], [7, -2, 0.8], [-7, -2.5, 1]]) { box(g, 0.3, 1.2, 0.3, 0x5a3b22, tx, 5.5, tz); const cn = new THREE.Mesh(new THREE.ConeGeometry(1.3 * s, 3 * s, 6), stdMat(0x2f6a3a, { flatShading: true })); cn.position.set(tx, 8.5 * 1, tz); cn.position.y = 7.4 + 1.5 * s; g.add(cn); }
@@ -351,7 +351,7 @@ function buildTunnel(def) {
 
 // ---------- construction site ----------
 export function buildSite(def) {
-  const W = def.w * TILE, D = def.d * TILE, H = Math.max(2, (def.floors || 1) * WALL_H), g = new THREE.Group();
+  const W = def.w * UNIT, D = def.d * UNIT, H = Math.max(2, (def.floors || 1) * WALL_H), g = new THREE.Group();
   box(g, W + 0.4, 0.2, D + 0.4, 0x8b7355, 0, -0.1, 0);
   const f = FACADES[def.wall] || FACADES.tan;
   const shell = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color: new THREE.Color(f.base), transparent: true, opacity: 0.88, roughness: 1 }));
@@ -404,7 +404,7 @@ export function furnitureColliders(lay) {
 
 // ---------- primitive-era pieces ----------
 function buildCamp(def, g, roof, cols) {
-  g.clear(); const W = def.w * TILE, D = def.d * TILE;
+  g.clear(); const W = def.w * UNIT, D = def.d * UNIT;
   const dirt = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.6, 0.12, 14), stdMat(0x8a7656)); dirt.position.y = 0.05; dirt.receiveShadow = true; g.add(dirt);
   for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; const st = box(g, 0.45, 0.32, 0.4, i % 2 ? 0x8d8a82 : 0x77746c, Math.cos(a) * 1.0, 0.05, Math.sin(a) * 1.0); st.rotation.y = a; }
   for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.4; const lg = box(g, 1.2, 0.18, 0.18, 0x4a3320, Math.cos(a) * 0.35, 0.12, Math.sin(a) * 0.35); lg.rotation.y = a; }
@@ -471,7 +471,7 @@ function buildBandstand(def, g, roof, cols, tree) {
   cols.push({ cx: 0, cz: 0, sx: 4.6, sz: 4.6 }); return { group: g, roof, colliders: cols, height: 4.2 };
 }
 function buildAllotment(def, g, roof, cols, rnd) {
-  g.clear(); const W = def.w * TILE, D = def.d * TILE;
+  g.clear(); const W = def.w * UNIT, D = def.d * UNIT;
   const grass = new THREE.Mesh(new THREE.BoxGeometry(W - 0.3, 0.1, D - 0.3), stdMat(0x5e8a3e)); grass.position.y = 0.03; grass.receiveShadow = true; g.add(grass);
   const greens = [0x4a8a2a, 0x6aa63a, 0x3a7a3a, 0x8aa64a];
   for (let i = 0; i < 4; i++) {
@@ -494,7 +494,7 @@ function buildWell(def, g, roof, cols) {
   cols.push({ cx: 0, cz: 0, sx: 2.0, sz: 2.0 }); return { group: g, roof, colliders: cols, height: 2.5 };
 }
 function buildStockyard(def) {
-  const W = def.w * TILE, D = def.d * TILE, g = new THREE.Group(), roof = new THREE.Group(), cols = [], off = doorOffset(def.w);
+  const W = def.w * UNIT, D = def.d * UNIT, g = new THREE.Group(), roof = new THREE.Group(), cols = [], off = doorOffset(def.w);
   box(g, W, 0.14, D, 0x8a7550, 0, -0.04, 0);
   const post = (x, z) => box(g, 0.2, 1.6, 0.2, 0x5a3b22, x, 0, z);
   for (let x = -W / 2 + 0.2; x <= W / 2 - 0.1; x += 2) { post(x, -D / 2 + 0.15); if (Math.abs(x - off) > 1.6) post(x, D / 2 - 0.15); }
@@ -516,7 +516,7 @@ function buildStockyard(def) {
   return { group: g, roof, colliders: cols, height: 2, update };
 }
 function buildFarm(def, uid) {
-  const W = def.w * TILE, D = def.d * TILE, g = new THREE.Group(), roof = new THREE.Group(), cols = [], rnd = mulberry32(uid * 17 + 3);
+  const W = def.w * UNIT, D = def.d * UNIT, g = new THREE.Group(), roof = new THREE.Group(), cols = [], rnd = mulberry32(uid * 17 + 3);
   box(g, W, 0.12, D, 0x6b5a3a, 0, -0.04, 0);
   // barn (back-left)
   const bw = W * 0.5, bd = D * 0.5, bx = -W / 2 + bw / 2 + 0.2, bz = -D / 2 + bd / 2 + 0.2, mat = facadeMaterial('timber');

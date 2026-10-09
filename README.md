@@ -38,6 +38,20 @@ python3 -m http.server 8000
 | R3 | big map | frame the whole island |
 Menus and the terminal: D-pad or stick to move (it jumps to the nearest button in that direction, so grids work too), A to press, B to close. In the Planning menu LB/RB change page and LT/RT change category.
 
+## The map and the streets
+The island is 320 m across, on a grid of 8 m squares. One square of paved road holds two lanes (traffic keeps left) with a pavement and kerb on each side, and people walk on the pavements. A dirt path is a cart track down the middle with grass verges. Buildings keep their real size and sit at the front of their plot, so smaller homes get a back garden. Woods can be walked into to reach the trees. Saves from before the bigger map can't be continued (the title screen says so); start a new game.
+
+## Horse-and-cart days, and the Lift
+Until the Power Plant brings electricity there are no lorries and no cars. Goods you order arrive in the Lift cage and are left on the dock; builders (and Sam) cart them to the Stockyard, two builders at a time, using wheelbarrows once the Builders' Yard has them. The Work queue shows what's waiting at the Lift. Once the power is on, lorries deliver and cars appear on paved roads.
+
+The Lift is a shaft in the ground: the cage rises out of it and sinks back down. Newcomers ride up in it; people who are leaving queue at the edge, step into the cage and go down. It won't go down with Sam on the platform, and the guards' ten-second countdown still applies.
+
+## Sam's own life while you plan
+In the planning view Sam carries on by himself: he sleeps at night, eats when hungry, fetches materials and builds the top job on the Work queue, digs paths, chops timber or picks berries when stocks are low, works shifts, chats with people and sits on benches. The clock box says what he's doing, and when you press TAB you take over wherever he is. During the opening tutorial he leaves the work to you.
+
+## Performance report
+Press **F8**, or the 📊 button under the clock (or 📊 Report in the Planning menu), then **Copy**, and paste it to Claude. It lists frame rate and stutters, what takes the time, draw calls, your GPU and browser, and the size of the town.
+
 ## The Planning menu (B, or X on the controller, in the planning view)
 One big menu that works the same with a controller or a mouse:
 - **Build**: every building you can place, by category, as big cards. A green ✓ (and ×2, ×3...) means you already have that type; 🏗️ means one is being built. Locked ones say why, and if the town is big enough you can request the permit right there. Pick one and you're back on the map to place it.
