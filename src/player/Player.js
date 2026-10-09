@@ -206,6 +206,7 @@ export class Player {
     { const cu = g.curios && g.curios.near(px, pz, 2.2); if (cu) consider({ kind: 'curio', item: cu, text: `Pick up something shiny...` }, Math.hypot(cu.x - px, cu.z - pz) - 1.5); }
     { const L = g.lift, h = L && L.ext && L.ext.hatch; if (h) { const [hx, hz] = L.toWorld(h.x, h.z), d = Math.hypot(hx - px, hz - pz); if (d < 2.2) consider({ kind: 'hatch', b: L, text: 'Order supplies on the Lift intercom' }, d - 1.0, hx, hz); } }
     { const nd = this.nearDoor(); if (nd) { const d = Math.hypot(nd.doorPos.x - px, nd.doorPos.z - pz); consider({ kind: 'info', text: `Press C to ${(nd.doorK || 0) > 0.5 ? 'close' : 'open'} the door` }, d + 0.9); } }
+    for (const st of g.celebrations.stalls) { const d = Math.hypot(st.x - px, st.z - pz); if (d < 2.4) consider({ kind: 'stall', stall: st, text: g.celebrations.stallText(st) }, d - 0.8, st.x, st.z); }
     for (const p of g.piles.list) { const d = Math.hypot(p.x - px, p.z - pz); if (d < 2.2) consider({ kind: 'pile', pile: p, text: full ? 'Your backpack is full' : `Pick up ${Object.entries(p.items).map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }, d - 1.2); }
     for (const b of B) if (b.state === 'done' && b.def.park === 'camp' && (this.inv.food || 0) >= 2 && this.hunger > 15) { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 4.5) consider({ kind: 'cook', b, text: 'Cook a hot meal on the fire (uses 2 food)' }, d - 2.5); }
     for (const b of B) if (b.state === 'done' && b.spots.seat && (b.def.open || b.def.park || b === g.buildings.playerInside)) for (const s of b.spots.seat) { if (s.taken) continue; const d = Math.hypot(s.x - px, s.z - pz); if (d < (b.def.park === 'camp' ? 2.2 : 1.4)) consider({ kind: 'seat', seat: s, b, text: b.def.park === 'camp' ? 'Sit by the fire' : 'Sit down' }, d + 0.3, s.x, s.z); }
@@ -290,6 +291,7 @@ export class Player {
     else if (t.kind === 'curio' && e) g.curios.take(t.item);
     else if (t.kind === 'seat' && e) this.sitOn(t.seat, t.b);
     else if (t.kind === 'cook' && e) this.cookMeal(t.b);
+    else if (t.kind === 'stall' && e) g.celebrations.useStall(t.stall);
     else if (false) { this.invTake('food', 2); this.hunger = 0; this.energy = Math.min(100, this.energy + 20); g.flags.ate = (g.flags.ate || 0) + 1; g.flags.cooked = (g.flags.cooked || 0) + 1; Sfx.play('eat'); Sfx.noise(0.6, { freq: 1800, q: 0.6, vol: 0.15 }); g.particles.burst(t.b.cx, 0.8, t.b.cz, 0xffb03a, 12, 0.6, 3, 0.08); g.ui.toast(['A proper stew! You feel brand new.', 'Fish on a stick, charred just right.', 'Berry crumble, campfire style. Delicious.', 'Toasted bread and hot jam. Lovely.'][Math.floor(Math.random() * 4)], 2800); }
     else if (t.kind === 'weapon' && e) { if (g.raids.take()) { this.weapon = 'club'; Sfx.play('pickup'); g.ui.toast('You take the club. Press F to swing it.', 3200); } }
     else if (t.kind === 'site' && t.deliver && e) this.deliverTo(t.b);
@@ -313,7 +315,7 @@ export class Player {
     if (tap || held) { this.lockT = performance.now(); if (this.lock !== t) { this.lock = t; this.lockPos = { x: this.x, z: this.z }; } }
     const fx = t.node ? t.node.x : t.b ? t.b.cx : t.plan.cx, fz = t.node ? t.node.z : t.b ? t.b.cz : t.plan.cz; let value = 0;
     if (tap) {
-      const r = wg.press(); value = r.q === 'none' ? 0 : r.fish ? (r.q === 'miss' ? 0 : 1.2) * r.mult : STROKE[r.q] * r.mult;
+      const r = wg.press(); value = r.q === 'none' ? 0 : r.fish ? (r.q === 'miss' ? 0 : 1.2) * r.mult : STROKE[r.q] * r.mult; value *= g.skills.bonus(t.work); g.skills.gain(t.work, r.q === 'perfect' ? 2 : r.q === 'good' ? 1 : 0);
       if (r.q === 'perfect' && wg.combo >= 3) this.chainSpill(wg.combo, t);
       if (t.node) { if (t.nk === 'tree') { g.terrain.hitTree(t.node); g.terrain.fallFrom = { x: this.x, z: this.z }; } else g.resources.shake(t.node); } this.strikeT = 0.5; this.faceTo(fx, fz); if (r.q === 'perfect') this.shake = 0.25;
       const hx = this.x + (fx - this.x) * 0.6, hz = this.z + (fz - this.z) * 0.6; g.particles.burst(hx, t.work === 'build' ? 0.8 : 1.0, hz, t.nk === 'berry' ? (Math.random() < 0.5 ? 0xc0243a : 0x7a2a8a) : t.nk === 'field' ? 0xe0c050 : CHIP[t.work], r.q === 'perfect' ? 14 : r.q === 'good' ? 8 : 3, 1, 3.2);
@@ -325,7 +327,7 @@ export class Player {
       this.gatherT = (this.gatherT || 0) + value * t.time;
       while (this.gatherT >= t.time) {
         this.gatherT -= t.time; if (!g.resources.take(t.node)) { this.gatherT = 0; break; }
-        const got = this.invAdd(t.mat, t.per); g.flags.gathered = (g.flags.gathered || 0) + got; Sfx.play('unit'); wg.pop(t.nk === 'fish' ? `+${got} food: ${['a mackerel', 'a fat cod', 'a herring', 'a little sole', 'a plaice', 'a sardine', 'an old boot... no, a crab', 'a whopping sea bass'][Math.floor(Math.random() * 8)]}!` : `+${got} ${MATERIALS[t.mat].name.toLowerCase()}`, 'unit');
+        let got = this.invAdd(t.mat, t.per); const lucky = Math.random() < g.skills.luck(t.work) && this.invRoom() > 0 ? this.invAdd(t.mat, 1) : 0; got += lucky; g.skills.gain(t.work, 2); g.flags.gathered = (g.flags.gathered || 0) + got; Sfx.play('unit'); wg.pop(t.nk === 'fish' ? `+${got} food: ${['a mackerel', 'a fat cod', 'a herring', 'a little sole', 'a plaice', 'a sardine', 'an old boot... no, a crab', 'a whopping sea bass'][Math.floor(Math.random() * 8)]}!` : `+${got} ${MATERIALS[t.mat].name.toLowerCase()}${lucky ? ' (lucky!)' : ''}`, 'unit');
         if (this.invRoom() <= 0) { g.ui.toast('Backpack full! Store it at the Stockyard, deliver it to a site, or drop it (R).'); this.gatherT = 0; break; }
         if (t.node.kind === 'tree' && !t.node.alive) { const tn = t.node; setTimeout(() => { g.particles.burst(tn.x, 0.6, tn.z, 0x4a7a3a, 26, 2.2, 2.5); Sfx.noise(0.6, { freq: 160, vol: 0.7, type: 'lowpass' }); }, 900); wg.pop('TIMBER!', 'perfect'); this.lock = null; break; }
       }
@@ -357,7 +359,7 @@ export class Player {
     let any = false; for (const s of sites) { if (Math.hypot(s.cx - this.x, s.cz - this.z) > 80) continue; const got = g.buildings.bonusWork(s, frac); if (got > 0) { any = true; g.particles.burst(s.cx, 2.5, s.cz, 0xffd23f, 10, 1.5, 3, 0.1); } }
     if (any && performance.now() - (this.spillMsgT || 0) > 4000) { this.spillMsgT = performance.now(); g.ui.toast(`🔥 Chain x${combo}! The buzz spreads: nearby building sites get a little done too.`, 2600); }
   }
-  finished(b) { const g = this.game; Sfx.play('done'); g.particles.burst(b.cx, 3, b.cz, 0xffd23f, 30, 2.5, 5, 0.16); g.ui.toast(`${b.def.name} finished!`, 2800); }
+  finished(b) { const g = this.game; g.skills.gain('build', 10); Sfx.play('done'); g.particles.burst(b.cx, 3, b.cz, 0xffd23f, 30, 2.5, 5, 0.16); g.ui.toast(`${b.def.name} finished!`, 2800); }
   faceTo(x, z) { this.heading = Math.atan2(x - this.x, z - this.z); }
   takePile(p) {
     const g = this.game; let took = 0;

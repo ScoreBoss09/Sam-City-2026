@@ -46,6 +46,12 @@ Chopping, mining, digging, picking, fishing and building show a timing bar. Tap 
 - **Cook** at a campfire with 2 food for a full belly and extra energy, or just sit by the fire to rest.
 - **Curios**: 14 odd little things glint on the ground around the island. Your journal (J) keeps them, with your friends and records.
 - **Village fête** every few days at a park or the campfire: bunting, stalls, a tune, and a happier town.
+- **Skills**: practice makes perfect. Every good tap teaches Sam a little Woodcutting, Quarrying, Digging, Foraging, Fishing or Building (levels 1-10, from Novice to Grand Master). Higher levels work faster with a wider green zone, and from level 5 you get the odd spare log, stone, berry or fish. The timing bar shows your level; the journal (J) shows them all.
+- **Council challenges**: the Challenges page in the post lists three side goals at a time (a full larder, make friends, find curios, pave roads, a cheerful town, a wedding...). Each pays a grant into the town funds, and new ones appear as the town grows.
+- **Weddings**: couples who have been together a while get married at St Sam's on a Saturday. You get an invitation the day before; at 11 the guests gather at the church door under a flower arch, confetti flies and the bells ring.
+- **Market day** every week (09:00-15:00) at a park, plaza or the campfire: a Greengrocer (3 food for £12), a Swap stall that buys whatever's in your backpack at full price (better than the Lift), and a Lucky dip (£5, anything from a tenner to a Tamagotchi that's already died).
+- **Bonfire Night** (5 November): a big bonfire with a guy on top from 18:00 and fireworks from 19:00, with the whole town watching. **New Year's Eve**: fireworks over the town at midnight.
+- **Weather**: summer thunderstorms with lightning and thunder, and morning mist rolling in off the sea on autumn and winter days.
 - **Post**: the red Postbox brings monthly accounts, permit replies, the local paper and notes from neighbours. Its **Jobs** page shows every workplace, how many jobs are filled, who works where and who is looking for work.
 - **Doors** are shut by default. Sam opens or shuts them with C (D-pad right), even with people inside; villagers only open a door for the moment they walk through it.
 - **Days and nights**: daylight (06:00-20:00) lasts 10 real minutes, the night 3. Sam needs about one sleep a night. A month is 8 days.
@@ -117,4 +123,4 @@ Names the game looks up are listed in `tools/build_textures.py` (`wall_*`, `roof
 `src/data` pure data (buildings, layouts, story, names) · `src/world` grid, A*, building lifecycle · `src/systems` economy, resources, logistics, construction, population, social, story, security · `src/sim` NPC state machine · `src/player` Sam + planning tools · `src/render` textures, meshes, rig/animator, post-process · `src/ui/UI.js` DOM · `src/core` input, clock, save · `tools/` headless Playwright scenarios (`window.__game`).
 
 ## Limits / roadmap
-Single-storey interiors (towers have one lobby floor), no audio, weapons only exist during raids, simple weather-free skies.
+Single-storey interiors (towers have one lobby floor), synthesised sound effects only (no music files), weapons only exist during raids.

@@ -152,10 +152,13 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 .jsec { margin: 12px 0 4px; font-weight: bold; border-bottom: 1px solid #c9b48a; } .jfr { font-size: 13px; }
 .cus { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; } .cu { display: grid; grid-template-columns: 32px 1fr; grid-template-rows: auto auto; background: #fbf6e8; border: 1px dashed #c9b48a; padding: 4px 6px; opacity: .55; }
 .cu.has { opacity: 1; border-style: solid; } .cu .ic { grid-row: span 2; font-size: 22px; align-self: center; } .cu b { font-size: 13px; } .cu small { font-size: 11px; color: #6a5a3a; }
+.jsk { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .sk { display: grid; grid-template-columns: 28px 1fr; background: #fbf6e8; border: 1px solid #c9b48a; padding: 4px 6px; } .sk .ic { grid-row: span 3; font-size: 20px; align-self: center; } .sk b { font-size: 13px; } .sk em { font-size: 11px; color: #6a5a3a; } .sk i { display: block; height: 5px; background: #e0d2b0; margin-top: 3px; } .sk u { display: block; height: 100%; background: #d9a22a; }
 #journal .hint { font-size: 11px; color: #6a5a3a; margin-top: 8px; }
-@media (max-width: 600px) { .jstats, .cus { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .jsk { grid-template-columns: 1fr 1fr; } .jstats, .cus { grid-template-columns: 1fr 1fr; } }
 #toast, #prompt, #query, #countdown, .wg, #sitelabels { pointer-events: none; }
 .jobsum { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0 8px; } .jobsum b.bad, td.bad { color: #ff8a7a; } td.ok { color: #8fd18f; }
 #terminal td.bad, #terminal b.bad { color: #d9534f; font-weight: bold; } #terminal td.ok { color: #3f9a4f; }
 .texbox { margin: 8px 0; font-size: 13px; } .texbox button.small { font-size: 11px; padding: 2px 6px; margin-left: 6px; }
 .ver { font-size: 11px; color: #8d9bb3; margin: -6px 0 10px; }
+
+.chal { display: grid; grid-template-columns: 34px 1fr; gap: 6px; padding: 6px; margin: 6px 0; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.04); } .chal .ic { font-size: 24px; align-self: center; } .chal i { display: block; height: 6px; background: rgba(255,255,255,.12); margin: 4px 0 2px; } .chal u { display: block; height: 100%; background: #f2c94c; }

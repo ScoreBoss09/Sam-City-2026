@@ -19,7 +19,7 @@ export class WorkGame {
   start(kind, key) {
     if (this.active && this.key === key) { this.idle = 0; return; }
     const k = KINDS[kind] || KINDS.chop; this.kind = kind; this.k = k; const keep = kind === this.lastKind && performance.now() - (this.lastPress || 0) < 3000 ? this.combo : 0; this.key = key; this.active = true; this.pos = 0; this.dir = 1; this.combo = keep; this.idle = 0; this.newZone(); $('wg-combo').textContent = keep > 1 ? `🔥 CHAIN x${keep}` : ''; this.el.dataset.heat = Math.min(4, keep); this.lastKind = kind;
-    $('wg-title').textContent = k.title; this.el.classList.remove('hidden'); this.el.classList.toggle('fishing', kind === 'fish'); if (kind === 'fish') this.cast(); this.render();
+    $('wg-title').textContent = `${k.title} · Lv ${this.game.skills.level(kind)}`; this.el.classList.remove('hidden'); this.el.classList.toggle('fishing', kind === 'fish'); if (kind === 'fish') this.cast(); this.render();
   }
   /** Fishing: wait for the float to bob, then strike while it is under. */
   cast() { this.fishState = 'wait'; this.fishT = 1.5 + Math.random() * 3; $('wg-bob').textContent = '~ ~ ~  o  ~ ~ ~'; }
@@ -40,8 +40,8 @@ export class WorkGame {
     return { q, mult };
   }
   /** Zone widths and marker speed tighten as the gold chain grows. */
-  pw() { return this.k.perfect * Math.max(0.4, 1 - Math.min(this.combo, 6) * 0.1); }
-  gw() { return this.k.good * Math.max(0.6, 1 - Math.min(this.combo, 6) * 0.06); }
+  pw() { return this.k.perfect * this.game.skills.zone(this.kind) * Math.max(0.4, 1 - Math.min(this.combo, 6) * 0.1); }
+  gw() { return this.k.good * this.game.skills.zone(this.kind) * Math.max(0.6, 1 - Math.min(this.combo, 6) * 0.06); }
   spd() { return this.k.speed * (1 + Math.min(this.combo, 8) * 0.12); }
   strike() {
     this.idle = 0; this.lastPress = performance.now(); let q;
@@ -51,7 +51,7 @@ export class WorkGame {
     const c = $('wg-combo'); c.textContent = this.combo > 1 ? `🔥 CATCH STREAK x${this.combo}` : ''; this.el.dataset.heat = Math.min(4, this.combo);
     return { q, mult: q === 'perfect' ? 1 + Math.min(this.combo - 1, 6) * 0.3 : 1, fish: true };
   }
-  biteWin() { return Math.max(0.35, 0.9 - Math.min(this.combo, 6) * 0.09); }
+  biteWin() { return Math.max(0.35, 0.9 - Math.min(this.combo, 6) * 0.09) * this.game.skills.zone('fish'); }
   pop(text, cls) { const p = $('wg-pop'); p.textContent = text; p.className = 'wg-pop ' + cls; this.popT = 0.8; }
   update(dt) {
     if (!this.active) return; this.idle += dt; if (this.idle > (this.kind === 'fish' ? 9 : 3)) { this.stop(); return; }
