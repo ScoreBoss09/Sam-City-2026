@@ -13,7 +13,8 @@ jobs:
       - name: Assemble the game (plain files, no build step)
         run: |
           mkdir -p site
-          cp -r index.html css src vendor play.bat play.sh README.md site/
+          cp -r index.html css src vendor play.bat play.sh serve.py README.md site/
+          echo "export const VERSION = '$(date -u +'%d %b %Y %H:%M') (${GITHUB_SHA::7})';" > site/src/version.js
           touch site/.nojekyll
           (cd site && zip -qr ../SamCity-playable.zip .)
       - name: Publish to GitHub Pages branch (play in the browser)
@@ -27,4 +28,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest SamCity-playable.zip --title "Sam City (latest playable build)" --notes "Unzip, then run play.bat (Windows) or play.sh (Mac/Linux), or open the GitHub Pages link in the README."
+          gh release create latest SamCity-playable.zip --title "Sam City (latest playable build)" --notes "Unzip into a NEW folder, close any old Sam City window, then double-click play.bat (Windows) or run play.sh (Mac/Linux). The title screen shows the version date, so you can check you have the newest one."

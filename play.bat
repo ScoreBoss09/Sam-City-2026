@@ -1,5 +1,4 @@
 @echo off
 cd /d "%~dp0"
-echo Sam City running at http://localhost:8123 (close this window to stop)
-start "" http://localhost:8123
-python -m http.server 8123 || py -m http.server 8123
+echo Starting Sam City... (close this window to stop the game)
+python serve.py 8123 || py serve.py 8123 || (echo. & echo Python is needed: install it from https://www.python.org/downloads/ and tick "Add python.exe to PATH". & pause)

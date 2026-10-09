@@ -6,7 +6,7 @@ Playable prototype (Three.js, no build step), structured as a data-driven refere
 
 ## Play it
 - **In the browser:** https://scoreboss09.github.io/Sam-City-2026/ (one-time setup: repo Settings > Pages > Source "Deploy from a branch" > `gh-pages` / root; the branch appears after the first Actions run).
-- **Download:** the Releases page has `SamCity-playable.zip` (rebuilt on every push). Unzip it, then double-click `play.bat` (Windows) or run `./play.sh` (Mac/Linux). Needs Python 3 installed. Or use "Code > Download ZIP" on the repo.
+- **Download:** https://github.com/ScoreBoss09/Sam-City-2026/releases/download/latest/SamCity-playable.zip (rebuilt on every push). Close any old Sam City window first, unzip into a new folder, then double-click `play.bat` (Windows) or run `./play.sh` (Mac/Linux). Needs Python 3 installed. The title screen shows the version date so you can check it's the newest; the launcher tells the browser not to keep old copies and picks another port if an old copy is still running.
 
 ## Run
 ```

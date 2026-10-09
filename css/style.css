@@ -158,3 +158,4 @@ button.padfocus { outline: 3px solid #ffd23f !important; outline-offset: 2px; ba
 .jobsum { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0 8px; } .jobsum b.bad, td.bad { color: #ff8a7a; } td.ok { color: #8fd18f; }
 #terminal td.bad, #terminal b.bad { color: #d9534f; font-weight: bold; } #terminal td.ok { color: #3f9a4f; }
 .texbox { margin: 8px 0; font-size: 13px; } .texbox button.small { font-size: 11px; padding: 2px 6px; margin-left: 6px; }
+.ver { font-size: 11px; color: #8d9bb3; margin: -6px 0 10px; }
