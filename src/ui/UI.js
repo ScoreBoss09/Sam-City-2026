@@ -1,3 +1,5 @@
+import { CHALLENGES } from '../systems/Challenges.js';
+import { SKILLS } from '../systems/Skills.js';
 import { BUILDINGS, MATERIALS, ROLES, TOOL_MENUS, ALL_BUILDABLE, tierOf } from '../data/buildings.js';
 import { OBJECTIVES } from '../data/story.js';
 import { fmtMoney } from '../util.js';
@@ -173,6 +175,7 @@ export class UI {
     const best = g.workgame.best || 0;
     $('journal').innerHTML = `<h2><span>SAM'S JOURNAL</span><button data-j="close">Close</button></h2>
       <div class="jstats"><div><b>${g.clock.totalDays}</b><span>days on the island</span></div><div><b>${g.buildings.list.filter((b) => b.state === 'done' && !b.def.special).length}</b><span>buildings finished</span></div><div><b>${f.gathered || 0}</b><span>things gathered</span></div><div><b>${best}</b><span>best gold chain</span></div><div><b>${f.favours || 0}</b><span>favours done</span></div><div><b>${f.cooked || 0}</b><span>campfire meals</span></div></div>
+      <div class="jsec">Skills (practice makes perfect)</div><div class="jsk">${Object.entries(SKILLS).map(([k, d]) => `<div class="sk"><span class="ic">${d.icon}</span><b>${d.name}</b><em>Lv ${g.skills.level(k)} · ${g.skills.title(k)}</em><i><u style="width:${Math.round(g.skills.frac(k) * 100)}%"></u></i></div>`).join('')}</div>
       <div class="jsec">Friends (${friends.length})${acq ? ` · ${acq} acquaintances` : ''}</div><div class="jfr">${friends.length ? friends.join(', ') : 'Nobody yet. Talk to people, do them favours.'}</div>
       <div class="jsec">Curios found: ${cur.found.size} / ${CURIOS.length}</div><div class="cus">${items}</div>
       <div class="hint">${this.game.input.padActive ? 'D-pad ← opens this' : 'J opens this'} · Esc to close</div>`;
@@ -195,7 +198,7 @@ export class UI {
   renderTerminal() {
     const g = this.game, e = g.economy, tab = this.terminalTab, T = $('terminal');
     const post = this.termMode === 'post', hatch = this.termMode === 'hatch';
-    const tabs = hatch ? [['materials', 'Lift order form']] : post ? [['letters', `Letters${g.mail.unread() ? ' (' + g.mail.unread() + ' new)' : ''}`], ['jobs', 'Jobs'], ['permits', 'Permit forms'], ['materials', 'Order form'], ['report', 'Accounts']] : [['permits', 'Permits'], ['jobs', 'Jobs'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
+    const tabs = hatch ? [['materials', 'Lift order form']] : post ? [['letters', `Letters${g.mail.unread() ? ' (' + g.mail.unread() + ' new)' : ''}`], ['challenges', 'Challenges'], ['jobs', 'Jobs'], ['permits', 'Permit forms'], ['materials', 'Order form'], ['report', 'Accounts']] : [['permits', 'Permits'], ['challenges', 'Challenges'], ['jobs', 'Jobs'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
     let body = '';
     if (tab === 'letters') {
       const L = g.mail.letters; body = L.length ? L.map((l, i) => `<div class="letter ${l.read ? '' : 'new'} ${l.kind}"><div class="lh"><b>${l.title}</b><span>${l.date}</span></div><div class="lf">From: ${l.from}</div><div class="lb">${l.body.replace(/\n/g, '<br>')}</div></div>`).join('') : '<div class="note">The box is empty.</div>';
@@ -231,6 +234,10 @@ export class UI {
       body = `<table><tr><td>Funds</td><td>${fmtMoney(e.funds)}</td></tr><tr><td>Residents</td><td>${P.count()}</td></tr><tr><td>Buildings</td><td>${g.buildings.list.filter((b) => b.state === 'done').length} (+${g.buildings.list.filter((b) => b.state === 'site').length} under construction)</td></tr>
         <tr><td>Age</td><td>${g.tech.status().name}${g.tech.era < 2 ? ` · research ${g.tech.status().research}/${g.tech.status().need} for computers${g.tech.era < 1 ? ' (needs power too)' : ''}` : ''}</td></tr><tr><td>Power</td><td>${g.buildings.count('power') ? 'ONLINE' : 'none'}</td></tr><tr><td>Water</td><td>${g.buildings.count('water') ? 'ONLINE' : 'none'}</td></tr>
         <tr><td>Last month</td><td>${r ? `income ${fmtMoney(r.income)} · costs ${fmtMoney(r.cost)} · net ${fmtMoney(r.net)}` : 'no report yet'}</td></tr></table>`;
+    } else if (tab === 'challenges') {
+      const C = g.challenges, open = C.open(), D = C.doneIds;
+      body = `<div class="note">The Parish Council pays a grant for each of these. Three at a time; a new one is added as each is done, and more turn up as the town grows.</div>` + (open.length ? open.map((c) => { const p = C.progress(c); return `<div class="chal"><span class="ic">${c.icon}</span><div><b>${c.title}</b> <small>grant ${fmtMoney(c.pay)}</small><br><small>${c.text}</small><i><u style="width:${Math.round(p.frac * 100)}%"></u></i><small>${p.have} / ${p.need}</small></div></div>`; }).join('') : '<div class="note">Nothing on the list right now. The Council will think of something when the town grows.</div>')
+        + (D.length ? `<div class="note">Done (${D.length}): ${D.map((id) => { const c = CHALLENGES.find((q) => q.id === id); return c ? c.icon + ' ' + c.title : ''; }).join(' · ')}</div>` : '');
     } else if (tab === 'notes') {
       const pg = g.story.pages; body = pg.length ? pg.map((p) => `<div class="page">${p}</div>`).join('') : '<div class="note">No notes yet. Talk to residents regularly — some of them know more than they should.</div>';
     }

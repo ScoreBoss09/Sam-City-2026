@@ -131,6 +131,7 @@ export class Sim {
     if (this.leaving) return 'leave';
     const night = h >= 22 || h < 6;
     if (alert) { if (this.role === 'guard' && this.kind === 'resident') return 'defend'; if (!(night && this.home)) return 'shelter'; }
+    { const ev = this.game.celebrations && this.game.celebrations.calling(this, h); if (ev && this.hunger < 85 && !(this.kind === 'child' && h >= 21.5)) return 'event'; }
     if (this.activity === 'eat' && this.eating && !night) return 'eat';
     const onShift = this.activity === 'work' && this.workplace && h >= 12 && h < 14 && this.hunger < 70;
     if (!night && !onShift && this.eatCD <= 0 && (this.hunger >= 64 || (this.hunger >= 36 && this.mealWindow(h)))) return 'eat';
@@ -167,6 +168,7 @@ export class Sim {
       case 'home': this.doHome(); break;
       case 'work': this.doWork(dt); break;
       case 'leisure': this.doLeisure(); break;
+      case 'event': this.doEvent(); break;
       case 'visit': this.doVisit(); break;
       case 'shelter': this.doShelter(); break;
       case 'raid': this.game.raids.drive(this, dt); break;
@@ -248,7 +250,7 @@ export class Sim {
   }
   doLeisure() {
     if (this.phase === 0 || (this.phase === 2 && this.timer <= 0)) {
-      const fe = this.game.events && this.game.events.fete;
+      const fe = (this.game.events && this.game.events.fete) || (this.game.celebrations && this.game.celebrations.market);
       if (fe && Math.random() < 0.75) { const a = Math.random() * 6.28, r = 2.5 + Math.random() * 3.5; if (this.goTo({ x: fe.x + Math.cos(a) * r, z: fe.z + Math.sin(a) * r, face: Math.atan2(-Math.cos(a), -Math.sin(a)) })) { this.timer = 20 + Math.random() * 25; return; } }
       const g = this.game, opts = [];
       const parks = g.buildings.list.filter((b) => b.def.park && b.state === 'done' && b.spots.idle.length), shops = g.buildings.shops(), h = g.clock.hour, adult = this.kind !== 'child';
@@ -271,6 +273,11 @@ export class Sim {
       if (c !== 'shop' && this.shopping) { this.shopping = false; this.bag = Math.random() < 0.7; }
       if (c !== 'pub') this.drinking = false; if (c !== 'band') this.bandT = 0;
     }
+  }
+  /** A wedding guest, one of the happy couple, or in the Bonfire Night crowd. */
+  doEvent() {
+    const ev = this.game.celebrations.calling(this, this.game.clock.hour); if (!ev) return;
+    if (this.phase === 0 || (this.phase === 2 && this.timer <= 0 && !(ev.hold && ev.hold(this)))) { this.timer = 20 + Math.random() * 25; const d = ev.spot(this); if (!d || !this.goTo(d)) this.phase = 2; }
   }
   wander() {
     const w = this.game.world; const tx = Math.floor(this.x / TILE) + Math.floor((Math.random() - 0.5) * 14), tz = Math.floor(this.z / TILE) + Math.floor((Math.random() - 0.5) * 14);

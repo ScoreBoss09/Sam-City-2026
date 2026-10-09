@@ -47,7 +47,7 @@ export class Events {
     if (this.bunting) for (const fl of this.bunting.userData.flags) fl.rotation.x = Math.sin(performance.now() / 260 + fl.userData.ph) * 0.25;
   }
   start(site) {
-    const g = this.game; this.fete = { x: site.cx, z: site.cz, site }; this.count++; g.messages.push('The Fête Committee', 'The village fête is on! Everybody to the ' + site.def.name + '.', 'good');
+    const g = this.game; this.fete = { x: site.cx, z: site.cz, site }; this.count++; g.flags.fetes = (g.flags.fetes || 0) + 1; g.messages.push('The Fête Committee', 'The village fête is on! Everybody to the ' + site.def.name + '.', 'good');
     if (g.started) g.ui.toast('🎪 Village Fête at the ' + site.def.name + ' until 18:00!', 3500);
     const grp = new THREE.Group(), R = 7, poles = 6, cols = [0xd8342c, 0xffffff, 0x2a5fb0, 0xf2c94c, 0x3a9a54], wood = new THREE.MeshStandardMaterial({ color: 0x6b4a2a }); grp.userData.flags = [];
     const pts = []; for (let i = 0; i < poles; i++) { const a = i / poles * Math.PI * 2; const x = Math.cos(a) * R, z = Math.sin(a) * R; pts.push([x, z]); const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 3.4, 6), wood); pole.position.set(x, 1.7, z); pole.castShadow = true; grp.add(pole); }
