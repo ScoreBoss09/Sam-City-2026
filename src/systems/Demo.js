@@ -4,6 +4,7 @@ import { pick } from '../util.js';
 /** Sandbox: instantly builds a lively town so the look and the simulation can be explored. */
 export function generateDemo(g) {
   const w = g.world, B = g.buildings; g.demoMode = true;
+  g.tech.era = 2; g.tech.research = 999;
   for (const k of Object.keys(g.economy.permits)) { g.economy.permits[k] = 'approved'; g.economy.revealed.add(k); } g.economy.lastTier = 'City';
   g.economy.funds = 750000; for (const m of Object.keys(g.economy.stock)) g.economy.stock[m] = 400; g.population.simCap = 70; g.economy.stock.food = 1500;
   for (const z of [10, 25, 30]) for (let x = 8; x <= 32; x++) w.addRoad(x, z, 2);

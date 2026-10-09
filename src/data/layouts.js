@@ -213,6 +213,11 @@ Object.assign(LAYOUTS, {
     for (const x of [-3.6, -1.2, 1.2, 3.6]) l.furniture.push({ t: 'chair', x, z: 1.2, r: 2 }, { t: 'chair', x, z: 2.4, r: 2 });
     l.work.push({ x: 3.6, z: -D / 2 + 1.6 }); l.visit.push({ x: 0, z: -0.4 }); l.idle.push({ x: 0, z: 0.2 }, { x: -2, z: 0 }); return l;
   },
+  library(def) {
+    const l = empty(), W = def.w * TILE, D = def.d * TILE;
+    l.furniture.push({ t: 'shelfbooks', x: -1.4, z: -D / 2 + 0.55, r: 0 }, { t: 'shelfbooks', x: 1.4, z: -D / 2 + 0.55, r: 0 }, { t: 'shelfbooks', x: -W / 2 + 0.55, z: 0.4, r: 1 }, { t: 'reception', x: 2.2, z: 1.0, r: 1 }, { t: 'table', x: -0.9, z: 0.4, r: 0 }, { t: 'chair', x: -0.9, z: 1.35, r: 2 }, { t: 'chair', x: -0.9, z: -0.55, r: 0 }, { t: 'lamp', x: 0.4, z: -1.6, r: 0 });
+    l.work.push({ x: 3.0, z: 1.0 }, { x: 0.2, z: -2.6 }); l.visit.push({ x: -1.4, z: -2.2 }, { x: 0.2, z: 0.6 }); l.idle.push({ x: 0.6, z: 2.4 }); return l;
+  },
   church(def) {
     const l = empty(), W = def.w * TILE, D = def.d * TILE;
     l.furniture.push({ t: 'altar', x: 0, z: -D / 2 + 1.0, r: 0 }, { t: 'plant', x: -2, z: -D / 2 + 0.8, r: 0 }, { t: 'plant', x: 2, z: -D / 2 + 0.8, r: 0 });

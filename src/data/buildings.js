@@ -33,6 +33,7 @@ export const ROLES = {
   engineer:    { name: 'Engineer',         wage: 70, shirt: 0xd9732b, pants: 0x3a3a3a, accessory: 'overalls', hat: { type: 'beanie', color: 0xd9732b } },
   baker:       { name: 'Baker',            wage: 40, shirt: 0xf2efe6, pants: 0x8a8a8a, accessory: 'apron', hat: { type: 'beanie', color: 0xf4f4f4 } },
   fryer:       { name: 'Chip Fryer',       wage: 38, shirt: 0xf4f4f4, pants: 0x2d3340, accessory: 'apron' },
+  librarian:   { name: 'Librarian',        wage: 40, shirt: 0x8a6a8a, pants: 0x3a3a4a, accessory: 'cardigan' },
   vicar:       { name: 'Vicar',            wage: 35, shirt: 0x1a1a1a, pants: 0x1a1a1a, accessory: 'coat' },
 };
 
@@ -283,6 +284,16 @@ export const BUILDINGS = {
     mat: { brick: 12, timber: 10 }, work: 40, jobs: { clerk: 1 }, layout: 'hall', permit: { cost: 800, pop: 14 }, tab: 'Civic',
     blurb: 'Jumble sales, aerobics, the WI. The village fête is held here once it exists.',
   },
+  library: {
+    name: 'Library', cat: 'civic', w: 2, d: 2, floors: 1, wall: 'stone', roof: 'gable', roofColor: 0x5a3a2a, joy: 0.02,
+    mat: { stone: 12, timber: 8 }, work: 34, jobs: { librarian: 2 }, layout: 'library', permit: { cost: 700, pop: 14 }, tab: 'Civic',
+    blurb: 'Books, silence and research. Librarians (and the Schoolhouse and Town Hall) push science along until, with power, computers arrive.',
+  },
+  harbour: {
+    name: 'Harbour', cat: 'prod', w: 3, d: 2, floors: 1, wall: 'timber', roof: 'gable', roofColor: 0x6a4a3a, needsShore: true, income: 60,
+    mat: { timber: 18, stone: 10 }, work: 48, jobs: { fisher: 3 }, layout: 'shed', permit: { cost: 900, pop: 12 }, tab: 'Food',
+    blurb: 'Builds jetties along the west shore with boats. Fishers work from it; once the town is big, cranes and cargo follow.',
+  },
   church: {
     name: "St Sam's Church", cat: 'civic', w: 3, d: 3, floors: 2, wall: 'stone', roof: 'church', roofColor: 0x4a525c, joy: 0.08,
     mat: { stone: 24, timber: 12, glass: 4 }, work: 80, jobs: { vicar: 1 }, layout: 'church', permit: { cost: 1600, pop: 20 }, tab: 'Civic',
@@ -322,9 +333,9 @@ export const BUILDINGS = {
 export const TOOL_MENUS = {
   build: [
     ['Homes', ['shack', 'hut', 'cabin', 'bungalow', 'cottage', 'semi', 'townhouse', 'flats', 'apartments']],
-    ['Food', ['forager', 'allotment', 'fisher', 'bakery', 'farm', 'chippy', 'tavern']],
+    ['Food', ['forager', 'allotment', 'fisher', 'bakery', 'farm', 'harbour', 'chippy', 'tavern']],
     ['Industry', ['lumbercamp', 'quarry', 'contractor', 'brickworks', 'glassworks', 'foundry', 'factory']],
-    ['Civic', ['stockyard', 'postbox', 'surveyor', 'villagehall', 'postoffice', 'school', 'church', 'townhall', 'clinic', 'police']],
+    ['Civic', ['stockyard', 'postbox', 'surveyor', 'villagehall', 'postoffice', 'school', 'library', 'church', 'townhall', 'clinic', 'police']],
     ['Commerce', ['newsagent', 'shop', 'launderette', 'video', 'bookies', 'office', 'hotel', 'skyscraper']],
   ],
   park: ['campfire', 'phonebox', 'park', 'busstop', 'bandstand', 'plaza', 'ballfield'],

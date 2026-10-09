@@ -6,7 +6,7 @@ import { stdMat } from './BuildingFactory.js';
 /** Decorative docks, cranes and boats on the south-west shore (like the reference port). */
 export class Harbor {
   constructor(game) {
-    this.game = game; this.boats = []; const w = game.world, sc = game.scene; const g = new THREE.Group(); sc.add(g); this.modern = new THREE.Group(); this.basic = new THREE.Group(); sc.add(this.modern, this.basic); this.modern.visible = false;
+    this.game = game; this.boats = []; const w = game.world, sc = game.scene; const g = new THREE.Group(); sc.add(g); this.root = g; g.visible = false; this.modern = new THREE.Group(); this.basic = new THREE.Group(); sc.add(this.modern, this.basic); this.modern.visible = false;
     const box = (pw, ph, pd, c, x, y, z, parent = g) => { const m = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, pd), stdMat(c)); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
     // find west-facing shore tiles
     const spots = []; for (let z = 18; z < 36; z++) for (let x = 2; x < 20; x++) { if (w.terrain[w.idx(x, z)] !== T.WATER && w.terrain[w.idx(x - 1, z)] === T.WATER && w.terrain[w.idx(x - 2, z)] === T.WATER) { spots.push([x, z]); break; } }
@@ -33,6 +33,8 @@ export class Harbor {
     used.forEach((z, k) => { for (let i = 0; i < 4; i++) { if (Math.random() < 0.25) continue; const cx = quays[k] * TILE + 9 + (i % 2) * 3.4, cz = (z + 0.5) * TILE + (i < 2 ? -4.5 : 4.5); if (cx / TILE < MAP && w.isLand(Math.floor(cx / TILE), Math.floor(cz / TILE)) && !w.occ[w.idx(Math.floor(cx / TILE), Math.floor(cz / TILE))]) { box(2.4, 2.3, 6, cols[(i + z) % 5], cx, 0, cz, this.modern).position.y = 1.15; if (Math.random() < 0.5) box(2.4, 2.3, 6, cols[(i * 3 + z) % 5], cx, 2.3, cz, this.modern).position.y = 3.45; } } });
   }
   update(dt, t) {
-    const mod = this.game.population.count() >= 30; this.modern.visible = mod; this.basic.visible = !mod;
+    // the jetties only exist once a Harbour has been built; cranes and cargo once the town is big
+    const built = this.game.buildings.list.some((b) => b.id === 'harbour' && b.state === 'done'), mod = built && this.game.population.count() >= 30;
+    this.root.visible = built; this.modern.visible = mod; this.basic.visible = built && !mod;
     for (const q of this.gulls || []) { q.a += dt * q.sp; const x = q.cx + Math.cos(q.a) * q.r, z = q.cz + Math.sin(q.a) * q.r; q.g.position.set(x, q.y + Math.sin(t * 0.6 + q.ph) * 1.2, z); q.g.rotation.y = -q.a; q.wl.rotation.z = Math.sin(t * 7 + q.ph) * 0.5; q.wr.rotation.z = -Math.sin(t * 7 + q.ph) * 0.5; } for (const b of this.boats) { b.g.position.y = b.y0 - 0.1 + Math.sin(t * 1.2 + b.ph) * 0.12; b.g.rotation.z = Math.sin(t * 0.9 + b.ph) * 0.03; b.g.rotation.x = Math.sin(t * 0.7 + b.ph) * 0.02; } if (this.crane) { this.crane.t += dt; this.crane.hook.position.z = -5 - Math.sin(this.crane.t * 0.3) * 3; this.crane.hook.position.y = 7 - Math.sin(this.crane.t * 0.5) * 1.2; } }
 }

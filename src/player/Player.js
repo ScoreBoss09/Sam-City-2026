@@ -218,7 +218,7 @@ export class Player {
         if (b.id === 'phonebox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) consider({ kind: 'phone', b, text: 'Make a call (10p)' }, d - 0.8, b.cx, b.cz); }
         if (b.id === 'bookies' && b.spots.visit[0]) { const v = b.spots.visit[0], d = Math.hypot(v.x - px, v.z - pz); if (d < 2.2) consider({ kind: 'bet', b, text: 'Have a flutter on the horses (£20)' }, d - 0.6, v.x, v.z); }
         if (b.id === 'postbox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) { const n = g.mail.unread(); consider({ kind: 'post', b, text: n ? `Check the post (✉ ${n} new)` : 'Check the post' }, d - 1.0, b.cx, b.cz); } }
-        for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: 'Use computer terminal' }, d); }
+        for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: (b.era ?? 0) >= 2 ? 'Use the computer terminal' : 'Use the planning desk (ledgers and forms)' }, d); }
         for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.invTotal() ? `Store ${this.invText()} in the Stockyard` : 'Take what the building sites need from the Stockyard' }, d); }
         if (b === g.starterHome && b.spots.bed[0]) { const s = b.spots.bed[0], d = Math.hypot(s.x - px, s.z - pz); if (d < 2.6) consider({ kind: 'bed', b, spot: s, text: 'Sleep in your bed' }, d); }
         if (b.def.jobs && b.id !== 'contractor') {
@@ -275,7 +275,7 @@ export class Player {
     if (!t || !t.work) g.workgame.stop();
     g.ui.setPrompt(t ? t.text + (t.work ? '' : t.hold ? '  (hold E)' : t.kind === 'info' ? '' : '') : null, t && t.hold ? this.hold : -1, t && t.kind === 'info');
     if (!t) { this.hold = 0; return; }
-    const e = inp.hit('KeyE'), held = inp.down('KeyE');
+    if (this.interactCD > 0) this.interactCD -= rawDt; const calm = this.interactCD > 0, e = inp.hit('KeyE') && !calm, held = inp.down('KeyE') && !calm;
     if (t.work) return this.doWork(t, rawDt, e, held);
     if (t.kind === 'sim' && e) g.startDialogue(t.sim);
     else if (t.kind === 'terminal' && e) { Sfx.play('ui'); g.ui.openTerminal(t.b); }

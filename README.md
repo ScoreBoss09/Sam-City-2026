@@ -41,7 +41,7 @@ Menus and the terminal: D-pad or stick to move, A to press, B to close.
 Chopping, mining, digging, picking, fishing and building show a timing bar. Tap E (A) when the white marker is in the green; gold is perfect and perfects in a row build a combo. Holding E still works, just slowly.
 
 ## Things to do besides building
-- **Talk to everyone** (E): six topics each, their own life stories, gossip about the town, advice, and favours (a yellow ! means someone needs something fetched).
+- **Talk to everyone** (E): a short chat with no menus, E for the next line. Each person greets you and tells you two or three things that suit them (how they feel, their work, gossip, their life story, a tip), and asks a favour if they have one (a yellow ! means someone needs something fetched; talk again once you have it).
 - **Fish** from the beach facing the sea: wait for the BITE, then tap E. Catch streaks shrink the window.
 - **Cook** at a campfire with 2 food for a full belly and extra energy, or just sit by the fire to rest.
 - **Curios**: 14 odd little things glint on the ground around the island. Your journal (J) keeps them, with your friends and records.
@@ -78,6 +78,11 @@ The minimap (bottom right in Sam's view) shows a yellow star where the current o
 
 There is more going on in Sam City than a town. You will have to explore to find out.
 
+## The march of progress
+The town starts in the **Steam & candle** age: no electricity, ledgers instead of computers, wireless sets instead of tellies, oil lamps by the doors. Finish a **Power Plant** and the **Electric** age begins (tellies, TV aerials, electric lamps). The **Computer** age needs power plus research from the Schoolhouse, a Library and the Town Hall: then the Planning Office gets a terminal, homes get satellite dishes, uPVC doors and burglar alarms. Old buildings are modernised one at a time, so the town changes gradually. The Accounts page shows the age and research.
+
+The west-shore jetties, boats and (later) cranes only appear once you build a **Harbour**.
+
 ## Life & look
 Citizens are English men, women, children and elders in a range of heights and builds, each with a face, hairstyle, hat and clothes, driven by a procedural animator with ~40 behaviours (walking, running, carrying, chopping, mining, harvesting, fishing, digging, hammering, typing, reading, eating, drinking, praying, sleeping, gesturing, fidgeting, waving, dancing, cheering, clapping, shrugging, facepalming and the odd V-sign) and speech bubbles. The renderer draws to a low-res target and adds a pixel-art outline, colour grade and dithered palette (`src/render/Post.js`). Day/night, moonlight, campfire light, chimney smoke, clouds and their shadows, harbour boats, seagulls, traffic and dogs add life.
 
@@ -85,7 +90,11 @@ Citizens are English men, women, children and elders in a range of heights and b
 Weapons are part of the story, not the game. Once the town has 10 residents and a few days behind it, a small band occasionally lands from the sea, heads for the Stockyard and the food stores and shoves anyone in their way. Nobody is ever killed: victims are knocked down and get back up (faster with a Clinic). Citizens run indoors, the gate guards sedate raiders with darts near their posts, and a Police Station sends its officers after raiders anywhere. Sam can take a club from the Stockyard during a raid (E) and swing it with F; it is hung back up afterwards. Raiders caught are marched off and drop what they stole; the rest row away with it. Later raids carry pistols. The actors' lines slip now and then, as ever. Test with `window.__game.raids.trigger()` or `node tools/raid.mjs`.
 
 ## Optional pixel-art textures
-The game ships with generated textures. For richer walls, roofs, ground and water, build a local texture set from the "PNG - Pixel Art Textures" pack (its licence forbids redistribution, so the result is git-ignored and never committed):
+The game ships with generated textures. For richer walls, roofs, ground and water use the "PNG - Pixel Art Textures" pack. Its licence forbids redistribution, so it can't come inside the download, but installing it is one click:
+
+**Easy way:** on the title screen press **🎨 Add texture pack** and pick the pack's zip file (or drag the zip onto the title screen). The game unpacks the bits it needs in a few seconds, remembers them, and restarts with textures on. "remove" turns them off again.
+
+**Developer way** (writes a `textures/` folder next to the game):
 ```
 pip install pillow
 python3 tools/build_textures.py path/to/PNG_-_Pixel_Art_Textures.zip
