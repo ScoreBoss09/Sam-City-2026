@@ -55,8 +55,8 @@ export class Atmosphere {
     this.sun.color.copy(C(0xfff1d6)).lerp(C(0xff9a55), Math.min(1, dusk * 0.8)).lerp(C(0x8fa6ea), this.night);
     this.hemi.intensity = lerp(0.62, 0.8, day); this.hemi.color.copy(C(0xcfe6ff)).lerp(C(0x5a73b8), this.night); this.hemi.groundColor.copy(C(0x55664a)).lerp(C(0x2c3c60), this.night); if (this.flash > 0.01) { this.hemi.intensity += this.flash * 1.6 * (0.3 + this.night); this.hemi.color.lerp(C(this.flashCol || 0xffffff), this.flash * 0.5); }
     const sky = C(0x9ec9ee).lerp(C(0xf0a070), Math.min(1, dusk * 0.7)).lerp(C(0x7d8794), rain * 0.75).lerp(C(0x111d40), this.night);
-    const mist = this.mist || 0; if (mist > 0.01) sky.lerp(C(0xc4c9cf).lerp(C(0x1c2436), this.night), mist * 0.6); this.scene.background.copy(sky); this.scene.fog.color.copy(sky); this.scene.fog.near = lerp(220, 60, rain); this.scene.fog.far = lerp(520, 260, rain);
-    if (mist > 0.01) { const k = this.hideDome ? mist * 0.6 : mist; this.scene.fog.near = lerp(this.scene.fog.near, this.hideDome ? 80 : 14, k); this.scene.fog.far = lerp(this.scene.fog.far, this.hideDome ? 320 : 110, k); }
+    const mist = this.mist || 0; if (mist > 0.01) sky.lerp(C(0xc4c9cf).lerp(C(0x1c2436), this.night), mist * 0.6); this.scene.background.copy(sky); this.scene.fog.color.copy(sky); this.scene.fog.near = lerp(this.hideDome ? 420 : 220, 60, rain); this.scene.fog.far = lerp(this.hideDome ? 1000 : 560, 300, rain);
+    if (mist > 0.01) { const k = this.hideDome ? mist * 0.6 : mist; this.scene.fog.near = lerp(this.scene.fog.near, this.hideDome ? 160 : 14, k); this.scene.fog.far = lerp(this.scene.fog.far, this.hideDome ? 600 : 110, k); }
     setWindowGlow(Math.min(1, this.night + Math.min(0.6, dusk * 0.5)));
     // stars, moon and sun disc
     const cam = this.camPos || focus, rainK = 1 - (this.rain || 0);

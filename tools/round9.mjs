@@ -7,7 +7,7 @@ await p.goto('http://localhost:8123/index.html?auto&scale=0.5&noraids'); await p
 const ev = (f, a) => p.evaluate(f, a);
 console.log('tunnel gone', await ev(() => !window.__game.buildings.list.some((b) => b.id === 'tunnel')));
 console.log('trees near lift', await ev(() => { const g = window.__game, L = g.lift.trigger; return g.terrain.trees.filter((t) => Math.hypot(t.x - L.x, t.z - L.z) < 14).map((t) => t.alive).join(','); }));
-await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 4), tz = Math.floor(d.z / 4); g.clock.hour = 10;
+await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 8), tz = Math.floor(d.z / 8); g.clock.hour = 10;
   for (let z = tz; z < tz + 10; z++) g.world.addRoad(tx, z, 1); for (const it of g.tools.items) { g.tools.take(it); g.player.tools.add(it.id); }
   const put = (id, x, z, o = { instant: true }) => { for (let dx = 0; dx < 6; dx++) for (const s of [1, -1]) { const r = B.evaluate(id, x + dx * s, z, 0); if (r.ok) return B.place(id, r.x0, r.z0, r.rot, o); } return null; };
   window.__s1 = put('shack', tx + 1, tz + 3, {}); window.__s2 = put('shack', tx - 2, tz + 3, {}); window.__s3 = put('shack', tx + 2, tz + 6, {});

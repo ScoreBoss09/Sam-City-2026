@@ -5,7 +5,7 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', a
 const p = await b.newPage({ viewport: { width: 1280, height: 760 } }); const logs = []; p.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.stack));
 await p.goto('http://localhost:8123/index.html?auto&scale=0.6&noraids'); await p.waitForTimeout(800);
 const ev = (f, a) => p.evaluate(f, a);
-await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 4), tz = Math.floor(d.z / 4); g.clock.hour = 10.5;
+await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 8), tz = Math.floor(d.z / 8); g.clock.hour = 10.5;
   for (let z = tz; z < tz + 9; z++) g.world.addRoad(tx, z, 1); for (const it of g.tools.items) { g.tools.take(it); g.player.tools.add(it.id); }
   const r = B.evaluate('hut', tx + 2, tz + 6, 0); const s = B.place('hut', r.x0, r.z0, r.rot); s.have.timber = 8; B.refreshSite(s); window.__s = s;
   g.setMode('sim'); g.player.inv = { timber: 3, food: 2 }; const px = s.cx - 6.5, pz = s.cz + 1; g.player.teleport(px, pz); const h = Math.atan2(s.cx - px, s.cz - pz); g.player.heading = h; g.player.yaw = h + Math.PI + 0.35; g.player.pitch = -0.2; });

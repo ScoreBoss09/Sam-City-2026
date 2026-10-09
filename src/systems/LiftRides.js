@@ -1,4 +1,3 @@
-import { TILE } from '../config.js';
 import { Sfx } from '../core/Sfx.js';
 
 const CAGE = [[-1.4, -0.7], [0, -0.7], [1.4, -0.7], [-1.4, 0.6], [0, 0.6], [1.4, 0.6], [-1.4, 1.8], [0, 1.8], [1.4, 1.8]];
@@ -14,7 +13,7 @@ export class LiftRides {
   spot(lx, lz) { const [x, z] = this.lift.toWorld(lx, lz); return { x, z }; }
   waitSpot(i) { const p = this.spot(-2.4 + (i % 5) * 1.2, 4.5 + Math.floor(i / 5) * 1.0); p.face = this.lift.rot * Math.PI / 2 + Math.PI; return p; }
   cageSpot(i) { const [lx, lz] = CAGE[i % CAGE.length]; return this.spot(lx, 0.5 + lz); }
-  playerOnPlatform() { const b = this.lift, p = this.game.player; return p.x > b.x0 * TILE - 0.5 && p.x < (b.x0 + b.w) * TILE + 0.5 && p.z > b.z0 * TILE - 0.5 && p.z < (b.z0 + b.d) * TILE + 0.5; }
+  playerOnPlatform() { const p = this.game.player; return this.game.buildings.onBuilding(this.lift, p.x, p.z, 0.5); }
   join(s) { if (!this.waiting.includes(s)) { this.waiting.push(s); s.waitIdx = this.waiting.length - 1; } return this.waitSpot(s.waitIdx); }
   /** A newcomer: put them in the cage below ground, to come up with the next ride. */
   arrive(s) { if (!this.ok()) return; const sp = this.cageSpot(this.arrivals.length); s.x = sp.x; s.z = sp.z; s.inside = null; s.riding = true; s.rideY = -4.2; s.heading = this.lift.rot * Math.PI / 2; this.arrivals.push(s); }

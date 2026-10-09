@@ -10,7 +10,7 @@ console.log('menu at pop 0:', await ev(() => { const g = window.__game; g.setMod
 console.log('visible count', await ev(() => { const g = window.__game, E = g.economy; return Object.keys(E.permits).filter((k) => E.visible(k)).length; }));
 // place every new building instantly near the lift door
 const ids = ['bungalow', 'semi', 'flats', 'allotment', 'bakery', 'chippy', 'newsagent', 'launderette', 'video', 'bookies', 'postoffice', 'villagehall', 'church', 'phonebox', 'busstop', 'bandstand', 'tavern'];
-console.log('placed', await ev((ids) => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 4), tz = Math.floor(d.z / 4); g.clock.hour = 10;
+console.log('placed', await ev((ids) => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 8), tz = Math.floor(d.z / 8); g.clock.hour = 10;
   for (let z = tz; z < tz + 26; z++) { g.world.addRoad(tx, z, 1); } for (let x = tx - 12; x < tx + 12; x++) { g.world.addRoad(x, tz + 8, 1); g.world.addRoad(x, tz + 16, 1); g.world.addRoad(x, tz + 24, 1); }
   window.__bs = {}; const out = [];
   for (const id of ids) { let done = null; for (let r = 1; r < 14 && !done; r++) for (const [dx, dz] of [[r, 0], [-r, 0], [r, 3], [-r, 3], [r, 6], [-r, 6], [r, 9], [-r, 9], [r, 12], [-r, 12], [r, 15], [-r, 15], [r, 18], [-r, 18]]) { const ev = B.evaluate(id, tx + dx, tz + dz, 0); if (ev.ok) { done = B.place(id, ev.x0, ev.z0, ev.rot, { instant: true }); break; } } window.__bs[id] = done; out.push(id + (done ? '' : ':FAIL')); }

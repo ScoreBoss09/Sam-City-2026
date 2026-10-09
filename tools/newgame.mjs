@@ -16,15 +16,15 @@ await p.screenshot({ path: S + 'ng_0.png' });
 await p.click('button.tool[data-t="road"]'); await p.waitForTimeout(200);
 const lift = await ev(() => { const d = window.__game.lift.doorOut; return [d.x, d.z]; });
 await ev(() => { const g = window.__game; g.god.dist = 70; g.god.target.set(g.lift.doorOut.x, 0, g.lift.doorOut.z + 14); }); await p.waitForTimeout(300);
-const tx = Math.floor(lift[0] / 4); const z0 = Math.floor(lift[1] / 4);
-let [ax, ay] = await screen((tx + 0.5) * 4, (z0 + 0.5) * 4); let [bx, by] = await screen((tx + 0.5) * 4, (z0 + 6.5) * 4);
+const tx = Math.floor(lift[0] / 8); const z0 = Math.floor(lift[1] / 8);
+let [ax, ay] = await screen((tx + 0.5) * 8, (z0 + 0.5) * 8); let [bx, by] = await screen((tx + 0.5) * 8, (z0 + 4.5) * 8);
 await p.mouse.move(ax, ay); await p.mouse.down(); for (let i = 1; i <= 12; i++) { await p.mouse.move(ax + (bx - ax) * i / 12, ay + (by - ay) * i / 12); await p.waitForTimeout(40); } await p.mouse.up();
 await state('after path drag');
 const placeAt = async (tab, id) => {
   await p.click('button.tool[data-t="build"]'); await p.waitForTimeout(100); if (tab) { await p.click(`button.subtab[data-tab="${tab}"]`); await p.waitForTimeout(100); } await p.click(`button.sub[data-s="${id}"]`); await p.waitForTimeout(100);
   const spot = await ev(([id, tx, z0]) => { const B = window.__game.buildings; for (let dz = 1; dz < 7; dz++) for (const dx of [-1, 1, -2, 2, -3, 3]) { const r = B.evaluate(id, tx + dx, z0 + dz, 0); if (r.ok) return [r.geo.cx, r.geo.cz, tx + dx, z0 + dz]; } return null; }, [id, tx, z0]);
   if (!spot) { console.log('no spot for', id); return; }
-  const [sx, sy] = await screen((spot[2] + 0.5) * 4, (spot[3] + 0.5) * 4); await p.mouse.move(sx, sy); await p.waitForTimeout(300); await p.mouse.click(sx, sy); await p.waitForTimeout(200);
+  const [sx, sy] = await screen((spot[2] + 0.5) * 8, (spot[3] + 0.5) * 8); await p.mouse.move(sx, sy); await p.waitForTimeout(300); await p.mouse.click(sx, sy); await p.waitForTimeout(200);
 };
 await placeAt('Civic', 'stockyard'); await placeAt('Homes', 'shack');
 await state('after ordering');

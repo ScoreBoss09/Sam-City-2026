@@ -1,5 +1,6 @@
 // Global tunables. In Unity these map to a single ScriptableObject ("GameConfig").
-export const TILE = 4;            // metres per grid tile
+export const TILE = 8;            // metres per grid tile: room for a road with two lanes and a pavement each side
+export const UNIT = 4;            // metres per building size unit (def.w / def.d are in these)
 export const MAP = 40;            // tiles per side
 export const WALL_H = 3.2;        // height of one storey
 export const WALL_T = 0.3;        // wall thickness

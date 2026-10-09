@@ -3,6 +3,8 @@ import { MAP } from '../config.js';
 import { Sim } from '../sim/Sim.js';
 
 const KEY = 'samcity-save-v1';
+const SAVE_V = 2;   // 2: the 8 m grid (older saves were on the small 4 m grid and can't be carried over)
+export const saveInfo = () => { try { const s = localStorage.getItem(KEY); if (!s) return null; const d = JSON.parse(s); return { v: d.v || 1, ok: (d.v || 1) === SAVE_V }; } catch (e) { return null; } };
 export const hasSave = () => { try { return !!localStorage.getItem(KEY); } catch (e) { return false; } };
 export const clearSave = () => { try { localStorage.removeItem(KEY); } catch (e) { /* private mode */ } };
 
@@ -11,7 +13,7 @@ export function serialize(g) {
   const w = g.world, sims = g.population.sims.filter((s) => s.kind === 'resident' || s.kind === 'child');
   const idOf = new Map(sims.map((s, i) => [s, i]));
   return {
-    v: 1, t: Date.now(), tech: g.tech.serialize(), clock: g.clock.serialize(), economy: g.economy.serialize(), story: g.story.serialize(), flags: g.flags,
+    v: SAVE_V, t: Date.now(), tech: g.tech.serialize(), clock: g.clock.serialize(), economy: g.economy.serialize(), story: g.story.serialize(), flags: g.flags,
     terrain: Array.from(w.terrain).join(''), roads: Array.from(w.road).join(''), zones: Array.from(w.zone).join(''),
     trees: g.terrain.trees.map((t) => (t.alive ? t.amount : 0)).join(''), nodes: g.resources.nodes.filter((n) => n.kind !== 'field').map((n) => +n.amount.toFixed(1)),
     buildings: g.buildings.list.map((b) => ({ id: b.id, x0: b.x0, z0: b.z0, rot: b.rot, state: b.state, progress: b.progress, have: b.have, starter: b === g.starterHome, era: b.era, prio: b.prio, level: b.level || 0 })), upgrades: g.upgrades.serialize(),
@@ -27,6 +29,7 @@ export function load() { try { const s = localStorage.getItem(KEY); return s ? J
 
 /** Rebuild the world from a snapshot (called right after a fresh Game has been constructed). */
 export function restore(g, d) {
+  if ((d.v || 1) !== SAVE_V) throw new Error('This save is from the old, smaller map');
   const w = g.world, B = g.buildings, P = g.population;
   // wipe the freshly created starter town
   for (const s of P.sims.slice()) { s.dispose(); } P.sims = []; P.names.clear();

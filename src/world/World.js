@@ -146,7 +146,7 @@ export class World {
     for (let tz = tz0; tz <= tz1; tz++) for (let tx = tx0; tx <= tx1; tx++) {
       if (!this.inBounds(tx, tz)) return true;
       const t = this.terrain[this.idx(tx, tz)];
-      if (!wallsOnly && (t === T.WATER || t === T.FOREST)) return true;
+      if (!wallsOnly && t === T.WATER) return true;   // woods can be walked into (to reach the trees); only the sea stops you
       const a = this.colBuckets.get(this.idx(tx, tz));
       if (a) for (const c of a) {
         if (c.h !== undefined && y > c.h) continue;
@@ -157,6 +157,15 @@ export class World {
     return false;
   }
 
+  /**
+   * Turn a tile route into walking points that keep to the left-hand pavement (3 m off the middle of the tile),
+   * so people walk on the footway and leave the carriageway to carts and cars. Skips the first (starting) tile.
+   */
+  walkway(t, off = 3.0) {
+    const out = [], C = (i) => [(t[i][0] + 0.5) * TILE, (t[i][1] + 0.5) * TILE], nrm = (i) => { const a = C(i), b = C(i + 1), dx = Math.sign(b[0] - a[0]), dz = Math.sign(b[1] - a[1]); return [dz * off, -dx * off]; };
+    for (let i = 1; i < t.length; i++) { const [x, z] = C(i), n0 = nrm(i - 1), n1 = i < t.length - 1 ? nrm(i) : [0, 0]; let ox = n0[0] + n1[0], oz = n0[1] + n1[1]; if (Math.abs(ox) > off) ox = Math.sign(ox) * off; if (Math.abs(oz) > off) oz = Math.sign(oz) * off; out.push({ x: x + ox, z: z + oz }); }
+    return out;
+  }
   // ---- A* (4-neighbour). roadOnly is used by delivery trucks.
   nearestWalkable(x, z, roadOnly = false) {
     for (let r = 0; r <= 5; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {

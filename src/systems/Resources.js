@@ -87,7 +87,7 @@ export class Resources {
       if (!dx && !dz) continue; const tx = n.tx + dx, tz = n.tz + dz; if (!w.walkable(tx, tz)) continue;
       const cx = (tx + 0.5) * TILE, cz = (tz + 0.5) * TILE, d = Math.hypot(cx - n.x, cz - n.z); if (d < bd) { bd = d; best = { cx, cz }; }
     }
-    if (!best) return null; const dx = n.x - best.cx, dz = n.z - best.cz, l = Math.hypot(dx, dz) || 1, k = Math.min(1.7, l);
+    if (!best) return null; const dx = n.x - best.cx, dz = n.z - best.cz, l = Math.hypot(dx, dz) || 1, k = Math.max(0, l - (n.kind === 'tree' ? 1.25 : 1.6));   // walk in (into the edge of the wood if need be) to arm's length
     return { x: best.cx + dx / l * k, z: best.cz + dz / l * k };
   }
   /** Take one unit from a node. Returns true if a unit was obtained. */

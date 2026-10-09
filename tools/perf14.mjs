@@ -4,7 +4,7 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', a
 const p = await b.newPage({ viewport: { width: 1000, height: 600 } }); p.on('pageerror', (e) => console.log('PAGEERROR: ' + e.stack));
 await p.goto('http://localhost:8123/index.html?auto&scale=0.4&noraids'); await p.waitForTimeout(1000);
 const ev = (f, a) => p.evaluate(f, a);
-console.log(await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 4), tz = Math.floor(d.z / 4); g.clock.hour = 8;
+console.log(await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 8), tz = Math.floor(d.z / 8); g.clock.hour = 8;
   for (let z = tz; z < tz + 14; z++) g.world.addRoad(tx, z, 1); for (let x = tx - 12; x < tx + 12; x++) { g.world.addRoad(x, tz + 6, 1); g.world.addRoad(x, tz + 12, 1); }
   const put = (id, x, z) => { for (let dx = 0; dx < 10; dx++) for (const s of [1, -1]) for (const dz of [0, 2, -2]) { const r = B.evaluate(id, x + dx * s, z + dz, 0); if (r.ok) return B.place(id, r.x0, r.z0, r.rot, { instant: true }); } return null; };
   const ids = ['stockyard', 'postbox', 'campfire', 'forager', 'lumbercamp', 'contractor', 'quarry', 'fisher', 'hut', 'hut', 'hut', 'cabin', 'cabin', 'shack', 'well', 'surveyor']; const out = [];

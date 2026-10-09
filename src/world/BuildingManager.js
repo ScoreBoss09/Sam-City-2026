@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TILE, WALL_T } from '../config.js';
+import { TILE, UNIT, WALL_T } from '../config.js';
 import { BUILDINGS } from '../data/buildings.js';
 import { doorOffset, layoutFor } from '../data/layouts.js';
 import { Sfx } from '../core/Sfx.js';
@@ -15,13 +15,17 @@ const COS = [1, 0, -1, 0], SIN = [0, 1, 0, -1];
 export function disposeOwned(root) { root.traverse((o) => { if (o.geometry && o.geometry.userData && o.geometry.userData.own) o.geometry.dispose(); }); }
 
 /** Footprint, door and local->world transform for a def placed at tile (x0,z0) with rotation rot. */
+/** Grid tiles a def covers along its own width / depth (buildings keep their size in metres; the plot rounds up to whole tiles). */
+export function footprint(def) { return [Math.max(1, Math.ceil(def.w * UNIT / TILE - 1e-6)), Math.max(1, Math.ceil(def.d * UNIT / TILE - 1e-6))]; }
 export function geometry(def, x0, z0, rot) {
-  const odd = rot % 2 === 1, w = odd ? def.d : def.w, d = odd ? def.w : def.d;
-  const cx = (x0 + w / 2) * TILE, cz = (z0 + d / 2) * TILE, c = COS[rot], s = SIN[rot];
+  const odd = rot % 2 === 1, [fw, fd] = footprint(def), w = odd ? fd : fw, d = odd ? fw : fd, c = COS[rot], s = SIN[rot];
+  // the building stands flush with the front of its plot (door onto the street), with any spare ground left as a back garden
+  const W = def.w * UNIT, D = def.d * UNIT, shift = (fd * TILE - D) / 2, fx = (x0 + w / 2) * TILE, fz = (z0 + d / 2) * TILE;
+  const cx = fx + shift * s, cz = fz + shift * c;
   const toWorld = (lx, lz) => [cx + lx * c + lz * s, cz - lx * s + lz * c];
-  const D = def.d * TILE, off = doorOffset(def.w);
+  const off = doorOffset(def.w);
   const out = toWorld(off, D / 2 + 2.2);
-  return { w, d, cx, cz, toWorld, off, doorOut: out, doorTile: [Math.floor(out[0] / TILE), Math.floor(out[1] / TILE)], rot };
+  return { w, d, cx, cz, fx, fz, W, D, toWorld, off, doorOut: out, doorTile: [Math.floor(out[0] / TILE), Math.floor(out[1] / TILE)], rot };
 }
 
 export class BuildingManager {
@@ -45,7 +49,7 @@ export class BuildingManager {
   evaluate(id, cx, cz, prefRot = 0) {
     const def = BUILDINGS[id]; let fallback = null;
     for (let k = 0; k < 4; k++) {
-      const rot = (prefRot + k) % 4, odd = rot % 2, w = odd ? def.d : def.w, d = odd ? def.w : def.d;
+      const rot = (prefRot + k) % 4, odd = rot % 2, [fw, fd] = footprint(def), w = odd ? fd : fw, d = odd ? fw : fd;
       const x0 = cx - Math.floor(w / 2), z0 = cz - Math.floor(d / 2), geo = geometry(def, x0, z0, rot);
       const fits = this.world.canPlace(x0, z0, w, d);
       const needRoad = def.needsRoad !== false;
@@ -67,8 +71,8 @@ export class BuildingManager {
     };
     if (era !== undefined) b.era = era;
     b.doorOut = { x: geo.doorOut[0], z: geo.doorOut[1] }; b.doorTile = { x: geo.doorTile[0], z: geo.doorTile[1] };
-    const dp = geo.toWorld(geo.off, def.d * TILE / 2 - 0.3); b.doorPos = { x: dp[0], z: dp[1] };
-    const di = geo.toWorld(geo.off, def.d * TILE / 2 - 2.2); b.doorIn = { x: di[0], z: di[1] };
+    const dp = geo.toWorld(geo.off, def.d * UNIT / 2 - 0.3); b.doorPos = { x: dp[0], z: dp[1] };
+    const di = geo.toWorld(geo.off, def.d * UNIT / 2 - 2.2); b.doorIn = { x: di[0], z: di[1] };
     this.world.buildings.set(b.uid, b); this.list.push(b); this.world.fill(b, !!def.park);
     const needT = Object.values(b.need).reduce((a, v) => a + v, 0);
     if (instant || needT === 0 && !def.work) { this.finish(b); }
@@ -139,7 +143,7 @@ export class BuildingManager {
     if (def.id === 'tunnel') { const [x, z] = b.toWorld(0, 3.6); b.trigger = { x, z }; }
     if (def.id === 'lift') { const [x, z] = b.toWorld(0, 0.5); b.trigger = { x, z }; }
     // chimney / smoke source (local coords) for the Decor smoke system
-    const H = def.floors * 3.2, W = def.w * TILE, D = def.d * TILE; b.smoke = null;
+    const H = def.floors * 3.2, W = def.w * UNIT, D = def.d * UNIT; b.smoke = null;
     if (def.roof === 'thatch') b.smoke = { lx: 0, ly: H + 2.6, lz: 0 }; else if (def.roof === 'gable' && !def.special_ext) b.smoke = { lx: W * 0.2, ly: H + 2.4, lz: -D * 0.12 };
     else if (def.roof === 'factory') b.smoke = { lx: W / 2 - 1.5, ly: H + 8.4, lz: -D / 2 + 1.5 }; else if (def.roof === 'plant') b.smoke = { lx: -3.2, ly: H + 8, lz: -1.5 };
     if (ext.smokeSrc) b.smoke = { lx: ext.smokeSrc.x, ly: ext.smokeSrc.y, lz: ext.smokeSrc.z };
@@ -154,7 +158,7 @@ export class BuildingManager {
     const def = b.def, ext = buildExterior(def, b.uid, b.era ?? 0); b.ext = ext;
     ext.group.position.set(b.cx, 0, b.cz); ext.group.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.group);
     ext.roof.position.add(new THREE.Vector3(b.cx, 0, b.cz)); ext.roof.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.roof);
-    if (!def.park && !def.special) { const W = def.w * TILE, D = def.d * TILE; const dec = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 5), contactMat()); dec.rotation.x = -Math.PI / 2; dec.position.y = 0.045; dec.renderOrder = 1; ext.group.add(dec); }
+    if (!def.park && !def.special) { const W = def.w * UNIT, D = def.d * UNIT; const dec = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 5), contactMat()); dec.rotation.x = -Math.PI / 2; dec.position.y = 0.045; dec.renderOrder = 1; ext.group.add(dec); }
     ext.group.traverse((o) => { if (o.isMesh) o.matrixAutoUpdate = true; });
     return ext;
   }
@@ -182,9 +186,11 @@ export class BuildingManager {
     if (b === this.playerInside) return true; const g = this.game; if (g.mode !== 'sim' || !(b.doorK > 0.15) || !b.doorPos) return false;
     return Math.hypot(g.player.x - b.doorPos.x, g.player.z - b.doorPos.z) < 32;
   }
+  /** Is world point (x,z) on the building itself (not just its plot)? pad: extra metres around it. */
+  onBuilding(b, x, z, pad = 0) { const c = COS[b.rot], s = SIN[b.rot], dx = x - b.cx, dz = z - b.cz, lx = dx * c - dz * s, lz = dx * s + dz * c; return Math.abs(lx) <= b.def.w * UNIT / 2 + pad && Math.abs(lz) <= b.def.d * UNIT / 2 + pad; }
   /** World-space box of a building's front doorway (what a closed door blocks). */
   doorRect(b) {
-    if (b.doorRectC) return b.doorRectC; const def = b.def, D = def.d * TILE, off = b.geo.off, hw = 1.0, pts = [[off - hw, D / 2 - 0.42], [off + hw, D / 2 - 0.42], [off - hw, D / 2 + 0.05], [off + hw, D / 2 + 0.05]].map(([x, z]) => b.toWorld(x, z));
+    if (b.doorRectC) return b.doorRectC; const def = b.def, D = def.d * UNIT, off = b.geo.off, hw = 1.0, pts = [[off - hw, D / 2 - 0.42], [off + hw, D / 2 - 0.42], [off - hw, D / 2 + 0.05], [off + hw, D / 2 + 0.05]].map(([x, z]) => b.toWorld(x, z));
     return (b.doorRectC = { minx: Math.min(...pts.map((p) => p[0])), maxx: Math.max(...pts.map((p) => p[0])), minz: Math.min(...pts.map((p) => p[1])), maxz: Math.max(...pts.map((p) => p[1])) });
   }
   doorRectHas(b, x, z, r) { const q = this.doorRect(b), cx = Math.max(q.minx, Math.min(x, q.maxx)), cz = Math.max(q.minz, Math.min(z, q.maxz)); return (x - cx) ** 2 + (z - cz) ** 2 < r * r; }

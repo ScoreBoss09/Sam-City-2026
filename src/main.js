@@ -22,8 +22,8 @@ const adultOpt = document.getElementById('opt-adult'); try { if (localStorage.ge
 const applyAdult = () => { game.ui.adult = adultOpt.checked; try { localStorage.setItem('samcity-adult', adultOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } }; adultOpt.onchange = applyAdult; applyAdult();
 const raidOpt = document.getElementById('opt-raids'); try { if (localStorage.getItem('samcity-raids') === '0') raidOpt.checked = false; } catch (e) { /* no storage */ }
 const begin = (demo, cont) => { game.raids.enabled = raidOpt.checked && !params.has('noraids'); try { localStorage.setItem('samcity-raids', raidOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } if (demo === true) game.demo(); if (cont) game.loadSave(); game.start(); };
-import { hasSave, clearSave } from './core/Save.js';
-const cont = document.getElementById('btn-continue'); if (hasSave()) cont.classList.remove('hidden'); cont.onclick = () => begin(false, true);
+import { hasSave, clearSave, saveInfo } from './core/Save.js';
+const cont = document.getElementById('btn-continue'), sv = saveInfo(); if (sv && sv.ok) cont.classList.remove('hidden'); else if (sv) { cont.classList.remove('hidden'); cont.disabled = true; cont.textContent = 'Old save (smaller map): start a new game'; cont.title = 'The map and its squares got bigger, so saves from before can\'t be continued. Sorry!'; } cont.onclick = () => begin(false, true);
 document.getElementById('btn-new').onclick = () => { clearSave(); begin(false); game.ui.modalOpen = true; game.clock.speed = 0; document.getElementById('howto').classList.remove('hidden'); };
 window.addEventListener('beforeunload', () => game.save());
 document.addEventListener('visibilitychange', () => { if (document.hidden) game.save(); });

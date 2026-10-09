@@ -16,7 +16,7 @@ console.log('queue', await ev(() => { const g = window.__game, B = g.buildings, 
   return `${q0}  ->  moved semi to top: ${q1}\n  builders ${builders.length}, on the top job after 40s: ${onTop}; finished at: ${Object.entries(doneAt).map(([k, v]) => k + ' ' + v + 's').join(', ')}`; }));
 
 console.log('upgrades', await ev(() => { const g = window.__game, U = g.upgrades, B = g.buildings; g.clock.hour = 9;
-  const home = B.list.find((b) => b.state === 'done' && b.id === 'cottage' && !b.level) || B.list.find((b) => b.state === 'done' && b.def.cat === 'res' && b.def.floors === 1 && !b.level), yard = B.byDef('lumbercamp')[0] || B.byDef('forager')[0], bldr = B.byDef('contractor')[0];
+  const home = B.list.find((b) => b.state === 'done' && b.id === 'cottage' && !b.level) || B.list.find((b) => b.state === 'done' && b.def.cat === 'res' && b.def.floors === 1 && !b.level), yard = ['forager', 'lumbercamp', 'quarry', 'fisher'].flatMap((k) => B.byDef(k)).sort((a, b) => b.workers.length - a.workers.length)[0], bldr = B.byDef('contractor')[0];
   for (const x of [home, yard, bldr]) U.order(x); window.__h = home; window.__y = yard;
   let t = 0; while (U.orders.length && t < 1200) { g.advance(5); t += 5; } const r1 = U.order(home); let t2 = 0; while (U.orders.length && t2 < 1200) { g.advance(5); t2 += 5; }
   return `3 upgrades in ${t}s, Tudor ${r1.ok} in ${t2}s: ${home.def.name} lvl ${home.level} wall ${home.def.wall} floors ${home.def.floors} beds ${home.def.beds} (bed spots ${home.spots.bed.length}); ${yard.def.name} lvl ${yard.level} carry x${yard.def.carry}; yard cart ${!!(yard.ext && yard.ext.cart)}; Builders' Yard lvl ${bldr.level} haul ${bldr.def.haul}`; }));

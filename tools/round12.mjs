@@ -6,7 +6,7 @@ const p = await b.newPage({ viewport: { width: 1280, height: 760 } }); const log
 await p.goto('http://localhost:8123/index.html?auto&scale=0.5&noraids'); await p.waitForTimeout(800);
 const ev = (f, a) => p.evaluate(f, a);
 console.log('harbour visible at start?', await ev(() => window.__game.harbor.root.visible));
-await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 4), tz = Math.floor(d.z / 4); g.clock.hour = 10;
+await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 8), tz = Math.floor(d.z / 8); g.clock.hour = 10;
   for (let z = tz; z < tz + 12; z++) g.world.addRoad(tx, z, 2); for (let x = tx - 10; x < tx + 10; x++) g.world.addRoad(x, tz + 8, 2);
   const put = (id, x, z) => { for (let dx = 0; dx < 8; dx++) for (const s of [1, -1]) { const r = B.evaluate(id, x + dx * s, z, 0); if (r.ok) return B.place(id, r.x0, r.z0, r.rot, { instant: true }); } return null; };
   window.__po = put('surveyor', tx + 2, tz + 4); window.__pb = put('postbox', tx - 2, tz + 6); window.__h = put('cottage', tx + 3, tz + 10); window.__lib = put('library', tx - 4, tz + 10);
@@ -23,7 +23,7 @@ await ev(() => { const g = window.__game, pb = window.__pb; g.player.teleport(pb
 await p.waitForTimeout(200);
 console.log('pad close:', await ev(() => { const g = window.__game, ui = g.ui, inp = g.input; inp.padActive = true; inp.pad.connected = true; const btns = [...document.querySelectorAll('#terminal button')].filter((x) => !x.disabled && x.offsetParent !== null); ui._pfIdx = btns.findIndex((x) => x.dataset.act === 'close'); inp.pad.hitB = []; inp.pad.hitB[0] = true; inp.pressed.add('KeyE'); ui.padUpdate(inp, 0.016); inp.pad.hitB = []; const closed = !ui.terminalB; g.player.interact(0.016); return closed + ' reopened? ' + !!ui.terminalB; }));
 // eras
-await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 4), tz = Math.floor(d.z / 4); for (let dx = 0; dx < 10; dx++) for (const s of [1, -1]) { const r = B.evaluate('power', tx + dx * s, tz + 11, 0); if (r.ok) { window.__pw = B.place('power', r.x0, r.z0, r.rot, { instant: true }); return; } } });
+await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 8), tz = Math.floor(d.z / 8); for (let dx = 0; dx < 10; dx++) for (const s of [1, -1]) { const r = B.evaluate('power', tx + dx * s, tz + 11, 0); if (r.ok) { window.__pw = B.place('power', r.x0, r.z0, r.rot, { instant: true }); return; } } });
 await ev(() => { const g = window.__game; for (let i = 0; i < 100; i++) g.tech.update(1); });
 console.log('after power:', await ev(() => JSON.stringify(window.__game.tech.status())), 'cottage era', await ev(() => window.__h.era));
 await ev(() => { const g = window.__game; g.tech.research = 95; for (let i = 0; i < 200; i++) g.tech.update(1); });

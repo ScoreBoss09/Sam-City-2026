@@ -4,7 +4,7 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', a
 const p = await b.newPage({ viewport: { width: 900, height: 560 } }); p.on('pageerror', (e) => console.log('PAGEERROR: ' + e.stack));
 await p.goto('http://localhost:8123/index.html?auto&scale=0.4'); await p.waitForTimeout(1000);
 const ev = (f, a) => p.evaluate(f, a);
-console.log(await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 4), tz = Math.floor(d.z / 4); g.clock.hour = 8;
+console.log(await ev(() => { const g = window.__game, B = g.buildings, d = g.lift.doorOut, tx = Math.floor(d.x / 8), tz = Math.floor(d.z / 8); g.clock.hour = 8;
   for (let z = tz; z < tz + 16; z++) g.world.addRoad(tx, z, 1); for (let x = tx - 14; x < tx + 14; x++) { g.world.addRoad(x, tz + 5, 1); g.world.addRoad(x, tz + 10, 1); g.world.addRoad(x, tz + 15, 1); }
   const put = (id) => { for (let r = 1; r < 14; r++) for (const s of [1, -1]) for (const zz of [3, 7, 8, 12, 13, 17]) { const e = B.evaluate(id, tx + r * s, tz + zz, 0); if (e.ok) return B.place(id, e.x0, e.z0, e.rot, { instant: true }); } return null; };
   const ids = ['stockyard', 'postbox', 'campfire', 'forager', 'lumbercamp', 'contractor', 'quarry', 'hut', 'hut', 'hut', 'cabin', 'cabin', 'shack', 'well', 'surveyor', 'farm', 'tavern']; const miss = ids.filter((id) => !put(id));

@@ -38,15 +38,15 @@ export class GodControls {
       if (inp.down('KeyQ')) this.yaw += dt * 1.4; if (inp.down('KeyE')) this.yaw -= dt * 1.4;
       if (this._lastDist !== undefined && Math.abs(this.dist - this._lastDist) > 1e-6) this.distGoal = this.dist;   // someone set dist directly
       if (this.distGoal === undefined) this.distGoal = this.dist;
-      if (inp.mouse.wheel) this.distGoal = clamp(this.distGoal * Math.pow(inp.mouse.wheel > 0 ? 1.14 : 0.88, Math.abs(inp.mouse.wheel)), 22, 230);
-      const P = inp.pad || {}; if (inp.padActive && P.zoom) this.distGoal = clamp(this.distGoal * Math.exp(P.zoom * dt * 1.7), 22, 230);
+      if (inp.mouse.wheel) this.distGoal = clamp(this.distGoal * Math.pow(inp.mouse.wheel > 0 ? 1.14 : 0.88, Math.abs(inp.mouse.wheel)), 22, MAP * TILE * 1.45);
+      const P = inp.pad || {}; if (inp.padActive && P.zoom) this.distGoal = clamp(this.distGoal * Math.exp(P.zoom * dt * 1.7), 22, MAP * TILE * 1.45);
       if (inp.padActive && P.turn) this.yaw -= P.turn * dt * 1.8;
       this.dist += (this.distGoal - this.dist) * Math.min(1, dt * 9); this._lastDist = this.dist;
       if ((inp.mouse.right || inp.mouse.middle) && (inp.mouse.dx || inp.mouse.dy)) {
         if (inp.down('ShiftLeft') || inp.mouse.middle) { this.yaw -= inp.mouse.dx * 0.005; this.pitch = clamp(this.pitch + inp.mouse.dy * 0.004, 0.45, 1.5); }
         else { const k = this.dist * 0.0022; this.target.x -= (inp.mouse.dx * c + inp.mouse.dy * s) * k; this.target.z -= (-inp.mouse.dx * s + inp.mouse.dy * c) * k; }
       }
-      if (inp.hit('KeyF')) { this.target.set(80, 0, 82); this.dist = this.distGoal = this._lastDist = 215; this.pitch = 1.3; this.yaw = 0; }
+      if (inp.hit('KeyF')) { this.target.set(MAP * TILE / 2, 0, MAP * TILE / 2 + 2); this.dist = this.distGoal = this._lastDist = MAP * TILE * 1.35; this.pitch = 1.3; this.yaw = 0; }
       if (inp.hit('KeyR')) this.prefRot = (this.prefRot + 1) % 4;
       if (inp.hit('Escape')) this.setTool('pan');
       const hs = { Digit1: ['bulldoze'], Digit2: ['road', 'dirt'], Digit3: ['zone', 'res'], Digit4: ['build'], Digit5: ['park'], Digit6: ['util'], Digit7: ['query'] };
@@ -72,8 +72,9 @@ export class GodControls {
       } else { this.painting = false; this.lastXY = null; }
     } else if (this.placing()) {
       const def = BUILDINGS[this.tool.sub], ev = g.buildings.evaluate(this.tool.sub, tx, tz, this.prefRot), unlocked = g.economy.isUnlocked(this.tool.sub);
-      const T4 = TILE, h = def.park ? 0.4 : Math.max(2, (def.floors || 1) * 3.2);
-      this.ghost.visible = true; this.ghost.position.set(ev.geo.cx, 0, ev.geo.cz); this.ghostBox.scale.set(ev.w * T4, h, ev.d * T4); this.ghostBox.position.y = h / 2;
+      const h = def.park ? 0.4 : Math.max(2, (def.floors || 1) * 3.2), odd = ev.rot % 2 === 1, BW = ev.geo.W, BD = ev.geo.D;
+      this.ghost.visible = true; this.ghost.position.set(ev.geo.cx, 0, ev.geo.cz); this.ghostBox.scale.set(odd ? BD : BW, h, odd ? BW : BD); this.ghostBox.position.y = h / 2;
+      this.tileBox.visible = true; this.tileBox.scale.set(ev.w * TILE, 0.2, ev.d * TILE); this.tileBox.position.set(ev.geo.fx, 0.15, ev.geo.fz); this.tileBox.material.color.setHex(ev.ok && unlocked ? 0x44ff66 : 0xff4455);   // the whole plot
       const ok = ev.ok && unlocked; this.ghostBox.material.color.setHex(ok ? 0x44ff66 : 0xff4455);
       const [dx, dz] = [ev.geo.doorOut[0] - ev.geo.cx, ev.geo.doorOut[1] - ev.geo.cz]; this.ghostDoor.visible = def.needsRoad !== false; this.ghostDoor.position.set(dx, 0.9, dz); this.ghostDoor.rotation.set(0, Math.atan2(dx, dz), 0); this.ghostDoor.rotation.x = 0; this.ghostDoor.material.color.setHex(ok ? 0xffffff : 0xff8888);
       g.ui.setHover(`${def.name}: ${!unlocked ? 'Permit needed: post a permit form at the Postbox' : ev.ok ? (g.input.padActive ? 'Press A to order it' : 'Click to order it') : ev.reason}`);
