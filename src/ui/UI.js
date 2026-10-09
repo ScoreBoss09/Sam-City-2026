@@ -32,6 +32,12 @@ export class UI {
   get modalOpen() { return !!(this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
   set modalOpen(v) { /* derived; kept so old callers stay harmless */ }
   get mouseOverCanvas() { return this.game.input.overCanvas !== false; }
+  /** Something broke: say so on screen (once in a while) instead of silently freezing. */
+  reportError(e) {
+    const now = performance.now(), msg = String((e && e.message) || e); if (this._errT && now - this._errT < 8000 && msg === this._errMsg) return; this._errT = now; this._errMsg = msg;
+    const where = ((e && e.stack) || '').split('\n').slice(1, 2).join('').replace(/^\s*at\s*/, '').replace(/https?:\/\/[^/]+\//, '').slice(0, 90);
+    this.toast(`⚠ Oops, a bug: ${msg.slice(0, 80)} (${where}). The game keeps going; tell Claude this text if it repeats.`, 7000);
+  }
   show(...ids) { for (const i of ids) $(i).classList.remove('hidden'); }
   hide(...ids) { for (const i of ids) $(i).classList.add('hidden'); }
 
@@ -268,7 +274,7 @@ export class UI {
     this.acc += dt; if (this.acc < 0.25) return; this.acc = 0;
     const c = g.clock, P = g.population;
     $('h-pop').textContent = P.count().toLocaleString(); $('h-funds').textContent = fmtMoney(g.economy.funds); $('h-month').textContent = MONTHS[c.month]; $('h-year').textContent = c.year; $('h-sims').textContent = `${P.sims.filter((s) => !s.hidden).length}/${P.simCap}`;
-    $('c-date').textContent = `${MONTHS[c.month]} ${c.year}`; $('c-time').textContent = c.hhmm;
+    $('c-date').textContent = `${MONTHS[c.month]} ${c.year}${this.game.seasons ? ' · ' + ({ Winter: '❄', Spring: '🌸', Summer: '☀', Autumn: '🍂' })[this.game.seasons.season] : ''}`; $('c-time').textContent = c.hhmm;
     for (const b of $('c-speed').children) b.classList.toggle('on', +b.dataset.s === c.speed);
     $('stock').innerHTML = Object.keys(MATERIALS).map((m) => `<div><span>${MATERIALS[m].name}</span> <b>${Math.floor(g.economy.stock[m])}</b></div>`).join('');
     $('h-tier').textContent = tierOf(P.count());
