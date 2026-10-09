@@ -27,7 +27,7 @@ class Merger {
     for (const i of g.index.array) this.idx.push(i + this.n); this.n += p.count; g.dispose(); return this;
   }
   mesh() {
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2)); g.setIndex(this.idx);
+    const g = new THREE.BufferGeometry(); g.userData.own = true; g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2)); g.setIndex(this.idx);
     const m = new THREE.Mesh(g, mat); m.matrixAutoUpdate = true; return m;
   }
 }

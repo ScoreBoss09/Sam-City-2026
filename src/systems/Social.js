@@ -24,7 +24,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export class Social {
   constructor(game) { this.game = game; this.timer = 0; this.sprites = new Set(); }
   say(sim, text, dur = 2.4) {
-    if (sim.bubble) { this.game.scene.remove(sim.bubble.sprite); }
+    if (sim.bubble) { this.game.scene.remove(sim.bubble.sprite); sim.bubble.sprite.material.dispose(); }
     const sprite = makeSprite(text, 'say'); this.game.scene.add(sprite); sim.bubble = { sprite, t: dur, dur };
   }
   startChat(a, b) {
@@ -107,7 +107,7 @@ export class Social {
     for (const s of g.population.sims) {
       const b = s.bubble; const vis = !s.mesh.visible || godFar;
       if (b) {
-        b.t -= dt; if (b.t <= 0 || vis || s.remove) { g.scene.remove(b.sprite); s.bubble = null; }
+        b.t -= dt; if (b.t <= 0 || vis || s.remove) { g.scene.remove(b.sprite); b.sprite.material.dispose(); s.bubble = null; }
         else { const sc = Math.min(1, b.t * 4, (b.dur - b.t) * 6 + 0.2); b.sprite.position.set(s.x, 2.55 + (s.sitting ? -0.35 : 0), s.z); b.sprite.scale.set(3 * sc, 1 * sc, 1); }
       }
       // name tags near Sam

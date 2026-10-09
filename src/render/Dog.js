@@ -49,5 +49,5 @@ export class Dog {
     this.tail.rotation.y = Math.sin(this.t * (sitting ? 9 : 6)) * (0.5 + this.sit * 0.3); this.tail.rotation.x = -0.5; this.head.rotation.x = Math.sin(this.t * 0.7) * 0.08 + (speed > 1 ? 0.15 : 0); this.head.rotation.y = Math.sin(this.t * 0.4) * 0.3 * (1 - run);
     this.root.position.set(this.x, 0, this.z); this.root.rotation.y = this.h;
   }
-  dispose() { this.game.scene.remove(this.root); }
+  dispose() { this.game.scene.remove(this.root); this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
 }

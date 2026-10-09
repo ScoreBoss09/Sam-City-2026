@@ -83,15 +83,34 @@ export function mergeByMaterial(root) {
       }
       if (bk.indexed) for (const i of g.index.array) idx.push(i + off); off += pos.count;
     }
-    const geo = new THREE.BufferGeometry(); for (const key of bk.keys) geo.setAttribute(key, new THREE.Float32BufferAttribute(arrays[key], bk.list[0].geometry.attributes[key].itemSize)); if (bk.indexed) geo.setIndex(idx);
+    const geo = new THREE.BufferGeometry(); geo.userData.own = true; for (const key of bk.keys) geo.setAttribute(key, new THREE.Float32BufferAttribute(arrays[key], bk.list[0].geometry.attributes[key].itemSize)); if (bk.indexed) geo.setIndex(idx);
     const m = new THREE.Mesh(geo, bk.mat); m.castShadow = bk.cast; m.receiveShadow = bk.recv; root.add(m);
-    for (const o of bk.list) o.parent.remove(o);
+    for (const o of bk.list) { o.parent.remove(o); if (o.geometry.userData && o.geometry.userData.own) o.geometry.dispose(); }
   }
   return root;
 }
 
+/**
+ * Turn every plain-coloured, untextured part into vertex colours on one shared material, so mergeByMaterial can
+ * fold them all into a single mesh (dozens of little boxes in different colours = one draw call, not dozens).
+ */
+const VC = {};
+function colorize(root) {
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh) return; for (let q = o; q && q !== root; q = q.parent) if (q.userData && q.userData.keep) return;
+    const m = o.material; if (Array.isArray(m) || !m.isMeshStandardMaterial || m.map || m.transparent || m.vertexColors || m.flatShading || m.side !== THREE.FrontSide || (m.emissive && m.emissive.getHex() !== 0)) return;
+    const r = 0.85, mt = 0.05, k = 'vc';   // one shared material for every plain colour (the tiny shine differences aren't worth a draw call each)
+    const g = o.geometry.clone(), n = g.attributes.position.count, col = new Float32Array(n * 3); for (let i = 0; i < n; i++) { col[i * 3] = m.color.r; col[i * 3 + 1] = m.color.g; col[i * 3 + 2] = m.color.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.userData.own = true; o.geometry = g;
+    o.material = VC[k] || (VC[k] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: r, metalness: mt }));
+  });
+}
 export function buildExterior(def, uid = 1, era = 2) {
-  const r = buildExterior0(def, uid, era); mergeByMaterial(r.group); mergeByMaterial(r.roof); return r;
+  const r = buildExterior0(def, uid, era);
+  // little things (sills, flower boxes, bins, bottles, lamps) don't need to cast shadows: far fewer shadow draws
+  const v = new THREE.Vector3(), sz = new THREE.Vector3(); for (const root of [r.group, r.roof]) root.traverse((o) => { if (!o.isMesh || !o.castShadow) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); o.geometry.boundingBox.getSize(sz); o.getWorldScale(v); const d = [sz.x * v.x, sz.y * v.y, sz.z * v.z].sort((a, b) => b - a); if (d[1] < 0.35 || d[0] < 0.6) o.castShadow = false; });
+  colorize(r.group); colorize(r.roof); mergeByMaterial(r.group); mergeByMaterial(r.roof); return r;
 }
 function buildExterior0(def, uid = 1, era = 2) {
   if (def.id === 'lift') return buildLift(def);
@@ -146,10 +165,10 @@ function buildExterior0(def, uid = 1, era = 2) {
   for (const side of single ? [-1] : [-1, 1]) {
     const pivot = new THREE.Group(); pivot.userData.keep = true; pivot.position.set(door + side * (dw / 2 - 0.02), 0.15, fz + T / 2 - 0.04); g.add(pivot);
     const leaf = new THREE.Mesh(new THREE.BoxGeometry(lw, 2.42, 0.07), dmat); leaf.position.set(-side * lw / 2, 1.21, 0); leaf.castShadow = true; pivot.add(leaf);
-    const pane = new THREE.Mesh(new THREE.BoxGeometry(lw * 0.5, 0.5, 0.08), stdMat(0x9fc8e0, { emissive: 0x2a3a4a, emissiveIntensity: 0.3 })); pane.position.set(-side * lw / 2, 1.85, 0); pivot.add(pane);
+    const pane = new THREE.Mesh(new THREE.BoxGeometry(lw * 0.5, 0.5, 0.08), stdMat(0xa8cfe4)); pane.position.set(-side * lw / 2, 1.85, 0); pivot.add(pane);
     const knob = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.14), stdMat(0xd9b34a, { metalness: 0.6, roughness: 0.3 })); knob.position.set(-side * (lw - 0.14), 1.05, 0); pivot.add(knob);
     if (!rustic && single) { const lb = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.09), stdMat(0xd9b34a, { metalness: 0.6 })); lb.position.set(-side * lw / 2, 1.4, 0); pivot.add(lb); }   // letterbox
-    doors.push({ pivot, open: side < 0 ? -1.45 : 1.45 });
+    colorize(pivot); mergeByMaterial(pivot); doors.push({ pivot, open: side < 0 ? -1.45 : 1.45 });   // each door leaf: one or two draws
   }
   if (def.cat === 'res' && !rustic) {
     const bx0 = door + dw / 2 + 0.75 > W / 2 - 0.4 ? door - dw / 2 - 0.75 : door + dw / 2 + 0.75, bin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.27, 0.8, 10), stdMat(0x8a9096, { metalness: 0.4, roughness: 0.5 })); bin.position.set(bx0, 0.4, D / 2 + 0.45); bin.castShadow = true; g.add(bin);
@@ -368,6 +387,7 @@ export function buildInterior(b) {
     const era = b.era ?? 2, t = era < 2 && f.t === 'terminal' ? 'ledger' : era < 2 && f.t === 'reception' ? 'reception0' : era < 1 && f.t === 'tv' ? 'radio' : f.t;
     const m = makeFurniture(t); m.position.set(f.x, 0.06, f.z); m.rotation.y = (f.r || 0) * Math.PI / 2; g.add(m);
   }
+  colorize(g); mergeByMaterial(g);   // a whole room of furniture in a few draw calls
   return g;
 }
 

@@ -30,7 +30,7 @@ export class Decor {
     this.smokeTex = new THREE.CanvasTexture(sc2); this.puffs = []; this.puffT = 0;
     for (let i = 0; i < 90; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.smokeTex, transparent: true, depthWrite: false, opacity: 0, color: 0xdddddd })); sp.visible = false; sp.renderOrder = 5; sc.add(sp); this.puffs.push({ sp, life: 0, max: 1, vx: 0, vz: 0 }); }
     // pools of warm light under the street lamps nearest the camera at night
-    this.lampLights = []; for (let i = 0; i < 5; i++) { const L = new THREE.PointLight(0xffd890, 0, 13, 1.6); L.position.y = 3.9; sc.add(L); this.lampLights.push(L); } this.lampPos = [];
+    this.lampLights = []; for (let i = 0; i < 3; i++) { const L = new THREE.PointLight(0xffd890, 0, 13, 1.6); L.position.y = 3.9; sc.add(L); this.lampLights.push(L); } this.lampPos = [];
     // campfire light
     this.fireLight = new THREE.PointLight(0xff9a40, 0, 26, 1.4); sc.add(this.fireLight);
     const mark = () => { this.dirty = true; this.timer = 0.25; };

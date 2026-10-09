@@ -11,6 +11,8 @@ function contactMat() {
   return (_contact = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.55, depthWrite: false }));
 }
 const COS = [1, 0, -1, 0], SIN = [0, 1, 0, -1];
+/** Free GPU buffers that belong only to this object (merged/own geometry), never the shared ones. */
+export function disposeOwned(root) { root.traverse((o) => { if (o.geometry && o.geometry.userData && o.geometry.userData.own) o.geometry.dispose(); }); }
 
 /** Footprint, door and local->world transform for a def placed at tile (x0,z0) with rotation rot. */
 export function geometry(def, x0, z0, rot) {
@@ -158,13 +160,13 @@ export class BuildingManager {
   /** Modernise a building: same footprint, colliders and people, new fittings for the new era. */
   restyle(b, era) {
     if (b.state !== 'done' || !b.ext || b.def.special || b.def.park) { b.era = era; return; }
-    b.era = era; this.scene.remove(b.ext.group, b.ext.roof); this.mountExterior(b); b.doorK = 0;
+    b.era = era; this.scene.remove(b.ext.group, b.ext.roof); disposeOwned(b.ext.group); disposeOwned(b.ext.roof); this.mountExterior(b); b.doorK = 0;
     if (b.interior) { this.scene.remove(b.interior); b.interior = null; }
     const g = this.game; if (g.particles) g.particles.burst(b.cx, (b.def.floors || 1) * 3.2 + 1, b.cz, 0xfff3a0, 14, 2.5, 3, 0.18);
   }
   remove(b) {
     if (this.game.resources) this.game.resources.removeFields(b);
-    if (b.ext) { this.scene.remove(b.ext.group, b.ext.roof); }
+    if (b.ext) { this.scene.remove(b.ext.group, b.ext.roof); disposeOwned(b.ext.group); disposeOwned(b.ext.roof); }
     if (b.siteVis) this.scene.remove(b.siteVis.group);
     if (b.interior) this.scene.remove(b.interior);
     if (b.label) { this.scene.remove(b.label); b.label = null; }
@@ -219,13 +221,14 @@ export class BuildingManager {
 
   update(dt) {
     const g = this.game, pl = g.player, sim = g.mode === 'sim';
-    const inside = sim ? this.buildingAtPoint(pl.x, pl.z) : null; this.playerInside = inside;
+    const inside = sim ? this.buildingAtPoint(pl.x, pl.z) : null; this.playerInside = inside; this._builtThisFrame = false;   // at most one interior built per frame (no hitch)
     for (const b of this.list) {
       if (b.state !== 'done' || !b.ext) continue;
       b.ext.roof.visible = b !== inside;
       const near = sim && Math.hypot(b.cx - pl.x, b.cz - pl.z) < 26 && b.layout && b.layout.furniture.length;
-      if (near && !b.interior) { b.interior = buildInterior(b); b.interior.position.set(b.cx, 0, b.cz); b.interior.rotation.y = b.rot * Math.PI / 2; this.scene.add(b.interior); }
-      if (b.interior) b.interior.visible = !!near;
+      const see = near && this.canSeeInto(b);   // furniture is only drawn when Sam is inside or looking through the open door
+      if (see && !b.interior && !this._builtThisFrame) { this._builtThisFrame = true; b.interior = buildInterior(b); b.interior.position.set(b.cx, 0, b.cz); b.interior.rotation.y = b.rot * Math.PI / 2; b.interior.traverse((o) => { if (o.isMesh) o.castShadow = false; }); this.scene.add(b.interior); }
+      if (b.interior) b.interior.visible = !!see;
     }
     // doors swing open when anyone is close, then shut behind them
     const cam = g.camera.position, sims = g.population.sims;

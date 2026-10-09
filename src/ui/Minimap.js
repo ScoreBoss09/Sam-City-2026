@@ -8,7 +8,8 @@ const CAT = { res: '#e0b36a', prod: '#b4d06a', civic: '#e6e2d8', com: '#7fb6e0',
 export class Minimap {
   constructor(game) {
     this.game = game; this.el = document.getElementById('minimap'); this.cv = this.el.querySelector('canvas'); this.ctx = this.cv.getContext('2d');
-    this.base = document.createElement('canvas'); this.base.width = this.base.height = MAP * 6; this.bctx = this.base.getContext('2d'); this.baseT = 0; this.big = false;
+    this.base = document.createElement('canvas'); this.base.width = this.base.height = MAP * 6; this.bctx = this.base.getContext('2d'); this.baseT = 0; this.big = false; this.dirty = true; this.drawT = 0;
+    const mark = () => { this.dirty = true; }; const ev = game.world.events; for (const e of ['tile', 'building:added', 'building:removed', 'building:done']) ev.on(e, mark);
   }
   drawBase() {
     const g = this.game, w = g.world, x = this.bctx, s = 6;
@@ -25,7 +26,9 @@ export class Minimap {
   update(dt) {
     const g = this.game, show = g.started && g.mode === 'sim' && !g.ending; this.el.classList.toggle('hidden', !show); if (!show) return;
     if (g.input.hit('KeyM')) { this.big = !this.big; this.el.classList.toggle('big', this.big); }
-    this.baseT -= dt; if (this.baseT <= 0) { this.baseT = 1; this.drawBase(); }
+    // the map picture only changes when the town does; the dots are redrawn ~12 times a second (not every frame)
+    this.baseT -= dt; if (this.dirty || this.baseT <= 0) { this.dirty = false; this.baseT = 4; this.drawBase(); }
+    this.drawT -= dt; if (this.drawT > 0 && !g.input.hit('KeyM')) return; this.drawT = this.big ? 0.12 : 0.08;
     const c = this.ctx, W = this.cv.width, H = this.cv.height, p = g.player, S = 6;
     const scale = this.big ? W / (MAP * S) : 2.0;   // canvas px per base px
     const toScreen = (wx, wz) => this.big ? [wx / TILE * S * scale, wz / TILE * S * scale] : [W / 2 + (wx - p.x) / TILE * S * scale, H / 2 + (wz - p.z) / TILE * S * scale];
@@ -35,7 +38,7 @@ export class Minimap {
     for (const s of g.population.sims) { if (s.hidden || s.remove || (s.inside && !s.inside.def.open)) continue; dot(s.x, s.z, s.kind === 'raider' ? '#ff3030' : s.kind === 'security' ? '#5a7ad8' : '#ffffff', s.kind === 'raider' ? 2.5 : 1.5); }
     for (const it of g.tools.untaken) dot(it.x, it.z, '#ffb02e', 2);
     // objective marker (clamped to the edge with a little arrow)
-    const o = g.story.currentObjective, t = o && o.target ? o.target(g) : null;
+    const t = g.story.target();
     if (t) {
       let [sx, sy] = toScreen(t.x, t.z); const m = 8, inside = sx > m && sy > m && sx < W - m && sy < H - m;
       if (!inside) { const cx = W / 2, cy = H / 2, dx = sx - cx, dy = sy - cy, k = Math.min((W / 2 - m) / Math.abs(dx || 1e-6), (H / 2 - m) / Math.abs(dy || 1e-6)); sx = cx + dx * k; sy = cy + dy * k; }
