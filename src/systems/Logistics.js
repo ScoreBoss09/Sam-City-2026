@@ -19,8 +19,9 @@ export class Logistics {
   /** Orders come down the Lift in the goods cage first, then go by truck (or wait on the dock). */
   dispatch(order) { this.queue.push(order); }
   land(order) {
-    const g = this.game, lift = g.lift, depot = g.depot, toDock = () => { const d = this.dock(); g.piles.add(d.x, d.z, { [order.mat]: order.qty }); order.done = true; g.messages.push('Logistics', `${order.qty} ${MATERIALS[order.mat].name.toLowerCase()} is waiting on the Lift dock. Carry it where you need it.`, 'good'); };
-    if (!depot) return toDock();
+    const g = this.game, lift = g.lift, depot = g.depot, toDock = () => { const d = this.dock(); g.piles.add(d.x, d.z, { [order.mat]: order.qty }); order.done = true; const porters = depot && g.population.sims.some((q) => q.role === 'builder'); g.messages.push('Logistics', `${order.qty} ${MATERIALS[order.mat].name.toLowerCase()} is waiting on the Lift dock. ${porters ? 'Builders will cart it to the Stockyard (or carry it yourself).' : 'Carry it where you need it.'}`, 'good'); };
+    // horse-and-cart days: no lorries until the town has electricity, so everything is fetched from the dock by hand
+    if (!depot || !g.tech || g.tech.era < 1) return toDock();
     const to = g.world.findPath(lift.doorTile.x, lift.doorTile.z, depot.doorTile.x, depot.doorTile.z, true);
     if (!to) { g.messages.push('Logistics', 'No road from the Lift to the Stockyard, so the goods are left on the dock.', 'warn'); return toDock(); }
     const mesh = this.makeTruck(order.mat === 'steel' ? 0x6a7a8c : order.mat === 'glass' ? 0x3aa0c8 : order.mat === 'brick' ? 0xb4442f : 0xc08a40);

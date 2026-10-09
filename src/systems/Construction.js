@@ -23,8 +23,12 @@ export class ConstructionSystem {
     this.game.flags.prioN = Q.length + 2;
   }
   /** Everyone works down the list: the top job takes all the builders it can use, then the next, and so on. Paths are one entry. */
+  /** Goods left on the Lift dock that nobody has claimed yet. */
+  dockPiles() { const g = this.game; if (!g.lift) return []; const d = g.logistics.dock(); return g.piles.list.filter((p) => Math.hypot(p.x - d.x, p.z - d.z) < 7 && g.piles.total(p) - (p.reserved || 0) > 0); }
   requestTask(sim) {
     const g = this.game, B = g.buildings, depot = g.depot, cap = 6;
+    // up to two builders at a time cart deliveries from the Lift dock to the Stockyard
+    if (depot && g.population.sims.filter((q) => q.job && q.job.type === 'fetch').length < 2) { const p = this.dockPiles()[0]; if (p) { const qty = this.haulSize(sim); p.reserved = (p.reserved || 0) + qty; return { type: 'fetch', pile: p, qty }; } }
     for (const it of this.queue()) {
       if (it.kind === 'roads') { const p = g.roadPlans.next(sim); if (p) { p.reserved = sim; return { type: 'road', plan: p }; } continue; }
       const s = it.s;

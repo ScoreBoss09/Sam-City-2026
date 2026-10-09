@@ -148,6 +148,7 @@ export class Sim {
     return 'leisure';
   }
   think(dt) {
+    if (this.riding) return;   // in the Lift cage: nothing to decide until the doors open
     const g = this.game, h = g.clock.hour; this.timer -= dt; this.chatCool -= dt;
     this.tired = h >= 21 || h < 6.5; this.eatCD -= dt;
     this.hunger = Math.min(100, this.hunger + dt * g.clock.rate() * (this.pose === 'sleep' ? 1.6 : 6));   // per game hour, so long days don't mean extra meals
@@ -306,10 +307,12 @@ export class Sim {
     }
   }
   doLeave(dt = 0.1) {
-    const lift = this.game.lift;
-    if (this.phase === 0) this.goTo({ b: lift, x: lift.doorIn.x, z: lift.doorIn.z });
-    if (this.inside === lift && !this.path.length) this.remove = true;
-    this.leaveT = (this.leaveT || 0) + dt; if (this.phase === 0 && this.leaveT > 40 && this.kind === 'visitor') this.remove = true;   // couldn't find the way: they've gone home anyway
+    const g = this.game, lift = g.lift, R = g.liftRides; if (this.riding) return;
+    if (!R || !R.ok()) { if (this.phase === 0) this.goTo({ b: lift, x: lift.doorIn.x, z: lift.doorIn.z }); if (this.inside === lift && !this.path.length) this.remove = true; return; }
+    // walk to the edge of the shaft, wait for the cage, then ride it down
+    if (this.phase === 0) { const sp = R.join(this); if (!this.goTo({ x: sp.x, z: sp.z, face: sp.face })) this.phase = 2; }
+    if (this.phase === 2 && !this.path.length) this.atLift = true;
+    this.leaveT = (this.leaveT || 0) + dt; if (!this.atLift && this.leaveT > 60 && this.kind === 'visitor') this.remove = true;   // couldn't find the way: they've gone home anyway
   }
   doWork(dt) {
     const wp = this.workplace;
@@ -355,6 +358,7 @@ export class Sim {
     if (j.type === 'haul' && j.qty) { g.economy.stock[j.mat] += j.qty; j.site.reserved[j.mat] = Math.max(0, (j.site.reserved[j.mat] || 0) - j.qty); }
     if (j.type === 'build') j.site.builders = Math.max(0, (j.site.builders || 0) - 1);
     if (j.type === 'road' && j.plan.reserved === this) j.plan.reserved = null;
+    if (j.type === 'fetch') { if (j.got && this.carry) g.economy.add(j.mat, j.got); else if (j.pile) j.pile.reserved = Math.max(0, (j.pile.reserved || 0) - j.qty); }
     this.job = null; this.carry = null; this.idleSet = false;
   }
   doBuild(dt) {
@@ -374,6 +378,15 @@ export class Sim {
       if (j.step === 0) { if (!dep) { this.abortJob(); return; } if (this.phase === 0) { if (!this.goTo({ x: dep.doorOut.x, z: dep.doorOut.z, face: dep.rot * Math.PI / 2 + Math.PI })) { this.abortJob(); return; } } if (this.phase === 2) { j.step = 1; j.wait = 0.9; } }
       else if (j.step === 1) { j.wait -= dt; if (j.wait <= 0) { this.carry = { mat: j.mat, qty: j.qty }; const p = c.perimeterPoint(j.site, this); this.goTo({ x: p.x, z: p.z }); j.step = 2; } }
       else if (j.step === 2) { if (this.phase === 2) { g.buildings.deliver(j.site, j.mat, j.qty); this.carry = null; this.job = null; this.idleSet = false; this.phase = 0; this.moodBoost += 0.02; } }
+    } else if (j.type === 'fetch') {
+      const dep = g.depot, p = j.pile; if (!dep) { this.abortJob(); return; }
+      if (j.step === 0) { if (!g.piles.list.includes(p)) { this.job = null; this.idleSet = false; return; } if (!this.goTo({ x: p.x + (Math.random() - 0.5) * 1.2, z: p.z + 1.1, face: Math.PI })) { this.abortJob(); return; } j.step = 1; }
+      else if (j.step === 1 && this.phase === 2) {
+        p.reserved = Math.max(0, (p.reserved || 0) - j.qty); j.qty0 = j.qty; j.qty = 0; const best = g.piles.list.includes(p) && Object.entries(p.items).sort((a, b) => b[1] - a[1])[0];
+        if (!best) { this.job = null; this.idleSet = false; return; }
+        const n = Math.min(j.qty0, best[1]); p.items[best[0]] -= n; if (p.items[best[0]] <= 0) delete p.items[best[0]]; if (g.piles.total(p) <= 0) g.piles.remove(p); else g.piles.rebuild(p);
+        j.mat = best[0]; j.got = n; this.carry = { mat: j.mat, qty: n }; this.phase = 0; if (!this.goTo({ x: dep.doorOut.x, z: dep.doorOut.z, face: dep.rot * Math.PI / 2 + Math.PI })) { this.abortJob(); return; } j.step = 2;
+      } else if (j.step === 2 && this.phase === 2) { g.economy.add(j.mat, j.got); this.carry = null; this.job = null; this.idleSet = false; this.phase = 0; this.moodBoost += 0.02; }
     } else if (j.type === 'road') {
       const p = j.plan;
       if (!g.roadPlans.has(p.x, p.z)) { this.job = null; this.idleSet = false; return; }
@@ -422,7 +435,7 @@ export class Sim {
   sync(dt, init = false) {
     const g = this.game, m = this.mesh, hidden = this.hidden || (this.pose === 'sleep' && this.bedSpot && this.bedSpot.upstairs) || (this.inside && !this.inside.def.open && !g.buildings.canSeeInto(this.inside));
     m.visible = !hidden; if (hidden && !init) { this.working = false; return; }
-    m.position.set(this.x, 0, this.z); m.rotation.y = this.heading;
+    m.position.set(this.x, this.rideY || 0, this.z); m.rotation.y = this.heading;
     const wpc = this.workplace && this.workplace.def.cart && (GATHER[this.role] || this.role === 'builder') && this.activity === 'work' ? this.workplace.def.cart : 0, useCart = !!(wpc && this.carry && !this.inside);
     if (useCart && (!this.cart || this.cart.userData.level !== wpc)) { if (this.cart) m.remove(this.cart); this.cart = makeCart(wpc); this.cart.position.z = wpc >= 2 ? -1.5 : -1.25; m.add(this.cart); }
     if (this.cart) { this.cart.visible = useCart; if (useCart) updateCart(this.cart, this.carry.mat, this.carry.qty, this.moved ? this.dist || 0 : 0); }
