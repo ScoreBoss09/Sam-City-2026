@@ -27,7 +27,7 @@ const adultOpt = document.getElementById('opt-adult'); try { if (localStorage.ge
 const applyAdult = () => { game.ui.adult = adultOpt.checked; try { localStorage.setItem('samcity-adult', adultOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } }; adultOpt.onchange = applyAdult; applyAdult();
 const raidOpt = document.getElementById('opt-raids'); try { if (localStorage.getItem('samcity-raids') === '0') raidOpt.checked = false; } catch (e) { /* no storage */ }
 const begin = (demo, cont) => { game.raids.enabled = raidOpt.checked && !params.has('noraids'); try { localStorage.setItem('samcity-raids', raidOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } if (demo === true) game.demo(); if (cont) game.loadSave(); game.start(); };
-import { clearSave, slotInfo, setSlot, currentSlot, SLOTS } from './core/Save.js';
+import { clearSave, slotInfo, setSlot, currentSlot, SLOTS, exportSlot, importSlot } from './core/Save.js';
 import { MONTHS } from './core/Clock.js';
 // ---- the main menu: Continue / New Game / Load Game / Demo / Options, with three save slots ----
 const $ = (id) => document.getElementById(id), menus = ['menu-main', 'menu-slots', 'menu-options', 'menu-net'];
@@ -44,7 +44,13 @@ function slotMenu(mode) {
     if (mode === 'load' && !(inf && inf.ok)) b.disabled = true;
     b.onclick = () => { if (mode === 'load') { setSlot(n); begin(false, true); return; } if (inf && armed !== n) { armed = n; b.textContent = `Slot ${n}: press again to start over (this save will be lost)`; return; } newGame(n); };
     list.appendChild(b);
+    if (inf && mode === 'load') { const x = document.createElement('button'); x.className = 'slot del small'; x.textContent = '⬇ export'; x.title = 'Download this save as a file (to keep, or to send)'; x.onclick = () => { const t = exportSlot(n); if (!t) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'application/json' })); a.download = `sam-city-slot${n}-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }; list.appendChild(x); }
     if (inf && mode === 'load') { const d = document.createElement('button'); d.className = 'slot del small'; d.dataset.del = n; d.textContent = '🗑 delete'; d.onclick = () => { if (d.dataset.armed) { clearSave(n); slotMenu(mode); } else { d.dataset.armed = 1; d.textContent = 'press again to delete'; } }; list.appendChild(d); }
+  }
+  if (mode === 'load') {   // put a save file (exported here, or sent by someone) back into a free slot
+    const im = document.createElement('button'); im.className = 'slot'; im.textContent = '⬆ Import a save file'; const f = document.createElement('input'); f.type = 'file'; f.accept = '.json,application/json'; f.className = 'hidden';
+    im.onclick = () => f.click(); f.onchange = async () => { const file = f.files[0]; if (!file) return; let n = 0; for (let k = 1; k <= SLOTS; k++) if (!slotInfo(k)) { n = k; break; } if (!n) { im.textContent = 'All three slots are in use: delete one first'; return; } try { importSlot(n, await file.text()); slotMenu('load'); } catch (e) { im.textContent = '✗ ' + (e.message || 'Could not read that file'); } };
+    list.appendChild(im); list.appendChild(f);
   }
   showMenu('menu-slots');
 }
@@ -74,6 +80,7 @@ import { Watchdog } from './core/Watchdog.js';
 Watchdog.lastFreeze().then((r) => {
   let slow = []; try { slow = JSON.parse(localStorage.getItem('samcity-slow') || '[]'); localStorage.removeItem('samcity-slow'); } catch (e) { /* no storage */ }
   const counts = {}; for (const q of slow) counts[q.k] = Math.max(counts[q.k] || 0, q.ms); const sl = Object.entries(counts).map(([k, ms]) => `${k} up to ${(ms / 1000).toFixed(1)} s`).join(', ');
+  if (r && r.label && /^town: population/.test(r.label) && game.watchdog) game.watchdog.detail = true;   // watch the townsfolk one by one this time
   if (r && r.label) game.ui.showError(`Last time the game stopped responding (in: ${r.label.replace(/^town: /, 'town system ')}, ${new Date(r.at).toLocaleString()}).${sl ? ' Slow before that: ' + sl + '.' : ''} Tell Claude this line if it happens again.`);
   else if (sl) game.ui.showError(`Last time some frames were very slow: ${sl}. Tell Claude this line if the game stutters.`);
 });   // ?auto&cont: straight back into the current save slot (the in-game Load)

@@ -199,7 +199,15 @@ export class Population {
     // unemployment drift & emigration
     for (const s of this.residents()) if (!s.workplace && this.canWork(s) && this.vacancies().length) this.assignJob(s);
     // update sims
-    for (const s of this.sims) { s.think(dt); s.step(dt); }
+    // each person in turn; anyone slow gets written down (who, doing what, where), and after a freeze in here the watchdog
+    // is told who's being updated, so the next report names them
+    const W = g.watchdog, close = W && W.detail;
+    for (const s of this.sims) {
+      if (close) W.beat(`town: population: ${s.name} (${s.activity || 'idle'} ${s.phase ?? ''}${s.inside ? ' in ' + s.inside.def.name : ''}${s.dest && s.dest.b ? ' going to ' + s.dest.b.def.name : ''})`);
+      const t = performance.now(); s.think(dt); s.step(dt); const d = performance.now() - t;
+      if (d > 80 && g.slowNote) g.slowNote(`${s.name}, ${s.activity || 'idle'}${s.inside ? ' in the ' + s.inside.def.name : ''}${s.dest && s.dest.b ? ' going to the ' + s.dest.b.def.name : ''}`, d);
+    }
+    if (close) W.beat('town: population: keeping people apart');
     this.separate(dt);
     for (const s of this.sims) if (s.remove) { this.release(s); s.dispose(); }
     this.sims = this.sims.filter((s) => !s.remove);

@@ -22,6 +22,7 @@ setInterval(() => { if (hidden || stuck) return; const gap = Date.now() - last; 
 export class Watchdog {
   constructor(game) {
     this.game = game; this.w = null; this.label = 'start';
+    try { this.detail = localStorage.getItem('samcity-watch-close') === '1'; } catch (e) { this.detail = false; }   // the last freeze was among the townsfolk: name each one
     try { this.w = new Worker(URL.createObjectURL(new Blob([WORKER], { type: 'text/javascript' }))); } catch (e) { this.w = null; }
     if (this.w) {
       this.w.onmessage = (e) => { const d = e.data; if (d.recovered) { const s = Math.round(d.recovered / 1000); game.perf && game.perf.note(`stalled ${s} s after "${d.label}"`); game.ui && game.ui.showError(`The game stopped responding for ${s} seconds (after: ${d.label}). It's going again. If this keeps happening, press F8 and copy the report.`); } };
@@ -36,7 +37,7 @@ export class Watchdog {
   /** What happened last time, if the game froze and had to be reloaded. */
   static lastFreeze() {
     return new Promise((res) => { try { const r = indexedDB.open('samcity-watchdog', 1); r.onupgradeneeded = () => r.result.createObjectStore('w'); r.onerror = () => res(null);
-      r.onsuccess = () => { const db = r.result; try { const t = db.transaction('w', 'readwrite'), st = t.objectStore('w'), q = st.get('last'); q.onsuccess = () => { res(q.result || null); st.put(null, 'last'); }; q.onerror = () => res(null); } catch (e) { res(null); } }; } catch (e) { res(null); } });
+      r.onsuccess = () => { const db = r.result; try { const t = db.transaction('w', 'readwrite'), st = t.objectStore('w'), q = st.get('last'); q.onsuccess = () => { const v = q.result || null; try { if (v && /^town: population/.test(v.label)) localStorage.setItem('samcity-watch-close', '1'); else if (v) localStorage.removeItem('samcity-watch-close'); } catch (e) { /* no storage */ } res(v); st.put(null, 'last'); }; q.onerror = () => res(null); } catch (e) { res(null); } }; } catch (e) { res(null); } });
   }
   /** The graphics card was reset: save, say so, offer a reload. */
   static watchContext(game, canvas) {
