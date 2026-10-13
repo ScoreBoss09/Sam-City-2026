@@ -129,3 +129,15 @@ Status: [ ] to do, [~] partly done, [x] done (see notes).
 
 ## Round 5.1 (owner's terrace review)
 114. [x] Moving through houses freely: Sam is slimmer indoors (0.56 m across instead of 0.8 m, so 1.2 m doorways and the gaps between furniture fit him), slips round door frames and furniture corners instead of stopping dead, and no longer sticks at the top of the stairs when stepping back onto the flight. The terrace is re-laid with a clear way through every room (the kids' bunks no longer wall off the back bedroom; the dining table, the twin-tub and the clock are out of the doorways). Checked by walking Sam through every room, both floors and the stairs (22 stuck points before, none after).
+
+## Round 6 (owner's notes: menus, maps, notifications, camera, cut scene)
+115. [x] One look for every menu and the HUD (title, pause, Planning menu, terminals, the post, Stockyard, shops, backpack, journal, dialogue): bundled Barlow type, glass panels, pill tabs, one button style, one focus ring for mouse and controller, a button-prompt bar instead of instructions. The title menu has the island flying by behind it.
+116. [x] No small text telling you what to do: the help bar, hint lines and how-to paragraphs are gone (H still shows the controls; the pause menu lists them).
+117. [x] Indoors the camera never sees through walls, floors or over partitions (measured: terrace 865 -> 16 clipping poses of 2912, semi 855 -> 29, chip shop 428 -> 25; tools/camera-clip.cjs). Blender shells get colliders where their walls are thicker than the standard ones.
+118. [x] Nothing through walls: Sam only talks to, builds, chops, digs or picks up what he can see (tools/through-walls.cjs); site signs hide behind walls and aren't shown from indoors.
+119. [x] Far fewer notifications: only what matters pops up; the rest is in Town news (a Postbox tab). Ice-cream vans, morris dancers and lottery wins are a map pin, not a pop-up; the van's chimes don't loop.
+120. [x] Every incident has its own pin (map and floating), gone the moment it's over.
+121. [x] Pins for every place in town on the corner map and the full-screen island map, with a key.
+122. [x] Opening scene: no slicing into the dog or the guard (it kept the planning camera's 1.5 m near plane), no giant grass, soft eyelids, press twice to skip.
+123. [x] Speech bubbles never fill the screen up close; only the three nearest speakers show.
+
