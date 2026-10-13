@@ -7,7 +7,13 @@ export class SiteLabels {
   update(dt) {
     const g = this.game, god = g.mode === 'god';
     // size and position every frame (smooth while zooming); the text only needs redrawing now and then
-    for (const b of g.buildings.list) if (b.label) { const sc = god ? Math.max(8, g.god.dist * 0.16) : 3.2; b.label.scale.set(sc, sc / 4, 1); b.label.position.set(b.cx, god ? 6 + sc * 0.2 : 4.2, b.cz); }
+    // walking about, a sign is part of the world: hidden behind walls, not shown at all from indoors, and only nearby
+    const P = g.player, inside = !god && !!g.buildings.playerInside;
+    for (const b of g.buildings.list) if (b.label) {
+      const sc = god ? Math.max(8, g.god.dist * 0.16) : 3.2, far = !god && Math.hypot(b.cx - P.x, b.cz - P.z) > 45, m = b.label.material;
+      b.label.scale.set(sc, sc / 4, 1); b.label.position.set(b.cx, god ? 6 + sc * 0.2 : Math.max(4.2, (b.def.floors || 1) * 3.2 + 1.2), b.cz);
+      b.label.visible = god || (!inside && !far); if (m.depthTest === god) { m.depthTest = !god; m.needsUpdate = true; }
+    }
     this.t -= dt; if (this.t > 0) return; this.t = 0.4;
     for (const b of g.buildings.list) {
       if (b.state !== 'site') { if (b.label) { g.scene.remove(b.label); b.label.material.map.dispose(); b.label = null; } continue; }
@@ -22,7 +28,6 @@ export class SiteLabels {
         x.fillStyle = '#fff'; x.font = '13px monospace'; x.fillText(g.ui.keyText(l2).slice(0, 34), 128, 40);
         x.fillStyle = '#334'; x.fillRect(16, 48, 224, 8); x.fillStyle = '#7be08f'; x.fillRect(16, 48, 224 * b.progress, 8); b.label.material.map.needsUpdate = true;
       }
-      const sc = god ? Math.max(8, g.god.dist * 0.16) : 3.2; b.label.scale.set(sc, sc / 4, 1); b.label.position.set(b.cx, god ? 6 + sc * 0.2 : 4.2, b.cz);
     }
   }
 }

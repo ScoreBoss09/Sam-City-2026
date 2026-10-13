@@ -147,6 +147,28 @@ export class World {
     if (a) for (const c of a) if (c.top && c.top <= below && c.top > best && x > c.minx - r && x < c.maxx + r && z > c.minz - r && z < c.maxz + r) best = c.top;
     return best;
   }
+  /**
+   * Is a wall in the way between two points at height y (furniture, door leaves and the route finder's stair markers don't
+   * count)? The last `skipEnd` metres are ignored, so the thing being looked at doesn't hide itself.
+   */
+  wallBetween(x0, z0, x1, z1, y, skipEnd = 0.6) {
+    const dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz); if (L - skipEnd <= 0.2) return false;
+    const tA = 0.2 / L, tB = (L - skipEnd) / L, seen = new Set();
+    const [ta, tb] = this.tileOf(Math.min(x0, x1), Math.min(z0, z1)), [tc, td] = this.tileOf(Math.max(x0, x1), Math.max(z0, z1));
+    for (let tz = tb; tz <= td; tz++) for (let tx = ta; tx <= tc; tx++) {
+      const a = this.inBounds(tx, tz) && this.colBuckets.get(this.idx(tx, tz)); if (!a) continue;
+      for (const c of a) {
+        if (seen.has(c) || c.furn || c.cam || c.navOnly || (c.h !== undefined && y > c.h) || (c.lo !== undefined && y < c.lo)) continue; seen.add(c);
+        let t0 = tA, t1 = tB, ok = true;   // segment against the box (slabs)
+        for (const [o, d, mn, mx] of [[x0, dx, c.minx, c.maxx], [z0, dz, c.minz, c.maxz]]) {
+          if (Math.abs(d) < 1e-9) { if (o <= mn || o >= mx) { ok = false; break; } continue; }
+          let u = (mn - o) / d, v = (mx - o) / d; if (u > v) [u, v] = [v, u]; t0 = Math.max(t0, u); t1 = Math.min(t1, v); if (t0 >= t1) { ok = false; break; }
+        }
+        if (ok) return true;
+      }
+    }
+    return false;
+  }
   collides(x, z, r, wallsOnly = false, y = 0) {
     const [tx0, tz0] = this.tileOf(x - r, z - r), [tx1, tz1] = this.tileOf(x + r, z + r);
     for (let tz = tz0; tz <= tz1; tz++) for (let tx = tx0; tx <= tx1; tx++) {

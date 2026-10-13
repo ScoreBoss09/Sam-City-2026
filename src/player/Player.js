@@ -13,6 +13,15 @@ import { SHOP_GOODS, GENERIC_GOODS } from '../data/shopgoods.js';
 import { PHONE_CALLS, PHONE_CALLS_CLEAN, HORSES, RACE_WIN, RACE_LOSE } from '../data/humour.js';
 
 const R = 0.4;
+/** Does the segment (x0,z0)-(x1,z1) cross box q ({ minx, maxx, minz, maxz }), ignoring its last `skipEnd` metres? */
+function segBox(x0, z0, x1, z1, q, skipEnd = 0) {
+  const dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz) || 1; let t0 = 0, t1 = Math.max(0, (L - skipEnd) / L);
+  for (const [o, d, mn, mx] of [[x0, dx, q.minx, q.maxx], [z0, dz, q.minz, q.maxz]]) {
+    if (Math.abs(d) < 1e-9) { if (o <= mn || o >= mx) return false; continue; }
+    let u = (mn - o) / d, v = (mx - o) / d; if (u > v) [u, v] = [v, u]; t0 = Math.max(t0, u); t1 = Math.min(t1, v); if (t0 >= t1) return false;
+  }
+  return true;
+}
 const R_IN = 0.28;   // slimmer indoors, where doorways are 1.2 m and the furniture is close together
 export const TOOLS = { axe: 'Axe', pick: 'Pickaxe', shovel: 'Shovel', basket: 'Basket', rod: 'Fishing rod', hammer: 'Hammer' };
 export const TOOL_ICON = { axe: '🪓', pick: '⛏', shovel: '🥄', basket: '🧺', rod: '🎣', hammer: '🔨' };
@@ -353,46 +362,49 @@ export class Player {
     const g = this.game, px = this.x, pz = this.z, B = g.buildings.list; let best = null, bd = 1e9;
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), full = this.invRoom() <= 0;
     // prefer what Sam is facing (the camera direction): things behind count as further away
-    const consider = (t, d, x, z) => { if (x !== undefined) { const dx = x - px, dz = z - pz, l = Math.hypot(dx, dz); if (l > 0.3) d += (1 - (dx * fx + dz * fz) / l) * 0.9; } if (d < bd) { bd = d; best = t; } };
+    // ...and nothing through a wall or a shut door: a target with a position (x, z, or `at` for one that doesn't steer by facing) has to be in sight
+    const eyeY = (this.floorY || 0) + 1.3, shut = g.buildings.list.filter((b) => b.ext && b.ext.doors && b.ext.doors.length && (b.doorK || 0) <= 0.6 && Math.abs(b.cx - px) < 16 && Math.abs(b.cz - pz) < 16).map((b) => g.buildings.doorRect(b));
+    const seen = (x, z) => !g.world.wallBetween(px, pz, x, z, eyeY) && !shut.some((q) => segBox(px, pz, x, z, q, 0.6));
+    const consider = (t, d, x, z, at) => { const q = at || (x !== undefined ? [x, z] : null); if (q && !seen(q[0], q[1])) return; if (x !== undefined) { const dx = x - px, dz = z - pz, l = Math.hypot(dx, dz); if (l > 0.3) d += (1 - (dx * fx + dz * fz) / l) * 0.9; } if (d < bd) { bd = d; best = t; } };
     for (const s of g.population.sims) {
       if (s.kind === 'raider' || s.kind === 'guest') continue;
       if (s.pose === 'sleep' || s.hidden || !s.mesh.visible || (s.inside && s.inside !== g.buildings.playerInside && !s.inside.def.open)) continue;
       const dx = s.x - px, dz = s.z - pz, d = Math.hypot(dx, dz); if (d > 2.6) continue;
       if (!this.third && d > 0.8 && (dx * fx + dz * fz) / d < 0.3) continue;
-      consider({ kind: 'sim', sim: s, text: `Talk to ${s.name} (${s.roleName})` }, d - 0.5);
+      consider({ kind: 'sim', sim: s, text: `Talk to ${s.name} (${s.roleName})` }, d - 0.5, undefined, undefined, [s.x, s.z]);
     }
-    if (g.raids.pickup && !this.weapon) { const q = g.raids.pickup, d = Math.hypot(q.x - px, q.z - pz); if (d < 2.6) consider({ kind: 'weapon', text: 'Take the militia club  (F to swing)' }, d - 1); }
-    for (const it of g.tools.items) { if (it.taken) continue; const d = Math.hypot(it.x - px, it.z - pz); if (d < 2.5) consider({ kind: 'tool', item: it, text: `Pick up the ${TOOLS[it.id]}` }, d - 2); }
-    { const cu = g.curios && g.curios.near(px, pz, 2.2); if (cu) consider({ kind: 'curio', item: cu, text: `Pick up something shiny...` }, Math.hypot(cu.x - px, cu.z - pz) - 1.5); }
+    if (g.raids.pickup && !this.weapon) { const q = g.raids.pickup, d = Math.hypot(q.x - px, q.z - pz); if (d < 2.6) consider({ kind: 'weapon', text: 'Take the militia club  (F to swing)' }, d - 1, undefined, undefined, [q.x, q.z]); }
+    for (const it of g.tools.items) { if (it.taken) continue; const d = Math.hypot(it.x - px, it.z - pz); if (d < 2.5) consider({ kind: 'tool', item: it, text: `Pick up the ${TOOLS[it.id]}` }, d - 2, undefined, undefined, [it.x, it.z]); }
+    { const cu = g.curios && g.curios.near(px, pz, 2.2); if (cu) consider({ kind: 'curio', item: cu, text: `Pick up something shiny...` }, Math.hypot(cu.x - px, cu.z - pz) - 1.5, undefined, undefined, [cu.x, cu.z]); }
     if (g.hazards) for (const f of g.hazards.fires) { const b = f.b, d = Math.max(0, Math.hypot(b.cx - px, b.cz - pz) - Math.max(b.def.w, b.def.d) * 2); if (d < 4) consider({ kind: 'douse', b, hold: true, text: `Fight the fire at the ${b.def.name}! (hold E)` }, d - 3); }
     if (g.transport) g.transport.targets(this, consider); if (g.cars) g.cars.targets(this, consider); if (g.happenings) g.happenings.targets(this, consider);
     { const L = g.lift, h = L && L.ext && L.ext.hatch; if (h) { const [hx, hz] = L.toWorld(h.x, h.z), d = Math.hypot(hx - px, hz - pz); if (d < 2.2) consider({ kind: 'hatch', b: L, text: 'Order supplies on the Lift intercom' }, d - 1.0, hx, hz); } }
     { const nd = this.nearDoor(); if (nd) { const d = Math.hypot(nd.doorPos.x - px, nd.doorPos.z - pz); consider({ kind: 'info', text: `Press C to ${(nd.doorK || 0) > 0.5 ? 'close' : 'open'} the door` }, d + 0.9); } }
     for (const st of g.celebrations.stalls) { const d = Math.hypot(st.x - px, st.z - pz); if (d < 2.4) consider({ kind: 'stall', stall: st, text: g.celebrations.stallText(st) }, d - 0.8, st.x, st.z); }
-    for (const p of g.piles.list) { const d = Math.hypot(p.x - px, p.z - pz); if (d < 2.2) consider({ kind: 'pile', pile: p, text: full ? 'Your backpack is full' : `Pick up ${Object.entries(p.items).map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }, d - 1.2); }
-    for (const b of B) if (b.state === 'done' && b.def.park === 'camp' && (this.inv.food || 0) >= 2 && this.hunger > 15) { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 4.5) consider({ kind: 'cook', b, text: 'Cook a hot meal on the fire (uses 2 food)' }, d - 2.5); }
+    for (const p of g.piles.list) { const d = Math.hypot(p.x - px, p.z - pz); if (d < 2.2) consider({ kind: 'pile', pile: p, text: full ? 'Your backpack is full' : `Pick up ${Object.entries(p.items).map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }, d - 1.2, undefined, undefined, [p.x, p.z]); }
+    for (const b of B) if (b.state === 'done' && b.def.park === 'camp' && (this.inv.food || 0) >= 2 && this.hunger > 15) { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 4.5) consider({ kind: 'cook', b, text: 'Cook a hot meal on the fire (uses 2 food)' }, d - 2.5, undefined, undefined, [b.cx, b.cz]); }
     for (const b of B) if (b.state === 'done' && b.spots.seat && (b.def.open || b.def.park || b === g.buildings.playerInside)) for (const s of b.spots.seat) { if (s.taken) continue; const d = Math.hypot(s.x - px, s.z - pz); if (d < (b.def.park === 'camp' ? 2.2 : 1.4)) consider({ kind: 'seat', seat: s, b, text: b.def.park === 'camp' ? 'Sit by the fire' : 'Sit down' }, d + 0.3, s.x, s.z); }
     if (g.roadPlans.count) {
       const p0 = g.roadPlans.at(px, pz); let rp = p0, rd = 0; if (!rp) { for (const q of g.roadPlans.plans.values()) { const d = Math.hypot(q.cx - px, q.cz - pz); if (d < 3.4 && (!rp || d < rd)) { rp = q; rd = d; } } }
-      if (rp) consider(this.tools.has('shovel') ? { kind: 'road', plan: rp, work: 'dig', text: `Dig the ${rp.type === 2 ? 'paved road (uses 1 stone)' : 'path'}` } : { kind: 'info', text: 'You need the Shovel to dig paths. Pick it up from the Tool Rack.' }, rd + 0.3);
+      if (rp) consider(this.tools.has('shovel') ? { kind: 'road', plan: rp, work: 'dig', text: `Dig the ${rp.type === 2 ? 'paved road (uses 1 stone)' : 'path'}` } : { kind: 'info', text: 'You need the Shovel to dig paths. Pick it up from the Tool Rack.' }, rd + 0.3, undefined, undefined, [rp.cx, rp.cz]);
     }
-    { const v = g.celebrations.guests.v; if (v && v.s.mesh.visible) { const d = Math.hypot(v.s.x - px, v.s.z - pz); if (d < 2.6) consider({ kind: 'act', text: `Ask ${v.G.name} for a photo and an autograph`, act: () => g.celebrations.guests.meet() }, d - 1.5); } }
+    { const v = g.celebrations.guests.v; if (v && v.s.mesh.visible) { const d = Math.hypot(v.s.x - px, v.s.z - pz); if (d < 2.6) consider({ kind: 'act', text: `Ask ${v.G.name} for a photo and an autograph`, act: () => g.celebrations.guests.meet() }, d - 1.5, undefined, undefined, [v.s.x, v.s.z]); } }
     for (const b of g.upgrades.orders.length ? B.concat(g.upgrades.orders) : B) {
       if (b.state === 'done') {
         if ((b.id === 'church' || b.id === 'chapel') && b.spots.seat.length) { const d = Math.hypot(b.doorIn.x - px, b.doorIn.z - pz); if (d < 2.6) consider({ kind: 'act', text: 'Read the parish register (births and deaths)', act: () => g.ui.openTerminal(b, 'register') }, d + 0.4); }
-        if (b === g.buildings.playerInside && !b.def.open && (this.floorY || 0) < 0.5) { const q = g.buildings.switchAt(b); if (q) { const d = Math.hypot(q.x - px, q.z - pz), lit = g.buildings.isLit(b, g.clock.hour), el = g.tech && g.tech.era >= 1; if (d < 1.7) consider({ kind: 'act', text: el ? (lit ? 'Switch the light off' : 'Switch the light on') : (lit ? 'Put the lamp out' : 'Light the lamp'), act: () => g.buildings.flipLight(b) }, d + 0.2); } }
+        if (b === g.buildings.playerInside && !b.def.open && (this.floorY || 0) < 0.5) { const q = g.buildings.switchAt(b); if (q) { const d = Math.hypot(q.x - px, q.z - pz), lit = g.buildings.isLit(b, g.clock.hour), el = g.tech && g.tech.era >= 1; if (d < 1.7) consider({ kind: 'act', text: el ? (lit ? 'Switch the light off' : 'Switch the light on') : (lit ? 'Put the lamp out' : 'Light the lamp'), act: () => g.buildings.flipLight(b) }, d + 0.2, undefined, undefined, [q.x, q.z]); } }
         if (b.id === 'phonebox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) consider({ kind: 'phone', b, text: 'Make a call (10p)' }, d - 0.8, b.cx, b.cz); }
         if (b.id === 'bookies' && b.spots.visit[0]) { const v = b.spots.visit[0], d = Math.hypot(v.x - px, v.z - pz); if (d < 2.2) consider({ kind: 'bet', b, text: 'Have a flutter on the horses (£20)' }, d - 0.6, v.x, v.z); }
         if (b.id === 'postbox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) { const n = g.mail.unread(); consider({ kind: 'post', b, text: n ? `Check the post (✉ ${n} new)` : 'Check the post' }, d - 1.0, b.cx, b.cz); } }
-        for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: (b.era ?? 0) >= 2 ? 'Use the computer terminal' : 'Use the planning desk (ledgers and forms)' }, d); }
-        for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.invTotal() ? `Open the Stockyard (store ${this.invText()}, or take things)` : 'Open the Stockyard (take what you need)' }, d); }
-        if (b === g.starterHome && b.spots.bed[0]) { const s = b.spots.bed[0], d = Math.hypot(s.x - px, s.z - pz); if (d < 2.6) consider({ kind: 'bed', b, spot: s, text: 'Sleep in your bed' }, d); }
+        for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: (b.era ?? 0) >= 2 ? 'Use the computer terminal' : 'Use the planning desk (ledgers and forms)' }, d, undefined, undefined, [t.x, t.z]); }
+        for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.invTotal() ? `Open the Stockyard (store ${this.invText()}, or take things)` : 'Open the Stockyard (take what you need)' }, d, undefined, undefined, [t.x, t.z]); }
+        if (b === g.starterHome && b.spots.bed[0]) { const s = b.spots.bed[0], d = Math.hypot(s.x - px, s.z - pz); if (d < 2.6) consider({ kind: 'bed', b, spot: s, text: 'Sleep in your bed' }, d, undefined, undefined, [s.x, s.z]); }
         if (b.def.jobs && b.id !== 'contractor') {
           const role = Object.keys(b.def.jobs)[0];
           for (const t of b.spots.work) {
             const d = Math.hypot(t.x - px, t.z - pz); if (d > 1.6) continue;
             const manned = g.population.sims.some((s) => s.inside === b && Math.hypot(s.x - t.x, s.z - t.z) < 1.2);
-            if (!manned) consider({ kind: 'work', b, role, text: `Work a shift as ${ROLES[role].name}  (hold E, earns city funds)`, hold: true }, d + 0.3);
+            if (!manned) consider({ kind: 'work', b, role, text: `Work a shift as ${ROLES[role].name}  (hold E, earns city funds)`, hold: true }, d + 0.3, undefined, undefined, [t.x, t.z]);
           }
         }
         if (g.service && g.service.isPublic(b) && !b.open && g.buildings.playerInside === b) consider({ kind: 'info', text: `Closed. Nobody's behind the counter at the ${b.def.name} right now.` }, 2.5);
@@ -409,7 +421,7 @@ export class Player {
           else if (g.construction.workable(b) && !this.tools.has('hammer')) t = { kind: 'info', text: 'You need the Hammer to build. Pick it up from the Tool Rack.' };
           else if (g.construction.workable(b)) t = { kind: 'site', b, work: 'build', text: `Build the ${b.def.name}` };
           else { const miss = Object.keys(b.need).map((m) => [m, b.need[m] - (b.have[m] || 0)]).filter(([, n]) => n > 0); t = { kind: 'info', text: `${b.def.name} needs ${miss.map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }; }
-          consider(t, d + 0.2);
+          consider(t, d + 0.2, undefined, undefined, [Math.max(b.x0 * TILE + 1, Math.min(px, (b.x0 + b.w) * TILE - 1)), Math.max(b.z0 * TILE + 1, Math.min(pz, (b.z0 + b.d) * TILE - 1))]);   // (a metre into the plot: its edge can be right at a neighbour's wall)
         }
       }
     }

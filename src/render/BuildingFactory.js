@@ -736,7 +736,7 @@ export function buildInterior(b) {
   return g;
 }
 /** Colliders for the furniture upstairs: they only block at their own storey (lo..h). */
-export function upperColliders(def) { return upperFurniture(def).filter((f) => f.solid).map((f) => ({ cx: f.x, cz: f.z, sx: f.sx * 0.92, sz: f.sz * 0.92, lo: f.k * WALL_H - 0.3, h: f.k * WALL_H + 2.3 })); }
+export function upperColliders(def) { return upperFurniture(def).filter((f) => f.solid).map((f) => ({ cx: f.x, cz: f.z, sx: f.sx * 0.92, sz: f.sz * 0.92, lo: f.k * WALL_H - 0.3, h: f.k * WALL_H + 2.3, furn: true })); }
 
 const TOPS = { bed: 0.55, dbed: 0.55, bunk: 0, cot: 0, table: 0.78, sofa: 0.8, armchair: 0.8, coffeetable: 0.45, desk: 0.78, kitchen: 0.95, bath: 0.6, dresser: 0.85, bedside: 0.6, tvunit: 0.6, phonetable: 0.75, homepc: 0.78, chest: 0.6, crate: 0.7, bench: 0.5, pooltable: 0.85, snookertable: 0.85 };
 export function furnitureColliders(lay) {
@@ -745,7 +745,7 @@ export function furnitureColliders(lay) {
     const d = FURN[f.t]; if (!d || !d.solid) continue;
     let [sx, sz] = d.s; if ((f.r || 0) % 2) [sx, sz] = [sz, sx];
     const top = d.h || TOPS[f.t];   // low pieces can be jumped onto and stood on
-    out.push({ cx: f.x, cz: f.z, sx: sx * 0.92, sz: sz * 0.92, h: top || 2.5, top });
+    out.push({ cx: f.x, cz: f.z, sx: sx * 0.92, sz: sz * 0.92, h: top || 2.5, top, furn: true });
   }
   return out;
 }

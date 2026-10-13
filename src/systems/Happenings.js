@@ -181,9 +181,9 @@ export class Happenings {
   }
   /** Things Sam can do with a happening (catch the pig). Called from Player.findTarget via Transport-style hook. */
   targets(P, consider) {
-    const h = this.target; if (h && Math.hypot(h.x - P.x, h.z - P.z) < 2.2) consider({ kind: 'act', text: h.text, act: h.act }, 0.1);
+    const h = this.target; if (h && Math.hypot(h.x - P.x, h.z - P.z) < 2.2) consider({ kind: 'act', text: h.text, act: h.act }, 0.1, undefined, undefined, [h.x, h.z]);
     // a lottery winner walking home with the cheque: Sam could... (it's a crime, and people see)
-    const g = this.game; for (const s of g.population.sims) if (s.winnings > 0 && !(s.down > 0) && Math.hypot(s.x - P.x, s.z - P.z) < 1.8) consider({ kind: 'act', text: `Rob ${s.first} of their lottery winnings (£${s.winnings})...`, act: () => this.samRobs(s) }, 0.6);
+    const g = this.game; for (const s of g.population.sims) if (s.winnings > 0 && !(s.down > 0) && Math.hypot(s.x - P.x, s.z - P.z) < 1.8) consider({ kind: 'act', text: `Rob ${s.first} of their lottery winnings (£${s.winnings})...`, act: () => this.samRobs(s) }, 0.6, undefined, undefined, [s.x, s.z]);
   }
   samRobs(s) {
     const g = this.game, n = s.winnings; s.winnings = 0; s.knockDown(4); s.moodBoost -= 0.6; g.social.say(s, 'Thief! THIEF! Somebody stop him!', 3); g.economy.earn(n, 'Ill-gotten gains');
