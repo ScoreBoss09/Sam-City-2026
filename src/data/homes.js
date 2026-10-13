@@ -84,25 +84,29 @@ function terrace(l, F, U, heat, paper, carpet, def) {
   // ---- ground floor ----
   l.walls.push(wall(-1.0, -I, -1.0, I, [3.0, -0.2, -2.9], 0, paper(0)), wall(-1.0, 1.0, I, 1.0, [], 0, paper(1)), wall(-1.0, -1.4, I, -1.4, [-0.2], 0, paper(2)));
   l.floors.push(floor(-I, -1.0, -I, I, 'boards', 0x8a6a4a), floor(-1.0, I, 1.0, I, 'carpet', carpet(0)), floor(-1.0, I, -1.4, 1.0, 'boards', 0x9a7450), floor(-1.0, I, -I, -1.4, 'lino', 0xd8d0b0));
-  // the parlour: settee against the back wall facing the bay, the telly in the bay corner, the gas fire on the party wall
-  F('sofa', 1.3, 1.5, 0); F('tvunit', 0.9, 3.35, 2); F('gasfire', I - 0.2, 2.4, 3); F('armchair', 3.0, 3.15, 2); F('coffeetable', 1.4, 2.5, 0); F('rug', 1.4, 2.5, 0);
-  F('lamp', I - 0.3, 1.3, 0); F('hifi', -0.6, 1.3, 1); F('picture', 1.3, 1.07, 0); if (heat) F('radiator', 1.7, I - 0.1, 2);
-  // the back room: the dining table, the dresser with the best plates, the clock
-  F('table', 1.2, -0.2, 0); for (const [x, z, r] of [[0.25, -0.2, 1], [2.15, -0.2, 3]]) F('chair', x, z, r);
-  F('dresser', I - 0.3, -0.2, 3); F('clock', -0.93, 0.6, 1); if (heat) F('radiator', 1.6, 0.92, 2);
-  // the kitchen: units and the sink under the back window, fridge-freezer in the corner, the twin-tub
-  F('kitchenlow', 1.5, -I + 0.36, 0); F('fridgefreezer', I - 0.35, -I + 0.36, 0); F('washer', -0.5, -I + 0.45, 0); F('ironing', 2.6, -1.75, 0);
+  // the parlour: the settee and armchair against the back wall facing the bay, the telly low in the bay, the gas fire on
+  // the party wall; a clear way across the middle from the hall door (Sam and the family walk round, not through, the suite)
+  F('sofa', 1.2, 1.5, 0); F('armchair', 2.85, 1.5, 0); F('tvunit', 1.7, 3.4, 2); F('gasfire', I - 0.2, 2.4, 3); F('coffeetable', 1.2, 2.5, 0); F('rug', 1.4, 2.5, 0);
+  F('lamp', -0.7, 1.95, 0); F('hifi', -0.6, 1.3, 1); F('picture', 1.3, 1.07, 0); if (heat) F('radiator', 1.7, I - 0.1, 2);
+  // the back room: the dining table to the right, the dresser with the best plates, the clock; the left side is the way
+  // through between the hall and the kitchen doors
+  F('table', 2.1, -0.2, 0); for (const [x, z, r] of [[1.35, -0.2, 1], [2.85, -0.2, 3]]) F('chair', x, z, r);
+  F('dresser', I - 0.3, -0.2, 3); F('clock', 0.4, 0.75, 2); if (heat) F('radiator', 1.6, 0.92, 2);
+  // the kitchen: units and the sink under the back window, the twin-tub and the fridge-freezer along to the corner
+  // (the hall door at the back left stays clear)
+  F('kitchenlow', 0.9, -I + 0.36, 0); F('washer', 2.55, -I + 0.4, 0); F('fridgefreezer', I - 0.35, -I + 0.36, 0); F('ironing', 2.6, -1.85, 0);
   // the hall: coats on the pegs, the phone on its table, under the stairs at the back
   F('phonetable', -1.3, 1.6, 3); F('pegs', -2.2, -I + 0.18, 0); if (heat) F('radiator', -1.12, 0.6, 3);
   l.lights.push({ x: 1.4, z: 2.4, k: 0 }, { x: 1.6, z: -0.2, k: 0 }, { x: 1.4, z: -2.6, k: 0 }, { x: -1.8, z: 0, k: 0 });
-  l.idle.push({ x: 0.2, z: 2.5 }, { x: 2.2, z: 2.2 }, { x: 0.0, z: -0.6 }, { x: 0.4, z: -2.4 }, { x: -1.7, z: 3.0 });
+  l.idle.push({ x: 0.2, z: 2.6 }, { x: 2.7, z: 2.6 }, { x: 0.3, z: -0.4 }, { x: 0.6, z: -2.3 }, { x: -1.7, z: 3.0 });
   // ---- upstairs ----
   l.walls.push(wall(-1.0, -I, -1.0, I, [2.0, -0.2, -2.4], 1, paper(3)), wall(-1.0, 0.6, I, 0.6, [], 1, paper(4)), wall(-1.0, -1.0, 1.3, -1.0, [], 1, paper(5)), wall(1.3, -I, 1.3, -1.0, [], 1, paper(5)));
   l.floors.push(floor(-1.0, I, 0.6, I, 'carpet', carpet(1), 1), floor(-1.0, I, -1.0, 0.6, 'carpet', carpet(2), 1), floor(1.3, I, -I, -1.0, 'carpet', carpet(2), 1), floor(-1.0, 1.3, -I, -1.0, 'tiles', 0xd8e8e0, 1), floor(-2.6, -1.0, -I, I, 'carpet', carpet(3), 1));
   // front bedroom: the double bed's head on the party wall, wardrobe by the door
   U('dbed', 2.6, 2.3, 3); U('bedside', 3.45, 1.2, 3); U('bedside', 3.45, 3.4, 3); U('wardrobe', 0.0, 0.93, 0); U('dresser', -0.4, I - 0.27, 2); if (heat) U('radiator', 0.4, 0.72, 0);
-  // back bedroom: bunks for the kids, a single bed in the bit by the window
-  U('bunk', 1.5, -0.2, 1); U('bed', 2.55, -2.55, 0); U('poster', 2.0, 0.55, 2); if (heat) U('radiator', 3.6, -0.3, 3);
+  // back bedroom: the bunks and a single bed side by side in the bit under the window, heads to the back wall, so the
+  // floor from the door to the beds is clear; a chest of drawers by the door
+  U('bunk', 3.15, -2.55, 0); U('bed', 2.0, -2.55, 0); U('chest', 0.2, -0.65, 0); U('poster', 2.0, 0.55, 2); if (heat) U('radiator', I - 0.1, -0.3, 3);
   // bathroom: the bath under the window
   U('bath', 0.3, -I + 0.4, 0); U('toilet', 0.9, -1.4, 2); U('basin', -0.05, -1.25, 2); if (heat) U('radiator', -0.88, -1.5, 1);
   U('plant', -1.7, I - 0.4, 0); U('picture', -1.12, -1.0, 3);

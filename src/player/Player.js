@@ -13,6 +13,7 @@ import { SHOP_GOODS, GENERIC_GOODS } from '../data/shopgoods.js';
 import { PHONE_CALLS, PHONE_CALLS_CLEAN, HORSES, RACE_WIN, RACE_LOSE } from '../data/humour.js';
 
 const R = 0.4;
+const R_IN = 0.28;   // slimmer indoors, where doorways are 1.2 m and the furniture is close together
 export const TOOLS = { axe: 'Axe', pick: 'Pickaxe', shovel: 'Shovel', basket: 'Basket', rod: 'Fishing rod', hammer: 'Hammer' };
 export const TOOL_ICON = { axe: '🪓', pick: '⛏', shovel: '🥄', basket: '🧺', rod: '🎣', hammer: '🔨' };
 export const MAT_ICON = { timber: '🪵', stone: '🪨', brick: '🧱', steel: '⚙', glass: '🔷', food: '🍎' };
@@ -131,7 +132,7 @@ export class Player {
     const g = this.game, inp = g.input, sim = g.mode === 'sim' && !g.ui.modalOpen && !g.ending;
     this.moved = false; this.working = false; this.dist = 0; if (this.emoteT > 0) this.emoteT -= rawDt;
     if (this.callT > 0) this.callT -= rawDt; if (this.betT > 0) this.betT -= rawDt;
-    if (this.jumpT > 0 && this.jumpT - rawDt <= 0) { const w = this.game.world, hx = this.speed > 0.3 ? this.dirx : Math.sin(this.heading), hz = this.speed > 0.3 ? this.dirz : Math.cos(this.heading); const top = w.topAt(this.x, this.z, 0, (this.floorY || 0) + 1.6); if (top > (this.floorY || 0) + 0.05) { this.floorY = top + 0.01; this.onTop = true; } else if (w.collides(this.x, this.z, R, false, this.floorY || 0)) { const lim = this.planAt(this.x, this.z) || this.game.buildings.playerInside ? 0.7 : 1.8; for (let d = 0.1; d < lim; d += 0.1) { if (!this.clearTo(this.x + hx * d, this.z + hz * d)) break; if (!w.collides(this.x + hx * d, this.z + hz * d, R, false, this.floorY || 0)) { this.x += hx * d; this.z += hz * d; break; } } } }   // landed on a fence: hop down the far side
+    if (this.jumpT > 0 && this.jumpT - rawDt <= 0) { const w = this.game.world, hx = this.speed > 0.3 ? this.dirx : Math.sin(this.heading), hz = this.speed > 0.3 ? this.dirz : Math.cos(this.heading); const top = w.topAt(this.x, this.z, 0, (this.floorY || 0) + 1.6); if (top > (this.floorY || 0) + 0.05) { this.floorY = top + 0.01; this.onTop = true; } else if (w.collides(this.x, this.z, this.bodyR(), false, this.floorY || 0)) { const lim = this.planAt(this.x, this.z) || this.game.buildings.playerInside ? 0.7 : 1.8; for (let d = 0.1; d < lim; d += 0.1) { if (!this.clearTo(this.x + hx * d, this.z + hz * d)) break; if (!w.collides(this.x + hx * d, this.z + hz * d, this.bodyR(), false, this.floorY || 0)) { this.x += hx * d; this.z += hz * d; break; } } } }   // landed on a fence: hop down the far side
     if (this.jumpT > 0) {   // a real arc: up fast, gravity brings him down; land on a bed or table on the way down
       this.jumpT = Math.max(0, this.jumpT - rawDt); const t = JUMP_AIR - this.jumpT; this.jumpY = Math.max(0, JUMP_V * t - JUMP_G * t * t / 2);
       if (this.game.buildings.playerInside) { const fy = this.floorY || 0, ceil = (Math.floor((fy + 0.6) / WALL_H) + 1) * WALL_H - 0.15; this.jumpY = Math.min(this.jumpY, Math.max(0.3, ceil - fy - 1.9)); }   // indoors: you can't jump through the ceiling
@@ -240,8 +241,8 @@ export class Player {
   /** Is the straight line from Sam to (x, z) free of anything tall (walls, not furniture he could have hopped)? Stops 'unsticking' through a wall. */
   clearTo(x, z) { const w = this.game.world, y = (this.floorY || 0) + 2.2, dx = x - this.x, dz = z - this.z, d = Math.hypot(dx, dz); for (let t = 0; t <= d; t += 0.1) if (w.collides(this.x + dx / d * t, this.z + dz / d * t, 0.05, true, y)) return false; return true; }
   unstick() {
-    const w = this.game.world; if (this.game.mode !== 'sim' || this.sleeping || this.jumpT > 0 || this.ride || this.transit || this.platform || !w.collides(this.x, this.z, R, false, this.floorY || 0)) return;
-    const fy = this.floorY || 0; for (let r = 0.1; r <= 1.3; r += 0.1) for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) { const x = this.x + Math.cos(a) * r, z = this.z + Math.sin(a) * r; if (!w.collides(x, z, R, false, fy) && this.clearTo(x, z)) { this.x = x; this.z = z; return; } }   // the nearest free spot on this side of any wall first
+    const w = this.game.world; if (this.game.mode !== 'sim' || this.sleeping || this.jumpT > 0 || this.ride || this.transit || this.platform || !w.collides(this.x, this.z, this.bodyR(), false, this.floorY || 0)) return;
+    const fy = this.floorY || 0, r0 = this.bodyR(); for (let r = 0.1; r <= 1.3; r += 0.1) for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) { const x = this.x + Math.cos(a) * r, z = this.z + Math.sin(a) * r; if (!w.collides(x, z, r0, false, fy) && this.clearTo(x, z)) { this.x = x; this.z = z; return; } }   // the nearest free spot on this side of any wall first
     if (fy > 0.5) return;
     const ins = this.game.buildings.list.find((b) => b.state === 'done' && b.colliders.some((c) => this.x > c.minx - R && this.x < c.maxx + R && this.z > c.minz - R && this.z < c.maxz + R));
     if (ins && ins.doorOut && !w.collides(ins.doorOut.x, ins.doorOut.z, R) && Math.hypot(ins.cx - this.x, ins.cz - this.z) < Math.max(ins.w, ins.d) * TILE) { this.x = ins.doorOut.x; this.z = ins.doorOut.z; return; }
@@ -323,10 +324,23 @@ export class Player {
     }
     return false;
   }
+  /** Sam's collision radius: slimmer indoors (on foot) so he fits through doorways and between the furniture. */
+  bodyR() { return !this.mounted && this.game.buildings.buildingAtPoint(this.x, this.z) ? R_IN : R; }
   tryMove(dx, dz) {
-    const w = this.game.world, y = this.floorY || 0, hit = (x, z) => w.collides(x, z, R, false, y + (this.jumpY || 0)) || (y < 0.5 && this.doorBlocks(x, z, R)) || !this.footing(x, z);
-    if (!hit(this.x + dx, this.z)) { this.x += dx; this.floorY = this._fy; }
-    if (!hit(this.x, this.z + dz)) { this.z += dz; this.floorY = this._fy; }
+    const w = this.game.world, y = this.floorY || 0, r = this.bodyR(), hit = (x, z) => w.collides(x, z, r, false, y + (this.jumpY || 0)) || (y < 0.5 && this.doorBlocks(x, z, r)) || !this.footing(x, z);
+    let bx = false, bz = false;
+    if (!hit(this.x + dx, this.z)) { this.x += dx; this.floorY = this._fy; } else bx = dx !== 0;
+    if (!hit(this.x, this.z + dz)) { this.z += dz; this.floorY = this._fy; } else bz = dz !== 0;
+    // caught on the edge of a doorway or the corner of a piece of furniture while heading mostly one way: slip round it
+    if (this.mounted || bx === bz) return;
+    const m = bx ? Math.abs(dx) : Math.abs(dz), side = bx ? dz : dx, only = Math.abs(side) > m * 0.3 ? Math.sign(side) : 0;   // going diagonally: only slip the way he's already heading
+    for (const s of [0.08, 0.16, 0.24, 0.32]) for (const sg of [1, -1]) {
+      if (only && sg !== only) continue;
+      const ox = bx ? 0 : sg * s, oz = bx ? sg * s : 0;
+      if (hit(this.x + ox, this.z + oz) || hit(this.x + ox + dx * (bx ? 1 : 0), this.z + oz + dz * (bz ? 1 : 0))) continue;
+      const k = Math.min(m, s) / s, nx = this.x + ox * k, nz = this.z + oz * k; if (hit(nx, nz)) continue;
+      this.x = nx; this.z = nz; this.floorY = this._fy; return;
+    }
   }
 
   // ---------- interaction ----------

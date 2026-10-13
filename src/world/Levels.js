@@ -85,7 +85,7 @@ export function stepLevel(p, x, z, y, roofCols, from = null, doorOpen = false) {
   const st = p.stair;
   if (st) {
     const s = st.ax === 'x' ? x : z, c = st.ax === 'x' ? z : x;
-    if (s > st.s0 && s < st.s1) for (const lane of st.lanes) {
+    if (s > st.s0 - 0.06 && s < st.s1 + 0.06) for (const lane of st.lanes) {   // (a hair past each end too: the landing's edge round the stairwell is padded, so this joins up)
       if (c < lane.c0 || c > lane.c1) continue;
       let best = null, bd = 1e9; for (const k of lane.flights) { const h = flightH(st, k, s), d = Math.abs(h - y); if (d < bd) { bd = d; best = h; } }
       // a flight at this height: walk on it. Otherwise this is a stairwell (or the space under the stairs).
