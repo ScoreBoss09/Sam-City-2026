@@ -47,7 +47,7 @@ export class Minimap {
   }
   /** Size the canvas to what's on screen (crisp pins at any size). */
   fit() {
-    const r = this.cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), n = Math.max(200, Math.round(Math.min(r.width, r.height) * dpr));
+    const r = this.cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), n = Math.min(1400, Math.max(200, Math.round(Math.min(r.width, r.height) * dpr)));
     if (this.cv.width !== n) { this.cv.width = this.cv.height = n; } this.dpr = n / Math.max(1, Math.min(r.width, r.height) || n);
   }
   update(dt) {

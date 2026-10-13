@@ -141,3 +141,8 @@ Status: [ ] to do, [~] partly done, [x] done (see notes).
 122. [x] Opening scene: no slicing into the dog or the guard (it kept the planning camera's 1.5 m near plane), no giant grass, soft eyelids, press twice to skip.
 123. [x] Speech bubbles never fill the screen up close; only the three nearest speakers show.
 
+## Round 6.1 (owner: "constant freezes with no message, maybe the controller")
+124. [x] No accidental pause: tapping the controller's Create/View button (or the full stop key) cycles 1x > 2x > 4x > 1x; it used to go on to "paused", which stops the whole town dead and looks exactly like a freeze. Pausing is P, the II button or the pause menu, and a PAUSED badge stays on screen until you resume.
+125. [x] A freeze always gets explained: a background watchdog notes where the game was if it stops responding (shown when it recovers, or on the next start after a reload); a graphics-card reset (WebGL context lost) saves the town, says so and offers a reload, and the next start uses Auto quality; errors show as a red banner above every menu.
+126. [x] Lighter menus: no live background blur over the 3D view, simpler style rules; the slowdown guard now also steps in on High when it's dangerously slow (under ~7 fps), before the graphics driver gives up.
+

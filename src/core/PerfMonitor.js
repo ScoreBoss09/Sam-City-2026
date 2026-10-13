@@ -10,9 +10,9 @@ export class PerfMonitor {
     this.game = game; this.N = 1800; this.frames = new Float32Array(this.N); this.js = new Float32Array(this.N); this.n = 0; this.i = 0;
     this.sec = {}; this.secFrames = 0; this.events = []; this.worst = []; this.t0 = 0; this.started = performance.now();
   }
-  begin() { this.t0 = this.last = performance.now(); }
+  begin() { this.t0 = this.last = performance.now(); const w = this.game.watchdog; if (w) w.beat('start of a frame'); }
   /** Time since the previous lap goes to this section. */
-  lap(name) { const now = performance.now(); this.sec[name] = (this.sec[name] || 0) + (now - this.last); this.last = now; }
+  lap(name) { const now = performance.now(); this.sec[name] = (this.sec[name] || 0) + (now - this.last); this.last = now; const w = this.game.watchdog; if (w) w.beat(name); }
   frame(rawSec, jsMs) {
     const ms = rawSec * 1000; if (ms > 1000 || document.hidden) return;   // tab was in the background
     this.frames[this.i] = ms; this.js[this.i] = jsMs; this.i = (this.i + 1) % this.N; this.n = Math.min(this.N, this.n + 1); this.secFrames++;

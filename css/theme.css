@@ -15,9 +15,9 @@
 :root {
   --ui-font: 'Barlow', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --ui-head: 'Barlow Condensed', 'Barlow', 'Arial Narrow', sans-serif;
-  --glass: linear-gradient(180deg, rgba(26, 35, 54, .9), rgba(12, 17, 28, .93));
+  --glass: linear-gradient(180deg, rgba(26, 35, 54, .96), rgba(12, 17, 28, .97));
   --glass-solid: #121a29;
-  --hud: rgba(10, 15, 25, .72);
+  --hud: rgba(10, 15, 25, .8);
   --line: rgba(255, 255, 255, .08);
   --line-2: rgba(255, 255, 255, .15);
   --text: #f2f5fa; --muted: #a3b0c2; --faint: #6e7b90;
@@ -32,14 +32,15 @@
 
 /* ---------- type ---------- */
 html, body { font-family: var(--ui-font); -webkit-font-smoothing: antialiased; }
-#app *:not(textarea):not(#perf *) { font-family: var(--ui-font) !important; }
+#app * { font-family: var(--ui-font) !important; }
+#app #perf textarea { font-family: ui-monospace, 'Courier New', monospace !important; }
 #app :is(h1, h2, h3, .title, .ttl, .phead, .mm-title, .mm-head, #d-name, #c-time, #c-date) { font-family: var(--ui-head) !important; }
 #app { font-variant-numeric: tabular-nums; }
 
 /* ---------- the glass panel: every menu window ---------- */
 #terminal .win, #terminal.post .win, #planmenu .pwin, #pausemenu .box, #perf .pwin, #inventory, #journal, #title .menu:not(#menu-main) {
   background: var(--glass) !important; color: var(--text) !important; border: 1px solid var(--line-2) !important; border-radius: var(--r-lg) !important;
-  box-shadow: var(--shadow) !important; backdrop-filter: blur(16px) saturate(1.15); -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow: var(--shadow) !important;
   padding: 22px 26px 18px !important; font-size: 15px !important; line-height: 1.45;
 }
 /* dim the world behind an open menu */
@@ -133,7 +134,7 @@ html, body { font-family: var(--ui-font); -webkit-font-smoothing: antialiased; }
 #padbar, #menuprompts {
   position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 9999; display: flex; gap: 26px; white-space: nowrap; pointer-events: none;
   background: rgba(8, 12, 20, .78) !important; border: 1px solid var(--line-2) !important; border-radius: 999px !important; padding: 9px 22px !important;
-  font: 600 14px var(--ui-font) !important; color: var(--text) !important; box-shadow: 0 10px 30px rgba(0, 0, 0, .45) !important; backdrop-filter: blur(10px);
+  font: 600 14px var(--ui-font) !important; color: var(--text) !important; box-shadow: 0 10px 30px rgba(0, 0, 0, .45) !important;
 }
 #padbar span, #menuprompts span { display: inline-flex; align-items: center; gap: 8px; }
 .ps, .key { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; margin: 0 !important; border-radius: 999px; background: rgba(255, 255, 255, .12) !important; border: 1px solid rgba(255, 255, 255, .28) !important; color: #fff; font: 700 13px var(--ui-font) !important; line-height: 1; }
@@ -145,7 +146,7 @@ html, body { font-family: var(--ui-font); -webkit-font-smoothing: antialiased; }
 body:not(.pad) .padonly, body.pad .kbonly { display: none !important; }
 
 /* ---------- the title screen ---------- */
-#app:has(#title:not(.hidden)) > :not(#view):not(#title):not(#fade):not(#flash) { visibility: hidden !important; }   /* the world shows behind the menu, the HUD doesn't */
+body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash) { visibility: hidden !important; }   /* the world shows behind the menu, the HUD doesn't */
 #title.screen { background: linear-gradient(90deg, rgba(5, 8, 14, .92) 0%, rgba(5, 8, 14, .72) 34%, rgba(5, 8, 14, .12) 70%, rgba(5, 8, 14, .3) 100%), linear-gradient(0deg, rgba(5, 8, 14, .55), rgba(5, 8, 14, 0) 35%) !important; justify-content: flex-start !important; text-align: left !important; }
 #title .box { max-width: none !important; width: min(560px, 90vw); margin-left: clamp(24px, 8vw, 140px); padding: 0 !important; }
 #title h1 { font: 700 clamp(64px, 9vw, 120px)/.9 var(--ui-head) !important; letter-spacing: .02em !important; color: #fff !important; text-shadow: 0 6px 30px rgba(0, 0, 0, .55) !important; margin: 0 !important; }
@@ -173,19 +174,18 @@ body:not(.pad) .padonly, body.pad .kbonly { display: none !important; }
 #pausemenu .ctl { color: var(--muted); }
 
 /* ---------- HUD ---------- */
-.panel { background: var(--hud) !important; border: 1px solid var(--line) !important; border-radius: var(--r-md) !important; box-shadow: 0 8px 26px rgba(0, 0, 0, .35) !important; backdrop-filter: blur(10px); padding: 12px 14px !important; }
+.panel { background: var(--hud) !important; border: 1px solid var(--line) !important; border-radius: var(--r-md) !important; box-shadow: 0 8px 26px rgba(0, 0, 0, .35) !important; padding: 12px 14px !important; }
 #hud-info { width: 232px !important; }
 #hud-info .title { font: 700 22px var(--ui-head) !important; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px !important; }
 #hud-info .row, #simhud .row { font: 500 14px var(--ui-font) !important; line-height: 1.7; }
 #hud-info .row b, #simhud .row b { color: #fff !important; font-weight: 700; letter-spacing: 0 !important; }
-#hud-info .row:has(#h-month), #hud-info .row:has(#h-year), #hud-info .row:has(#h-sims) { display: none !important; }
-#hud-info .row:has(#h-funds) b { color: var(--accent) !important; }
+#hud-info > .row:nth-child(n+5) { display: none !important; }   /* month, year and sims: the clock shows the date */
+#hud-info > .row:nth-child(4) b { color: var(--accent) !important; }
 #stock { width: 232px !important; gap: 6px 12px !important; font: 600 13px var(--ui-font) !important; top: 150px !important; }
 #stock span { color: var(--muted) !important; }
 #simhud { width: 232px !important; top: 232px !important; }
 #simhud .bar { height: 8px !important; width: 120px; } #b-energy { background: var(--good) !important; } #b-hunger { background: var(--accent) !important; }
 #h-tools { display: flex; gap: 5px; flex-wrap: wrap; margin: 2px 0 8px !important; } .tchip { width: 30px; height: 30px; border-radius: 8px; background: rgba(255, 255, 255, .08); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; } .tnone { color: var(--faint); font-size: 13px; }
-#simhud .row:has(> span:only-child) span { color: var(--muted); font: 700 11px var(--ui-head); letter-spacing: .14em; text-transform: uppercase; }
 #objectives { width: 340px !important; border-left: 3px solid var(--accent) !important; }
 #objectives .ttl { font: 700 12px var(--ui-head) !important; letter-spacing: .2em !important; color: var(--accent) !important; }
 #obj-title { font: 700 13px var(--ui-head) !important; letter-spacing: .1em !important; color: var(--muted) !important; }
@@ -256,3 +256,15 @@ body:not(.pad) .padonly, body.pad .kbonly { display: none !important; }
   #title .box { margin: 0 20px; } #title h1 { font-size: 64px !important; }
   #minimap.big { flex-direction: column; } #minimap.big canvas { width: min(92vw, 60vh) !important; height: min(92vw, 60vh) !important; } #minimap.big .mm-legend { width: min(92vw, 420px); max-height: 30vh; }
 }
+
+/* ---------- problems: a red banner above everything ---------- */
+#errbar { position: fixed; left: 50%; top: 14px; transform: translate(-50%, -140%); z-index: 100000; display: flex; align-items: center; gap: 12px; max-width: min(860px, 94vw); padding: 12px 14px 12px 18px;
+  background: #5a1414; color: #fff; border: 1px solid #ff8a80; border-radius: 14px; box-shadow: 0 16px 40px rgba(0, 0, 0, .55); font: 600 15px/1.4 var(--ui-font); transition: transform .25s; }
+#errbar.on { transform: translate(-50%, 0); }
+#errbar b { font-size: 20px; } #errbar span { flex: 1; }
+#errbar button { flex: none; background: rgba(255, 255, 255, .14); color: #fff; border: 1px solid rgba(255, 255, 255, .35); border-radius: 9px; padding: 8px 14px; font: 700 14px var(--ui-font); cursor: pointer; }
+/* paused (the clock is stopped): a badge you can't miss */
+#pausedpill { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 12px; padding: 10px 22px; border-radius: 999px;
+  background: rgba(8, 12, 20, .88); border: 1px solid var(--accent); color: #fff; font: 700 18px var(--ui-head); letter-spacing: .18em; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); pointer-events: none; }
+#pausedpill > b { color: var(--accent); letter-spacing: 0; } #pausedpill span { display: inline-flex; align-items: center; gap: 8px; font: 600 14px var(--ui-font); letter-spacing: 0; color: var(--muted); }
+

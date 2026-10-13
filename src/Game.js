@@ -7,6 +7,7 @@ import { StreetLights } from './systems/StreetLights.js';
 import { Hazards } from './systems/Hazards.js';
 import { Happenings } from './systems/Happenings.js';
 import { TILE, MAP } from './config.js';
+import { Watchdog } from './core/Watchdog.js';
 import { World } from './world/World.js';
 import { Terrain } from './render/Terrain.js';
 import { Atmosphere } from './render/Atmosphere.js';
@@ -75,6 +76,7 @@ export class Game {
   constructor(canvas, opts = {}) {
     this.canvas = canvas; this.flags = {}; this.mode = 'sim'; this.ending = false; this.fps = 60; this.glitch = 0; this.started = false; this.renderScale = opts.scale || 0.6;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    this.watchdog = new Watchdog(this); Watchdog.watchContext(this, canvas);   // a freeze or a graphics-card reset always gets explained
     this.post = new Post(this.renderer, { enabled: opts.post !== false });
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.3, 600);
@@ -120,7 +122,7 @@ export class Game {
     this.ui.setMode(mode); if (mode === 'god') { this.ui.setPrompt(null); this.god.setTool('pan'); }
   }
   start() {
-    this.started = true; this.ui.start();
+    this.started = true; this.ui.start(); this.watchdog.start();
     INTRO.forEach(([f, t]) => this.messages.push(f, t, 'quiet'));   // (in the town news; the objective says what to do)
     this.ui.renderObjectives();
   }
@@ -174,8 +176,8 @@ export class Game {
     if (ui.dialogue && inp.padHit(1)) ui.closeDialogue();
     if (!ui.modalOpen && !this.ending && !this.netVisitor && inp.hit('Tab')) this.setMode(this.mode === 'god' ? 'sim' : 'god');
     if (inp.hit('KeyP') && !ui.modalOpen && !this.netVisitor) this.clock.speed = this.clock.speed ? 0 : 1;
-    if ((inp.hit('PadCycle') || inp.hit('Period')) && !ui.modalOpen && !this.netVisitor && this.started) {   // one button: 1x > 2x > 4x > paused > 1x
-      const S = [1, 2, 4, 0], i = S.indexOf(this.clock.speed); this.clock.speed = S[(i + 1) % S.length]; ui.toast(this.clock.speed ? `Speed ${this.clock.speed}x` : 'Paused (tap again for 1x)', 1200);
+    if ((inp.hit('PadCycle') || inp.hit('Period')) && !ui.modalOpen && !this.netVisitor && this.started) {   // one button cycles the speed
+      const S = [1, 2, 4], i = S.indexOf(this.clock.speed); this.clock.speed = S[(i + 1) % S.length]; ui.toast(`Speed ${this.clock.speed}x`, 1200);   // 1x > 2x > 4x > 1x (a tap while paused carries on at 1x); pausing is P, the II button or the pause menu, never by accident
     }
     if (!ui.modalOpen && this.mode === 'god') { if (inp.hit('Digit0')) this.clock.speed = 0; }
     this.saveT = (this.saveT || 0) + dt; if (this.saveT > 45) { this.saveT = 0; this.save(); }
@@ -209,8 +211,9 @@ export class Game {
   advance(seconds, step = 0.1) { this.skipRender = true; for (let t = 0; t < seconds; t += step) this.update(step); this.skipRender = false; }
   /** If the game runs slowly for a few seconds, trade a little prettiness for smoothness (shadows, then resolution). */
   guard(raw) {
-    if (!this.started || raw > 0.5 || document.hidden || this.lockQuality) return; this.ft = this.ft === undefined ? raw : this.ft * 0.95 + raw * 0.05;
-    this.slowT = this.ft > 0.042 ? (this.slowT || 0) + raw : 0; if (this.slowT < 4) return; this.slowT = 0; this.ft = 1 / 60;
+    if (!this.started || raw > 3 || document.hidden || this.contextLost) return; this.ft = this.ft === undefined ? raw : this.ft * 0.95 + Math.min(raw, 1) * 0.05;
+    // Auto quality keeps 24 fps; on High it only steps in when it's dangerously slow (under ~7 fps), before the graphics driver gives up
+    this.slowT = this.ft > (this.lockQuality ? 0.15 : 0.042) ? (this.slowT || 0) + raw : 0; if (this.slowT < 4) return; this.slowT = 0; this.ft = 1 / 60;
     const sun = this.atmosphere.sun;
     if (sun.castShadow) { sun.castShadow = false; this.perf.note('sun shadows switched off (slow frames)'); this.ui.toast('Running slowly: shadows switched off to keep it smooth.', 4000); return; }
     if (this.renderScale > 0.42) { this.renderScale = Math.max(0.4, +(this.renderScale - 0.1).toFixed(2)); this.resize(); this.perf.note('render scale lowered to ' + this.renderScale); this.ui.toast(`Running slowly: picture resolution lowered (${Math.round(this.renderScale * 100)}%).`, 4000); }

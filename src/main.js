@@ -59,7 +59,8 @@ $('btn-options').onclick = () => showMenu('menu-options'); $('btn-options-back')
 // options: picture quality and volume, remembered between sessions
 { const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } };
   const setQ = (q) => { put('samcity-quality', q); game.lockQuality = q !== 'auto'; game.renderScale = q === 'high' ? 1 : q === 'low' ? 0.45 : (parseFloat(params.get('scale')) || 0.6); if (game.atmosphere && game.atmosphere.sun) game.atmosphere.sun.castShadow = q !== 'low'; game.resize(); for (const b of document.querySelectorAll('[data-q]')) b.classList.toggle('on', b.dataset.q === q); };
-  for (const b of document.querySelectorAll('[data-q]')) b.onclick = () => setQ(b.dataset.q); setQ('high');   // always start on the best picture (it can be lowered in Options or the pause menu for this session)
+  let lost = 0; try { lost = +localStorage.getItem('samcity-ctxlost') || 0; localStorage.removeItem('samcity-ctxlost'); } catch (e) { /* no storage */ }
+  for (const b of document.querySelectorAll('[data-q]')) b.onclick = () => setQ(b.dataset.q); setQ(Date.now() - lost < 3600e3 ? 'auto' : 'high');   // the best picture, unless the graphics card was reset last time (then Auto, which steps down when it's slow)   // always start on the best picture (it can be lowered in Options or the pause menu for this session)
   let vol = +get('samcity-volume', 7); const setV = (v) => { vol = Math.max(0, Math.min(10, v)); put('samcity-volume', vol); Sfx.setVolume(vol * 0.05); $('vol').textContent = vol; };
   $('vol-down').onclick = () => setV(vol - 1); $('vol-up').onclick = () => setV(vol + 1); setV(vol);
   // tick boxes become buttons too, so a controller can change them
@@ -67,7 +68,10 @@ $('btn-options').onclick = () => showMenu('menu-options'); $('btn-options-back')
 window.addEventListener('beforeunload', () => game.save());
 document.addEventListener('visibilitychange', () => { if (document.hidden) game.save(); });
 $('btn-demo').onclick = () => begin(true);
-if (params.has('auto')) begin(params.has('demo'), params.has('cont'));   // ?auto&cont: straight back into the current save slot (the in-game Load)
+if (params.has('auto')) begin(params.has('demo'), params.has('cont'));
+// if the game stopped responding last time (and had to be reloaded), say where it was
+import { Watchdog } from './core/Watchdog.js';
+Watchdog.lastFreeze().then((r) => { if (r && r.label) game.ui.showError(`Last time the game stopped responding (after: ${r.label}, ${new Date(r.at).toLocaleString()}). Tell Claude this line if it happens again.`); });   // ?auto&cont: straight back into the current save slot (the in-game Load)
 // texture pack: pick the zip once, the game remembers it
 { const st = document.getElementById('tex-status'), clr = document.getElementById('btn-tex-clear'), file = document.getElementById('tex-file');
   const show = () => { st.textContent = Assets.source === 'installed' ? ' ✓ textures on' : Assets.source === 'folder' ? ' ✓ textures on (folder)' : ' (optional: pick the "PNG - Pixel Art Textures" zip)'; clr.classList.toggle('hidden', Assets.source !== 'installed'); }; show();
