@@ -122,12 +122,12 @@ export class UI {
    * glyphs, instead of instructions written into the menus.
    */
   padLegend(scope, pad = true) {
-    const id = scope ? scope.id : null, key = id && id + (pad ? ':pad' : ':kb'); if (key === this._legend) return; this._legend = key;
-    const padbar = $('padbar'), kb = $('menuprompts'); padbar.classList.add('hidden'); kb.classList.add('hidden'); if (!id || id === 'title') return;
+    const id = scope ? scope.id : null, key = id && id + (pad ? ':pad' : ':kb') + (id === 'title' && $('menu-main').offsetParent ? ':main' : ''); if (key === this._legend) return; this._legend = key;
+    const padbar = $('padbar'), kb = $('menuprompts'); padbar.classList.add('hidden'); kb.classList.add('hidden'); if (!id || (id === 'title' && !pad)) return;
     const P = (c, t) => `<b class="ps ${c}">${t}</b>`, K = (t) => `<b class="key">${t}</b>`, items = [];
     if (pad) {
       if (id !== 'dialogue') items.push(`<span>${P('', '✚')} Move</span>`, `<span>${P('ps-x', '✕')} Select</span>`); else items.push(`<span>${P('ps-x', '✕')} Continue</span>`);
-      items.push(`<span>${P('ps-o', '○')} ${id === 'pausemenu' ? 'Resume' : id === 'planmenu' || id === 'dialogue' ? 'Close' : 'Back'}</span>`);
+      if (id !== 'title' || !$('menu-main').offsetParent) items.push(`<span>${P('ps-o', '○')} ${id === 'pausemenu' ? 'Resume' : id === 'planmenu' || id === 'dialogue' ? 'Close' : 'Back'}</span>`);
       if (id === 'planmenu') items.push(`<span>${P('', 'L1')}${P('', 'R1')} Page</span>`, `<span>${P('', 'L2')}${P('', 'R2')} Category</span>`);
       if (id === 'terminal') items.push(`<span>${P('', 'L1')}${P('', 'R1')} Tab</span>`, `<span>${P('', 'R')} Scroll</span>`);
     } else {
@@ -139,7 +139,7 @@ export class UI {
   }
   /** ○ on a menu: close it (the title screen has nowhere to go back to). */
   padBack(scope) {
-    const id = scope.id; if (id === 'title') return false;
+    const id = scope.id; if (id === 'title') { const back = ['btn-options-back', 'btn-slots-back', 'btn-net-back'].map((q) => $(q)).find((b) => b && b.offsetParent !== null); if (!back) return false; back.click(); return true; }   // the title: ○ goes back from a sub-menu to the main menu
     if (id === 'pausemenu') { if (this.pause.page !== 'main') { this.pause.page = 'main'; this.pause.render(); } else this.pause.hide(); this.game.input.pressed.delete('Escape'); return true; }
     if (id === 'planmenu') this.plan.close(); else if (id === 'terminal') this.closeTerminal(); else if (id === 'inventory') this.closeInventory(); else if (id === 'journal') this.closeJournal(); else if (id === 'perf') this.closePerf(); else if (id === 'howto') $('btn-howto').click(); else return false;
     this.game.input.pressed.delete('Escape'); this.game.input.pressed.delete('KeyG'); this.calm && this.calm(); return true;

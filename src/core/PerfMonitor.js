@@ -40,6 +40,7 @@ export class PerfMonitor {
       `FPS ${f(s.fps)} · frame ms: median ${f(s.p50)}, 95% ${f(s.p95)}, 99% ${f(s.p99)}, worst ${f(s.max, 0)}`,
       `Slow frames (>33 ms): ${s.slow} · stutters (>100 ms): ${s.jank} · game code per frame: median ${f(s.js50)} ms, 95% ${f(s.js95)} ms`,
       `Where the time goes: ${secs.map(([k, v]) => `${k} ${f(100 * v / tot, 0)}%`).join(', ')}`,
+      `Town simulation cut short to keep up: ${this.simShort || 0} frames`,
       `Worst frames: ${this.worst.length ? this.worst.map((w) => `${w.ms}ms (code ${w.js}ms, ${w.mode}, pop ${w.pop}, ${w.at})`).join('; ') : 'none over 50 ms'}`,
       '',
       '-- Drawing --',
