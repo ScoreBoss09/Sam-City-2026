@@ -15,7 +15,7 @@ const COATS = [[0xb8814a, 0x8a5a30], [0x2b2b2e, 0x1a1a1c], [0xe8e0cf, 0xc9bfa8],
 /** A little low-poly dog that trots after its owner. */
 export class Dog {
   constructor(game, owner) {
-    this.game = game; this.owner = owner; const [c1, c2] = COATS[Math.floor(Math.random() * COATS.length)];
+    this.game = game; this.owner = owner; const [c1, c2] = COATS[owner.coat ?? Math.floor(Math.random() * COATS.length)];
     this.root = new THREE.Group(); this.body = new THREE.Group(); this.root.add(this.body);
     const m = (parts, x = 0, y = 0, z = 0) => { const k = new THREE.Mesh(boxGeo(parts), mat); k.position.set(x, y, z); return k; };
     this.torso = m([[0.26, 0.26, 0.55, 0, 0, 0, c1], [0.2, 0.08, 0.3, 0, 0.16, -0.05, c2]], 0, 0.38, 0); this.body.add(this.torso);

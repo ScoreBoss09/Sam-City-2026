@@ -57,6 +57,8 @@ export class Decor {
     for (const b of g.buildings.list) if (b.state === 'done' && b.def.park === 'camp') { const d = Math.hypot(b.cx - f.x, b.cz - f.z); if (d < bd) { bd = d; best = b; } }
     if (best) { const [x, z] = [best.cx, best.cz]; this.fireLight.position.set(x, 1.6, z); const n = this.nightLevel || 0; this.fireLight.intensity = (6 + 10 * n) * (1 + Math.sin(g.elapsed * 14) * 0.1 + Math.sin(g.elapsed * 23) * 0.06) * (bd < 60 ? 1 : 0.4); } else this.fireLight.intensity = 0;
   }
+  /** Keep the grass flat in a circle { x, z, r } (the opening scene: Sam lies in it, and the tufts would fill the screen); null puts it back. */
+  clearGrass(spot) { this.grassClear = spot; this.rebuild(); }
   rebuild() {
     this.dirty = false; const w = this.game.world, m = new THREE.Matrix4(), c = new THREE.Color(), q = new THREE.Quaternion();
     let nl = 0, nt = 0, nb = 0; this.lampPos = []; const free = (x, z) => w.isLand(x, z) && !w.road[w.idx(x, z)] && !w.occ[w.idx(x, z)];
@@ -94,7 +96,7 @@ export class Decor {
     for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) {
       const i = w.idx(x, z); if (w.terrain[i] !== T.LAND || w.road[i] || w.occ[i]) continue;
       const nearRoad = roadAt(x + 1, z) || roadAt(x - 1, z) || roadAt(x, z + 1) || roadAt(x, z - 1), n = nearRoad ? 4 : 9;
-      for (let k = 0; k < n && ng < 5000; k++) { const px = (x + hash(x * 7 + k, z)) * TILE, pz = (z + hash(z * 5 + k, x + 3)) * TILE, s = 0.7 + hash(x + k, z * 3) * 0.9; m.compose(new THREE.Vector3(px, 0.02, pz), q.setFromEuler(new THREE.Euler(0, hash(k, x + z) * 6, 0)), new THREE.Vector3(s, s, s)); this.tufts.setMatrixAt(ng, m); c.setHSL(0.24 + hash(x, z + k) * 0.08, 0.45, 0.3 + hash(k + 1, x) * 0.12); this.tufts.setColorAt(ng, c); ng++; }
+      for (let k = 0; k < n && ng < 5000; k++) { const px = (x + hash(x * 7 + k, z)) * TILE, pz = (z + hash(z * 5 + k, x + 3)) * TILE, s = 0.7 + hash(x + k, z * 3) * 0.9; const gc = this.grassClear; if (gc && Math.hypot(px - gc.x, pz - gc.z) < gc.r) continue; m.compose(new THREE.Vector3(px, 0.02, pz), q.setFromEuler(new THREE.Euler(0, hash(k, x + z) * 6, 0)), new THREE.Vector3(s, s, s)); this.tufts.setMatrixAt(ng, m); c.setHSL(0.24 + hash(x, z + k) * 0.08, 0.45, 0.3 + hash(k + 1, x) * 0.12); this.tufts.setColorAt(ng, c); ng++; }
       if (hash(x * 13, z * 17) < 0.45) for (let k = 0; k < 7 && nf < 1800; k++) { const px = (x + hash(x + k * 3, z * 2)) * TILE, pz = (z + hash(z + k * 5, x * 2)) * TILE; m.makeTranslation(px, 0.22, pz); this.flowers.setMatrixAt(nf, m); c.setHex(FL[Math.floor(hash(x * 3 + k, z) * FL.length)]); this.flowers.setColorAt(nf, c); nf++; }
     }
     this.tufts.count = ng; this.flowers.count = nf; for (const im of [this.tufts, this.flowers]) { im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }

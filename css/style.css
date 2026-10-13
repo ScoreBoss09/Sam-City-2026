@@ -240,11 +240,12 @@ button.padfocus, #planmenu button.padfocus, #planmenu .card.built.padfocus, .sub
 /* the wake-up scene */
 body.cutscene #app > *:not(#view):not(#intro):not(#fade) { visibility: hidden !important; }
 #intro { position: absolute; inset: 0; z-index: 80; pointer-events: none; }
-#intro .lid { position: absolute; left: 0; right: 0; height: 50%; background: #000; transition: none; }
-#intro .lid.top { top: 0; border-radius: 0 0 50% 50% / 0 0 18% 18%; } #intro .lid.bot { bottom: 0; border-radius: 50% 50% 0 0 / 18% 18% 0 0; }
-#intro .cap { position: absolute; left: 0; right: 0; bottom: 12%; text-align: center; color: #fff; font: 20px Georgia, serif; text-shadow: 0 2px 4px #000; }
-#intro .cap b { color: #ffd23f; font-weight: normal; margin-right: 6px; }
-#intro .skip { position: absolute; right: 16px; bottom: 12px; color: rgba(255,255,255,.45); font: 12px monospace; }
+#intro .lid { position: absolute; left: -15%; right: -15%; height: 50%; background: #0d0605; filter: blur(26px); transition: none; }
+#intro .lid.top { top: -8%; border-radius: 0 0 50% 50% / 0 0 30% 30%; } #intro .lid.bot { bottom: -8%; border-radius: 50% 50% 0 0 / 30% 30% 0 0; }
+#intro .glow { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(150, 40, 25, .55), rgba(20, 4, 2, .96) 70%); opacity: 1; }
+#intro .cap { position: absolute; left: 0; right: 0; bottom: 11%; text-align: center; color: #fff; font: 600 22px/1.4 var(--ui-font, 'Trebuchet MS', sans-serif); letter-spacing: .02em; text-shadow: 0 2px 6px rgba(0,0,0,.9); }
+#intro .cap b { color: var(--accent, #ffd23f); font-weight: 700; margin-right: 8px; text-transform: uppercase; font-size: 15px; letter-spacing: .14em; }
+#intro .skip { position: absolute; right: 32px; bottom: 28px; color: #fff; font: 600 14px var(--ui-font, 'Trebuchet MS', sans-serif); letter-spacing: .08em; opacity: 0; transition: opacity .25s; display: flex; align-items: center; gap: 10px; } #intro .skip.on { opacity: .85; }
 #netbadge { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); background: rgba(10,20,40,.8); color: #ffd23f; font: 12px monospace; padding: 3px 10px; border: 1px solid #ffd23f; z-index: 30; pointer-events: none; }
 #title input { font: 14px monospace; padding: 4px 6px; width: 10em; }
 #raidboard { position: absolute; top: 34px; left: 50%; transform: translateX(-50%); background: rgba(40,10,10,.85); color: #fff; font: 13px monospace; padding: 6px 12px; border: 2px solid #ffd23f; z-index: 31; min-width: 180px; pointer-events: none; }
