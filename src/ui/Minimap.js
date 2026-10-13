@@ -37,6 +37,8 @@ export class Minimap {
     const dot = (wx, wz, col, r) => { const [sx, sy] = toScreen(wx, wz); if (sx < -4 || sy < -4 || sx > W + 4 || sy > H + 4) return; c.fillStyle = col; c.fillRect(sx - r, sy - r, r * 2, r * 2); };
     for (const s of g.population.sims) { if (s.hidden || s.remove || (s.inside && !s.inside.def.open)) continue; dot(s.x, s.z, s.kind === 'raider' ? '#ff3030' : s.kind === 'security' ? '#5a7ad8' : '#ffffff', s.kind === 'raider' ? 2.5 : 1.5); }
     for (const it of g.tools.untaken) dot(it.x, it.z, '#ffb02e', 2);
+    if (g.markers) for (const mk of g.markers.list) { const [sx, sy] = toScreen(mk.x, mk.z); if (sx < 0 || sy < 0 || sx > W || sy > H) continue; c.font = `${this.big ? 16 : 13}px serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(mk.icon, sx, sy); }   // fights, robberies, fires...
+    { const h = g.starterHome; if (h && h.state === 'done') { const [sx, sy] = toScreen(h.cx, h.cz), r = this.big ? 7 : 6; if (sx > -r && sy > -r && sx < W + r && sy < H + r) { c.fillStyle = '#1a2230'; c.fillRect(sx - r, sy - r, r * 2, r * 2); c.strokeStyle = '#7be08f'; c.lineWidth = 1.5; c.strokeRect(sx - r, sy - r, r * 2, r * 2); c.fillStyle = '#7be08f'; c.font = `bold ${this.big ? 11 : 10}px monospace`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('H', sx, sy + 0.5); } } }   // Sam's home
     // objective marker (clamped to the edge with a little arrow)
     const t = g.story.target();
     if (t) {
@@ -46,7 +48,7 @@ export class Minimap {
       c.beginPath(); for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, r = i % 2 ? pulse : pulse * 2.1; c.lineTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r); } c.closePath(); c.fill(); c.stroke();
     }
     // Sam
-    const [px, py] = toScreen(p.x, p.z); c.save(); c.translate(px, py); c.rotate(-p.heading + Math.PI);
+    const [px, py] = toScreen(p.x, p.z); c.save(); c.translate(px, py); c.rotate(-(g.mode === 'sim' ? Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw)) : p.heading) + Math.PI);   // the way you're looking
     c.fillStyle = '#ff8a2a'; c.strokeStyle = '#000'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(0, -7); c.lineTo(5, 5); c.lineTo(0, 2.5); c.lineTo(-5, 5); c.closePath(); c.fill(); c.stroke(); c.restore();
     c.fillStyle = 'rgba(255,255,255,.85)'; c.font = 'bold 10px monospace'; c.fillText('N', W / 2 - 3, 11);
   }

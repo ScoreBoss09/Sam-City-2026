@@ -21,14 +21,24 @@ export class ToolRack {
       p.traverse((o) => { if (o.isMesh) { o.castShadow = true; } }); this.group.add(wrap);
       const it = { id, mesh: wrap, x: x + px, z: z + 0.2, taken: taken.includes(id) }; if (it.taken) wrap.visible = false; this.items.push(it);
     });
-    this.group.position.set(x, 0, z);
+    this.group.position.set(x, 0, z); this.group.scale.setScalar(1); this.group.visible = true; this.goneT = null; this.gone = false;
+    if (taken.length && !this.untaken.length) { this.gone = true; this.group.visible = false; }   // already cleared away
     for (const it of this.items) { it.x = x + (it.mesh.position.x); it.z = z + 0.2; }
   }
   take(it) { it.taken = true; it.mesh.visible = false; }
   takenIds() { return this.items.filter((i) => i.taken).map((i) => i.id); }
   get untaken() { return this.items.filter((i) => !i.taken); }
   /** The yellow glow only shows when Sam actually needs the rack: the current goal is a tool, or Sam just tried to work without one. */
-  update() {
+  /** Packed away: the rack folds up and sinks out of sight in a puff of dust (once every tool is gone, or bulldozed). */
+  clearAway(giveTools = false) {
+    const g = this.game; if (this.gone || this.goneT != null) return;
+    if (giveTools) for (const it of this.untaken) { it.taken = true; it.mesh.visible = false; g.player.tools.add(it.id); }
+    this.goneT = 0; g.particles.burst(this.x, 0.6, this.z, 0xb59a6a, 24, 2.5, 2.5, 0.2); g.messages.push('Planning Office', giveTools ? 'Tool rack cleared away. Any tools left on it went on Sam\'s belt.' : 'All the tools are taken: the tool rack has been packed away.', 'good');
+  }
+  update(dt = 0.016) {
+    if (this.goneT != null && !this.gone) { this.goneT += dt; const k = Math.min(1, this.goneT / 1.4); this.group.position.y = -k * 2.2; this.group.rotation.y = k * 0.6; this.group.scale.setScalar(1 - k * 0.6); if (k >= 1) { this.gone = true; this.group.visible = false; } return; }
+    if (this.gone) return;
+    if (this.items.length && !this.untaken.length && this.game.started) { this.clearAway(); return; }
     const g = this.game, gl = this.glow; if (!gl) return; let want = false;
     if (this.untaken.length && g.mode === 'sim') {
       const t = g.story.target();

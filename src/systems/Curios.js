@@ -38,7 +38,7 @@ export class Curios {
   }
   near(x, z, rr = 2.0) { for (const it of this.items) if (!this.found.has(it.c.id) && Math.hypot(it.x - x, it.z - z) < rr) return it; return null; }
   take(it) {
-    const g = this.game; this.found.add(it.c.id); it.g.visible = false; g.economy.earn(15); Sfx.play('perfect'); g.particles.burst(it.x, 0.5, it.z, 0xffe9a0, 16, 1, 3, 0.06);
+    const g = this.game; this.found.add(it.c.id); it.g.visible = false; g.economy.earn(15, 'Finds'); Sfx.play('perfect'); g.particles.burst(it.x, 0.5, it.z, 0xffe9a0, 16, 1, 3, 0.06);
     g.ui.toast(`${it.c.icon} Found: ${it.c.name}! (${this.found.size}/${CURIOS.length} curios, see your journal: J)`, 3600); g.flags.curios = this.found.size;
   }
   update(dt) {

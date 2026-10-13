@@ -1,5 +1,6 @@
 import { DAYLIGHT_SECONDS, NIGHT_SECONDS, DAWN, DUSK, DAYS_PER_MONTH, START_HOUR, START_MONTH, START_YEAR } from '../config.js';
 import { Emitter } from '../util.js';
+export const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];   // day 0 of the show is a Monday
 export const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 export class Clock extends Emitter {
@@ -18,6 +19,8 @@ export class Clock extends Emitter {
   /** Game hours per (scaled) second right now: days pass slowly, nights quickly. */
   rate(h = this.hour) { return h >= DAWN && h < DUSK ? (DUSK - DAWN) / DAYLIGHT_SECONDS : (24 - DUSK + DAWN) / NIGHT_SECONDS; }
   get hhmm() { const h = Math.floor(this.hour), m = Math.floor((this.hour - h) * 60); return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'); }
+  get weekday() { return this.totalDays % 7; }
+  get isSunday() { return this.totalDays % 7 === 6; }
   get isNight() { return this.hour < 5.5 || this.hour >= 19.5; }
   serialize() { return { hour: this.hour, day: this.day, month: this.month, year: this.year, totalDays: this.totalDays }; }
   load(s) { Object.assign(this, s); }

@@ -24,7 +24,7 @@ export class Security {
   update(dt) {
     const g = this.game, p = g.player;
     // the guards go off for their shift change between 02:00 and 04:00
-    const duty = this.onDuty(), show = (g.population.count() > 0 || g.flags.guardsOut) && duty;
+    const duty = this.onDuty(), show = duty;   // on the gate from day one
     for (const s of this.guards) { s.hidden = !show; s.inside = show ? null : g.lift; if (show && !s.engaged && s.path.length === 0 && Math.hypot(s.x - s.post.x, s.z - s.post.z) > 0.5) { s.sortied = false; s.goTo({ x: s.post.x, z: s.post.z }); } }
     // darts
     for (const d of this.darts) {

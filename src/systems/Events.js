@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { N96 } from '../data/nineties2.js';
 import { Sfx } from '../core/Sfx.js';
 import { pick } from '../util.js';
 import { A } from '../data/humour.js';
@@ -23,11 +24,13 @@ export class Events {
     const drinker = near.find((s) => s.drinking && s.sitting), pew = near.find((s) => s.sitting && s.sitting.kind === 'pew'), band = near.find((s) => s.bandT);
     const PUB = ['Same again?', 'Whose round is it?', 'Cheers!', 'Lovely pint, that.', 'Get the darts out!'], CH = ['Amen.', 'Lovely hymn.', 'Shh!'], BAND = ['Lovely tune!', 'Encore!', 'Bravo!'];
     const ad = g.ui.adult && Math.random() < 0.6;
-    if (drinker && Math.random() < 0.7) g.social.say(drinker, pick(ad ? A.PUB : PUB), 2.4);
+    const venue = near.find((s) => s.inside && N96.venue[s.inside.id] && Math.random() < 0.5);
+    if (venue && Math.random() < 0.6) g.social.say(venue, pick(N96.venue[venue.inside.id]), 2.2);   // a shout from the snooker hall, the bingo, the bowling alley...
+    else if (drinker && Math.random() < 0.7) g.social.say(drinker, pick(ad ? A.PUB : PUB), 2.4);
     else if (pew && Math.random() < 0.5) g.social.say(pew, pick(ad ? A.CHURCH : CH), 2.2);
     else if (band && Math.random() < 0.6) g.social.say(band, pick(ad ? A.BAND : BAND), 2.2);
     // the church bell on Sunday morning
-    if (g.clock.totalDays % 7 === 6 && g.clock.hour >= 9 && g.clock.hour < 9.4 && this.bellDay !== g.clock.totalDays && g.buildings.count('church')) { this.bellDay = g.clock.totalDays; if (g.mode === 'sim') Sfx.play('bell'); g.messages.push('St Sam\'s', 'The bells are ringing for Sunday service.', ''); }
+    if (g.clock.totalDays % 7 === 6 && g.clock.hour >= 9 && g.clock.hour < 9.4 && this.bellDay !== g.clock.totalDays && g.buildings.church()) { this.bellDay = g.clock.totalDays; if (g.mode === 'sim') Sfx.play('bell'); g.messages.push('St Sam\'s', 'The bells are ringing for Sunday service.', ''); }
     // now and then a letter from a neighbour
     const day = g.clock.totalDays; if (g.mail.box && g.population.count() >= 4 && day >= 2 && this.letterDay !== day && day % 3 === 1 && g.clock.hour > 8) {
       this.letterDay = day; const L = g.ui.adult ? A.LETTERS : CLEAN_LETTERS, n = (this.letterN = (this.letterN || 0) + 1), l = L[(n - 1) % L.length]; g.mail.send(l[0], l[1], l[2]);

@@ -41,10 +41,15 @@ export class Input {
       if (cur.some(Boolean) || Math.hypot(P.lx, P.ly) > 0.4 || Math.hypot(P.rx, P.ry) > 0.4) { this.padActive = true; if (cur.some(Boolean) && this.onActivity) this.onActivity(); }
       if (this.padActive) {
         const st = 0.4; if (P.ly < -st) want.add('KeyW'); if (P.ly > st) want.add('KeyS'); if (P.lx < -st) want.add('KeyA'); if (P.lx > st) want.add('KeyD');
-        if (cur[9]) want.add('Tab'); if (cur[8]) want.add('KeyP');
+        if (cur[9]) want.add('Tab'); if (cur[8]) { P.selT = (P.selT || 0) + dt; if (P.selT >= 0.5 && !P.selFired) { P.selFired = true; this.pressed.add('PadSpeed'); } } else { if (P.selT > 0 && !P.selFired && mode !== 'menu') this.pressed.add('PadCycle'); P.selT = 0; P.selFired = false; }   // View/Select: tap cycles the game speed, hold for the menu
         if (mode === 'sim') {
           this.mouse.dx += P.rx * 1000 * dt; this.mouse.dy += P.ry * 800 * dt;
-          if (cur[0]) want.add('KeyE'); if (cur[2] || cur[7]) want.add('KeyF'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[11]) want.add('KeyM'); if (cur[12]) want.add('KeyI'); if (cur[13]) want.add('KeyR'); if (cur[14]) want.add('KeyJ'); if (cur[6]) want.add('Space'); if (cur[15]) want.add('KeyC');
+          if (this.combat || this.armed) {   // Call of Duty layout: L2 aim, R2 fire, ✕ jump, ○ crouch (hold: prone), □ reload / armoury, △ swap gun, R1 grenade, L1 or L3 sprint, R3 melee
+            if (cur[0]) want.add('Space'); if (cur[1]) want.add('PadCrouch'); if (cur[2]) want.add(this.combat ? 'PadSquare' : 'KeyE'); if (cur[3]) want.add('PadSwap'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[5]) want.add('PadNade');
+            if (cur[6]) want.add('PadAim'); if (cur[7]) want.add('PadFire'); if (cur[11]) want.add('PadMelee'); if (cur[12]) want.add('KeyV'); if (cur[13]) want.add('KeyI'); if (cur[14]) want.add('KeyJ'); if (cur[15]) want.add('KeyE');   // D-pad: up first/third person, right use
+          } else {
+            if (cur[0]) want.add('KeyE'); if (cur[2]) want.add('KeyF'); if (cur[7]) want.add('KeyX'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4]) want.add('ShiftLeft'); if (cur[10]) want.add('KeyB'); if (cur[11]) want.add('KeyM'); if (cur[12]) want.add('KeyI'); if (cur[13]) want.add('KeyR'); if (cur[14]) want.add('KeyJ'); if (cur[6]) want.add('Space'); if (cur[15]) want.add('KeyC');
+          }
         } else if (mode === 'god') {
           if (cur[3]) want.add('KeyR'); if (cur[2]) want.add('KeyB'); if (cur[11]) want.add('KeyF'); if (cur[1]) want.add('Escape');
           // smooth analogue rotate / zoom (read by GodControls) instead of key taps and wheel clicks

@@ -22,22 +22,27 @@ export class ConstructionSystem {
     else { const j = i + dir; if (j < 0 || j >= Q.length) return; set(Q[i], j + 1); set(Q[j], i + 1); }
     this.game.flags.prioN = Q.length + 2;
   }
-  /** Everyone works down the list: the top job takes all the builders it can use, then the next, and so on. Paths are one entry. */
   /** Goods left on the Lift dock that nobody has claimed yet. */
   dockPiles() { const g = this.game; if (!g.lift) return []; const d = g.logistics.dock(); return g.piles.list.filter((p) => Math.hypot(p.x - d.x, p.z - d.z) < 7 && g.piles.total(p) - (p.reserved || 0) > 0); }
   requestTask(sim) {
-    const g = this.game, B = g.buildings, depot = g.depot, cap = 6;
+    const g = this.game, B = g.buildings, depot = g.depot;
     // up to two builders at a time cart deliveries from the Lift dock to the Stockyard
     if (depot && g.population.sims.filter((q) => q.job && q.job.type === 'fetch').length < 2) { const p = this.dockPiles()[0]; if (p) { const qty = this.haulSize(sim); p.reserved = (p.reserved || 0) + qty; return { type: 'fetch', pile: p, qty }; } }
+    // Everyone works down the list: the top job takes all the builders it can use (its crew: Auto is 2 to start, up to 6),
+    // then the next, and so on. A job that's waiting for materials is skipped. "Jobs at once" stops them spreading out.
+    let active = 0; const lim = g.flags.qFocus || 99;
     for (const it of this.queue()) {
       if (it.kind === 'roads') { const p = g.roadPlans.next(sim); if (p) { p.reserved = sim; return { type: 'road', plan: p }; } continue; }
-      const s = it.s;
-      if (this.workable(s) && (s.builders || 0) < 2) return { type: 'build', site: s };
+      const s = it.s, want = s.crew || 2, cap = s.crew || 6;
+      if (!this.workable(s) && !(depot && Object.keys(s.need).some((m) => B.missing(s, m) > 0 && g.economy.stock[m] > 0))) continue;   // waiting for something
+      if (++active > lim) break;
+      if (this.workable(s) && (s.builders || 0) < want) return { type: 'build', site: s };
       if (depot) for (const mat of Object.keys(s.need)) {
         const miss = B.missing(s, mat), avail = g.economy.stock[mat];
-        if (miss > 0 && avail > 0) { const qty = Math.min(this.haulSize(sim), miss, avail); g.economy.stock[mat] -= qty; s.reserved[mat] = (s.reserved[mat] || 0) + qty; return { type: 'haul', site: s, mat, qty }; }
+        if (miss > 0 && avail > 0) { const qty = Math.min(this.haulSize(sim), miss, avail); g.economy.stock[mat] -= qty; g.economy.used(mat, qty); s.reserved[mat] = (s.reserved[mat] || 0) + qty; return { type: 'haul', site: s, mat, qty }; }
       }
       if (this.workable(s) && (s.builders || 0) < cap) return { type: 'build', site: s };
+      if (s.crew) continue;   // a set crew is a limit too
     }
     return null;
   }

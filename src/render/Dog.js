@@ -35,9 +35,11 @@ export class Dog {
     if (far || o.hidden) { this.x = o.x - Math.sin(o.heading) * 1.2; this.z = o.z - Math.cos(o.heading) * 1.2; tr.length = 0; }
     while (tr.length > 1 && Math.hypot(tr[0].x - this.x, tr[0].z - this.z) < 0.35) tr.shift();
     let ahead = 0, px = this.x, pz = this.z; for (const q of tr) { ahead += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; } ahead += Math.hypot(o.x - px, o.z - pz);
-    const tgt = tr.length ? tr[0] : { x: o.x, z: o.z }, dx = tgt.x - this.x, dz = tgt.z - this.z, d = Math.hypot(dx, dz);
+    if (this.still > 1.2 && !this.off) this.off = this.kerbside();   // never sit about in the middle of the road
+    if (this.off && (ahead > 3 || Math.hypot(this.off.x - this.x, this.off.z - this.z) < 0.1)) this.off = null;
+    const tgt = this.off || (tr.length ? tr[0] : { x: o.x, z: o.z }), dx = tgt.x - this.x, dz = tgt.z - this.z, d = Math.hypot(dx, dz);
     let speed = 0;
-    if (ahead > 1.3 && d > 0.05) { speed = Math.min(6, 1.6 + (ahead - 1.3) * 1.6); const want = Math.atan2(dx, dz); let dh = want - this.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); this.h += dh * Math.min(1, dt * 10); const st = Math.min(d, speed * dt); this.x += dx / d * st; this.z += dz / d * st; this.still = 0; }
+    if ((ahead > 1.3 || this.off) && d > 0.05) { speed = Math.min(6, 1.6 + (ahead - 1.3) * 1.6); const want = Math.atan2(dx, dz); let dh = want - this.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); this.h += dh * Math.min(1, dt * 10); const st = Math.min(d, speed * dt); this.x += dx / d * st; this.z += dz / d * st; this.still = 0; }
     else { this.still += dt; if (this.still > 0.6) { const fo = Math.atan2(o.x - this.x, o.z - this.z); let dh = fo - this.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); this.h += dh * Math.min(1, dt * 3); } }
     // hidden (like people) when it's inside a house Sam isn't in
     const inB = g.buildings.buildingAtPoint(this.x, this.z), hidden = (inB && !inB.def.open && !g.buildings.canSeeInto(inB)) || (!o.mesh.visible && !inB);
@@ -48,6 +50,16 @@ export class Dog {
     this.body.rotation.x = -this.sit * 0.5; this.body.position.y = -this.sit * 0.13 + Math.abs(s) * 0.025 * run;
     this.tail.rotation.y = Math.sin(this.t * (sitting ? 9 : 6)) * (0.5 + this.sit * 0.3); this.tail.rotation.x = -0.5; this.head.rotation.x = Math.sin(this.t * 0.7) * 0.08 + (speed > 1 ? 0.15 : 0); this.head.rotation.y = Math.sin(this.t * 0.4) * 0.3 * (1 - run);
     this.root.position.set(this.x, 0, this.z); this.root.rotation.y = this.h;
+  }
+  /** Standing in the carriageway? Then the nearest bit of pavement (or verge) to go and wait on. */
+  kerbside() {
+    const w = this.game.world, [tx, tz] = w.tileOf(this.x, this.z); if (!w.inBounds(tx, tz) || w.road[w.idx(tx, tz)] !== 2) return null;   // footpaths are fine to sit on
+    const T = 8, cx = (tx + 0.5) * T, cz = (tz + 0.5) * T, ox = this.x - cx, oz = this.z - cz, road = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] > 0;
+    const sides = [];   // pavement runs along each side the road doesn't carry on through
+    if (!road(tx - 1, tz)) sides.push({ x: cx - 3.2, z: this.z, d: Math.abs(ox + 3.2) }); if (!road(tx + 1, tz)) sides.push({ x: cx + 3.2, z: this.z, d: Math.abs(ox - 3.2) });
+    if (!road(tx, tz - 1)) sides.push({ x: this.x, z: cz - 3.2, d: Math.abs(oz + 3.2) }); if (!road(tx, tz + 1)) sides.push({ x: this.x, z: cz + 3.2, d: Math.abs(oz - 3.2) });
+    if (!sides.length) sides.push({ x: cx + Math.sign(ox || 1) * 3.6, z: cz + Math.sign(oz || 1) * 3.6, d: 0 });   // a crossroads: the corner
+    const s = sides.sort((a, b) => a.d - b.d)[0]; return s.d < 0.6 ? null : { x: s.x, z: s.z };
   }
   dispose() { this.game.scene.remove(this.root); this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
 }

@@ -15,10 +15,10 @@ export class Atmosphere {
     const s = this.sun.shadow; s.mapSize.set(2048, 2048); s.camera.left = -70; s.camera.right = 70; s.camera.top = 70; s.camera.bottom = -70; s.camera.near = 1; s.camera.far = 260; s.bias = -0.0004; s.normalBias = 0.04;
     scene.add(this.sun, this.sun.target);
     scene.fog = new THREE.Fog(0x9ec9ee, 220, 520); scene.background = new THREE.Color(0x9ec9ee);
-    this.domeGeo = new THREE.SphereGeometry(165, 40, 18, 0, Math.PI * 2, 0, Math.PI / 2);
+    this.domeGeo = new THREE.SphereGeometry(262, 48, 20, 0, Math.PI * 2, 0, Math.PI / 2);   // wide enough to come down in the sea all round, corners of the island included (it's 320 m square, 226 m to a corner)
     this.dome = new THREE.Mesh(this.domeGeo, new THREE.MeshBasicMaterial({ color: 0xbfe0ff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, fog: false }));
     this.wire = new THREE.Mesh(this.domeGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0, fog: false, depthWrite: false }));
-    this.dome.position.set(size / 2, -2, size / 2); this.wire.position.copy(this.dome.position); this.dome.renderOrder = 3; this.wire.renderOrder = 4; scene.add(this.dome, this.wire);
+    this.dome.position.set(size / 2, -2, size / 2); this.dome.scale.set(1, 0.72, 1); this.wire.position.copy(this.dome.position); this.wire.scale.copy(this.dome.scale); this.dome.renderOrder = 3; this.wire.renderOrder = 4; scene.add(this.dome, this.wire);
     this.night = 0;
     // moving cloud shadows over the island
     const rnd = mulberry32(5), c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), img = x.createImageData(128, 128);

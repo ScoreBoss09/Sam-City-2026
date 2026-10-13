@@ -20,7 +20,9 @@ export class GodControls {
     this.ghostDoor = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 4), new THREE.MeshBasicMaterial({ color: 0xffffff })); this.ghostDoor.rotation.x = Math.PI / 2; this.ghost.add(this.ghostDoor); this.ghost.visible = false; game.scene.add(this.ghost);
   }
   setTool(id, sub = null) {
-    this.tool = { id, sub }; this.game.ui.refreshTools(); this.ghost.visible = false; this.tileBox.visible = false; this.painting = false;
+    this.moveSel = null;
+    if (this.game.trackBuilder && (id !== 'track' || sub !== this.tool.sub)) this.game.trackBuilder.hide();
+    this.tool = { id, sub }; this.game.ui.refreshTools(); if (id === 'pan') { const sm = document.getElementById('submenu'); if (sm) sm.classList.add('hidden'); }   // back to Pan: the building list goes too this.ghost.visible = false; this.tileBox.visible = false; this.painting = false;
   }
   placing() { return ['build', 'park', 'util'].includes(this.tool.id) && this.tool.sub; }
 
@@ -48,8 +50,8 @@ export class GodControls {
       }
       if (inp.hit('KeyF')) { this.target.set(MAP * TILE / 2, 0, MAP * TILE / 2 + 2); this.dist = this.distGoal = this._lastDist = MAP * TILE * 1.35; this.pitch = 1.3; this.yaw = 0; }
       if (inp.hit('KeyR')) this.prefRot = (this.prefRot + 1) % 4;
-      if (inp.hit('Escape')) this.setTool('pan');
-      const hs = { Digit1: ['bulldoze'], Digit2: ['road', 'dirt'], Digit3: ['zone', 'res'], Digit4: ['build'], Digit5: ['park'], Digit6: ['util'], Digit7: ['query'] };
+      if (inp.hit('Escape')) { if (this.tool.id === 'track' && g.trackBuilder && g.trackBuilder.cur) g.trackBuilder.cur = null; else this.setTool('pan'); }
+      const hs = { Digit1: ['bulldoze'], Digit2: ['road', 'dirt'], Digit4: ['build'], Digit5: ['park'], Digit6: ['util'], Digit7: ['query'], Digit8: ['move'], Digit9: ['track', 'rail'] };
       for (const k of Object.keys(hs)) if (inp.hit(k)) this.setTool(hs[k][0], hs[k][1] || null), g.ui.openSub(hs[k][0]);
     }
     const half = MAP * TILE; this.target.x = clamp(this.target.x, 0, half); this.target.z = clamp(this.target.z, 0, half);
@@ -61,6 +63,21 @@ export class GodControls {
     const p = this.pick(inp); if (!p) return; const tx = Math.floor(p.x / TILE), tz = Math.floor(p.z / TILE); this.hover = [tx, tz];
     if (g.world.inBounds(tx, tz)) g.ui.setHover(this.describe(tx, tz));
     const id = this.tool.id; this.tileBox.visible = false; this.ghost.visible = false;
+    if (id === 'road' && this.tool.sub === 'lamps' && g.lamps) {   // street lamps: pick the corner or side of the square under the cursor
+      const L = g.lamps, slot = L.slotAt(tx, tz, p.x, p.z), q = L.slotPos(tx, tz, slot), has = L.tiles.has(L.key(tx, tz, slot));
+      this.tileBox.visible = g.world.inBounds(tx, tz); this.tileBox.scale.set(1.2, 0.3, 1.2); this.tileBox.position.set(q.x, 0.2, q.z); this.tileBox.material.color.setHex(has ? 0xff5544 : 0xffd23f);
+      g.ui.setHover(has ? 'Click to remove this lamp' : `Street lamp here (£15): move over a corner or side of the road`);
+      if (inp.mouse.down) L.toggle(tx, tz, slot);
+      return;
+    }
+    if (id === 'track') { if (g.trackBuilder) g.trackBuilder.update(inp, p); return; }
+    if (id === 'move') {   // pick a bush or rock, then where it should go; a villager does the digging
+      const R = g.resources, sel = this.moveSel, n = R.nodeAt(tx, tz), inb = g.world.inBounds(tx, tz);
+      this.tileBox.visible = inb && (!!sel || !!n); this.tileBox.scale.set(TILE, 0.2, TILE); this.tileBox.position.set((tx + 0.5) * TILE, 0.15, (tz + 0.5) * TILE);
+      if (!sel) { this.tileBox.material.color.setHex(n ? 0x44ff66 : 0x888888); g.ui.setHover(n ? `Click to pick up this ${n.kind === 'berry' ? 'berry bush' : 'rock'}` : 'Move plants: click a berry bush or rock to move it out of the way'); if (inp.mouse.down && n) { this.moveSel = n; g.ui.toast('Now click where it should go (Esc to cancel).', 2400); } }
+      else { const ok = inb && R.canReplant(tx, tz); this.tileBox.material.color.setHex(ok ? 0xffd23f : 0xff4455); this.ghost.visible = false; g.ui.setHover(ok ? 'Click to move it here' : 'Pick clear ground (no buildings, roads or other plants)'); if (inp.mouse.down && ok && R.requestMove(sel, tx, tz)) this.moveSel = null; if (inp.hit('Escape') || inp.mouse.rightDown) this.moveSel = null; }
+      return;
+    }
     if (id === 'road' || id === 'bulldoze' || id === 'zone') {
       this.tileBox.visible = g.world.inBounds(tx, tz); this.tileBox.scale.set(TILE, 0.2, TILE); this.tileBox.position.set((tx + 0.5) * TILE, 0.15, (tz + 0.5) * TILE);
       this.tileBox.material.color.setHex(id === 'bulldoze' ? 0xff5544 : id === 'road' ? 0xcccccc : 0x66ff99);
@@ -77,7 +94,9 @@ export class GodControls {
       this.tileBox.visible = true; this.tileBox.scale.set(ev.w * TILE, 0.2, ev.d * TILE); this.tileBox.position.set(ev.geo.fx, 0.15, ev.geo.fz); this.tileBox.material.color.setHex(ev.ok && unlocked ? 0x44ff66 : 0xff4455);   // the whole plot
       const ok = ev.ok && unlocked; this.ghostBox.material.color.setHex(ok ? 0x44ff66 : 0xff4455);
       const [dx, dz] = [ev.geo.doorOut[0] - ev.geo.cx, ev.geo.doorOut[1] - ev.geo.cz]; this.ghostDoor.visible = def.needsRoad !== false; this.ghostDoor.position.set(dx, 0.9, dz); this.ghostDoor.rotation.set(0, Math.atan2(dx, dz), 0); this.ghostDoor.rotation.x = 0; this.ghostDoor.material.color.setHex(ok ? 0xffffff : 0xff8888);
-      g.ui.setHover(`${def.name}: ${!unlocked ? 'Permit needed: post a permit form at the Postbox' : ev.ok ? (g.input.padActive ? 'Press A to order it' : 'Click to order it') : ev.reason}`);
+      const key = tx + ',' + tz + ':' + this.tool.sub; if (key !== this._waysKey) { this._waysKey = key; this._ways = [0, 1, 2, 3].filter((r) => { const e = g.buildings.evaluate(this.tool.sub, tx, tz, r); return e.ok && e.rot === r; }).length; }
+      const turn = this._ways > 1 ? ` · ${g.input.padActive ? '△' : 'R'} turns it (${this._ways} ways it can face)` : '';
+      g.ui.setHover(`${def.name}: ${!unlocked ? 'Permit needed: post a permit form at the Postbox' : ev.ok ? (g.input.padActive ? 'Press ✕ to order it' : 'Click to order it') + turn : ev.reason}`);
       if (inp.mouse.down) {
         if (!unlocked) g.ui.toast('Permit required: post a permit form at the Postbox.');
         else if (!ev.ok) g.ui.toast(ev.reason);
@@ -86,7 +105,7 @@ export class GodControls {
     } else if ((id === 'build' || id === 'park' || id === 'util') && !this.tool.sub) {
       // a tool is picked but not a building yet: still show where the cursor is, and say what to do
       this.tileBox.visible = g.world.inBounds(tx, tz); this.tileBox.scale.set(TILE, 0.2, TILE); this.tileBox.position.set((tx + 0.5) * TILE, 0.15, (tz + 0.5) * TILE); this.tileBox.material.color.setHex(0xffd23f);
-      g.ui.setHover(g.input.padActive ? 'Pick a building: D-pad up/down, then A to place it' : '👈 Pick a building from the list first, then click here to place it');
+      g.ui.setHover(g.input.padActive ? 'Pick a building: D-pad ↑/↓, then ✕ to place it (□ opens the Planning menu)' : '👈 Pick a building from the list first, then click here to place it');
       if (inp.mouse.down) g.ui.toast('Choose a building from the list on the left first.');
     } else if (id === 'query') {
       if (inp.mouse.down) g.ui.query(this.queryAt(p, tx, tz));
@@ -94,11 +113,12 @@ export class GodControls {
   }
   paint(tx, tz) {
     const g = this.game, w = g.world; if (!w.inBounds(tx, tz)) return; const key = tx + ',' + tz; if (this.lastTile === key) return; this.lastTile = key; const id = this.tool.id;
-    if (id === 'road') { const type = this.tool.sub === 'paved' ? 2 : 1; if (type === 2 && g.population.count() < 15) { g.ui.toast('Paving needs 15 residents.'); return; } const old = g.roadPlans.get(tx, tz); if (old && old.type >= type) return; if (w.canRoad(tx, tz, type)) { if (g.economy.spend(ROAD_COST[type === 2 ? 'paved' : 'dirt'])) { if (old) g.roadPlans.drop(old); g.roadPlans.plan(tx, tz, type); g.flags.pathOrdered = true; } else g.ui.toast('Not enough funds.'); } }
+    if (id === 'road') { const type = this.tool.sub === 'paved' ? 2 : 1; if (type === 2 && g.population.count() < 15) { g.ui.toast('Paving needs 15 residents.'); return; } const old = g.roadPlans.get(tx, tz); if (old && old.type >= type) return; if (w.canRoad(tx, tz, type)) { if (g.economy.spend(ROAD_COST[type === 2 ? 'paved' : 'dirt'], 'Roads and paths')) { if (old) g.roadPlans.drop(old); g.roadPlans.plan(tx, tz, type); g.flags.pathOrdered = true; } else g.ui.toast('Not enough funds.'); } }
     else if (id === 'zone') { const z = { res: ZONE.RES, com: ZONE.COM, ind: ZONE.IND, none: ZONE.NONE }[this.tool.sub || 'res']; w.setZone(tx, tz, z); }
     else if (id === 'bulldoze') {
+      const T = g.tools; if (T && !T.gone && Math.floor(T.x / TILE) === tx && Math.floor(T.z / TILE) === tz) { T.clearAway(true); return; }
       const b = w.buildingAt(tx, tz), rp = g.roadPlans.get(tx, tz);
-      if (rp) { g.economy.earn(ROAD_COST[rp.type === 2 ? 'paved' : 'dirt']); g.roadPlans.drop(rp); }
+      if (rp) { g.economy.earn(ROAD_COST[rp.type === 2 ? 'paved' : 'dirt'], 'Roads and paths'); g.roadPlans.drop(rp); }
       else if (b) { if (b.def.special) { g.ui.toast('That cannot be demolished.'); return; } g.buildings.remove(b); g.messages.push('Planning Office', `${b.def.name} demolished.`); }
       else if (w.road[w.idx(tx, tz)]) { if (!this.roadTouchesDoor(tx, tz) || true) w.removeRoad(tx, tz); }
       else if (w.zone[w.idx(tx, tz)]) w.setZone(tx, tz, 0);

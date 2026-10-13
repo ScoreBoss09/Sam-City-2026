@@ -201,7 +201,7 @@ export class Raids {
     const g = this.game;
     if (this.boat) { g.scene.remove(this.boat); this.boat = null; }
     this.take();
-    for (const r of this.raiders) { r.remove = true; } this.raiders = [];
+    for (const r of this.raiders) g.population.depart(r); this.raiders = [];
     for (const s of g.population.sims) { s.engaged = null; s.panic = false; }
     if (g.player.weapon && !silent) { g.player.weapon = null; g.ui.toast('You hang the club back on its peg.'); } else if (silent) g.player.weapon = null;
     if (this.state !== 'idle' && !silent) {

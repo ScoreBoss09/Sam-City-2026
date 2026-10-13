@@ -26,4 +26,7 @@ export const BUILDS = {
   elderly:   { h: 0.94, w: 0.98, body: { sw: 0.92, td: 1.05, hip: 1.0, lt: 0.9, belly: 0.25 } },
   child:     { h: 0.62, w: 0.82, body: { sw: 0.9, td: 0.95, hip: 0.95, lt: 0.9, belly: 0, headS: 1.28 } },
 };
+  // a curvier, more glamorous build for some of the younger women (narrow waist, fuller hips)
+BUILDS.hourglass = { h: 1.03, w: 0.94, body: { sw: 0.95, td: 0.9, hip: 1.12, lt: 0.92, belly: 0 } };
+export const YOUNG_F_BUILD_WEIGHTS = [['average', 24], ['slim', 26], ['hourglass', 22], ['athletic', 10], ['tall', 10], ['stocky', 4], ['short', 4]];
 export const ADULT_BUILD_WEIGHTS = [['average', 30], ['slim', 18], ['athletic', 10], ['stocky', 14], ['heavy', 10], ['tall', 10], ['short', 8]];

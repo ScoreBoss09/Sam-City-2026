@@ -1,1 +1,3 @@
 textures/
+.claude/worktrees/
+__pycache__/

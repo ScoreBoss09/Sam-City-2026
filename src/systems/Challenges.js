@@ -43,7 +43,7 @@ export class Challenges {
     for (const c of open) if (this.progress(c).frac >= 1) this.complete(c);
   }
   complete(c) {
-    const g = this.game; this.doneIds.push(c.id); g.economy.funds += c.pay; Sfx.play('done');
+    const g = this.game; this.doneIds.push(c.id); g.economy.earn(c.pay, 'Council grants'); Sfx.play('done');
     g.ui.toast(`${c.icon} Challenge done: ${c.title}! The Council sends a grant of ${fmtMoney(c.pay)}.`, 4200);
     g.messages.push('Parish Council', `${c.title}: grant of ${fmtMoney(c.pay)}.`, 'good');
     g.mail.send('The Parish Council', `Well done: ${c.title}`, `Dear Sam,\n\n"${c.text}" Done, and the Council is delighted. Please find enclosed a grant of ${fmtMoney(c.pay)}, already paid into the town funds.\n\nWith thanks,\nThe Parish Council`, { quiet: true });

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeHorseCart } from '../render/Vehicles.js';
 import { TILE } from '../config.js';
 import { stdMat } from '../render/BuildingFactory.js';
 import { MATERIALS } from '../data/buildings.js';
@@ -21,13 +22,14 @@ export class Logistics {
   land(order) {
     const g = this.game, lift = g.lift, depot = g.depot, toDock = () => { const d = this.dock(); g.piles.add(d.x, d.z, { [order.mat]: order.qty }); order.done = true; const porters = depot && g.population.sims.some((q) => q.role === 'builder'); g.messages.push('Logistics', `${order.qty} ${MATERIALS[order.mat].name.toLowerCase()} is waiting on the Lift dock. ${porters ? 'Builders will cart it to the Stockyard (or carry it yourself).' : 'Carry it where you need it.'}`, 'good'); };
     // horse-and-cart days: no lorries until the town has electricity, so everything is fetched from the dock by hand
-    if (!depot || !g.tech || g.tech.era < 1) return toDock();
+    const horse = g.tech && g.tech.era < 1 && g.buildings.count('stables') > 0;
+    if (!depot || !g.tech || (g.tech.era < 1 && !horse)) return toDock();
     const to = g.world.findPath(lift.doorTile.x, lift.doorTile.z, depot.doorTile.x, depot.doorTile.z, true);
     if (!to) { g.messages.push('Logistics', 'No road from the Lift to the Stockyard, so the goods are left on the dock.', 'warn'); return toDock(); }
-    const mesh = this.makeTruck(order.mat === 'steel' ? 0x6a7a8c : order.mat === 'glass' ? 0x3aa0c8 : order.mat === 'brick' ? 0xb4442f : 0xc08a40);
+    const mesh = horse ? makeHorseCart() : this.makeTruck(order.mat === 'steel' ? 0x6a7a8c : order.mat === 'glass' ? 0x3aa0c8 : order.mat === 'brick' ? 0xb4442f : 0xc08a40);
     const pts = to.map(([x, z]) => ({ x: (x + 0.5) * TILE, z: (z + 0.5) * TILE }));
     const back = pts.slice().reverse();
-    const t = { mesh, path: pts.slice(), order, back, phase: 'in', wait: 0 };
+    const t = { mesh, path: pts.slice(), order, back, phase: 'in', wait: 0, horse };
     mesh.position.set(lift.doorOut.x, 0, lift.doorOut.z); g.scene.add(mesh); this.trucks.push(t);
   }
   update(dt) {
@@ -41,7 +43,7 @@ export class Logistics {
     for (const t of this.trucks) {
       if (t.phase === 'unload') { t.wait -= dt; if (t.wait <= 0) { t.phase = 'out'; t.path = t.back.slice(); } continue; }
       const p = t.path[0]; if (!p) { t.done = true; if (t.phase === 'in') { t.phase = 'unload'; t.wait = 1.5; t.done = false; this.game.economy.deliverToDepot(t.order); } continue; }
-      const dx = p.x - t.mesh.position.x, dz = p.z - t.mesh.position.z, d = Math.hypot(dx, dz), step = 9 * dt;
+      const dx = p.x - t.mesh.position.x, dz = p.z - t.mesh.position.z, d = Math.hypot(dx, dz), step = (t.horse ? 3.2 : 9) * dt; if (t.horse) for (const [i, l] of t.mesh.userData.legs.entries()) l.rotation.x = Math.sin(performance.now() / 120 + i * 1.6) * 0.5;
       const ang = Math.atan2(dx, dz);
       if (d > 0.1) { let da = ang - t.mesh.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da)); t.mesh.rotation.y += da * Math.min(1, dt * 8); }
       if (d <= step) { t.mesh.position.x = p.x; t.mesh.position.z = p.z; t.path.shift(); } else { t.mesh.position.x += dx / d * step; t.mesh.position.z += dz / d * step; }

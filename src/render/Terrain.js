@@ -19,7 +19,7 @@ export class Terrain {
     this.canvas = document.createElement('canvas'); this.canvas.width = this.canvas.height = MAP * PX;
     this.ctx = this.canvas.getContext('2d');
     this.tex = new THREE.CanvasTexture(this.canvas);
-    this.tex.magFilter = this.tex.minFilter = THREE.NearestFilter; this.tex.generateMipmaps = false; this.tex.colorSpace = THREE.SRGBColorSpace;
+    this.tex.magFilter = THREE.NearestFilter; this.tex.minFilter = THREE.NearestMipmapLinearFilter; this.tex.generateMipmaps = true; this.tex.anisotropy = 4; this.tex.colorSpace = THREE.SRGBColorSpace;
     const mat = new THREE.MeshStandardMaterial({ map: this.tex, roughness: 1, alphaTest: 0.5 });
     this.ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat);
     this.ground.rotation.x = -Math.PI / 2; this.ground.position.set(size / 2, 0, size / 2); this.ground.receiveShadow = true;
@@ -33,12 +33,12 @@ export class Terrain {
     this.zoneMesh.rotation.x = -Math.PI / 2; this.zoneMesh.position.set(size / 2, 0.04, size / 2); scene.add(this.zoneMesh);
 
     // sea
-    const wt = waterTexture();
+    const wt = waterTexture(); wt.minFilter = THREE.LinearMipmapLinearFilter; wt.generateMipmaps = true; wt.anisotropy = 4; wt.needsUpdate = true;   // no shimmer from far up
     this.water = new THREE.Mesh(new THREE.PlaneGeometry(1500, 1500), new THREE.MeshStandardMaterial({ map: wt, roughness: 0.35, metalness: 0.1, emissive: 0x0a2a55, emissiveIntensity: 0.5 }));
     this.water.rotation.x = -Math.PI / 2; this.water.position.set(size / 2, -0.5, size / 2); this.water.receiveShadow = true; scene.add(this.water);
 
     const sp = document.createElement('canvas'); sp.width = sp.height = 64; const sx = sp.getContext('2d'); sx.fillStyle = '#000'; sx.fillRect(0, 0, 64, 64); for (let i = 0; i < 40; i++) { const a = 0.4 + Math.random() * 0.6; sx.fillStyle = `rgba(255,255,255,${a})`; sx.fillRect(Math.random() * 62 | 0, Math.random() * 62 | 0, 2, 1); }
-    this.sparkTex = new THREE.CanvasTexture(sp); this.sparkTex.wrapS = this.sparkTex.wrapT = THREE.RepeatWrapping; this.sparkTex.magFilter = this.sparkTex.minFilter = THREE.NearestFilter; this.sparkTex.repeat.set(26, 26);
+    this.sparkTex = new THREE.CanvasTexture(sp); this.sparkTex.wrapS = this.sparkTex.wrapT = THREE.RepeatWrapping; this.sparkTex.magFilter = THREE.NearestFilter; this.sparkTex.minFilter = THREE.LinearMipmapLinearFilter; this.sparkTex.repeat.set(26, 26);
     this.spark = new THREE.Mesh(new THREE.PlaneGeometry(1500, 1500), new THREE.MeshBasicMaterial({ map: this.sparkTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.55 })); this.spark.rotation.x = -Math.PI / 2; this.spark.position.set(size / 2, -0.44, size / 2); scene.add(this.spark);
     this.paintAll(); this.buildRocks(); this.buildTrees();
     world.events.on('tile', (x, z) => this.paintAround(x, z));
@@ -77,8 +77,11 @@ export class Terrain {
       const H = PX / 2, ax = px - H + 0.5, az = py - H + 0.5;   // pixel offset from the tile centre
       if (isRoad && !paved) {
         // a dirt cart track about 4.5 m wide down the middle (and out along each connection), grass verges either side
-        const half = 9, inTrack = (Math.abs(ax) < half && Math.abs(az) < half) || ((N && az < 0 || S && az > 0) && Math.abs(ax) < half) || ((W && ax < 0 || E && ax > 0) && Math.abs(az) < half);
-        const edge = inTrack && ((Math.abs(ax) >= half - 2 && !((W && ax < 0 || E && ax > 0) && Math.abs(az) < half)) || (Math.abs(az) >= half - 2 && !((N && az < 0 || S && az > 0) && Math.abs(ax) < half)));
+        // paths laid side by side (or in a block) join up into one wide track: a quarter of the tile fills in wherever the
+        // neighbours on both of its sides and the diagonal between them are path too
+        const qx = ax > 0 ? 1 : -1, qz = az > 0 ? 1 : -1, fill = !!((qx > 0 ? E : W) && (qz > 0 ? S : N) && roadAt(tx + qx, tz + qz));
+        const half = 9, inTrack = fill || (Math.abs(ax) < half && Math.abs(az) < half) || ((N && az < 0 || S && az > 0) && Math.abs(ax) < half) || ((W && ax < 0 || E && ax > 0) && Math.abs(az) < half);
+        const edge = !fill && inTrack && ((Math.abs(ax) >= half - 2 && !((W && ax < 0 || E && ax > 0) && Math.abs(az) < half)) || (Math.abs(az) >= half - 2 && !((N && az < 0 || S && az > 0) && Math.abs(ax) < half)));
         const rut = inTrack && (((N || S) && (Math.abs(Math.abs(ax) - 4.5) < 1)) || ((E || W) && (Math.abs(Math.abs(az) - 4.5) < 1)));
         if (!inTrack) { cat = 'grass'; }
         else { c = edge ? (hash(tx * PX + px, tz * PX + py) > 0.45 ? rgb(0x7a6a42) : rgb(0x8f7a4c)) : rut ? rgb(0x7a5e3a) : rgb(0xa88a5c); a = 22; cat = edge ? 'grass' : 'dirt'; if (rut && !edge) mult = 0.78; if (!edge && hash(tx * PX + px * 3, tz * PX + py * 5) > 0.97) { c = rgb(0x6a6a62); a = 8; cat = null; } }
@@ -133,10 +136,10 @@ export class Terrain {
       if (near) edge.push([x, z]);
     }
     const geo = new THREE.BoxGeometry(TILE * 1.02, 3.5, TILE * 1.02);
-    const im = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), edge.length);
+    const im = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 8 }), edge.length);
     const m = new THREE.Matrix4(), c = new THREE.Color();
     edge.forEach(([x, z], k) => {
-      const hh = 0.6 + hash(x, z) * 0.9; m.makeScale(1, hh, 1).setPosition((x + 0.5) * TILE, -1.75 * hh - 0.02, (z + 0.5) * TILE); im.setMatrixAt(k, m);
+      const hh = 0.6 + hash(x, z) * 0.9; m.makeScale(1, hh, 1).setPosition((x + 0.5) * TILE, -1.75 * hh - 0.12, (z + 0.5) * TILE); im.setMatrixAt(k, m);
       c.setHex(hash(z, x) > 0.5 ? 0x7a6347 : 0x6a5640); im.setColorAt(k, c);
     });
     im.receiveShadow = true; this.scene.add(im);
@@ -157,7 +160,7 @@ export class Terrain {
     const fg = new THREE.ConeGeometry(1.5, 3.4, 6), tg = new THREE.CylinderGeometry(0.22, 0.28, 1.2, 5), sg = new THREE.CylinderGeometry(0.28, 0.34, 0.45, 6);
     this.foliage = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true, map: Assets.tex('leaves', 2, 2) }), pts.length);
     this.trunks = new THREE.InstancedMesh(tg, new THREE.MeshStandardMaterial({ color: Assets.has('bark') ? 0xffffff : 0x5a3b22, roughness: 1, map: Assets.tex('bark', 1, 1) }), pts.length);
-    this.stumps = new THREE.InstancedMesh(sg, new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 1 }), pts.length); this.stumps.count = 0; this.stumpN = 0;
+    this.stumps = new THREE.InstancedMesh(sg, new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 1 }), pts.length); this.stumps.count = 0; this.stumpN = 0; this.stumps.frustumCulled = false; this.stumpList = [];   // (no culling: instances are spread over the whole island, so the default bounds made them flicker)
     this._m = new THREE.Matrix4(); const c = new THREE.Color();
     pts.forEach((t, k) => { t.idx = k; this.setTree(k, 1); c.setHSL(0.27 + t.hue * 0.06, 0.5, Assets.has('leaves') ? 0.5 + t.light * 0.18 : 0.2 + t.light * 0.1); this.foliage.setColorAt(k, c); });
     this.foliage.castShadow = true; this.scene.add(this.foliage, this.trunks, this.stumps);
@@ -187,11 +190,21 @@ export class Terrain {
   /** Take a tree away completely (no stump): used when land is cleared for the Lift yard or a building plot. */
   removeTree(t) { if (!t.alive && !this.anims?.has(t)) { this.setTree(t.idx, 0.0001); return; } t.alive = false; t.amount = 0; t.removed = true; if (this.anims) this.anims.delete(t); this.setTree(t.idx, 0.0001); const k = t.tz * MAP + t.tx; this.treeAlive.set(k, Math.max(0, (this.treeAlive.get(k) || 1) - 1)); }
   /** Used when restoring a saved game: remove a felled tree without touching terrain events. */
-  killTree(t) { t.alive = false; t.amount = 0; this.setTree(t.idx, 0.0001); this._m.makeTranslation(t.x, 0.22, t.z); this.stumps.setMatrixAt(this.stumpN++, this._m); this.stumps.count = this.stumpN; this.stumps.instanceMatrix.needsUpdate = true; const k = t.tz * MAP + t.tx; this.treeAlive.set(k, Math.max(0, (this.treeAlive.get(k) || 1) - 1)); }
+  killTree(t) { t.alive = false; t.amount = 0; this.setTree(t.idx, 0.0001); this.addStump(t); const k = t.tz * MAP + t.tx; this.treeAlive.set(k, Math.max(0, (this.treeAlive.get(k) || 1) - 1)); }
+  /** Stumps: remembered with the day they were made, so the night crew can clear them after a couple of days. */
+  addStump(t) { this.stumpList.push({ t, x: t.x, z: t.z, day: this.today || 0 }); this.drawStumps(); }
+  drawStumps() { this.stumpN = 0; for (const s of this.stumpList) { this._m.makeTranslation(s.x, 0.22, s.z); this.stumps.setMatrixAt(this.stumpN++, this._m); } this.stumps.count = this.stumpN; this.stumps.instanceMatrix.needsUpdate = true; }
+  clearStumps(beforeDay) { const n = this.stumpList.length; this.stumpList = this.stumpList.filter((s) => s.day > beforeDay); if (this.stumpList.length !== n) this.drawStumps(); return n - this.stumpList.length; }
+  /** Put a felled tree back (the night crew), if its spot is still free. */
+  regrow(t) {
+    if (t.alive || t.removed) return false; const w = this.world, k = t.tz * MAP + t.tx; if (w.road[k] || (this.game && this.game.buildings.buildingAtPoint(t.x, t.z))) return false;
+    t.alive = true; t.amount = 3; this.setTree(t.idx, 1); this.treeAlive.set(k, (this.treeAlive.get(k) || 0) + 1); this.stumpList = this.stumpList.filter((s) => s.t !== t); this.drawStumps();
+    if (w.terrain[k] === T.LAND) { w.terrain[k] = T.FOREST; w.events.emit('tile', t.tx, t.tz); } return true;
+  }
   /** One chop: shrink the tree; when it is felled leave a stump, and clear the forest tile when empty. */
   chopTree(t) {
     t.amount--; if (t.amount > 0) { this.setTree(t.idx, 0.55 + 0.15 * t.amount); return false; }
-    t.alive = false; (this.anims || (this.anims = new Map())).set(t, { kind: 'fall', t: 0, f: 0.7, dir: this.fallFrom ? Math.atan2(t.x - this.fallFrom.x, t.z - this.fallFrom.z) + Math.PI / 2 : Math.random() * 6.28 }); this.fallFrom = null; this._m.makeTranslation(t.x, 0.22, t.z); this.stumps.setMatrixAt(this.stumpN++, this._m); this.stumps.count = this.stumpN; this.stumps.instanceMatrix.needsUpdate = true;
+    t.alive = false; (this.anims || (this.anims = new Map())).set(t, { kind: 'fall', t: 0, f: 0.7, dir: this.fallFrom ? Math.atan2(t.x - this.fallFrom.x, t.z - this.fallFrom.z) + Math.PI / 2 : Math.random() * 6.28 }); this.fallFrom = null; this.addStump(t);
     const k = t.tz * MAP + t.tx, n = (this.treeAlive.get(k) || 1) - 1; this.treeAlive.set(k, n);
     if (n <= 0) { this.world.terrain[k] = T.LAND; this.world.events.emit('tile', t.tx, t.tz); this.world.events.emit('cleared', t.tx, t.tz); }
     return true;
@@ -199,7 +212,7 @@ export class Terrain {
 
   update(dt, godMode) {
     this.animate(dt);
-    this.water.material.map.offset.x += dt * 0.004; this.water.material.map.offset.y += dt * 0.002; this.sparkTex.offset.x -= dt * 0.012; this.sparkTex.offset.y += dt * 0.007; this.spark.material.opacity = 0.2 + 0.5 * (this.day ?? 1);
+    this.water.material.map.offset.x += dt * 0.004; this.water.material.map.offset.y += dt * 0.002; this.sparkTex.offset.x -= dt * 0.012; this.sparkTex.offset.y += dt * 0.007; this.spark.material.opacity = (0.2 + 0.5 * (this.day ?? 1)) * (godMode && this.game ? Math.max(0, Math.min(1, (260 - this.game.camera.position.y) / 160)) : 1); this.spark.visible = this.spark.material.opacity > 0.01;
     this.zoneMesh.visible = godMode;
     if (this.zDirty) this.paintZones();
   }

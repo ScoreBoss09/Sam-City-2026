@@ -7,24 +7,35 @@ const CHAT_LINES = ['Nice weather.', 'Did you hear?', 'No way!', 'Really?', 'Lov
   'Shocking.', 'Smashing!', 'Champion.', 'Bit nippy.', 'Did you get any berries?', 'Lovely bit of timber, that.', 'The Lift was late again.', 'Where\'s Sam off to?', 'Quiz night?', 'Ta-ra then!', 'Sorry, sorry.', 'Who\'s got the biscuits?'];
 const GREET = { cheerful: ['Morning, Sam!', 'Alright, Sam?', 'Lovely day!', 'Hiya, Sam!', 'Ey up, Sam!', 'There\'s our Sam!', 'Cooee!'], grumpy: ['Hmph.', 'Sam.', 'Oh. It\'s you.', 'What now?', 'Mm.', 'Don\'t track mud in.'], shy: ['Oh, um, hi', 'Hello...', 'Morning...', '*waves*', 'Oh! Sam.'], busy: ['Sam! Can\'t stop!', 'Hiya, bye!', 'Cheers, Sam!', 'Late, late, late!', 'Morning! Gotta dash!'] };
 const texCache = {};
+/** A speech bubble (or name tag) picture. Long lines wrap onto up to four lines, and the type only gets smaller when it must,
+ *  so nothing is squashed; the texture remembers its size in world units (userData.w / .h) for the sprite. */
 function bubbleTexture(text, kind) {
   const k = text + kind; if (texCache[k]) return texCache[k];
-  const c = document.createElement('canvas'); c.width = 192; c.height = 64; const x = c.getContext('2d');
-  x.font = 'bold 22px monospace'; const w = Math.min(184, x.measureText(text).width + 22);
+  const c = document.createElement('canvas'), x = c.getContext('2d'), maxW = 300, PX = 3 / 192; let size = 22, lines = [text];
+  const wrap = (sz) => { x.font = `bold ${sz}px monospace`; const out = []; let cur = ''; for (const w of text.split(' ')) { const t = cur ? cur + ' ' + w : w; if (x.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t; } if (cur) out.push(cur); return out; };
+  if (kind !== 'name') for (size = 22; size >= 12; size -= 2) { lines = wrap(size); if (lines.length <= (size > 16 ? 3 : 4) && lines.every((l) => x.measureText(l).width <= maxW)) break; }
+  x.font = `bold ${size}px monospace`; const lh = size * 1.18, tw = Math.max(...lines.map((l) => x.measureText(l).width)), bw = Math.min(maxW + 16, tw + 22), bh = lines.length * lh + 14, tail = kind === 'name' ? 0 : 12;
+  c.width = Math.max(192, Math.ceil(bw + 8)); c.height = Math.ceil(bh + tail + 10); x.font = `bold ${size}px monospace`;
   x.fillStyle = kind === 'name' ? 'rgba(14,26,43,.85)' : '#fffdf4'; x.strokeStyle = '#1a2230'; x.lineWidth = 3;
-  const bx = (192 - w) / 2, by = 6, bh = 36; x.beginPath(); x.roundRect(bx, by, w, bh, 8); x.fill(); if (kind !== 'name') { x.stroke(); x.beginPath(); x.moveTo(90, by + bh); x.lineTo(98, by + bh + 12); x.lineTo(104, by + bh); x.closePath(); x.fillStyle = '#fffdf4'; x.fill(); }
-  x.fillStyle = kind === 'name' ? '#fff' : '#1a2230'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 96, by + bh / 2 + 1, 176);
-  const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.colorSpace = THREE.SRGBColorSpace; return (texCache[k] = t);
+  const bx = (c.width - bw) / 2, by = 4, mid = c.width / 2; x.beginPath(); x.roundRect(bx, by, bw, bh, 8); x.fill(); if (kind !== 'name') { x.stroke(); x.beginPath(); x.moveTo(mid - 6, by + bh); x.lineTo(mid + 2, by + bh + tail); x.lineTo(mid + 8, by + bh); x.closePath(); x.fillStyle = '#fffdf4'; x.fill(); }
+  x.fillStyle = kind === 'name' ? '#fff' : '#1a2230'; x.textAlign = 'center'; x.textBaseline = 'middle'; lines.forEach((l, i) => x.fillText(l, mid, by + 7 + lh * (i + 0.5)));
+  const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.colorSpace = THREE.SRGBColorSpace; t.userData = { w: c.width * PX, h: c.height * PX }; return (texCache[k] = t);
 }
-function makeSprite(text, kind) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTexture(text, kind), transparent: true, depthWrite: false })); s.scale.set(3.0, 1.0, 1); s.renderOrder = 10; return s; }
+function makeSprite(text, kind) { const m = bubbleTexture(text, kind), s = new THREE.Sprite(new THREE.SpriteMaterial({ map: m, transparent: true, depthWrite: false })); s.scale.set(m.userData.w, m.userData.h, 1); s.userData.size = m.userData; s.renderOrder = 10; return s; }
 
 const COMPAT = { cheerful: { cheerful: 0.8, grumpy: 0.2, shy: 0.6, busy: 0.5 }, grumpy: { cheerful: 0.2, grumpy: 0.45, shy: 0.3, busy: 0.4 }, shy: { cheerful: 0.6, grumpy: 0.3, shy: 0.75, busy: 0.4 }, busy: { cheerful: 0.5, grumpy: 0.4, shy: 0.4, busy: 0.6 } };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 /** Conversations, relationships, greetings, speech bubbles and name tags. */
+// regional tics, added now and then to the end of what people say
+const TICS = { north: [', love', ', our kid', ', pet'], cockney: [', innit', ', guv', ', me old china', ', mate'], brummie: [', bab', ', our kid'], west: [', my lover', ', my ansum', ', me dear'],
+  scouse: [', la', ', lad', ', calm down'], geordie: [', pet', ', man', ', like'], posh: [', darling', ', old thing', ', what?'], yorks: [', lad', ', love', ', tha knows'] };
 export class Social {
   constructor(game) { this.game = game; this.timer = 0; this.sprites = new Set(); }
   say(sim, text, dur = 2.4) {
     if (sim.bubble) { this.game.scene.remove(sim.bubble.sprite); sim.bubble.sprite.material.dispose(); }
+    if (typeof text === 'string' && sim.look) { if (sim.look.gender === 'f') text = text.replace(/\b(the|my) wife\b/gi, '$1 husband').replace(/\bmy missus\b/gi, 'my fella'); else text = text.replace(/\b(the|my) husband\b/gi, '$1 wife'); }   // the right other half for the speaker
+    const tl = sim.look && TICS[sim.look.dialect]; if (tl && typeof text === 'string' && text.length < 90 && /[a-z][.!?]$/.test(text) && Math.random() < 0.2) text = text.slice(0, -1) + pick(tl) + text.slice(-1);
+    if (sim.drunk > 0.55 && typeof text === 'string') text = text.replace(/s(?=[aeiou ])/g, (m) => Math.random() < 0.6 ? 'sh' : m).replace(/\.$/, Math.random() < 0.4 ? '... *hic*' : '.');   // slurring
     const sprite = makeSprite(text, 'say'); this.game.scene.add(sprite); sim.bubble = { sprite, t: dur, dur };
   }
   startChat(a, b) {
@@ -66,7 +77,7 @@ export class Social {
       if (!c.partner || c.partner.remove || !c.partner.chat) { s.chat = null; continue; }
       c.t -= dt; c.turn -= dt; c.laugh = Math.max(0, c.laugh - dt);
       if (c.turn <= 0) { c.speaker = !c.speaker; c.turn = 1.6 + Math.random() * 2.6; if (c.speaker) { if (s.partner === c.partner && Math.random() < 0.4) this.say(s, pick(['Love you', 'Darling', '♥', 'Missed you']), 2); else if (Math.random() < 0.22) { c.laugh = 1.6; c.partner.chat.laugh = 1.6; this.say(s, pick(['Ha ha!', 'Ha!', 'Good one!']), 1.8); }
-        else { const adult = g.ui.adult && s.kind !== 'child' && c.partner.kind !== 'child' && Math.random() < 0.45; this.say(s, pick(adult ? A.CHAT : CHAT_LINES), 2.2); if (Math.random() < 0.2) s.emote = { upper: pick(['shrug', 'facepalm', 'think', 'point', 'clap']), t: 1.6 }; } } }
+        else { const adult = g.ui.adult && s.kind !== 'child' && c.partner.kind !== 'child' && Math.random() < 0.45; { const L = (adult ? A.CHAT : CHAT_LINES).filter((t) => g.talk.ok(t)); this.say(s, pick(L.length ? L : CHAT_LINES), 2.2); } if (Math.random() < 0.2) s.emote = { upper: pick(['shrug', 'facepalm', 'think', 'point', 'clap']), t: 1.6 }; } } }
       if (c.t <= 0) this.endChat(s);
     }
     // look for new chats
@@ -110,11 +121,11 @@ export class Social {
       const b = s.bubble; const vis = !s.mesh.visible || godFar;
       if (b) {
         b.t -= dt; if (b.t <= 0 || vis || s.remove) { g.scene.remove(b.sprite); b.sprite.material.dispose(); s.bubble = null; }
-        else { const sc = Math.min(1, b.t * 4, (b.dur - b.t) * 6 + 0.2); b.sprite.position.set(s.x, 2.55 + (s.sitting ? -0.35 : 0), s.z); b.sprite.scale.set(3 * sc, 1 * sc, 1); }
+        else { const sc = Math.min(1, b.t * 4, (b.dur - b.t) * 6 + 0.2); const z = b.sprite.userData.size || { w: 3, h: 1 }; b.sprite.position.set(s.x, 2.55 + (s.sitting ? -0.35 : 0) + (z.h - 1) / 2, s.z); b.sprite.scale.set(z.w * sc, z.h * sc, 1); }
       }
       // name tags near Sam
       const near = g.mode === 'sim' && s.mesh.visible && Math.hypot(p.x - s.x, p.z - s.z) < 5.5 && !s.bubble && !s.sleeping;
-      if (near && !s.tag) { s.tag = makeSprite(s.name, 'name'); s.tag.scale.set(2.4, 0.8, 1); g.scene.add(s.tag); }
+      if (near && !s.tag) { s.tag = makeSprite(s.name, 'name'); s.tag.scale.set(s.tag.userData.size.w * 0.8, s.tag.userData.size.h * 0.8, 1); g.scene.add(s.tag); }
       if (s.tag) { if (near) s.tag.position.set(s.x, 2.4 + (s.sitting ? -0.35 : 0), s.z); if (!near || s.remove) { g.scene.remove(s.tag); s.tag = null; } }
     }
   }

@@ -1,8 +1,12 @@
 import * as THREE from 'three';
 import { allRoofMaterials } from './Textures.js';
+import { MAP } from '../config.js';
+import { T as TT } from '../world/World.js';
 
 /**
- * The year turns: spring blossom (Mar-Apr), green summers, golden autumns (Sep-Nov) and snowy winters (Dec-Feb).
+ * The year turns: spring blossom (Mar-Apr), green summers, golden autumns (Sep-Nov) and winters with snow that comes and goes:
+ * winter showers fall as snow (most of them in January, fewer in December and February), it settles in patches while it
+ * snows, and thaws on the days between. Roads and building plots are kept clear (gritted and swept).
  * Everything eases in over a few seconds when the month changes.
  */
 const SNOW = [1, 0.8, 0.1, 0, 0, 0, 0, 0, 0, 0, 0.15, 0.7], AUTUMN = [0, 0, 0, 0, 0, 0, 0, 0.1, 0.45, 1, 0.75, 0.1], BLOSSOM = [0, 0, 0.6, 1, 0.3, 0, 0, 0, 0, 0, 0, 0];
@@ -17,10 +21,14 @@ export class Seasons {
     sx.putImageData(sd, 0, 0);
     const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingEnabled = true; x.drawImage(sm, 0, 0, 256, 256); x.drawImage(sm, 0, 0, 512, 512);
     const d = x.getImageData(0, 0, 256, 256);
-    for (let i = 0; i < 256 * 256; i++) { const n = d.data[i * 4] / 255, a = Math.max(0, Math.min(1, (n - 0.5) * 3.2 + 0.55)); d.data[i * 4] = 238; d.data[i * 4 + 1] = 243; d.data[i * 4 + 2] = 250; d.data[i * 4 + 3] = a * 255; }
-    x.putImageData(d, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 10);
-    const g = game.terrain.ground; this.blanket = new THREE.Mesh(g.geometry, new THREE.MeshStandardMaterial({ map: t, transparent: true, opacity: 0, depthWrite: false, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2 }));
-    this.blanket.rotation.copy(g.rotation); this.blanket.position.copy(g.position); this.blanket.position.y += 0.03; this.blanket.receiveShadow = true; this.blanket.renderOrder = 1; this.blanket.visible = false; game.scene.add(this.blanket);
+    for (let i = 0; i < 256 * 256; i++) { const n = d.data[i * 4] / 255, a = Math.max(0, Math.min(1, (n - 0.66) / 0.26)); d.data[i * 4] = 238; d.data[i * 4 + 1] = 243; d.data[i * 4 + 2] = 250; d.data[i * 4 + 3] = a * 255; }
+    x.putImageData(d, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 4);   // drifts tens of metres across
+    const g = game.terrain.ground; // where snow can lie: land, not roads, water or building plots (one pixel per tile, multiplied in as the alpha map)
+    this.maskC = document.createElement('canvas'); this.maskC.width = this.maskC.height = MAP; this.mask = new THREE.CanvasTexture(this.maskC); this.mask.magFilter = THREE.LinearFilter; this.mask.generateMipmaps = false;
+    // solid (not see-through) with a cut-out edge: no sorting or depth tricks, so it can't flicker over buildings and roads from the planning view
+    this.blanket = new THREE.Mesh(g.geometry, new THREE.MeshStandardMaterial({ map: t, alphaMap: this.mask, alphaTest: 0.99, roughness: 0.9 }));
+    this.blanket.rotation.copy(g.rotation); this.blanket.position.copy(g.position); this.blanket.position.y += 0.025; this.blanket.receiveShadow = true;
+    this.cover = 0; this.maskDirty = true; { const ev = game.world.events, mark = () => { this.maskDirty = true; }; for (const e of ['tile', 'building:added', 'building:removed', 'building:done']) ev.on(e, mark); } this.blanket.visible = false; game.scene.add(this.blanket);
     // drifting leaves (autumn) or petals (spring) around Sam
     this.drift = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.16, 0.12), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), 60); this.drift.frustumCulled = false; this.drift.visible = false; game.scene.add(this.drift);
     this.dp = Array.from({ length: 60 }, () => ({ x: 0, y: -9, z: 0, ph: Math.random() * 6, v: 0.5 + Math.random() * 0.6 })); for (let i = 0; i < 60; i++) this.drift.setColorAt(i, new THREE.Color(0xffffff));
@@ -87,6 +95,12 @@ export class Seasons {
     // twinkle
     const X = this.xmas; X.t += dt; if (X.t > 0.6 && X.n) { X.t = 0; const cols = [0xff3030, 0x30ff60, 0x3080ff, 0xffd030], c = new THREE.Color(); for (let i = 0; i < X.n; i++) X.im.setColorAt(i, Math.random() < 0.15 ? c.setHex(0x333333) : c.setHex(cols[(i + Math.floor(g.elapsed * 2)) % 4])); X.im.instanceColor.needsUpdate = true; X.group.visible = true; }
   }
+  /** Where snow may lie (white) and where it's kept clear (black): roads, water and building plots. */
+  paintMask() {
+    this.maskDirty = false; const w = this.game.world, x = this.maskC.getContext('2d'), img = x.createImageData(MAP, MAP), d = img.data;
+    for (let tz = 0; tz < MAP; tz++) for (let tx = 0; tx < MAP; tx++) { const i = w.idx(tx, tz), t = w.terrain[i], b = w.buildingAt(tx, tz), ok = (t === TT.LAND || t === TT.FOREST) && !w.road[i] && !(b && !b.def.park), o = (tz * MAP + tx) * 4; d[o] = d[o + 1] = d[o + 2] = ok ? 255 : 0; d[o + 3] = 255; }
+    x.putImageData(img, 0, 0); this.mask.needsUpdate = true;
+  }
   paintRoofs() {
     const day = this.game.atmosphere ? (this.game.atmosphere.dayLevel ?? 1) : 1, k = (this.roofSnow || 0) * (0.2 + 0.45 * day);
     for (const m of allRoofMaterials()) { if (!m.emissive) continue; m.emissive.setRGB(0.82, 0.86, 0.9); m.emissiveIntensity = k; }
@@ -94,17 +108,23 @@ export class Seasons {
   get season() { const m = this.game.clock.month; return m <= 1 || m === 11 ? 'Winter' : m <= 4 ? 'Spring' : m <= 7 ? 'Summer' : 'Autumn'; }
   update(dt) {
     const g = this.game, m = g.clock.month, k = Math.min(1, dt * 0.4);
-    const ts = SNOW[m], ta = AUTUMN[m], tb = BLOSSOM[m];
+    const ta = AUTUMN[m], tb = BLOSSOM[m], W = g.weather, wet = W ? W.rain : 0, gh = dt * Math.max(0, g.clock.speed) * (g.clock.rate ? g.clock.rate() : 0.1);   // game hours this frame
+    // each wet spell in winter is either snow or cold rain (SNOW[m]: how likely snow is this month); snow settles while it falls, then thaws
+    if (W) { if (wet > 0.12 && !this.spell) this.spell = { snow: Math.random() < SNOW[m] }; else if (wet < 0.05) this.spell = null; W.snowy = !!(this.spell && this.spell.snow); }
+    const falling = W && W.snowy && wet > 0.25, cold = SNOW[m];
+    if (falling) this.cover = Math.min(0.55 + 0.45 * cold, this.cover + gh * 0.07 * wet);
+    else this.cover = Math.max(0, this.cover - gh * (wet > 0.25 ? 0.06 : 0.01 + 0.025 * (1 - cold)));   // a cold month keeps it a few days; rain washes it away
+    const ts = this.cover;
     if (this.snow < 0) { this.snow = ts; this.autumn = ta; this.blossom = tb; this.apply(); return; }
+    if (this.maskDirty && this.snow > 0.01) this.paintMask();
     const ns = this.snow + (ts - this.snow) * k, na = this.autumn + (ta - this.autumn) * k, nb = this.blossom + (tb - this.blossom) * k;
     if (Math.abs(ns - this.snow) + Math.abs(na - this.autumn) + Math.abs(nb - this.blossom) > 0.004) { this.snow = ns; this.autumn = na; this.blossom = nb; this.apply(); }
-    if (g.weather) g.weather.snowy = this.snow > 0.45;
     this.updateDrift(dt); this.updateSnowmen(dt); this.updateXmas(dt);
     if (this.snow > 0.02 && (this.roofT = (this.roofT || 0) + dt) > 1) { this.roofT = 0; this.paintRoofs(); }   // follow day and night
   }
   apply() {
     const g = this.game, T = this.tint, s = this.snow, a = this.autumn, b = this.blossom;
-    this.blanket.visible = s > 0.02; this.blanket.material.opacity = Math.min(0.92, s * 0.95);
+    this.blanket.visible = s > 0.02; this.blanket.material.alphaTest = Math.max(0.02, 1 - s * 1.25);   // a little: odd patches; a lot: nearly everywhere
     // snow on the roofs (an even white glaze that fades at night)
     this.roofSnow = s; this.paintRoofs();
     // forest pines: frosted in winter, a touch darker in autumn
