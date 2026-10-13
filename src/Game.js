@@ -8,6 +8,9 @@ import { Hazards } from './systems/Hazards.js';
 import { Happenings } from './systems/Happenings.js';
 import { TILE, MAP } from './config.js';
 import { Watchdog } from './core/Watchdog.js';
+// the town's systems: SIM_STEP run in every simulation round, SIM_FRAME once a frame (see Game.sys)
+const SIM_STEP = ['economy', 'logistics', 'population', 'resources', 'social', 'traffic', 'planner', 'raids', 'security', 'tech'];
+const SIM_FRAME = ['crime', 'hazards', 'happenings', 'transport', 'cars', 'rescue', 'carting', 'beerGarden', 'functionRoom', 'service', 'groundskeepers', 'lamps', 'markers'];
 import { World } from './world/World.js';
 import { Terrain } from './render/Terrain.js';
 import { Atmosphere } from './render/Atmosphere.js';
@@ -141,6 +144,11 @@ export class Game {
     setTimeout(() => { this.ui.fade(0); this.ui.showEnding(); }, 2500);
   }
 
+  /** Run one town system: tell the watchdog which one (so a freeze names it) and note any call that takes over 250 ms. */
+  sys(k, dt) {
+    const o = this[k]; if (!o) return; this.watchdog.beat('town: ' + k); const t = performance.now(); o.update(dt); const d = performance.now() - t;
+    if (d > 250) { this.perf.note(`slow: ${k} took ${Math.round(d)} ms`); if (performance.now() - (this._slowW || 0) > 2000) { this._slowW = performance.now(); try { const L = JSON.parse(localStorage.getItem('samcity-slow') || '[]'); L.push({ k, ms: Math.round(d), at: Date.now() }); localStorage.setItem('samcity-slow', JSON.stringify(L.slice(-12))); } catch (e) { /* no storage */ } } }
+  }
   /** The title screen: a slow flight round the island behind the menu (the planning camera itself isn't touched). */
   titleFlight(dt) {
     this.elapsed += dt; const t = this.elapsed, c = MAP * TILE / 2, cam = this.camera, tx = c + Math.cos(t * 0.03) * 36, tz = c + Math.sin(t * 0.03) * 28, yaw = t * 0.035 + 0.6, pitch = 0.5, d = 165;
@@ -185,10 +193,15 @@ export class Game {
     const gdt = this.clock.tick(dt) * (ui.modalOpen && this.mode === 'sim' ? 1 : 1);
     const steps = Math.min(40, Math.max(1, Math.ceil(gdt / 0.1))), sdt = gdt / steps;
     this.perf.lap('input+ui');
-    if (gdt > 0) for (let i = 0; i < steps; i++) { this.economy.update(sdt); this.logistics.update(sdt); this.population.update(sdt); this.resources.update(sdt); this.social.update(sdt); this.traffic.update(sdt); this.planner.update(sdt); this.raids.update(sdt); this.security.update(sdt); this.tech.update(sdt); }
+    // the town, in rounds of at most 0.1 game-seconds; when the computer can't keep up (4x speed, sleeping through the night in a big
+    // town) it does what fits in ~45 ms this frame instead of trying to catch up and stalling
+    if (gdt > 0) { const t0 = performance.now(); for (let i = 0; i < steps; i++) {
+      for (const k of SIM_STEP) this.sys(k, sdt);
+      if (i < steps - 1 && performance.now() - t0 > 45) { this.perf.simShort = (this.perf.simShort || 0) + 1; break; }
+    } }
     else this.security.update(0);
     if (this.player.sleeping && this.clock.sleepBoost && this.clock.hour >= 6 && this.clock.hour < 7) { this.player.energy = 100; this.player.wake(); }
-    this.crime.update(dt); this.hazards.update(dt); this.happenings.update(dt); this.transport.update(dt); this.cars.update(dt); this.rescue.update(dt); this.carting.update(dt); this.beerGarden.update(dt); this.functionRoom.update(dt); this.service.update(dt); this.groundskeepers.update(dt); this.lamps.update(dt); this.markers.update(dt);
+    for (const k of SIM_FRAME) this.sys(k, dt);
     this.perf.lap('simulation');
     if (!this.introScene.live) this.player.update(gdt, dt); this.perf.lap('Sam');
     for (const s of this.population.sims) s.sync(dt); this.social.render(dt); this.pauseScene.update(dt); this.net.update(dt); this.combat.update(dt);

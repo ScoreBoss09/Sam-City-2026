@@ -71,7 +71,12 @@ $('btn-demo').onclick = () => begin(true);
 if (params.has('auto')) begin(params.has('demo'), params.has('cont'));
 // if the game stopped responding last time (and had to be reloaded), say where it was
 import { Watchdog } from './core/Watchdog.js';
-Watchdog.lastFreeze().then((r) => { if (r && r.label) game.ui.showError(`Last time the game stopped responding (after: ${r.label}, ${new Date(r.at).toLocaleString()}). Tell Claude this line if it happens again.`); });   // ?auto&cont: straight back into the current save slot (the in-game Load)
+Watchdog.lastFreeze().then((r) => {
+  let slow = []; try { slow = JSON.parse(localStorage.getItem('samcity-slow') || '[]'); localStorage.removeItem('samcity-slow'); } catch (e) { /* no storage */ }
+  const counts = {}; for (const q of slow) counts[q.k] = Math.max(counts[q.k] || 0, q.ms); const sl = Object.entries(counts).map(([k, ms]) => `${k} up to ${(ms / 1000).toFixed(1)} s`).join(', ');
+  if (r && r.label) game.ui.showError(`Last time the game stopped responding (in: ${r.label.replace(/^town: /, 'town system ')}, ${new Date(r.at).toLocaleString()}).${sl ? ' Slow before that: ' + sl + '.' : ''} Tell Claude this line if it happens again.`);
+  else if (sl) game.ui.showError(`Last time some frames were very slow: ${sl}. Tell Claude this line if the game stutters.`);
+});   // ?auto&cont: straight back into the current save slot (the in-game Load)
 // texture pack: pick the zip once, the game remembers it
 { const st = document.getElementById('tex-status'), clr = document.getElementById('btn-tex-clear'), file = document.getElementById('tex-file');
   const show = () => { st.textContent = Assets.source === 'installed' ? ' ✓ textures on' : Assets.source === 'folder' ? ' ✓ textures on (folder)' : ' (optional: pick the "PNG - Pixel Art Textures" zip)'; clr.classList.toggle('hidden', Assets.source !== 'installed'); }; show();
