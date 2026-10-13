@@ -139,6 +139,13 @@ export class Game {
     setTimeout(() => { this.ui.fade(0); this.ui.showEnding(); }, 2500);
   }
 
+  /** The title screen: a slow flight round the island behind the menu (the planning camera itself isn't touched). */
+  titleFlight(dt) {
+    this.elapsed += dt; const t = this.elapsed, c = MAP * TILE / 2, cam = this.camera, tx = c + Math.cos(t * 0.03) * 36, tz = c + Math.sin(t * 0.03) * 28, yaw = t * 0.035 + 0.6, pitch = 0.5, d = 165;
+    if (cam.fov !== 42) { cam.fov = 42; cam.near = 1.5; cam.far = 1400; cam.updateProjectionMatrix(); }
+    cam.position.set(tx + Math.sin(yaw) * Math.cos(pitch) * d, Math.sin(pitch) * d, tz + Math.cos(yaw) * Math.cos(pitch) * d); cam.lookAt(tx, 0, tz);
+    try { this.atmosphere.camPos = cam.position; this.atmosphere.hideDome = true; this.atmosphere.update(dt, this.clock, { x: tx, z: tz }, this.story, 0); } catch (e) { /* the sky can wait for the game */ }
+  }
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setPixelRatio(1); this.renderer.setSize(Math.max(320, Math.floor(w * this.renderScale)), Math.max(200, Math.floor(h * this.renderScale)), false);
@@ -150,7 +157,7 @@ export class Game {
     const inp = this.input, ui = this.ui; const dt = Math.min(raw, 0.1);
     if (!this.skipRender) this.fps += ((1 / Math.max(raw, 0.001)) - this.fps) * 0.05;
     inp.pollPad(dt, !this.started || ui.modalOpen ? 'menu' : this.mode); ui.padUpdate(inp, dt);
-    if (!this.started) { this.render(dt); inp.endFrame(); return; }
+    if (!this.started) { this.titleFlight(dt); this.render(dt); inp.endFrame(); return; }
     // the mouse may only be captured while walking around as Sam (a late capture after switching views would hide the cursor in planning)
     if (inp.locked && (this.mode !== 'sim' || ui.modalOpen || this.ending)) inp.unlock();
     // modal / toggles

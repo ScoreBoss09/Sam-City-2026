@@ -12,15 +12,17 @@ const texCache = {};
 function bubbleTexture(text, kind) {
   const k = text + kind; if (texCache[k]) return texCache[k];
   const c = document.createElement('canvas'), x = c.getContext('2d'), maxW = 300, PX = 3 / 192; let size = 22, lines = [text];
-  const wrap = (sz) => { x.font = `bold ${sz}px monospace`; const out = []; let cur = ''; for (const w of text.split(' ')) { const t = cur ? cur + ' ' + w : w; if (x.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t; } if (cur) out.push(cur); return out; };
+  const F = (sz) => `600 ${sz}px Barlow, 'Segoe UI', sans-serif`, wrap = (sz) => { x.font = F(sz); const out = []; let cur = ''; for (const w of text.split(' ')) { const t = cur ? cur + ' ' + w : w; if (x.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t; } if (cur) out.push(cur); return out; };
   if (kind !== 'name') for (size = 22; size >= 12; size -= 2) { lines = wrap(size); if (lines.length <= (size > 16 ? 3 : 4) && lines.every((l) => x.measureText(l).width <= maxW)) break; }
-  x.font = `bold ${size}px monospace`; const lh = size * 1.18, tw = Math.max(...lines.map((l) => x.measureText(l).width)), bw = Math.min(maxW + 16, tw + 22), bh = lines.length * lh + 14, tail = kind === 'name' ? 0 : 12;
-  c.width = Math.max(192, Math.ceil(bw + 8)); c.height = Math.ceil(bh + tail + 10); x.font = `bold ${size}px monospace`;
-  x.fillStyle = kind === 'name' ? 'rgba(14,26,43,.85)' : '#fffdf4'; x.strokeStyle = '#1a2230'; x.lineWidth = 3;
-  const bx = (c.width - bw) / 2, by = 4, mid = c.width / 2; x.beginPath(); x.roundRect(bx, by, bw, bh, 8); x.fill(); if (kind !== 'name') { x.stroke(); x.beginPath(); x.moveTo(mid - 6, by + bh); x.lineTo(mid + 2, by + bh + tail); x.lineTo(mid + 8, by + bh); x.closePath(); x.fillStyle = '#fffdf4'; x.fill(); }
+  x.font = F(size); const lh = size * 1.18, tw = Math.max(...lines.map((l) => x.measureText(l).width)), bw = Math.min(maxW + 16, tw + 22), bh = lines.length * lh + 14, tail = kind === 'name' ? 0 : 12;
+  c.width = Math.max(192, Math.ceil(bw + 8)); c.height = Math.ceil(bh + tail + 10); x.font = F(size);
+  x.fillStyle = kind === 'name' ? 'rgba(10,15,25,.82)' : '#fffdf6'; x.strokeStyle = 'rgba(20,26,38,.85)'; x.lineWidth = 2.5;
+  const bx = (c.width - bw) / 2, by = 4, mid = c.width / 2; x.beginPath(); x.roundRect(bx, by, bw, bh, kind === 'name' ? bh / 2 : 14); x.fill(); if (kind !== 'name') { x.stroke(); x.beginPath(); x.moveTo(mid - 6, by + bh); x.lineTo(mid + 2, by + bh + tail); x.lineTo(mid + 8, by + bh); x.closePath(); x.fillStyle = '#fffdf4'; x.fill(); }
   x.fillStyle = kind === 'name' ? '#fff' : '#1a2230'; x.textAlign = 'center'; x.textBaseline = 'middle'; lines.forEach((l, i) => x.fillText(l, mid, by + 7 + lh * (i + 0.5)));
   const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.colorSpace = THREE.SRGBColorSpace; t.userData = { w: c.width * PX, h: c.height * PX }; return (texCache[k] = t);
 }
+/** Up close a bubble keeps the size it has from 6 m away (so it never fills the screen), and right in your face it's hidden. */
+function closeK(p, cam) { const d = Math.hypot(p.x - cam.x, p.y - cam.y, p.z - cam.z); return d < 1.3 ? 0 : Math.min(1, d / 6); }
 function makeSprite(text, kind) { const m = bubbleTexture(text, kind), s = new THREE.Sprite(new THREE.SpriteMaterial({ map: m, transparent: true, depthWrite: false })); s.scale.set(m.userData.w, m.userData.h, 1); s.userData.size = m.userData; s.renderOrder = 10; return s; }
 
 const COMPAT = { cheerful: { cheerful: 0.8, grumpy: 0.2, shy: 0.6, busy: 0.5 }, grumpy: { cheerful: 0.2, grumpy: 0.45, shy: 0.3, busy: 0.4 }, shy: { cheerful: 0.6, grumpy: 0.3, shy: 0.75, busy: 0.4 }, busy: { cheerful: 0.5, grumpy: 0.4, shy: 0.4, busy: 0.6 } };
@@ -117,16 +119,18 @@ export class Social {
   skyReaction() {}
   render(dt) {
     const g = this.game, cam = g.camera.position, godFar = g.mode === 'god' && g.god.dist > 85, p = g.player;
+    // only the few nearest speakers show their bubble (a crowd all talking at once is just noise); none but the one Sam's talking to during a chat
+    const talk = g.ui.dialogue && g.ui.dialogue.sim, near = g.population.sims.filter((s) => s.bubble && !s.remove && (!talk || s === talk)).map((s) => [s, (s.x - cam.x) ** 2 + (s.z - cam.z) ** 2]).filter(([, d]) => g.mode === 'god' || d < 900).sort((a, b) => a[1] - b[1]).slice(0, g.mode === 'god' ? 6 : 3), shown = new Set(near.map(([s]) => s));
     for (const s of g.population.sims) {
       const b = s.bubble; const vis = !s.mesh.visible || godFar;
       if (b) {
         b.t -= dt; if (b.t <= 0 || vis || s.remove) { g.scene.remove(b.sprite); b.sprite.material.dispose(); s.bubble = null; }
-        else { const sc = Math.min(1, b.t * 4, (b.dur - b.t) * 6 + 0.2); const z = b.sprite.userData.size || { w: 3, h: 1 }; b.sprite.position.set(s.x, 2.55 + (s.sitting ? -0.35 : 0) + (z.h - 1) / 2, s.z); b.sprite.scale.set(z.w * sc, z.h * sc, 1); }
+        else { const z = b.sprite.userData.size || { w: 3, h: 1 }; b.sprite.position.set(s.x, 2.55 + (s.sitting ? -0.35 : 0) + (z.h - 1) / 2, s.z); const sc = Math.min(1, b.t * 4, (b.dur - b.t) * 6 + 0.2) * closeK(b.sprite.position, cam); b.sprite.visible = sc > 0 && shown.has(s); b.sprite.scale.set(z.w * sc, z.h * sc, 1); }
       }
       // name tags near Sam
       const near = g.mode === 'sim' && s.mesh.visible && Math.hypot(p.x - s.x, p.z - s.z) < 5.5 && !s.bubble && !s.sleeping;
       if (near && !s.tag) { s.tag = makeSprite(s.name, 'name'); s.tag.scale.set(s.tag.userData.size.w * 0.8, s.tag.userData.size.h * 0.8, 1); g.scene.add(s.tag); }
-      if (s.tag) { if (near) s.tag.position.set(s.x, 2.4 + (s.sitting ? -0.35 : 0), s.z); if (!near || s.remove) { g.scene.remove(s.tag); s.tag = null; } }
+      if (s.tag) { if (near) { s.tag.position.set(s.x, 2.4 + (s.sitting ? -0.35 : 0), s.z); const k = 0.8 * closeK(s.tag.position, cam), z = s.tag.userData.size; s.tag.visible = k > 0; s.tag.scale.set(z.w * k, z.h * k, 1); } if (!near || s.remove) { g.scene.remove(s.tag); s.tag = null; } }
     }
   }
 }

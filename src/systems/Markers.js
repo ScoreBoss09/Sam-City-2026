@@ -15,8 +15,8 @@ export class Markers {
   }
   icon(ch) {
     if (this.tex[ch]) return this.tex[ch]; const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
-    x.fillStyle = 'rgba(20,24,34,.85)'; x.beginPath(); x.arc(32, 28, 26, 0, Math.PI * 2); x.fill(); x.strokeStyle = '#ffd23f'; x.lineWidth = 4; x.stroke();
-    x.beginPath(); x.moveTo(24, 50); x.lineTo(40, 50); x.lineTo(32, 62); x.fillStyle = '#ffd23f'; x.fill(); x.font = '30px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, 32, 29);
+    x.fillStyle = 'rgba(58,13,13,.92)'; x.beginPath(); x.arc(32, 28, 25, 0, Math.PI * 2); x.fill(); x.strokeStyle = '#ff5a4a'; x.lineWidth = 4; x.stroke();   // the same pin as on the map
+    x.beginPath(); x.moveTo(25, 51); x.lineTo(39, 51); x.lineTo(32, 62); x.fillStyle = '#ff5a4a'; x.fill(); x.font = '28px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, 32, 30);
     return (this.tex[ch] = new THREE.CanvasTexture(c));
   }
   /** Ongoing events that don't place their own marker get one each, for exactly as long as they last. */

@@ -10,7 +10,7 @@ const sign = (v) => `<span class="${v < 0 ? 'bad' : v > 0 ? 'ok' : ''}">${v < 0 
 /** Goods brought in (gathered, made, grown) and used up (building sites, meals) per day. */
 export function perDayTable(e) {
   const f = (v) => (v >= 10 || v === 0 ? Math.round(v) : Math.round(v * 10) / 10);
-  return `<h3>Goods per day</h3><table class="pl"><tr><th>Goods</th><th>Today so far</th><th>Yesterday</th><th>Week's average</th><th>Used yesterday</th></tr>${Object.entries(MATERIALS).map(([m, d]) => { const g = e.perDay(m), u = e.perDay(m, 'used'); return `<tr><td>${d.name}</td><td>+${f(g.today)}</td><td>+${f(g.yesterday)}</td><td>+${f(g.avg)}</td><td>${u.yesterday ? '−' + f(u.yesterday) : '—'}</td></tr>`; }).join('')}</table><div class="note">Brought in: gathered by workers and Sam, made in workshops, grown on farms (not counting what comes down the Lift). Used: taken by builders for their sites, and eaten.</div>`;
+  return `<h3>Goods per day</h3><table class="pl"><tr><th>Goods</th><th>Today so far</th><th>Yesterday</th><th>Week's average</th><th>Used yesterday</th></tr>${Object.entries(MATERIALS).map(([m, d]) => { const g = e.perDay(m), u = e.perDay(m, 'used'); return `<tr><td>${d.name}</td><td>+${f(g.today)}</td><td>+${f(g.yesterday)}</td><td>+${f(g.avg)}</td><td>${u.yesterday ? '−' + f(u.yesterday) : '—'}</td></tr>`; }).join('')}</table>`;
 }
 export function moneyHTML(g) {
   const e = g.economy, rows = e.perBuilding(), tot = rows.reduce((a, r) => a + r.net, 0), can = e.canSetRates(), L = e.loan;
@@ -18,7 +18,7 @@ export function moneyHTML(g) {
   { const month = rows.reduce((a, r) => a + r.net, 0) - (L ? L.pay + L.owed * LOANS.rate : 0); if (e.funds < 0) h += `<div class="note bad">⚠️ The town is overdrawn by ${fmtMoney(-Math.round(e.funds))}. Nothing can be bought until it's back in the black: sell goods at the Lift, raise the rates, or cut back.</div>`; else if (month < 0 && e.funds < -month * 3) h += `<div class="note bad">⚠️ At this rate the money runs out in about ${Math.max(1, Math.floor(e.funds / -month))} month(s).</div>`; }
   h += '<h3>Each kind of building, per month</h3>';
   h += rows.length ? `<table class="pl"><tr><th>Building</th><th>No.</th><th>Brings in</th><th>Upkeep</th><th>Wages</th><th>Net</th></tr>${rows.map((r) => `<tr><td>${r.name}</td><td>${r.n}</td><td>${r.inc ? '+' + fmtMoney(Math.round(r.inc)) : '—'}<br><small>${r.how}</small></td><td>−${fmtMoney(r.up)}</td><td>${r.wage ? '−' + fmtMoney(r.wage) : '—'}</td><td>${sign(r.net)}</td></tr>`).join('')}</table>` : '<div class="note">Nothing finished yet.</div>';
-  h += '<div class="note">Homes earn the rates their residents pay; shops, pubs and businesses earn takings for each worker; everything costs upkeep, and the council pays a share of every wage. Losing buildings can still be worth it: schools, wells, surgeries and police keep the town going.</div>';
+  h += '';
   h += '<h3>Rates</h3>';
   h += can ? `<div class="prow">${RATES.map((r, i) => btn('rate', i, `${r.name}<small>${fmtMoney(r.per)} a head</small>`, i === e.rate)).join('')}</div><div class="note">${RATES[e.rate].note}</div>`
     : `<div class="note">The rates are fixed at ${fmtMoney(RATES[1].per)} a head a month until there's a Town Hall${g.buildings.count('bank') ? '' : ' and a Bank'} to collect and keep them.</div>`;

@@ -13,6 +13,10 @@ import { Sfx } from '../core/Sfx.js';
 import { CURIOS } from '../systems/Curios.js';
 
 const $ = (id) => document.getElementById(id);
+/** Line icons for the tool belt (they look the same on every system, unlike the newer emoji). */
+const svg = (d) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const TOOL_ICONS = { axe: svg('<path d="M5 21 15 8"/><path d="M12.5 5.5c3-2 6.5-.5 8 3l-5 2.5-3-2.6z"/>'), pick: svg('<path d="M12 7v14"/><path d="M3.5 9.5c4.5-4.6 12.5-4.6 17 0"/>'), shovel: svg('<path d="M12 3v9"/><path d="M9 3h6"/><path d="M7.5 12h9l-1 5.5a3.5 3.5 0 0 1-7 0z"/>'),
+  basket: svg('<path d="M3.5 10h17l-2.2 9.5H5.7z"/><path d="M8 10l4-6 4 6"/><path d="M9.5 13v4M14.5 13v4"/>'), rod: svg('<path d="M3.5 20.5 18 4"/><path d="M18 4v10"/><path d="M18 14a2 2 0 1 1-2 2"/>'), hammer: svg('<path d="M5 20l8.5-8.5"/><path d="M11 6.5 14.5 3l6.5 6.5-3.5 3.5-2.2-1-2.6-2.6z"/>') };
 const TOOLS = [
   ['pan', '✋', 'Pan'], ['bulldoze', '🚜', 'Bulldoze'], ['road', '🛣️', 'Roads'],
   ['build', '🏢', 'Buildings'], ['park', '🌳', 'Parks'], ['util', '⚡', 'Utilities'], ['query', '🔍', 'Query'], ['move', '🌱', 'Move plants'], ['track', '🛤️', 'Track'],
@@ -24,13 +28,13 @@ export class UI {
     this.game = game; this.adult = true; this.terminalTab = 'permits'; this.buildTab = 'Homes'; this.terminalB = null; this.dialogue = null; this.acc = 0; this.hoverTimer = 0;
 
     // toolbox
-    this.drawToolbox = () => { const tr = this.trackReady(); if (tr === this._trackShown) return; this._trackShown = tr; $('toolbox').innerHTML = this.tools().map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('') + '<button class="tool wide" data-menu="1"><span class="ic">📐</span>Planning menu <small>B / pad X</small></button>'; this.refreshTools(); }; this.drawToolbox();
+    this.drawToolbox = () => { const tr = this.trackReady(); if (tr === this._trackShown) return; this._trackShown = tr; $('toolbox').innerHTML = this.tools().map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('') + '<button class="tool wide" data-menu="1"><span class="ic">📐</span>Planning menu <b class="key kbonly">B</b><b class="ps padonly">□</b></button>'; this.refreshTools(); }; this.drawToolbox();
     this.plan = new PlanMenu(game); this.pause = new PauseMenu(game);
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; if (b.dataset.menu) { this.plan.show(); return; } const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'btn-perf') { this.togglePerf(); return; } game.clock.speed = +b.dataset.s; }); $('perf').addEventListener('click', (e) => this.perfClick(e));
     $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); });
-    game.messages.on('msg', (m) => this.addMessage(m));
+    game.messages.on('msg', (m) => { const c = game.clock; m.when = `${c.day} ${MONTHS[c.month]} · ${String(Math.floor(c.hour)).padStart(2, '0')}:${String(Math.floor((c.hour % 1) * 60)).padStart(2, '0')}`; this.addMessage(m); });   // (stamped for the town news page)
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
     $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
     this.refreshTools(); this.renderObjectives();
@@ -53,7 +57,7 @@ export class UI {
     const god = mode === 'god';
     ['toolbox'].forEach((i) => $(i).classList.toggle('hidden', !god)); if (!god) this.hide('submenu', 'hover');
     $('crosshair').classList.toggle('hidden', god); $('simhud').classList.toggle('hidden', god); $('stock').classList.remove('hidden');
-    $('help').classList.remove('hidden'); this.helpMode = mode; this.helpT = 14; $('help').textContent = this.game.input.padActive ? (god ? 'PLANNING · OPTIONS: be Sam · □ Planning menu · L-stick pan · R-stick rotate/zoom · ✕ place/paint · ○ cancel · △ rotate · L1/R1 tool · D-pad item · R3 whole island' : 'SAM · OPTIONS planning view · L-stick move · R-stick look · ✕ use / tap in the green · △ eat · ○ emote · □ punch · R2 kick · L3 bike · L1 sprint · R1 camera · L2 jump · D-pad ↑ backpack ↓ drop ← journal → door · R3 map') : god ? 'GOD MODE · TAB: control Sam · B planning menu · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SAM · TAB planning view · WASD move · Shift sprint · E use / tap in the green to work · I backpack · R drop · Q eat · F punch · X kick · B bike · V camera · M map · click to capture mouse';
+    this.helpMode = mode; this.helpT = 0; $('help').textContent = this.game.input.padActive ? (god ? 'PLANNING · OPTIONS: be Sam · □ Planning menu · L-stick pan · R-stick rotate/zoom · ✕ place/paint · ○ cancel · △ rotate · L1/R1 tool · D-pad item · R3 whole island' : 'SAM · OPTIONS planning view · L-stick move · R-stick look · ✕ use / tap in the green · △ eat · ○ emote · □ punch · R2 kick · L3 bike · L1 sprint · R1 camera · L2 jump · D-pad ↑ backpack ↓ drop ← journal → door · R3 map') : god ? 'GOD MODE · TAB: control Sam · B planning menu · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SAM · TAB planning view · WASD move · Shift sprint · E use / tap in the green to work · I backpack · R drop · Q eat · F punch · X kick · B bike · V camera · M map · click to capture mouse';
     $('c-mode').textContent = god ? 'PLANNING VIEW' : 'SAM (' + (this.game.player.third ? '3rd' : '1st') + ' person)';
     if (god) this.game.input.unlock();
   }
@@ -91,7 +95,7 @@ export class UI {
       for (const b of scope.querySelectorAll('button.padfocus')) if (b !== btns[this._pfIdx]) b.classList.remove('padfocus'); btns[this._pfIdx].classList.add('padfocus'); if (this._pfEl !== btns[this._pfIdx]) btns[this._pfIdx].scrollIntoView({ block: 'nearest' }); this._pfEl = btns[this._pfIdx]; this._pfKey = keyOf(this._pfEl);
       if (P.hitB[0]) { btns[this._pfIdx].click(); inp.pressed.delete('KeyE'); this.calm(); } return;
     }
-    this.clearPadFocus(); this.padLegend(null);
+    this.clearPadFocus(); this.padLegend(this.dialogue ? { id: 'dialogue' } : null);
     if (g.mode !== 'god' || this.modalOpen || !g.started) return;
     const ids = this.tools().map((t) => t[0]), cur = ids.indexOf(g.god.tool.id);
     if (P.hitB[5] || P.hitB[4]) { const n = ids[(cur + (P.hitB[5] ? 1 : -1) + ids.length) % ids.length]; g.god.setTool(n, n === 'zone' ? 'res' : n === 'road' ? 'dirt' : null); this.openSub(n); this.toast(TOOLS.find((t) => t[0] === n)[2] + ' tool', 1200); }
@@ -105,14 +109,25 @@ export class UI {
     if (txt !== this._wTxt) { this._wTxt = txt; w.innerHTML = txt; w.style.display = txt ? 'flex' : 'none'; }
   }
   /** PlayStation-style button legend along the bottom while a menu has the controller. */
-  padLegend(scope) {
-    const id = scope ? scope.id : null; if (id === this._legend) return; this._legend = id; const bar = $('padbar'); if (!bar) return;
-    if (!id) { bar.classList.add('hidden'); return; }
-    const b = (c, t) => `<b class="ps ${c}">${t}</b>`, items = [`<span>${b('', '✚')} Move</span>`, `<span>${b('ps-x', '✕')} Select</span>`];
-    if (id !== 'title') items.push(`<span>${b('ps-o', '○')} ${id === 'planmenu' ? 'Close' : 'Back'}</span>`);
-    if (id === 'planmenu') items.push(`<span>${b('', 'L1')}${b('', 'R1')} Page</span>`, `<span>${b('', 'L2')}${b('', 'R2')} Category</span>`);
-    if (id === 'terminal') items.push(`<span>${b('', 'L1')}${b('', 'R1')} Tab</span>`, `<span>${b('', 'R🕹')} Scroll</span>`);
-    bar.innerHTML = items.join(''); bar.classList.remove('hidden');
+  /**
+   * The prompt bar along the bottom of a menu (or a conversation): what the buttons do, as key caps or controller
+   * glyphs, instead of instructions written into the menus.
+   */
+  padLegend(scope, pad = true) {
+    const id = scope ? scope.id : null, key = id && id + (pad ? ':pad' : ':kb'); if (key === this._legend) return; this._legend = key;
+    const padbar = $('padbar'), kb = $('menuprompts'); padbar.classList.add('hidden'); kb.classList.add('hidden'); if (!id || id === 'title') return;
+    const P = (c, t) => `<b class="ps ${c}">${t}</b>`, K = (t) => `<b class="key">${t}</b>`, items = [];
+    if (pad) {
+      if (id !== 'dialogue') items.push(`<span>${P('', '✚')} Move</span>`, `<span>${P('ps-x', '✕')} Select</span>`); else items.push(`<span>${P('ps-x', '✕')} Continue</span>`);
+      items.push(`<span>${P('ps-o', '○')} ${id === 'pausemenu' ? 'Resume' : id === 'planmenu' || id === 'dialogue' ? 'Close' : 'Back'}</span>`);
+      if (id === 'planmenu') items.push(`<span>${P('', 'L1')}${P('', 'R1')} Page</span>`, `<span>${P('', 'L2')}${P('', 'R2')} Category</span>`);
+      if (id === 'terminal') items.push(`<span>${P('', 'L1')}${P('', 'R1')} Tab</span>`, `<span>${P('', 'R')} Scroll</span>`);
+    } else {
+      if (id === 'dialogue') items.push(`<span>${K('E')} Continue</span>`);
+      items.push(`<span>${K('Esc')} ${id === 'pausemenu' ? 'Resume' : 'Close'}</span>`);
+      if (id === 'inventory') items.push(`<span>${K('R')} Drop</span>`);
+    }
+    const bar = pad ? padbar : kb; bar.innerHTML = items.join(''); bar.classList.remove('hidden');
   }
   /** ○ on a menu: close it (the title screen has nowhere to go back to). */
   padBack(scope) {
@@ -238,7 +253,7 @@ export class UI {
 
   // ---------- performance report ----------
   togglePerf() { if (this.perfOpen) return this.closePerf(); this.perfOpen = true; this.game.input.unlock(); const txt = this.game.perf.report();
-    $('perf').innerHTML = `<div class="pwin"><h2><span>📊 Performance report</span><button data-p="close">Close (Esc)</button></h2><p>Press <b>Copy</b>, then paste the whole thing into your chat with Claude. It says how smoothly the game runs on your computer and what's taking the time. Nothing is sent anywhere by itself.</p><textarea readonly spellcheck="false"></textarea><div class="prow"><button data-p="copy">📋 Copy</button><button data-p="refresh">🔄 Refresh</button><span class="ok"></span></div></div>`;
+    $('perf').innerHTML = `<div class="pwin"><h2><span>📊 Performance report</span><button data-p="close" class="xbtn" title="Close">✕</button></h2><p>Press <b>Copy</b>, then paste the whole thing into your chat with Claude. It says how smoothly the game runs on your computer and what's taking the time. Nothing is sent anywhere by itself.</p><textarea readonly spellcheck="false"></textarea><div class="prow"><button data-p="copy">📋 Copy</button><button data-p="refresh">🔄 Refresh</button><span class="ok"></span></div></div>`;
     $('perf').querySelector('textarea').value = txt; this.show('perf'); Sfx.play('ui'); }
   closePerf() { this.perfOpen = false; this.hide('perf'); this.calm(); }
   perfClick(e) {
@@ -256,7 +271,7 @@ export class UI {
     const friends = P.sims.filter((s) => (s.samRel || 0) >= 40 && !s.remove).map((s) => s.name), acq = P.sims.filter((s) => (s.samRel || 0) >= 8 && (s.samRel || 0) < 40 && !s.remove).length;
     const items = CURIOS.map((c) => cur.found.has(c.id) ? `<div class="cu has" title="${c.desc}"><span class="ic">${c.icon}</span><b>${c.name}</b><small>${c.desc}</small></div>` : '<div class="cu"><span class="ic">?</span><b>Not found yet</b><small>Look for a glint on the ground.</small></div>').join('');
     const best = g.workgame.best || 0;
-    $('journal').innerHTML = `<h2><span>SAM'S JOURNAL</span><button data-j="close">Close</button></h2>
+    $('journal').innerHTML = `<h2><span>SAM'S JOURNAL</span><button data-j="close" class="xbtn" title="Close">✕</button></h2>
       <div class="jstats"><div><b>${g.clock.totalDays}</b><span>days on the island</span></div><div><b>${g.buildings.list.filter((b) => b.state === 'done' && !b.def.special).length}</b><span>buildings finished</span></div><div><b>${f.gathered || 0}</b><span>things gathered</span></div><div><b>${best}</b><span>best gold chain</span></div><div><b>${f.favours || 0}</b><span>favours done</span></div><div><b>${f.cooked || 0}</b><span>campfire meals</span></div></div>
       <div class="jsec">Skills (practice makes perfect)</div><div class="jsk">${Object.entries(SKILLS).map(([k, d]) => `<div class="sk"><span class="ic">${d.icon}</span><b>${d.name}</b><em>Lv ${g.skills.level(k)} · ${g.skills.title(k)}</em><i><u style="width:${Math.round(g.skills.frac(k) * 100)}%"></u></i></div>`).join('')}</div>
       <div class="jsec">Friends (${friends.length})${acq ? ` · ${acq} acquaintances` : ''}</div><div class="jfr">${friends.length ? friends.join(', ') : 'Nobody yet. Talk to people, do them favours.'}</div>
@@ -272,7 +287,7 @@ export class UI {
     const g = this.game, P = g.player, n = P.invTotal();
     const tools = Object.keys(TOOL_NAMES).map((t) => `<div class="slot ${P.tools.has(t) ? 'has' : 'empty'}"><span class="ic">${TOOL_ICON[t]}</span>${TOOL_NAMES[t]}</div>`).join('');
     const rows = Object.entries(P.inv).map(([m, q]) => `<div class="row2"><span class="ic">${MAT_ICON[m] || ''}</span><span class="nm">${q} × ${MATERIALS[m].name}</span>${m === 'food' ? `<button data-inv="eat">Eat</button>` : ''}<button data-inv="drop" data-m="${m}">Drop</button></div>`).join('') || '<div class="row2"><span class="nm">Empty. Chop, mine, pick or take crates from the Stockyard.</span></div>';
-    $('inventory').innerHTML = `<h2><span>BACKPACK</span><button data-inv="close">Close</button></h2><div>Tool belt</div><div class="slots">${tools}</div><div>Backpack ${n}/${BACKPACK}</div><div class="cap"><div style="width:${n / BACKPACK * 100}%"></div></div>${rows}${n ? '<div class="row2"><span class="nm"></span><button data-inv="dropall">Drop everything</button></div>' : ''}<div class="hint">${(this.game.input.padActive ? 'D-pad ↑ opens this · D-pad ↓ drops everything · △ eats · deliver to sites with ✕ · ○ closes' : 'I opens this · R drops everything · Q eats · deliver to sites with E')}</div>`;
+    $('inventory').innerHTML = `<h2><span>BACKPACK</span><button data-inv="close" class="xbtn" title="Close">✕</button></h2><div>Tool belt</div><div class="slots">${tools}</div><div>Backpack ${n}/${BACKPACK}</div><div class="cap"><div style="width:${n / BACKPACK * 100}%"></div></div>${rows}${n ? '<div class="row2"><span class="nm"></span><button data-inv="dropall">Drop everything</button></div>' : ''}<div class="hint">${(this.game.input.padActive ? 'D-pad ↑ opens this · D-pad ↓ drops everything · △ eats · deliver to sites with ✕ · ○ closes' : 'I opens this · R drops everything · Q eats · deliver to sites with E')}</div>`;
   }
   invClick(e) {
     const b = e.target.closest('button'); if (!b) return; const P = this.game.player, a = b.dataset.inv;
@@ -282,9 +297,11 @@ export class UI {
   renderTerminal() {
     const g = this.game, e = g.economy, tab = this.terminalTab, T = $('terminal');
     const post = this.termMode === 'post', hatch = this.termMode === 'hatch', stockM = this.termMode === 'stock', shopM = this.termMode === 'shop', regM = this.termMode === 'register';
-    const tabs = regM ? [['register', 'Births and deaths']] : shopM ? [['shop', 'Over the counter']] : stockM ? [['stock', 'Store and take']] : hatch ? [['materials', 'Lift order form']] : post ? [['letters', `Letters${g.mail.unread() ? ' (' + g.mail.unread() + ' new)' : ''}`], ['challenges', 'Challenges'], ['jobs', 'Jobs'], ['permits', 'Permit forms'], ['materials', 'Order form'], ['report', 'Accounts'], ['money', 'Money']] : [['permits', 'Permits'], ['challenges', 'Challenges'], ['jobs', 'Jobs'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report'], ['money', 'Money']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
+    const tabs = regM ? [['register', 'Births and deaths']] : shopM ? [['shop', 'Over the counter']] : stockM ? [['stock', 'Store and take']] : hatch ? [['materials', 'Lift order form']] : post ? [['letters', `Letters${g.mail.unread() ? ' (' + g.mail.unread() + ' new)' : ''}`], ['news', 'Town news'], ['challenges', 'Challenges'], ['jobs', 'Jobs'], ['permits', 'Permit forms'], ['materials', 'Order form'], ['report', 'Accounts'], ['money', 'Money']] : [['permits', 'Permits'], ['challenges', 'Challenges'], ['jobs', 'Jobs'], ['materials', 'Trade'], ['residents', 'Residents'], ['report', 'Town report'], ['money', 'Money']]; if (g.story.pages.length) tabs.push(['notes', 'Notes']);
     let body = '';
-    if (tab === 'letters') {
+    if (tab === 'news') {   // everything the town's been up to (only the important things pop up on screen)
+      const L = g.messages.log.slice().reverse(); body = L.length ? `<div class="news">${L.map((m) => `<div class="nitem ${m.kind || ''}"><div class="nh"><b>${m.from}</b><span>${m.when || ''}</span></div><div class="nt">${m.text}</div></div>`).join('')}</div>` : '<div class="note">Nothing in the news yet.</div>';
+    } else if (tab === 'letters') {
       const L = g.mail.letters; body = L.length ? L.map((l, i) => `<div class="letter ${l.read ? '' : 'new'} ${l.kind}"><div class="lh"><b>${l.title}</b><span>${l.date}</span></div><div class="lf">From: ${l.from}</div><div class="lb">${l.body.replace(/\n/g, '<br>')}</div></div>`).join('') : '<div class="note">The box is empty.</div>';
       setTimeout(() => { g.mail.markRead(); }, 0);
     }
@@ -303,7 +320,7 @@ export class UI {
         <div class="stockbtns"><button data-act="storeall" class="${P.invTotal() ? '' : 'cant'}">⬇ Store everything</button> <button data-act="packsites" class="${room ? '' : 'cant'}">🏗️ Pack what the building sites need</button></div>
         <table class="market stocktbl"><tr><th>Goods</th><th>In store</th><th>Carrying</th><th colspan="3">Take</th><th>Put back</th></tr>` +
         Object.entries(MATERIALS).map(([m, d]) => { const have = Math.floor(e.stock[m] || 0), fill = Math.min(have, room);
-          return `<tr><td>${d.name}</td><td>${have}</td><td>${carry(m)}</td>${[1, 5].map((q) => `<td><button data-act="take" data-m="${m}" data-q="${q}" class="${have >= q && room >= q ? '' : 'cant'}">Take ${q}</button></td>`).join('')}<td><button data-act="take" data-m="${m}" data-q="fill" class="${fill ? '' : 'cant'}">Fill up${fill ? ` (${fill})` : ''}</button></td><td><button data-act="put" data-m="${m}" class="${carry(m) ? '' : 'cant'}">Put 1 back</button></td></tr>`; }).join('') + '</table><div class="note">Carry what you take to a building site and press E there to deliver it. Food in your backpack can be eaten with Q.</div>' + perDayTable(e);
+          return `<tr><td>${d.name}</td><td>${have}</td><td>${carry(m)}</td>${[1, 5].map((q) => `<td><button data-act="take" data-m="${m}" data-q="${q}" class="${have >= q && room >= q ? '' : 'cant'}">Take ${q}</button></td>`).join('')}<td><button data-act="take" data-m="${m}" data-q="fill" class="${fill ? '' : 'cant'}">Fill up${fill ? ` (${fill})` : ''}</button></td><td><button data-act="put" data-m="${m}" class="${carry(m) ? '' : 'cant'}">Put 1 back</button></td></tr>`; }).join('') + '</table>' + perDayTable(e);
     }
     if (tab === 'permits') {
       const list = ALL_BUILDABLE.filter((k) => e.visible(k)).sort((a, b) => (e.permits[a] === 'approved') - (e.permits[b] === 'approved') || BUILDINGS[a].permit.pop - BUILDINGS[b].permit.pop || BUILDINGS[a].permit.cost - BUILDINGS[b].permit.cost), nx = e.nextMilestone();
@@ -311,13 +328,13 @@ export class UI {
         const d = BUILDINGS[k], p = e.permits[k], mats = Object.entries(d.mat).map(([m, n]) => `${n} ${m}`).join(', ');
         const btn = p === 'approved' ? '<span class="st">APPROVED</span>' : p === 'pending' ? '<span class="st">PENDING…</span>' : `<button data-act="permit" data-id="${k}" class="${g.population.count() < d.permit.pop || e.funds < d.permit.cost ? 'cant' : ''}">Request</button>`;
         return `<tr><td>${d.name}<br><small>${d.blurb}</small></td><td><small>${mats}<br>${d.permit.pop ? 'needs ' + d.permit.pop + ' residents' : ''}</small></td><td>${fmtMoney(d.permit.cost)}</td><td>${btn}</td></tr>`;
-      }).join('') + '</table><div class="note">Approved permits unlock the building in the planning view (TAB). Sites then need materials and builders.</div>';
+      }).join('') + '</table>';
     } else if (tab === 'materials') {
-      body = `<div>Stockyard: ${Object.keys(MATERIALS).map((m) => `${MATERIALS[m].name} <b>${Math.floor(e.stock[m])}</b>`).join(' · ')}</div><div class="note">Gather what you can yourself or with workers. The Lift trader buys surplus at about half price and sells at a premium; a truck brings purchases to the Stockyard.</div>
+      body = `<div>Stockyard: ${Object.keys(MATERIALS).map((m) => `${MATERIALS[m].name} <b>${Math.floor(e.stock[m])}</b>`).join(' · ')}</div>
         <table class="market"><tr><th>Goods</th><th>In stock</th><th>Market (each)</th><th colspan="2">Buy</th><th colspan="2">Sell</th></tr>` +
         Object.entries(MATERIALS).map(([m, d]) => { const tr = e.trend(m), arrow = tr > 0.02 ? `<span class="up">▲${Math.round(tr * 100)}%</span>` : tr < -0.02 ? `<span class="down">▼${Math.round(-tr * 100)}%</span>` : '<span class="flat">▬</span>';
           return `<tr><td>${d.name}</td><td>${Math.floor(e.stock[m])}</td><td>buy ${fmtMoney(e.buyPrice(m))} · sell ${fmtMoney(e.sellPrice(m))} ${arrow}</td>${[5, 20].map((q) => { const c = e.quote(m, q, 'buy'); return `<td><button data-act="order" data-m="${m}" data-q="${q}" class="${e.funds < c ? 'cant' : ''}">Buy ${q}<small>−${fmtMoney(c)}</small></button></td>`; }).join('')}${[5, 20].map((q) => `<td><button data-act="sell" data-m="${m}" data-q="${q}" class="${e.stock[m] < q ? 'cant' : ''}">Sell ${q}<small>+${fmtMoney(e.quote(m, q, 'sell'))}</small></button></td>`).join('')}</tr>`; }).join('') +
-        `</table><div class="note">Goods come down the Lift in the cage. ${g.depot ? 'A truck takes them along the roads to the Stockyard (no road: they wait on the Lift dock).' : 'No Stockyard yet, so they wait on the Lift dock for you to carry.'} ${g.buildings.count('postoffice') ? 'Post Office discount: 20% off. ' : ''}Orders on the way: ${e.orders.length + g.logistics.queue.length}</div>`;
+        `</table><div class="note">${g.buildings.count('postoffice') ? 'Post Office discount: 20% off · ' : ''}Orders on the way: ${e.orders.length + g.logistics.queue.length}${g.depot ? '' : ' · No Stockyard yet: deliveries wait on the Lift dock'}</div>`;
     } else if (tab === 'jobs') {
       const P = g.population, res = P.residents(), adults = res.filter((q) => P.canWork(q)), idle = adults.filter((q) => !q.workplace), vac = P.vacancies();
       const kids = res.filter((q) => q.kind === 'child').length, retired = res.filter((q) => q.kind === 'resident' && q.age >= 66).length;
@@ -341,18 +358,18 @@ export class UI {
       const now = Object.entries(e.ledger || {}).map(([k, v]) => [k, Math.round(v)]).filter(([, v]) => v).sort((a, b) => b[1] - a[1]);
       body += `<h3>This month so far</h3>${now.length ? `<table>${rows(now)}</table>` : '<div class="note">Nothing yet.</div>'}`;
       if (r && r.lines) body += `<h3>Last month in full</h3><table>${rows(r.lines)}<tr><td><b>Net</b></td><td class="${r.net < 0 ? 'bad' : 'ok'}"><b>${r.net < 0 ? '−' : '+'}${fmtMoney(Math.abs(r.net))}</b></td></tr></table>`;
-      body += '<div class="note">Money in: rates from every resident each month, business takings (per worker), bank interest, material sales, grants, visitors and Sam\'s own shifts. Money out: building upkeep, the council\'s share of wages, permits, materials, roads, lamps, and whatever crime and fire cost you.</div>';
+      body += '';
       body += perDayTable(e);
     } else if (tab === 'money') {
       body = moneyHTML(g);
     } else if (tab === 'challenges') {
       const C = g.challenges, open = C.open(), D = C.doneIds;
-      body = `<div class="note">The Parish Council pays a grant for each of these. Three at a time; a new one is added as each is done, and more turn up as the town grows.</div>` + (open.length ? open.map((c) => { const p = C.progress(c); return `<div class="chal"><span class="ic">${c.icon}</span><div><b>${c.title}</b> <small>grant ${fmtMoney(c.pay)}</small><br><small>${c.text}</small><i><u style="width:${Math.round(p.frac * 100)}%"></u></i><small>${p.have} / ${p.need}</small></div></div>`; }).join('') : '<div class="note">Nothing on the list right now. The Council will think of something when the town grows.</div>')
+      body = `` + (open.length ? open.map((c) => { const p = C.progress(c); return `<div class="chal"><span class="ic">${c.icon}</span><div><b>${c.title}</b> <small>grant ${fmtMoney(c.pay)}</small><br><small>${c.text}</small><i><u style="width:${Math.round(p.frac * 100)}%"></u></i><small>${p.have} / ${p.need}</small></div></div>`; }).join('') : '<div class="note">Nothing on the list right now. The Council will think of something when the town grows.</div>')
         + (D.length ? `<div class="note">Done (${D.length}): ${D.map((id) => { const c = CHALLENGES.find((q) => q.id === id); return c ? c.icon + ' ' + c.title : ''; }).join(' · ')}</div>` : '');
     } else if (tab === 'notes') {
       const pg = g.story.pages; body = pg.length ? pg.map((p) => `<div class="page">${p}</div>`).join('') : '<div class="note">No notes yet. Talk to residents regularly — some of them know more than they should.</div>';
     }
-    const html = `<div class="win"><h2><span>${regM ? '📜 THE PARISH REGISTER' : shopM ? `🛒 ${(this.counter && this.counter.b.def.name || 'THE COUNTER').toUpperCase()}` : stockM ? '📦 THE STOCKYARD' : hatch ? '☎ LIFT INTERCOM · "Dave speaking"' : post ? '✉ THE POST · SAM CITY' : (g.tech.computers ? 'SAM CITY - PLANNING TERMINAL' : '📖 SAM CITY - PLANNING LEDGER')}</span><button data-act="close">Close [Esc]</button></h2><div class="tabs">${tabs.map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}<span style="margin-left:auto">Funds: <b>${fmtMoney(e.funds)}</b></span></div>${body}</div>`;
+    const html = `<div class="win"><h2><span>${regM ? '📜 THE PARISH REGISTER' : shopM ? `🛒 ${(this.counter && this.counter.b.def.name || 'THE COUNTER').toUpperCase()}` : stockM ? '📦 THE STOCKYARD' : hatch ? '☎ LIFT INTERCOM · "Dave speaking"' : post ? '✉ THE POST · SAM CITY' : (g.tech.computers ? 'SAM CITY - PLANNING TERMINAL' : '📖 SAM CITY - PLANNING LEDGER')}</span><button data-act="close" class="xbtn" title="Close">✕</button></h2><div class="tabs">${tabs.map(([k, n]) => `<button data-act="tab" data-k="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}<span style="margin-left:auto">Funds: <b>${fmtMoney(e.funds)}</b></span></div>${body}</div>`;
     const keep = tab === this._termTab ? (T.querySelector('.win') || {}).scrollTop || 0 : 0; this._termTab = tab;   // redraws keep the scroll (unless the tab changed)
     if (html !== this._termHtml) { this._termHtml = html; T.innerHTML = html; const w = T.querySelector('.win'); if (w) w.scrollTop = keep; }
   }
@@ -396,7 +413,9 @@ export class UI {
     const g = this.game;
     if (this.hoverTimer > 0) { this.hoverTimer -= dt; if (this.hoverTimer <= 0 || g.mode !== 'god') $('hover').classList.add('hidden'); }
     if (this.dialogue) { const d = this.dialogue; d.shown = Math.min(d.full.length, d.shown + dt * 55); $('d-text').textContent = d.full.slice(0, Math.floor(d.shown)); }
-    if (g.input.hit('KeyH')) { $('help').classList.toggle('hidden'); this.helpT = 0; }
+    if (g.input.hit('KeyH')) { $('help').classList.remove('hidden'); $('help').classList.toggle('want'); this.helpT = 0; }   // the full controls line, only when asked for
+    if (!g.input.padActive || !g.input.pad.connected) this.padLegend(this.dialogue ? { id: 'dialogue' } : this.padScope(), false);
+    if (document.body.classList.contains('pad') !== !!g.input.padActive) document.body.classList.toggle('pad', !!g.input.padActive);   // keyboard caps or controller glyphs
     this.acc += dt; if (this.acc < 0.25) return; this.acc = 0;
     const c = g.clock, P = g.population;
     $('h-pop').textContent = P.count().toLocaleString(); $('h-funds').textContent = fmtMoney(g.economy.funds); $('h-month').textContent = MONTHS[c.month]; $('h-year').textContent = c.year; $('h-sims').textContent = `${P.sims.filter((s) => !s.hidden).length}${P.simCap < 100000 ? "/" + P.simCap : ""}`;
@@ -407,7 +426,7 @@ export class UI {
     { const st = $('stock'), tb = $('toolbox'); if (st && tb && !tb.classList.contains('hidden')) { const room = window.innerHeight - (st.offsetTop + st.offsetHeight) - 18, h = tb.offsetHeight, k = h > room && room > 80 ? Math.max(0.6, room / h) : 1; if (k !== this._tbK) { this._tbK = k; tb.style.transformOrigin = 'bottom left'; tb.style.transform = k < 1 ? `scale(${k.toFixed(3)})` : ''; } } }   // short screens: shrink the tool panel so it never covers the stock
     { const cb = $('clockbox'), mm = $('minimap'), ms = $('messages'); if (cb && mm && !mm.classList.contains('big')) { const b = cb.offsetHeight + 22; if (b !== this._mmB) { this._mmB = b; mm.style.setProperty('bottom', b + 'px', 'important'); if (ms) ms.style.setProperty('bottom', b + mm.offsetHeight + 14 + 'px', 'important'); } } }   // keep the map clear of the clock box
     const NS = g.netVisitor && g.net && g.net.stats; if (NS) { $('h-pop').textContent = NS.pop.toLocaleString(); $('h-funds').textContent = fmtMoney(NS.funds); $('h-tier').textContent = tierOf(NS.pop); $('h-sims').textContent = NS.sims; $('stock').innerHTML = Object.keys(MATERIALS).map((m) => `<div><span>${MATERIALS[m].name}</span> <b>${Math.floor(NS.stock[m] || 0)}</b></div>`).join(''); }   // visiting: the host's town
-    $('b-hunger').style.width = Math.round(100 - g.player.hunger) + '%'; $('b-hunger').style.background = g.player.hunger > 70 ? '#ff6b6b' : '#e8b44a'; $('h-tools').textContent = [...g.player.tools].map((t) => TOOL_NAMES[t]).join(', ') || 'none yet';
+    $('b-hunger').style.width = Math.round(100 - g.player.hunger) + '%'; $('b-hunger').style.background = g.player.hunger > 70 ? '#ff6b6b' : '#e8b44a'; { const TI = TOOL_ICONS, ht = $('h-tools'), sig = [...g.player.tools].join(); if (ht.dataset.sig !== sig) { ht.dataset.sig = sig; ht.innerHTML = [...g.player.tools].map((t) => `<span class="tchip" title="${TOOL_NAMES[t]}">${TI[t] || '🔧'}</span>`).join('') || '<span class="tnone">No tools yet</span>'; } }   // the tool belt as icons
     $('b-energy').style.width = Math.round(g.player.energy) + '%'; $('b-energy').style.background = g.player.energy < 25 ? '#ff6b6b' : '#7be08f';
     $('h-carry').textContent = `${g.player.invTotal()}/${BACKPACK}`; $('h-pack').textContent = g.player.invText(); $('b-pack').style.width = (g.player.invTotal() / BACKPACK * 100) + '%'; const F = g.favours.list; $('h-favours').innerHTML = F.length ? '<b>Favours</b><br>' + F.map((f) => `! ${f.sim.first}${f.asked ? `: ${f.n} ${f.mat}` : ' wants a word'}`).join('<br>') : ''; $('h-keys').textContent = g.input.padActive ? 'D-pad ↑ backpack · ↓ drop · ← journal · Y eat' : 'I backpack · R drop · J journal · Q eat';
     if (this.helpT > 0) { this.helpT -= 0.25; if (this.helpT <= 0) $('help').classList.add('hidden'); }
