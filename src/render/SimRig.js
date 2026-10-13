@@ -33,8 +33,10 @@ class Merger {
 }
 const shade = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(f); return c.getHex(); };
 
-export const HAIR_STYLES_M = ['short', 'side', 'crop', 'bald', 'curly', 'afro'];
-export const HAIR_STYLES_F = ['long', 'bun', 'pony', 'bob', 'short', 'curly', 'plait'];
+/** Hats from mods (lists of boxes, y from the crown of the head). */
+export const HAT_MODELS = {};
+export const HAIR_STYLES_M = ['short', 'side', 'crop', 'bald', 'curly', 'curtains', 'curtains', 'mullet', 'spiky', 'bowl'];
+export const HAIR_STYLES_F = ['long', 'long', 'bun', 'pony', 'bob', 'short', 'curly', 'plait', 'rachel', 'rachel', 'perm', 'scrunchie'];
 export const HAIR_STYLES = [...HAIR_STYLES_M, ...HAIR_STYLES_F];
 
 export function createRig(look = {}) {
@@ -64,6 +66,8 @@ export function createRig(look = {}) {
   if (bust) tor.box(0.17, 0.12, 0.07, -0.1, 0.4, td / 2 + 0.02, L.shirt).box(0.17, 0.12, 0.07, 0.1, 0.4, td / 2 + 0.02, L.shirt);
   tor.cell = 0;
   if (L.shirt2) tor.box(tw + 0.02, 0.05, td + 0.02, 0, 0.5, 0, L.shirt2);
+  if (L.choker) tor.box(0.13, 0.03, 0.13, 0, 0.6, 0.02, 0x111111);
+  if (L.stripe) tor.box(tw + 0.015, 0.54, 0.03, 0, 0.27, 0, L.stripe).box(0.04, 0.54, td + 0.015, -tw / 2, 0.27, 0, L.stripe).box(0.04, 0.54, td + 0.015, tw / 2, 0.27, 0, L.stripe);   // shell-suit / football-shirt panels
   const acc = L.accessory, fz = td / 2 + 0.005;
   if (acc === 'tie') tor.box(0.06, 0.3, 0.012, 0, 0.36, fz + 0.002, 0xb02828).box(0.14, 0.04, 0.13, 0, 0.56, 0.02, 0xf2f2f2);
   if (acc === 'apron') tor.box(tw * 0.88, 0.5, 0.025, 0, 0.12, fz + 0.01, 0xf4f1e6).box(0.3, 0.1, 0.03, 0, 0.1, fz + 0.03, 0xe0d9c0);
@@ -88,6 +92,8 @@ export function createRig(look = {}) {
   const hc = L.hair, hs = L.hairStyle, brow = shade(hc, 0.8);
   hd.box(F ? 0.075 : 0.085, F ? 0.012 : 0.02, 0.012, -0.075, 0.27, 0.153, brow).box(F ? 0.075 : 0.085, F ? 0.012 : 0.02, 0.012, 0.075, 0.27, 0.153, brow);
   if (F) { hd.box(0.075, 0.012, 0.012, -0.075, 0.236, 0.154, 0x2a1d12).box(0.075, 0.012, 0.012, 0.075, 0.236, 0.154, 0x2a1d12); hd.box(0.03, 0.02, 0.008, -0.12, 0.1, 0.15, 0xe89aa0).box(0.03, 0.02, 0.008, 0.12, 0.1, 0.15, 0xe89aa0); } // lashes, blush
+  if (F && L.shadow) hd.box(0.075, 0.022, 0.01, -0.075, 0.245, 0.155, L.shadow).box(0.075, 0.022, 0.01, 0.075, 0.245, 0.155, L.shadow);   // eyeshadow
+  if (L.earrings) for (const x of [-hwid / 2 - 0.02, hwid / 2 + 0.02]) hd.box(0.02, 0.07, 0.05, x, 0.05, 0.02, 0xe8c040);
   if (L.facial === 'stubble') hd.box(hwid - 0.02, 0.1, 0.012, 0, 0.06, 0.152, shade(L.skin, 0.8));
   if (L.facial === 'moustache' || L.facial === 'beard') hd.box(0.14, 0.035, 0.03, 0, 0.1, 0.165, hc);
   if (L.facial === 'beard') hd.box(hwid + 0.01, 0.12, 0.05, 0, 0.04, 0.14, hc).box(hwid + 0.01, 0.14, 0.2, 0, 0.1, -0.02, hc);
@@ -98,9 +104,17 @@ export function createRig(look = {}) {
     if (hs === 'long') hd.box(hwid + 0.03, 0.46, 0.08, 0, 0.08, -0.15, hc).box(0.04, 0.4, 0.1, -hwid / 2 - 0.03, 0.08, -0.04, hc).box(0.04, 0.4, 0.1, hwid / 2 + 0.03, 0.08, -0.04, hc);
     if (hs === 'bob') hd.box(hwid + 0.05, 0.3, 0.08, 0, 0.14, -0.15, hc).box(0.05, 0.28, 0.2, -hwid / 2 - 0.03, 0.15, -0.02, hc).box(0.05, 0.28, 0.2, hwid / 2 + 0.03, 0.15, -0.02, hc).box(hwid, 0.07, 0.04, 0, 0.32, 0.16, hc);
     if (hs === 'bun') hd.box(0.13, 0.13, 0.13, 0, 0.45, -0.08, hc);
-    if (hs === 'afro' || hs === 'curly') hd.box(hs === 'afro' ? 0.44 : 0.38, hs === 'afro' ? 0.3 : 0.2, hs === 'afro' ? 0.44 : 0.38, 0, 0.37, -0.02, hc);
+    if (hs === 'afro' || hs === 'curly') hd.box(hs === 'afro' ? 0.44 : 0.38, hs === 'afro' ? 0.28 : 0.2, hs === 'afro' ? 0.4 : 0.34, 0, hs === 'afro' ? 0.41 : 0.39, -0.06, hc);
     if (hs === 'side') hd.box(0.34, 0.07, 0.12, -0.02, 0.4, 0.12, hc).box(0.1, 0.18, 0.1, 0.12, 0.26, 0.14, hc);
     if (hs === 'pony') hd.box(0.08, 0.34, 0.08, 0, 0.16, -0.2, hc).box(0.06, 0.06, 0.06, 0, 0.34, -0.19, 0xd9532b);
+    // the 1990s
+    if (hs === 'curtains') hd.box(0.16, 0.16, 0.06, -0.085, 0.3, 0.15, hc).box(0.16, 0.16, 0.06, 0.085, 0.3, 0.15, hc);   // centre parting, a fringe either side
+    if (hs === 'mullet') hd.box(hwid - 0.02, 0.3, 0.08, 0, 0.02, -0.16, hc);   // business at the front...
+    if (hs === 'spiky') for (const [x, z] of [[-0.09, 0.06], [0, 0.08], [0.09, 0.06], [-0.05, -0.05], [0.05, -0.05]]) hd.box(0.06, 0.1, 0.06, x, 0.45, z, hc);
+    if (hs === 'bowl') hd.box(hwid + 0.06, 0.1, 0.36, 0, 0.32, 0.01, hc).box(hwid + 0.04, 0.06, 0.05, 0, 0.27, 0.16, hc);
+    if (hs === 'rachel') hd.box(hwid + 0.07, 0.34, 0.12, 0, 0.12, -0.13, hc).box(0.06, 0.32, 0.16, -hwid / 2 - 0.035, 0.13, 0.02, hc).box(0.06, 0.32, 0.16, hwid / 2 + 0.035, 0.13, 0.02, hc).box(hwid + 0.04, 0.05, 0.3, 0, 0.42, 0, shade(hc, 1.15));
+    if (hs === 'perm') hd.box(0.44, 0.22, 0.36, 0, 0.39, -0.07, hc).box(0.5, 0.28, 0.22, 0, 0.17, -0.14, hc).box(0.06, 0.24, 0.12, -0.24, 0.2, 0.02, hc).box(0.06, 0.24, 0.12, 0.24, 0.2, 0.02, hc);   // big, but off the face
+    if (hs === 'scrunchie') hd.box(0.09, 0.3, 0.09, 0, 0.36, -0.2, hc).box(0.13, 0.07, 0.13, 0, 0.44, -0.18, L.scrunchie || 0xe0407a);
     if (hs === 'plait') hd.box(0.07, 0.5, 0.07, 0.05, 0.0, -0.2, hc).box(0.06, 0.06, 0.06, 0.05, -0.26, -0.2, 0xd9532b);
     void hh;
   }
@@ -115,13 +129,14 @@ export function createRig(look = {}) {
     if (h.type === 'sun') hd.box(0.34, 0.07, 0.34, 0, 0.36, 0, 0xe9d9a0).box(0.62, 0.02, 0.62, 0, 0.33, 0, 0xe9d9a0);
     if (h.type === 'bonnet') hd.box(0.35, 0.1, 0.35, 0, 0.36, -0.02, 0xf2eadb).box(0.36, 0.16, 0.08, 0, 0.26, -0.14, 0xf2eadb);
     if (h.type === 'mask') hd.box(0.345, 0.37, 0.335, 0, 0.17, 0, 0x1c1c20).box(0.23, 0.07, 0.01, 0, 0.2, 0.172, L.skin).box(0.035, 0.05, 0.014, -0.07, 0.2, 0.18, 0x111111).box(0.035, 0.05, 0.014, 0.07, 0.2, 0.18, 0x111111);
+    if (h.type === 'model' && HAT_MODELS[h.model]) for (const [w, hh, d, c, x, y, z] of HAT_MODELS[h.model]) hd.box(w, hh, d, x, 0.34 + y + hh / 2, z, c);   // a mod's hat, sat on the crown
     if (h.type === 'chef') hd.box(0.3, 0.2, 0.3, 0, 0.45, 0, 0xffffff);
   }
   if (L.glasses) hd.box(0.28, 0.02, 0.01, 0, 0.21, 0.162, 0x222222).box(0.095, 0.075, 0.01, -0.075, 0.2, 0.163, 0x6a8fb5).box(0.095, 0.075, 0.01, 0.075, 0.2, 0.163, 0x6a8fb5);
   j.headMesh = hd.mesh(); j.head.add(j.headMesh);
   // face parts that animate
   j.lids = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.07, 0.02), new THREE.MeshStandardMaterial({ color: L.skin, roughness: 0.9 })); j.lids.position.set(0, 0.2, 0.162); j.lids.visible = false; j.head.add(j.lids);
-  const mc = new THREE.MeshBasicMaterial({ color: F ? 0xa8404a : 0x5a1f1f });
+  const mc = new THREE.MeshBasicMaterial({ color: F ? (L.lips || 0xa8404a) : 0x5a1f1f });
   j.mouth = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.025, 0.012), mc); j.mouth.position.set(0, 0.075, 0.153); j.head.add(j.mouth);
   j.mouthL = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.025, 0.012), mc); j.mouthR = j.mouthL.clone(); j.head.add(j.mouthL, j.mouthR);
   // arms & legs
@@ -170,9 +185,20 @@ const PROPS = {
   rod: () => { const g = new THREE.Group(); pbox(g, 0.025, 1.3, 0.025, 0x6b4a2a, 0, 0.1, 0.35).rotation.x = -0.9; pbox(g, 0.01, 0.8, 0.01, 0xdddddd, 0, 0.1, 1.0); return g; },
   basket: () => { const g = new THREE.Group(); pbox(g, 0.34, 0.2, 0.26, 0xb98a4a, 0, -0.1, 0); pbox(g, 0.2, 0.08, 0.16, 0x7aa63a, 0, 0.02, 0); return g; },
   sickle: () => { const g = new THREE.Group(); pbox(g, 0.03, 0.2, 0.03, 0x8a5a33, 0, -0.04, 0.02); pbox(g, 0.03, 0.03, 0.22, 0xaeb4bc, 0, 0.08, 0.1); return g; },
+  // things handed over a counter: a pint, a bag of chips, a plate of dinner, the waiter's pad, a ticket, a video...
+  pint: () => { const g = new THREE.Group(); pbox(g, 0.08, 0.13, 0.08, 0xd8a03a, 0, 0.0, 0); pbox(g, 0.082, 0.03, 0.082, 0xf4f0e0, 0, 0.075, 0); return g; },
+  chips: () => { const g = new THREE.Group(); pbox(g, 0.18, 0.06, 0.24, 0xf4f0e0, 0, -0.02, 0.05); pbox(g, 0.14, 0.04, 0.18, 0xe8c050, 0, 0.03, 0.05); return g; },
+  plate: () => { const g = new THREE.Group(); pbox(g, 0.28, 0.02, 0.28, 0xf8f8f8, 0, 0.02, 0.12); pbox(g, 0.12, 0.05, 0.1, 0x8a5a2a, -0.04, 0.05, 0.12); pbox(g, 0.08, 0.04, 0.08, 0x3a9a3a, 0.07, 0.05, 0.1); pbox(g, 0.08, 0.03, 0.08, 0xe8c050, 0.04, 0.05, 0.18); return g; },
+  notepad: () => { const g = new THREE.Group(); pbox(g, 0.1, 0.14, 0.015, 0xf8f8f0, 0, 0.0, 0.03); pbox(g, 0.01, 0.12, 0.01, 0x2a4aa8, 0.06, 0.02, 0.04); return g; },
+  ticket: () => { const g = new THREE.Group(); pbox(g, 0.08, 0.04, 0.005, 0xf2c94c, 0, 0.0, 0.03); return g; },
+  video: () => { const g = new THREE.Group(); pbox(g, 0.11, 0.19, 0.03, 0x1a2a8a, 0, 0.0, 0.02); pbox(g, 0.1, 0.06, 0.032, 0xd8342c, 0, 0.04, 0.02); return g; },
+  popcorn: () => { const g = new THREE.Group(); pbox(g, 0.12, 0.16, 0.12, 0xd8342c, 0, 0.0, 0); pbox(g, 0.13, 0.05, 0.13, 0xf8f0c8, 0, 0.1, 0); return g; },
+  cup: () => { const g = new THREE.Group(); pbox(g, 0.07, 0.08, 0.07, 0xf4f4f4, 0, 0.0, 0); pbox(g, 0.1, 0.01, 0.1, 0xf4f4f4, 0, -0.045, 0); return g; },
   mug2: () => { const g = new THREE.Group(); pbox(g, 0.08, 0.12, 0.08, 0xc99a4a, 0, 0.0, 0); return g; },
   club: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.62, 0.05, 0x6e4a2a, 0, -0.1, 0.03); pbox(g, 0.09, 0.2, 0.09, 0x5a3a20, 0, 0.18, 0.03); return g; },
   pistol: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.12, 0.05, 0x2a2a2e, 0, -0.04, 0.02); pbox(g, 0.045, 0.05, 0.22, 0x3a3d44, 0, 0.04, 0.12); return g; },
+  rifle: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.12, 0.05, 0x2a2a2e, 0, -0.04, 0.02); pbox(g, 0.06, 0.09, 0.55, 0x30333a, 0, 0.04, 0.2); pbox(g, 0.03, 0.03, 0.3, 0x222428, 0, 0.05, 0.62); pbox(g, 0.05, 0.1, 0.25, 0x3a3d44, 0, 0.0, -0.18); pbox(g, 0.04, 0.14, 0.06, 0x222428, 0, -0.06, 0.24); return g; },
+  tube: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.12, 0.05, 0x2a2a2e, 0, -0.04, 0.02); pbox(g, 0.12, 0.12, 1.0, 0x4a5a3a, 0, 0.08, 0.15); return g; },
   papers: () => { const g = new THREE.Group(); pbox(g, 0.22, 0.3, 0.02, 0xf6f6f0, 0, 0, 0); return g; },
 };
 /** Attach (or hide) a prop on a slot: 'handR' | 'handL' | 'chest'. */

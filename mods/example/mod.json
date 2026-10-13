@@ -1,0 +1,319 @@
+{
+  "name": "Example mod (Northern Soul)",
+  "speech": {
+    "gossip": [
+      "Wigan Casino's shut, you know. Shut! Keep the faith, Sam.",
+      "My uncle's got every Motown single ever pressed. In alphabetical order."
+    ],
+    "child": [
+      "I can do a backflip. Nearly."
+    ],
+    "pub": [
+      "A pint of Tetley's, please, and whatever he's having."
+    ],
+    "slips": [
+      [],
+      [
+        "Lovely weather. Exactly the same as yesterday. To the minute."
+      ]
+    ]
+  },
+  "names": {
+    "male": [
+      "Barry",
+      "Clive"
+    ],
+    "female": [
+      "Maureen",
+      "Sandra"
+    ],
+    "surnames": [
+      "Ackroyd",
+      "Butterworth"
+    ]
+  },
+  "looks": {
+    "topsMale": [
+      "#7a2a6a"
+    ],
+    "topsFemale": [
+      "#2a8a7a"
+    ]
+  },
+  "adverts": [
+    [
+      "SOUL STOMP",
+      "Northern Soul all-nighter. Keep the faith!",
+      "#111111",
+      "#ffd23f"
+    ]
+  ],
+  "pitches": [
+    "Soul Stomp all-nighters. Talc on the floor, and dancing till dawn."
+  ],
+  "guests": [
+    {
+      "name": "Kenny Dash",
+      "title": "The Northern Soul DJ",
+      "gender": "m",
+      "age": 50,
+      "look": {
+        "shirt": 1710618,
+        "hat": {
+          "type": "model",
+          "model": "tophat"
+        }
+      },
+      "sign": "Keep the faith! Kenny",
+      "lines": [
+        "Keep the faith!",
+        "Talc on the floor, lads."
+      ]
+    }
+  ],
+  "shopgoods": {
+    "tavern": [
+      [
+        "a pint of Tetley's",
+        1.6,
+        {
+          "drunk": 0.15
+        }
+      ]
+    ],
+    "teahut": [
+      [
+        "a mug of tea",
+        0.4,
+        {
+          "energy": 12
+        }
+      ],
+      [
+        "a bacon roll",
+        1.0,
+        {
+          "hunger": -25
+        }
+      ]
+    ]
+  },
+  "buildings": {
+    "soulclub": {
+      "name": "Soul Club",
+      "menu": "Commerce",
+      "age": 3,
+      "w": 2,
+      "d": 2,
+      "floors": 1,
+      "wall": "brick",
+      "roof": "flat",
+      "layout": "tavern",
+      "dining": true,
+      "jobs": {
+        "publican": 1
+      },
+      "permit": {
+        "cost": 500,
+        "pop": 10
+      },
+      "mat": {
+        "brick": 10,
+        "timber": 4
+      },
+      "work": 30,
+      "blurb": "All-nighters every Saturday.",
+      "purpose": "Dancing till dawn."
+    },
+    "teahut": {
+      "name": "Tea Hut",
+      "menu": "Commerce",
+      "age": 0,
+      "w": 1,
+      "d": 1,
+      "floors": 0,
+      "model": "teahut",
+      "modelH": 3,
+      "needsRoad": true,
+      "shopping": true,
+      "jobs": {
+        "shopkeeper": 1
+      },
+      "permit": {
+        "cost": 150,
+        "pop": 4
+      },
+      "mat": {
+        "timber": 4
+      },
+      "work": 12,
+      "blurb": "A green tea hut for cabbies and coppers. Mugs of tea and bacon rolls.",
+      "purpose": "Tea and bacon rolls."
+    }
+  },
+  "events": [
+    {
+      "id": "allnighter",
+      "hours": [
+        22,
+        24
+      ],
+      "chance": 0.08,
+      "icon": "🕺",
+      "label": "All-nighter",
+      "message": "{name} has been dancing since nine and shows no sign of stopping.",
+      "say": [
+        "Keep the faith!",
+        "One more record!"
+      ]
+    }
+  ],
+  "script": "main.js",
+  "models": {
+    "jukebox": [
+      [
+        0.9,
+        1.1,
+        0.5,
+        "#5a2a1a",
+        0,
+        0,
+        0
+      ],
+      [
+        0.8,
+        0.35,
+        0.06,
+        "#ffd23f",
+        0,
+        1.1,
+        0.2,
+        {
+          "glow": true
+        }
+      ],
+      [
+        0.6,
+        0.4,
+        0.05,
+        "#ff60a0",
+        0,
+        0.5,
+        0.25,
+        {
+          "glow": true
+        }
+      ],
+      [
+        0.9,
+        0.2,
+        0.5,
+        "#c0c0c8",
+        0,
+        1.45,
+        0
+      ]
+    ],
+    "teahut": [
+      [
+        3.6,
+        0.2,
+        3.6,
+        "#8a8a80",
+        0,
+        0,
+        0
+      ],
+      [
+        3.4,
+        2.4,
+        3.0,
+        "#2a6a3a",
+        0,
+        0.2,
+        -0.2
+      ],
+      [
+        3.0,
+        0.9,
+        0.1,
+        "#f4f0e0",
+        0,
+        1.2,
+        1.32
+      ],
+      [
+        3.8,
+        0.3,
+        3.8,
+        "#1a3a2a",
+        0,
+        2.6,
+        0
+      ],
+      [
+        1.4,
+        0.35,
+        0.06,
+        "#ffd23f",
+        0,
+        2.95,
+        1.6,
+        {
+          "glow": true
+        }
+      ],
+      [
+        0.6,
+        0.9,
+        0.6,
+        "#e8e8e8",
+        1.2,
+        0.2,
+        1.7
+      ]
+    ],
+    "tophat": [
+      [
+        0.32,
+        0.03,
+        0.32,
+        "#111111",
+        0,
+        0,
+        0
+      ],
+      [
+        0.24,
+        0.28,
+        0.24,
+        "#111111",
+        0,
+        0.03,
+        0
+      ],
+      [
+        0.25,
+        0.05,
+        0.25,
+        "#7a1a1a",
+        0,
+        0.05,
+        0
+      ]
+    ]
+  },
+  "furniture": {
+    "jukebox": {
+      "size": [
+        0.9,
+        0.5
+      ],
+      "solid": true,
+      "model": "jukebox"
+    }
+  },
+  "hats": {
+    "tophat": "tophat"
+  }
+}

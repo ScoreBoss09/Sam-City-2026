@@ -1,5 +1,5 @@
 import { ROLES } from '../data/buildings.js';
-import { MALE, FEMALE, SURNAMES, SKINS, HAIRS, GREY_HAIRS, TOPS_M, TOPS_F, PANTS, TRAITS, BUILDS, ADULT_BUILD_WEIGHTS, pickSkin } from '../data/people.js';
+import { MALE, FEMALE, SURNAMES, SKINS, HAIRS, GREY_HAIRS, TOPS_M, TOPS_F, PANTS, TRAITS, BUILDS, ADULT_BUILD_WEIGHTS, YOUNG_F_BUILD_WEIGHTS, pickSkin } from '../data/people.js';
 import { HAIR_STYLES_M, HAIR_STYLES_F } from '../render/SimRig.js';
 import { Sim } from '../sim/Sim.js';
 import { pick, clamp } from '../util.js';
@@ -8,7 +8,7 @@ import { MAX_SIMS_HARD, MIN_SIMS } from '../config.js';
 /** Owns every NPC: arrival via the Lift, housing, jobs, visitors, and the performance-driven population cap. */
 export class Population {
   constructor(game) {
-    this.game = game; this.sims = []; this.simCap = 60; this.timer = 8; this.visitorTimer = 30; this.invites = 0; this.fpsEma = 60; this.capTimer = 4; this.names = new Set();
+    this.game = game; this.sims = []; this.simCap = MAX_SIMS_HARD; this.timer = 8; this.visitorTimer = 30; this.invites = 0; this.fpsEma = 60; this.capTimer = 4; this.names = new Set();
     const w = game.world.events;
     w.on('building:done', (b) => this.onBuildingDone(b));
     w.on('building:removed', (b) => this.onBuildingRemoved(b));
@@ -29,7 +29,7 @@ export class Population {
     const rnd = Math.random, g = gender || (rnd() < 0.5 ? 'f' : 'm');
     const a = age ?? (kind === 'visitor' ? 20 + Math.floor(rnd() * 40) : (rnd() < 0.12 ? 62 + Math.floor(rnd() * 16) : 19 + Math.floor(rnd() * 41)));
     const child = a < 16, elder = a >= 62;
-    const buildName = child ? 'child' : elder ? 'elderly' : this.weighted(ADULT_BUILD_WEIGHTS), bd = BUILDS[buildName];
+    const buildName = child ? 'child' : elder ? 'elderly' : this.weighted(g === 'f' && a < 42 ? YOUNG_F_BUILD_WEIGHTS : ADULT_BUILD_WEIGHTS), bd = BUILDS[buildName];
     const r = role && ROLES[role], tops = g === 'f' ? TOPS_F : TOPS_M;
     const L = {
       gender: g, buildName, body: bd.body, h: bd.h * (0.97 + rnd() * 0.06), w: bd.w * (0.97 + rnd() * 0.06), skin: pickSkin(rnd), hair: elder ? pick(GREY_HAIRS) : pick(HAIRS),
@@ -40,6 +40,12 @@ export class Population {
     if (g === 'f' && !r) { const c = rnd(); if (c < 0.3) L.dress = true; else if (c < 0.5) L.skirt = true; }
     if (child) { L.shorts = g === 'm' || rnd() < 0.3; L.dress = g === 'f' && rnd() < 0.5; L.longSleeve = false; }
     if (!r && !child && !L.dress) L.accessory = pick([null, null, 'jumper', 'waistcoat', 'cardigan', null]);
+    if (rnd() < 0.65) L.dialect = pick(['north', 'north', 'cockney', 'brummie', 'west', 'scouse', 'geordie', 'posh', 'yorks']);   // where they're 'from' (they say)
+    // the 1990s: make-up and jewellery, shell suits, football shirts and double denim
+    if (g === 'f' && !child) { L.lips = pick([0xb0303a, 0xc02448, 0xa8404a, 0xd0607a, 0x8a2a3a, 0xc85a6a]); if (!elder && rnd() < 0.4) L.shadow = pick([0x5a7ad0, 0x8a5ab0, 0x6a8a9a, 0xb07a9a]); L.earrings = rnd() < (elder ? 0.3 : 0.55); if (!elder && a < 35 && rnd() < 0.3) L.choker = true; L.scrunchie = pick([0xe0407a, 0x40a0e0, 0xf0c040, 0x111111]); }
+    if (!r && !child && !elder) { const o = rnd(); if (o < 0.07) { const [c1, c2] = pick([[0x6a2a8a, 0x2ab0a0], [0x1a3a8a, 0xe0407a], [0x2a8a3a, 0xf0c040], [0xd04020, 0x1a1a6a]]); Object.assign(L, { shirt: c1, stripe: c2, pants: c1, longSleeve: true, skirt: false, dress: false, accessory: null }); }   // shell suit
+      else if (g === 'm' && o < 0.15) Object.assign(L, { shirt: pick([0xf4f4f4, 0xc0241e, 0x1a3a8a, 0xf0c040, 0x2a8a3a]), shirt2: pick([0x1a3a8a, 0xffffff, 0xc0241e]), longSleeve: false, accessory: null });   // a football shirt
+      else if (o < 0.23) Object.assign(L, { shirt: 0x6a8ab0, pants: 0x3a5a8a, longSleeve: true, accessory: null }); }   // double denim
     if (g === 'm' && L.accessory === 'cardigan') L.accessory = 'jumper';
     if (r) { if (r.accessory) L.accessory = r.accessory; if (r.hat) L.hat = typeof r.hat === 'string' ? { type: r.hat } : { ...r.hat }; if (g === 'f' && r.hatF) L.hat = { type: r.hatF }; }
     if (!r && !child) { const h = rnd(); if (elder && g === 'm' && h < 0.5) L.hat = { type: pick(['flat', 'bowler']), color: pick([0x5a5a4a, 0x7a6a4a, 0x3a3a3a]) }; else if (elder && g === 'f' && h < 0.25) L.hat = { type: 'bonnet' }; else if (h < 0.12) L.hat = { type: pick(['cap', 'beanie', 'flat']), color: pick(tops) }; }
@@ -56,6 +62,10 @@ export class Population {
     else nm = this.uniqueName(g);
     return { look: L, gender: g, age: a, first: nm.first, surname: nm.last, name: nm.name, buildName };
   }
+  /** Somebody appearing right here (performers, stallholders): no Lift ride. */
+  spawnAt(x, z, opts) { const s = new Sim(this.game, { x, z, inside: null, ...opts }); this.sims.push(s); return s; }
+  /** Someone who's finished here (performers, guests, raiders, riot police) walks back to the Lift and goes up it, rather than vanishing. */
+  depart(s) { if (!s || s.remove) return; if (s.down > 20) s.down = 0; s.kind = 'visitor'; s.leaving = true; s.glide = null; s.emote = null; s.faceGoal = null; s.crook = null; s.fight = null; s.engaged = null; s.hurry = false; s.path = []; s.phase = 0; }
   spawnAtLift(opts) {
     const g = this.game, lift = g.lift;
     const s = new Sim(g, { x: lift.doorIn.x, z: lift.doorIn.z, inside: lift, ...opts }); s.heading = Math.PI; this.sims.push(s);
@@ -106,19 +116,34 @@ export class Population {
       const kids = this.sims.filter((k) => k.kind === 'child' && k.home === a.home).length;
       if (kids < 2 && this.freeBedsIn(a.home) > 0 && g.economy.stock.food >= 10 && Math.max(a.age, b.age) < 46 && Math.random() < 0.2 && this.sims.length < this.simCap - 1) this.spawnChild(a, b);
     }
+    // out of work: a week on the dole and the rent goes unpaid. Back in work: back on their feet.
+    for (const s of this.residents()) {
+      if (!this.canWork(s) || s.leaving) continue;
+      if (s.workplace) { s.idleDays = 0; if (s.homeless && this.assignHome(s)) { s.homeless = false; g.messages.push('Town', `${s.name} has a job and a roof over their head again. Good for them.`, 'good'); } continue; }
+      s.idleDays = (s.idleDays || 0) + 1;
+      if (s.homeless) { if (this.vacancies().length) this.assignJob(s); continue; }
+      if (s.idleDays >= 7 && s.home && !(s.partner && s.partner.workplace) && Math.random() < 0.35) this.evict(s);
+    }
     // children grow up (one year every four days)
     for (const c of this.sims.filter((k) => k.kind === 'child')) { c.age += 0.25; if (c.age >= 16) this.growUp(c); }
   }
   spawnChild(a, b) {
     const g = this.game, P = this.makePerson({ age: 5, surname: a.surname }), home = a.home;
     const c = new Sim(g, { name: P.name, kind: 'child', trait: pick(TRAITS), look: P.look, gender: P.gender, age: 5, first: P.first, surname: P.surname, x: home.doorIn.x, z: home.doorIn.z, inside: home });
-    c.parents = [a, b]; this.sims.push(c); this.rehome(c, home); c.hunger = 30;
+    c.parents = [a, b]; this.sims.push(c); this.rehome(c, home); c.hunger = 30; if (g.celebrations) g.celebrations.funerals.birth(c);
     g.messages.push('Town', `${a.name} and ${b.name} have a new addition to the family: ${c.first}!`, 'good');
   }
   growUp(c) {
     const P = this.makePerson({ gender: c.gender, age: 17, surname: c.surname }); this.names.delete(P.name);
     c.look = { ...P.look, hair: c.look.hair, skin: c.look.skin }; c.kind = 'resident'; c.age = 17; c.rebuildMesh(); this.game.messages.push('Town', `${c.name} has grown up.`);
     if (this.vacancies().length) this.assignJob(c);
+  }
+  /** Lost their home: sleeps rough in the parks and doorways until a job comes up. */
+  evict(s) {
+    const g = this.game, h = s.home; if (!h) return; const i = h.residents.indexOf(s); if (i >= 0) h.residents.splice(i, 1); for (const sp of h.spots.bed) if (sp.taken === s) sp.taken = null;
+    s.endActivity(); s.home = null; s.homeless = true; s.phase = 0;
+    const L = s.baseLook || s.look; s.baseLook = null; s.outfit = null; s.look = { ...L, shirt: 0x5a5448, shirt2: 0x3e3a32, pants: 0x3a3832, shoes: 0x2a2018, longSleeve: true, accessory: null, tie: false }; s.rebuildMesh();
+    g.messages.push('Town', `${s.name} has been out of work for over a week, couldn't pay the rent, and is sleeping rough.`, 'warn'); if (g.markers) g.markers.add(s.x, s.z, '🛌', s.first + ' sleeping rough', 90, s);
   }
   assignHome(s) {
     for (const b of this.game.buildings.list) {
@@ -134,12 +159,12 @@ export class Population {
     this.reclothe(s, v.role); return true;
   }
   /** Put a citizen into their work clothes (keeps face, body, hair). */
-  reclothe(s, role) { const r = ROLES[role], P = this.makePerson({ role, gender: s.gender, age: s.age }), keep = s.look; s.look = { ...P.look, skin: keep.skin, hair: keep.hair, hairStyle: keep.hairStyle, body: keep.body, h: keep.h, w: keep.w, facial: keep.facial, glasses: keep.glasses, buildName: keep.buildName, cane: keep.cane }; this.names.delete(P.name); s.rebuildMesh(); }
+  reclothe(s, role) { const r = ROLES[role], P = this.makePerson({ role, gender: s.gender, age: s.age }), keep = s.baseLook || s.look; s.baseLook = null; s.outfit = null; s.look = { ...P.look, skin: keep.skin, hair: keep.hair, hairStyle: keep.hairStyle, body: keep.body, h: keep.h, w: keep.w, facial: keep.facial, glasses: keep.glasses, buildName: keep.buildName, cane: keep.cane }; this.names.delete(P.name); s.rebuildMesh(); }
   fire(s) { if (s.workplace) { const i = s.workplace.workers.indexOf(s); if (i >= 0) s.workplace.workers.splice(i, 1); s.workplace.workers.forEach((w, k) => (w.workSpot = k)); } s.workplace = null; s.role = null; s.abortJob(); }
 
   onBuildingDone(b) {
     if (this.game.started && !b.def.special) for (const s of this.sims) { if (s.hidden || s.sitting || s.chat || s.kind === 'security' || s.kind === 'raider' || Math.hypot(s.x - b.cx, s.z - b.cz) > 22) continue; s.emote = { upper: Math.random() < 0.6 ? 'cheer' : 'clap', t: 2.4 }; s.faceGoal = Math.atan2(b.cx - s.x, b.cz - s.z); s.moodBoost += 0.04; }
-    for (const s of this.residents()) { if (!s.home) this.assignHome(s); if (!s.workplace) this.assignJob(s); }
+    for (const s of this.residents()) { if (!s.home && !s.homeless) this.assignHome(s); if (!s.workplace) this.assignJob(s); }
     for (const s of this.adults()) if (s.partner && s.home !== s.partner.home) this.moveIn(s, s.partner);
   }
   onBuildingRemoved(b) {
@@ -160,7 +185,9 @@ export class Population {
     const rate = clamp(1 + (power ? 0.5 : 0) + (water ? 0.3 : 0) + parks * 0.1, 1, 2.5);
     if (this.timer <= 0) {
       this.timer = (this.invites > 0 ? 4 : 26) / rate;
-      const can = this.freeBeds() > 0 && g.economy.stock.food >= 3 && (this.vacancies().length > 0 || this.count() < 4 || this.invites > 0);
+      // with no jobs going, people still move in, just less often: retired couples, people who work off the island, the unemployed
+      const can = this.freeBeds() > 0 && g.economy.stock.food >= 3 && (this.vacancies().length > 0 || this.count() < 4 || this.invites > 0 || Math.random() < 0.4);
+      this.why = this.freeBeds() <= 0 ? 'no free beds' : g.economy.stock.food < 3 ? 'not enough food in the Stockyard' : this.sims.length >= this.simCap ? 'this computer is busy (the town grows again when it has headroom)' : !this.vacancies().length ? 'no jobs going (they still come, but slowly)' : '';
       if (can && this.sims.length < this.simCap) { this.arrive(); if (this.invites > 0) this.invites--; }
     }
     if (this.visitorTimer <= 0) {
@@ -180,8 +207,11 @@ export class Population {
     this.capTimer -= dt; this.fpsEma += (g.fps - this.fpsEma) * Math.min(1, dt * 0.2);
     if (this.capTimer <= 0 && g.fps > 0) {
       this.capTimer = 4;
-      if (g.fps < 38 && this.simCap > MIN_SIMS) this.simCap = Math.max(MIN_SIMS, this.simCap - 6);
-      else if (g.fps > 56 && this.simCap < MAX_SIMS_HARD && this.sims.length >= this.simCap - 4) this.simCap = Math.min(MAX_SIMS_HARD, this.simCap + 3);
+      // No fixed ceiling: the town grows until this computer starts to struggle, then holds there (and lifts again when
+      // there's headroom). "Struggling" is measured against what this display can do (60, 120, 144 Hz...), not a fixed number.
+      this.hz = Math.max(this.hz || 50, Math.min(165, this.fpsEma * 0.995)); const low = Math.min(26, this.hz * 0.45), good = Math.min(38, this.hz * 0.62);   // only hold back when it's really struggling (under ~26 fps)
+      if (this.fpsEma < low && this.sims.length > MIN_SIMS) { this.simCap = Math.max(MIN_SIMS, Math.min(this.simCap, this.sims.length) - 4); this.slowT = 0; }
+      else if (this.fpsEma > good && this.simCap < MAX_SIMS_HARD) { this.slowT = (this.slowT || 0) + 1; if (this.slowT >= 2) this.simCap = this.sims.length + 40 > this.simCap ? this.simCap + 12 : MAX_SIMS_HARD; }
       // over cap: send surplus visitors/residents home through the lift
       if (this.sims.length > this.simCap) { const extra = this.sims.find((s) => s.kind === 'visitor' && !s.leaving) || null; if (extra) extra.leaving = true; }
     }
@@ -189,7 +219,7 @@ export class Population {
   /** Soft personal space: sims (and Sam) gently push apart instead of walking through each other. */
   separate(dt) {
     const w = this.game.world, R = 0.58, grid = new Map(), k = Math.min(1, dt * 12), P = this.game.player;
-    const movable = (s) => !s.remove && !s.riding && !s.sitting && s.pose !== 'sleep' && !(s.down > 0) && !s.glide && !s.hidden;
+    const movable = (s) => !s.remove && !s.riding && !s.upstairs && !s.sitting && s.pose !== 'sleep' && !(s.down > 0) && !s.glide && !s.hidden;
     const list = this.sims.filter(movable);
     for (const s of list) { const key = Math.floor(s.x / 1.2) + ',' + Math.floor(s.z / 1.2) + ',' + (s.inside ? s.inside.uid : 0); (grid.get(key) || grid.set(key, []).get(key)).push(s); }
     const push = (a, dx, dz, f) => { const nx = a.x + dx * f, nz = a.z + dz * f; if (!w.collides(nx, nz, 0.3)) { a.x = nx; a.z = nz; } else if (!w.collides(nx, a.z, 0.3)) a.x = nx; else if (!w.collides(a.x, nz, 0.3)) a.z = nz; };

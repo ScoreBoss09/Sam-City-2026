@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { AGES } from '../data/ages.js';
 import { BUILDINGS, MATERIALS } from '../data/buildings.js';
 import { upgradesFor } from '../data/upgrades.js';
 import { makeCart } from '../render/Carts.js';
@@ -24,6 +25,7 @@ export class Upgrades {
     if (this.orderFor(b)) return { ok: false, why: 'Already being upgraded' };
     if (!up) return { ok: false, why: 'Fully upgraded' };
     if (pop < up.pop) return { ok: false, why: `Needs ${up.pop} residents` };
+    if ((up.age || 0) > (this.game.tech ? this.game.tech.age : 4)) return { ok: false, why: `Needs the ${AGES[up.age]} age` };
     return { ok: true, up };
   }
   order(b, { quiet = false, prio, force = false } = {}) {
@@ -51,13 +53,13 @@ export class Upgrades {
     const steps = this.steps(b), base = BUILDINGS[b.id];
     for (let i = b.level || 0; i < Math.min(lvl, steps.length); i++) steps[i].apply(b.def);
     b.level = lvl; if (b.def.bedsUp) b.def.beds = (base.beds || 0) + b.def.bedsUp;
-    this.game.buildings.restyle(b, b.era ?? 0); this.addBeds(b); this.cartProp(b);
+    this.game.buildings.restyle(b, b.era ?? 0); this.game.buildings.refit(b); this.addBeds(b); this.cartProp(b);
   }
   /** Beds upstairs: sleepers go up the stairs (out of sight) by the back of the room. */
   addBeds(b) {
-    const want = b.def.bedsUp || 0, have = b.spots.bed.filter((s) => s.upstairs).length; if (want <= have) return;
-    const st = b.spots.idle[0] || b.doorIn;
-    for (let i = have; i < want; i++) b.spots.bed.push({ x: st.x, z: st.z, ax: st.x, az: st.z, b, rotY: b.rot * Math.PI / 2, taken: null, upstairs: true });
+    const want = b.def.bedsUp || 0, have = b.spots.bed.filter((s) => s.upstairs).length, st = b.spots.idle[0] || b.doorIn;
+    const add = Math.max(want - have, (b.def.beds || 0) - b.spots.bed.length);   // (a home that went two-storey already sleeps everyone upstairs)
+    for (let i = 0; i < add; i++) b.spots.bed.push({ x: st.x, z: st.z, ax: st.x, az: st.z, b, rotY: b.rot * Math.PI / 2, taken: null, upstairs: true });
   }
   /** A cart parked beside the yard once it has carts. */
   cartProp(b) {

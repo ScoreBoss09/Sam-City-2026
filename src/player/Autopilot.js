@@ -20,6 +20,8 @@ export class Autopilot {
     if (p.seat) p.standUp();
     if (!Sim.prototype.goTo.call(agent, dest)) return false; this.path = agent.path; return true;
   }
+  /** Sam's own bed: the one kept for him, else a free one downstairs, else any free one. */
+  bedOf(b) { const L = b.spots.bed || []; return L.find((s) => s.taken === 'player' && !s.upstairs) || L.find((s) => !s.taken && !s.upstairs) || L.find((s) => s.taken === 'player') || L.find((s) => !s.taken) || null; }
   /** Follow the path; returns true when there. */
   step(dt) {
     const p = this.p; if (!this.path.length) { p.speed = 0; return true; }
@@ -46,7 +48,7 @@ export class Autopilot {
   // ---------- choosing what to do ----------
   choose(night) {
     const g = this.game, p = this.p, C = g.construction, home = g.starterHome;
-    if ((night || p.energy < 22) && home && home.state === 'done' && home.spots.bed[0]) return { kind: 'sleep', b: home };
+    if ((night || p.energy < 22) && home && home.state === 'done' && this.bedOf(home)) return { kind: 'sleep', b: home };
     if (p.hunger > 55) { if (p.inv.food) return { kind: 'snack' }; const yard = g.depot || g.buildings.list.find((b) => b.state === 'done' && b.def.park === 'camp'); if (yard && g.economy.stock.food >= 0.5) return { kind: 'eat', b: yard }; }
     const learning = (g.story.objective || 0) < 6 && !g.demoMode;   // during the opening steps, leave the jobs for the player to learn
     if (p.invTotal() && !learning) { const site = this.siteFor(); if (site && Object.keys(p.inv).some((m) => g.buildings.missing(site, m) > -(site.reserved[m] || 0) && (site.need[m] || 0) > (site.have[m] || 0))) return { kind: 'deliver', b: site }; if (g.depot) return { kind: 'store', b: g.depot }; }
@@ -73,7 +75,7 @@ export class Autopilot {
     t.time += dt; if (t.time > 120) { t.done = true; return; }   // never get stuck on one thing
     if (!this.step(dt)) return;
     switch (t.kind) {
-      case 'sleep': { const s = t.b.spots.bed[0]; p.sleeping = true; p.sleepSpot = s; p.x = s.x; p.z = s.z; p.heading = s.rotY; this.note = 'asleep'; t.done = true; break; }
+      case 'sleep': { const s = this.bedOf(t.b); if (!s) { t.done = true; break; } s.taken = 'player'; p.sleeping = true; p.sleepSpot = s; p.x = s.x; p.z = s.z; p.heading = s.rotY; this.note = 'asleep'; t.done = true; break; }
       case 'snack': p.invTake('food', 1); p.hunger = Math.max(0, p.hunger - 35); t.done = true; break;
       case 'eat': if (g.economy.stock.food >= 0.5) { g.economy.stock.food -= 0.5; p.hunger = Math.max(0, p.hunger - 55); } t.done = true; break;
       case 'tool': if (!t.it.taken) { g.tools.take(t.it); p.tools.add(t.it.id); } t.done = true; break;
@@ -100,7 +102,7 @@ export class Autopilot {
         if (t.time > 14) { s.frozen = false; s.samRel = Math.min(100, (s.samRel || 0) + 2); s.moodBoost += 0.05; this.chatWith = null; t.done = true; }
         break;
       }
-      case 'shift': p.working = true; p.target = { kind: 'work', role: t.role }; g.economy.earn(12 * dt / Math.max(1, g.clock.speed)); this.note = `working a shift at the ${t.b.def.name}`; if (t.time > 45) t.done = true; break;
+      case 'shift': p.working = true; p.target = { kind: 'work', role: t.role }; g.economy.earn(12 * dt / Math.max(1, g.clock.speed), 'Shifts Sam worked'); this.note = `working a shift at the ${t.b.def.name}`; if (t.time > 45) t.done = true; break;
       case 'sit': if (!t.sat) { if (t.seat.taken) { t.done = true; break; } p.sitOn(t.seat, t.b); t.sat = true; } p.energy = Math.min(100, p.energy + dt * 3); this.note = 'sitting on a bench'; if (t.time > 25) { p.standUp(); t.done = true; } break;
       default: t.done = true;
     }
@@ -110,7 +112,7 @@ export class Autopilot {
     const g = this.game, p = this.p, R = g.resources, C = g.construction;
     this.note = { sleep: 'going home to bed', snack: 'having a snack', eat: 'off for something to eat', tool: 'fetching a tool', store: 'dropping things at the Stockyard', deliver: 'delivering materials', fetch: 'fetching materials', build: 'off to build', dig: 'off to dig a path', gather: 'off to gather', chat: 'having a natter', shift: 'off to work a shift', sit: 'off for a sit down', wander: 'having a wander' }[t.kind] || '';
     switch (t.kind) {
-      case 'sleep': { const s = t.b.spots.bed[0]; return this.walkTo({ b: t.b, x: s.ax, z: s.az }); }
+      case 'sleep': { const s = this.bedOf(t.b); return !!s && this.walkTo({ b: t.b, x: s.ax, z: s.az }); }
       case 'snack': this.path = []; return true;
       case 'eat': case 'store': case 'fetch': { const b = t.b; return this.walkTo({ x: b.doorOut.x, z: b.doorOut.z }); }
       case 'tool': return this.walkTo({ x: t.it.x + 0.8, z: t.it.z + 0.8 });

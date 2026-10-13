@@ -2,13 +2,18 @@ import { Sfx } from './core/Sfx.js';
 import { Game } from './Game.js';
 import { Assets } from './render/Assets.js';
 import { VERSION } from './version.js';
+import { preloadModels } from './render/GLB.js';
+preloadModels();   // furniture models (assets/models) load in the background
 import { installPack, clearStored } from './core/TexturePack.js';
 
 const params = new URLSearchParams(location.search);
 document.getElementById('ver').textContent = 'version ' + VERSION;
 await Assets.load();
+import { Mods } from './core/Mods.js';
+await Mods.load();   // mods/index.json: extra textures, speech, adverts, guests, shop goods, buildings, events, scripts
 const game = new Game(document.getElementById('view'), { scale: parseFloat(params.get('scale')) || 0.6, post: params.get('post') !== '0' });
 window.__game = game;
+Mods.start(game);
 game.run();
 for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => Sfx.resume());
 game.input.onActivity = () => Sfx.resume();
@@ -22,13 +27,47 @@ const adultOpt = document.getElementById('opt-adult'); try { if (localStorage.ge
 const applyAdult = () => { game.ui.adult = adultOpt.checked; try { localStorage.setItem('samcity-adult', adultOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } }; adultOpt.onchange = applyAdult; applyAdult();
 const raidOpt = document.getElementById('opt-raids'); try { if (localStorage.getItem('samcity-raids') === '0') raidOpt.checked = false; } catch (e) { /* no storage */ }
 const begin = (demo, cont) => { game.raids.enabled = raidOpt.checked && !params.has('noraids'); try { localStorage.setItem('samcity-raids', raidOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } if (demo === true) game.demo(); if (cont) game.loadSave(); game.start(); };
-import { hasSave, clearSave, saveInfo } from './core/Save.js';
-const cont = document.getElementById('btn-continue'), sv = saveInfo(); if (sv && sv.ok) cont.classList.remove('hidden'); else if (sv) { cont.classList.remove('hidden'); cont.disabled = true; cont.textContent = 'Old save (smaller map): start a new game'; cont.title = 'The map and its squares got bigger, so saves from before can\'t be continued. Sorry!'; } cont.onclick = () => begin(false, true);
-document.getElementById('btn-new').onclick = () => { clearSave(); begin(false); game.ui.modalOpen = true; game.clock.speed = 0; document.getElementById('howto').classList.remove('hidden'); };
+import { clearSave, slotInfo, setSlot, currentSlot, SLOTS } from './core/Save.js';
+import { MONTHS } from './core/Clock.js';
+// ---- the main menu: Continue / New Game / Load Game / Demo / Options, with three save slots ----
+const $ = (id) => document.getElementById(id), menus = ['menu-main', 'menu-slots', 'menu-options', 'menu-net'];
+const showMenu = (id) => { for (const m of menus) $(m).classList.toggle('hidden', m !== id); game.ui._pfScope = null; };
+const describe = (n, inf) => !inf ? `Slot ${n}: empty` : !inf.ok ? `Slot ${n}: old save (can't be continued)` : `Slot ${n}: ${inf.pop} residents · ${inf.clock ? MONTHS[inf.clock.month] + ' ' + inf.clock.year : ''} · £${Math.round(inf.funds || 0).toLocaleString()}${inf.t ? ' · saved ' + new Date(inf.t).toLocaleDateString() : ''}`;
+const cont = $('btn-continue');
+{ let best = null; for (let n = 1; n <= SLOTS; n++) { const inf = slotInfo(n); if (inf && inf.ok && (!best || (inf.t || 0) > (best.inf.t || 0))) best = { n, inf }; }
+  if (best) { cont.classList.remove('hidden'); cont.textContent = `Continue (slot ${best.n})`; cont.onclick = () => { setSlot(best.n); begin(false, true); }; } }
+const newGame = (n) => { setSlot(n); clearSave(n); begin(false); game.playIntro(); };
+function slotMenu(mode) {
+  $('slots-title').textContent = mode === 'new' ? 'New game: pick a save slot' : 'Load game'; const list = $('slot-list'); list.innerHTML = ''; let armed = 0;
+  for (let n = 1; n <= SLOTS; n++) {
+    const inf = slotInfo(n), b = document.createElement('button'); b.className = 'slot'; b.dataset.slot = n; b.textContent = describe(n, inf);
+    if (mode === 'load' && !(inf && inf.ok)) b.disabled = true;
+    b.onclick = () => { if (mode === 'load') { setSlot(n); begin(false, true); return; } if (inf && armed !== n) { armed = n; b.textContent = `Slot ${n}: press again to start over (this save will be lost)`; return; } newGame(n); };
+    list.appendChild(b);
+    if (inf && mode === 'load') { const d = document.createElement('button'); d.className = 'slot del small'; d.dataset.del = n; d.textContent = '🗑 delete'; d.onclick = () => { if (d.dataset.armed) { clearSave(n); slotMenu(mode); } else { d.dataset.armed = 1; d.textContent = 'press again to delete'; } }; list.appendChild(d); }
+  }
+  showMenu('menu-slots');
+}
+$('btn-new').onclick = () => { let empty = 0; for (let n = SLOTS; n >= 1; n--) if (!slotInfo(n)) empty = n; if (empty && !cont.classList.contains('hidden')) slotMenu('new'); else if (empty) newGame(empty); else slotMenu('new'); };
+$('btn-load').onclick = () => slotMenu('load');
+// multiplayer: host (opens your latest town, or a new one) or join a friend's town by its code
+$('btn-net').onclick = () => showMenu('menu-net');
+{ const r = $('net-relay'); try { r.value = localStorage.getItem('samcity-relay') || ''; } catch (e) { /* no storage */ } const set = () => { game.net.relay = r.value; try { localStorage.setItem('samcity-relay', r.value); } catch (e) { /* no storage */ } }; r.onchange = set; set(); $('btn-net-host').addEventListener('click', set, true); $('btn-net-join').addEventListener('click', set, true); } $('btn-net-back').onclick = () => showMenu('menu-main');
+$('btn-net-host').onclick = async () => { const st = $('net-status'); try { let best = null; for (let n = 1; n <= SLOTS; n++) { const inf = slotInfo(n); if (inf && inf.ok && (!best || (inf.t || 0) > (best.t || 0))) best = { n, t: inf.t }; } if (best) { setSlot(best.n); begin(false, true); } else newGame(1); const code = await game.net.host(); game.ui.toast(`Hosting! Friends join with the code ${code}`, 6000); game.messages.push('Multiplayer', `Your town is open to visitors. Code: ${code}`); } catch (e) { st.textContent = e.message; } };
+$('btn-net-join').onclick = async () => { const st = $('net-status'), code = $('net-code').value.trim(); if (!code) { st.textContent = 'Type the code your friend sees on their screen.'; return; } st.textContent = 'Connecting...'; try { await game.net.join(code, $('net-name').value.trim() || 'Visitor'); game.raids.enabled = false; game.start(); game.netVisitor = true; game.clock.speed = 0; game.setMode('sim'); } catch (e) { st.textContent = e.message; } }; $('btn-slots-back').onclick = () => showMenu('menu-main');
+$('btn-options').onclick = () => showMenu('menu-options'); $('btn-options-back').onclick = () => showMenu('menu-main');
+// options: picture quality and volume, remembered between sessions
+{ const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } };
+  const setQ = (q) => { put('samcity-quality', q); game.lockQuality = q !== 'auto'; game.renderScale = q === 'high' ? 1 : q === 'low' ? 0.45 : (parseFloat(params.get('scale')) || 0.6); if (game.atmosphere && game.atmosphere.sun) game.atmosphere.sun.castShadow = q !== 'low'; game.resize(); for (const b of document.querySelectorAll('[data-q]')) b.classList.toggle('on', b.dataset.q === q); };
+  for (const b of document.querySelectorAll('[data-q]')) b.onclick = () => setQ(b.dataset.q); setQ('high');   // always start on the best picture (it can be lowered in Options or the pause menu for this session)
+  let vol = +get('samcity-volume', 7); const setV = (v) => { vol = Math.max(0, Math.min(10, v)); put('samcity-volume', vol); Sfx.setVolume(vol * 0.05); $('vol').textContent = vol; };
+  $('vol-down').onclick = () => setV(vol - 1); $('vol-up').onclick = () => setV(vol + 1); setV(vol);
+  // tick boxes become buttons too, so a controller can change them
+  for (const lab of document.querySelectorAll('#menu-options label.opt')) { const inp = lab.querySelector('input'), b = document.createElement('button'); b.className = 'optbtn'; b.dataset.opt = inp.id; const txt = lab.textContent.trim(); const draw = () => { b.textContent = (inp.checked ? '☑ ' : '☐ ') + txt; }; draw(); b.onclick = () => { inp.checked = !inp.checked; inp.onchange && inp.onchange(); draw(); }; inp.addEventListener('change', draw); lab.after(b); lab.classList.add('hidden'); } }
 window.addEventListener('beforeunload', () => game.save());
 document.addEventListener('visibilitychange', () => { if (document.hidden) game.save(); });
-document.getElementById('btn-demo').onclick = () => begin(true);
-if (params.has('auto')) begin(params.has('demo'));
+$('btn-demo').onclick = () => begin(true);
+if (params.has('auto')) begin(params.has('demo'), params.has('cont'));   // ?auto&cont: straight back into the current save slot (the in-game Load)
 // texture pack: pick the zip once, the game remembers it
 { const st = document.getElementById('tex-status'), clr = document.getElementById('btn-tex-clear'), file = document.getElementById('tex-file');
   const show = () => { st.textContent = Assets.source === 'installed' ? ' ✓ textures on' : Assets.source === 'folder' ? ' ✓ textures on (folder)' : ' (optional: pick the "PNG - Pixel Art Textures" zip)'; clr.classList.toggle('hidden', Assets.source !== 'installed'); }; show();

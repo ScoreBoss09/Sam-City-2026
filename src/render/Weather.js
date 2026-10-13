@@ -34,7 +34,7 @@ export class Weather {
   }
   update(dt) {
     const g = this.game, gdt = dt * Math.max(0, g.clock.speed);
-    this.timer -= gdt; if (this.timer <= 0) { const wet = Math.random() < 0.3, m = g.clock.month; this.storm = wet && !this.snowy && m >= 4 && m <= 9 && Math.random() < 0.35; this.want = wet ? (this.storm ? 0.95 : 0.6 + Math.random() * 0.4) : 0; this.timer = wet ? 50 + Math.random() * 90 : 120 + Math.random() * 300; if (wet && g.started) { g.messages.push('Sam (thought)', this.snowy ? 'Snow\'s coming. Brass monkeys out here.' : this.storm ? 'Big black clouds. There\'s a storm coming.' : 'Smells like rain.', ''); } }
+    this.timer -= gdt; if (this.timer <= 0) { const wet = Math.random() < 0.3, m = g.clock.month; this.storm = wet && !this.snowy && m >= 4 && m <= 9 && Math.random() < 0.35; this.blizzard = wet && this.snowy && Math.random() < 0.35; if (this.blizzard && g.started) { g.messages.push('Weather', 'Blizzard! Snow drifts and a howling wind. Everyone slows to a crawl.', 'warn'); g.ui.toast('❄️ Blizzard!', 2600); } this.want = wet ? (this.storm || this.blizzard ? 1 : 0.6 + Math.random() * 0.4) : 0; this.timer = wet ? 50 + Math.random() * 90 : 120 + Math.random() * 300; if (wet && g.started) { g.messages.push('Sam (thought)', this.snowy ? 'Snow\'s coming. Brass monkeys out here.' : this.storm ? 'Big black clouds. There\'s a storm coming.' : 'Smells like rain.', ''); } }
     this.rain += (this.want - this.rain) * Math.min(1, dt * 0.25); g.atmosphere.rain = this.rain;
     this.updateMist(dt);
     if (this.flash > 0) { this.flash = Math.max(0, this.flash - dt * 4); if (this.reflash && this.flash < 0.45) { this.flash = 0.9; this.reflash = 0; } }
@@ -52,8 +52,8 @@ export class Weather {
     const sn = !!this.snowy; this.lines.material.color.setHex(sn ? 0xffffff : 0xbfd0e6);
     this.lines.material.opacity = (sn ? 0.95 : 0.55) * this.rain; const cam = g.camera.position, p = this.lines.geometry.attributes.position.array, n = Math.floor(this.N * this.rain), t = performance.now() / 1000;
     for (let i = 0; i < this.N; i++) {
-      const o = this.off[i]; o[1] -= dt * (sn ? 3.2 : 26) * o[3]; if (o[1] < 0) o[1] += 40;
-      const wob = sn ? Math.sin(t * 1.3 + i) * 0.6 : 0, x = cam.x + o[0] + wob, y = (i < n ? Math.max(0, cam.y - 14) + o[1] : -999), z = cam.z + o[2], k = i * 6;
+      const o = this.off[i]; o[1] -= dt * (sn ? (this.blizzard ? 7 : 3.2) : 26) * o[3]; if (o[1] < 0) o[1] += 40;
+      const wob = sn ? Math.sin(t * 1.3 + i) * 0.6 + (this.blizzard ? ((t * 9 + i * 3.7) % 40) - 20 : 0) : 0, x = cam.x + o[0] + wob, y = (i < n ? Math.max(0, cam.y - 14) + o[1] : -999), z = cam.z + o[2], k = i * 6;
       p[k] = x; p[k + 1] = y; p[k + 2] = z; p[k + 3] = x + (sn ? 0.12 : 0.08); p[k + 4] = y - (sn ? 0.12 : 0.9); p[k + 5] = z + (sn ? 0.1 : 0.04);
     }
     this.lines.geometry.attributes.position.needsUpdate = true;

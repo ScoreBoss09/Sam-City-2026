@@ -3,6 +3,10 @@ import { Sfx } from '../core/Sfx.js';
 import { pick, fmtMoney } from '../util.js';
 import { MATERIALS } from '../data/buildings.js';
 import { TILE } from '../config.js';
+import { Cricket } from './Cricket.js';
+import { Funerals } from './Funerals.js';
+import { Guests } from './Guests.js';
+import { Protests } from './Protests.js';
 
 const WED = ['Don\'t they look lovely!', 'I always cry at weddings.', 'Who\'s got the confetti?', 'Speech! Speech!', 'Three cheers for the happy couple!', 'Lovely service, that.', 'Mind the vicar\'s hat!', 'Hip hip hooray!'];
 const WED_A = ['Free bar or I\'m going home.', 'Six months. I give it six months.', 'Best man\'s had a skinful already.', 'Agadoo at the reception, mark my words.', 'I\'ve got a fiver on them lasting.', 'Is that a mullet or a wedding hat?'];
@@ -13,10 +17,10 @@ const MARKET_A = ['Fell off the back of a lorry, this lot. Don\'t ask.', 'Melons
 const DIP = [
   ['a tin of Quality Street (mostly the green triangles)', (g) => { g.player.hunger = Math.max(0, g.player.hunger - 25); }],
   ['two pounds of spuds', (g) => g.player.invAdd('food', 2)],
-  ['a crisp tenner!', (g) => g.economy.earn(10)],
+  ['a crisp tenner!', (g) => g.economy.earn(10, 'Market and fêtes')],
   ['a bottle of Lucozade. Zing!', (g) => { g.player.energy = Math.min(100, g.player.energy + 30); }],
-  ['a VHS of Mr Bean, a bit chewed', null], ['a signed photo of Noel Edmonds', null], ['a Tamagotchi (it has already died)', null], ['a pair of shell suit trousers', null], ['a Spice Girls lolly', (g) => { g.player.hunger = Math.max(0, g.player.hunger - 8); }],
-  ['a £20 note! The stallholder looks gutted.', (g) => g.economy.earn(20)],
+  ['a VHS of Mr Bean, a bit chewed', null], ['a signed photo of Noel Edmonds', null], ['a Pog slammer (a bit chipped)', null], ['a pair of shell suit trousers', null], ['a Spice Girls lolly', (g) => { g.player.hunger = Math.max(0, g.player.hunger - 8); }],
+  ['a £20 note! The stallholder looks gutted.', (g) => g.economy.earn(20, 'Market and fêtes')],
 ];
 const STALLS = [
   { id: 'veg', name: 'Greengrocer', awning: [0x3a9a54, 0xffffff], goods: [0xd8342c, 0xe0a030, 0x6aa04a, 0x8a5a2a] },
@@ -26,7 +30,7 @@ const STALLS = [
 
 /** Bigger days in the town calendar: weddings at St Sam's, Bonfire Night and New Year fireworks, and a weekly market where Sam can buy and sell. */
 export class Celebrations {
-  constructor(game) { this.game = game; this.wed = null; this.bonfire = null; this.market = null; this.stalls = []; }
+  constructor(game) { this.game = game; this.cricket = new Cricket(game); this.funerals = new Funerals(game); this.guests = new Guests(game); this.protests = new Protests(game); this.events = []; this.wed = null; this.bonfire = null; this.market = null; this.stalls = []; }
   get adult() { return this.game.ui.adult; }
   /** Somewhere a person can stand: on land, and not inside a building (parks are fine). */
   free(x, z) { const g = this.game, tx = Math.floor(x / TILE), tz = Math.floor(z / TILE); return g.world.isLand(tx, tz) && !g.buildings.buildingAtPoint(x, z); }
@@ -39,12 +43,17 @@ export class Celebrations {
   /** The current event wants this person there (an invited guest, the couple, or a Bonfire Night crowd). */
   calling(s, h) {
     const w = this.wed; if (w && w.live && (s === w.a || s === w.b || w.guests.has(s))) return w;
+    const fu = this.funerals.calling(s); if (fu) return fu;
+    const gu = this.guests.calling(s); if (gu) return gu;
+    const pr = this.protests.calling(s); if (pr) return pr;
+    for (const ev of this.events) if (ev.live && ev.calling(s)) return ev;
+    const cr = this.cricket.calling(s); if (cr) return cr;
     const bf = this.bonfire; if (bf && bf.live && (s.kind === 'resident' || s.kind === 'child') && s.id % 10 < 8) return bf;
     return null;
   }
   update(dt) {
-    const g = this.game; if (!g.started && !g.demoMode) return;
-    this.wedding(dt); this.fireworksNight(dt); this.marketDay(dt);
+    const g = this.game; if ((!g.started && !g.demoMode) || g.netVisitor) return;
+    this.wedding(dt); this.fireworksNight(dt); this.marketDay(dt); this.cricket.update(dt); this.funerals.update(dt); this.guests.update(dt); this.protests.update(dt); this.protests.tick(dt); this.events = this.events.filter((e) => e.live);
     // crowd reactions
     this.crowdT = (this.crowdT || 0) - dt; if (this.crowdT > 0) return; this.crowdT = 0.8 + Math.random() * 1.2;
     for (const ev of [this.wed && this.wed.live && this.wed, this.bonfire && this.bonfire.live && this.bonfire]) {
@@ -58,7 +67,7 @@ export class Celebrations {
 
   // ---------- weddings ----------
   wedding(dt) {
-    const g = this.game, c = g.clock, today = c.totalDays, church = g.buildings.byDef('church')[0];
+    const g = this.game, c = g.clock, today = c.totalDays, church = g.buildings.church();
     if (!this.wed && church && today % 7 === 4 && c.hour >= 9 && this.planned !== today) {
       this.planned = today;
       const a = g.population.adults().find((s) => s.partner && !s.married && !s.partner.married && !s.leaving && !s.partner.leaving && s.partner.kind === 'resident' && today - (s.coupleDay ?? today) >= 2 && s.id < s.partner.id);
@@ -79,6 +88,7 @@ export class Celebrations {
   heard(x, z) { const g = this.game; return g.mode === 'sim' && Math.hypot(g.player.x - x, g.player.z - z) < 60; }
   startWedding(w) {
     const g = this.game, ch = w.church; w.live = true;
+    const till = g.clock.totalDays * 24 + 20; for (const s of [w.a, w.b]) s.wear(s.look.gender === 'f' || (s.baseLook && s.baseLook.gender === 'f') ? 'bride' : 'groom', till);   // the dress and the suit
     const ux0 = ch.doorOut.x - ch.cx, uz0 = ch.doorOut.z - ch.cz, L = Math.hypot(ux0, uz0) || 1, ux = ux0 / L, uz = uz0 / L, px = -uz, pz = ux;
     w.couple = (side) => [ch.doorOut.x + ux * 1.4 + px * side * 0.55, ch.doorOut.z + uz * 1.4 + pz * side * 0.55];
     const face = Math.atan2(ux, uz);
@@ -91,6 +101,7 @@ export class Celebrations {
     // the guest list: friends and family first, then whoever fancies a do
     const P = g.population.residents().filter((s) => s !== w.a && s !== w.b && !s.leaving);
     for (const s of P) { const close = (w.a.rel.get(s.id) || 0) >= 20 || (w.b.rel.get(s.id) || 0) >= 20 || s.parents.includes(w.a) || s.parents.includes(w.b) || w.a.parents.includes(s) || w.b.parents.includes(s); if (close || Math.random() < 0.35) w.guests.add(s); if (w.guests.size >= 16) break; }
+    for (const s of w.guests) if (Math.random() < 0.8) s.wear('sunday', till);   // and everybody in their Sunday best
     // a flower arch at the church door
     const grp = new THREE.Group(), white = this.mat(0xf6f2ea), arch = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.07, 6, 18, Math.PI), white); arch.position.y = 2.1; grp.add(arch);
     for (const sx of [-1.25, 1.25]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.1, 6), white); post.position.set(sx, 1.05, 0); grp.add(post); }
@@ -184,9 +195,9 @@ export class Celebrations {
   useStall(st) {
     const g = this.game, p = g.player, e = g.economy, bump = (n) => { g.flags.market = (g.flags.market || 0) + n; };
     const nearSim = g.population.sims.find((s) => s.mesh.visible && !s.hidden && Math.hypot(s.x - st.x, s.z - st.z) < 6); if (nearSim && Math.random() < 0.5) this.say(nearSim, MARKET, MARKET_A);
-    if (st.id === 'veg') { if (p.invRoom() < 1) return g.ui.toast('Your backpack is full.'); if (!e.spend(12)) return g.ui.toast('Not enough money in the town funds.'); const n = p.invAdd('food', 3); bump(n); Sfx.play('cash'); return g.ui.toast(`You buy ${n} food. "Lovely bit of veg, that."`, 2600); }
-    if (st.id === 'dip') { if (!e.spend(5)) return g.ui.toast('Not enough money.'); const [what, fx] = pick(DIP); if (fx) fx(g); bump(1); Sfx.play('pickup'); return g.ui.toast(`🎁 Lucky dip: you pull out ${what}`, 3200); }
+    if (st.id === 'veg') { if (p.invRoom() < 1) return g.ui.toast('Your backpack is full.'); if (!e.spend(12, 'Market and fêtes')) return g.ui.toast('Not enough money in the town funds.'); const n = p.invAdd('food', 3); bump(n); Sfx.play('cash'); return g.ui.toast(`You buy ${n} food. "Lovely bit of veg, that."`, 2600); }
+    if (st.id === 'dip') { if (!e.spend(5, 'Market and fêtes')) return g.ui.toast('Not enough money.'); const [what, fx] = pick(DIP); if (fx) fx(g); bump(1); Sfx.play('pickup'); return g.ui.toast(`🎁 Lucky dip: you pull out ${what}`, 3200); }
     const v = this.swapValue(), n = p.invTotal(); if (!n) { Sfx.play('deny'); return g.ui.toast('Nothing to sell. Gather timber, stone or food and bring it here.'); }
-    e.earn(v); p.inv = {}; bump(n); Sfx.play('cash'); g.ui.toast(`You sell ${n} things for ${fmtMoney(v)}. "Pleasure doing business."`, 3000);
+    e.earn(v, 'Market and fêtes'); p.inv = {}; bump(n); Sfx.play('cash'); g.ui.toast(`You sell ${n} things for ${fmtMoney(v)}. "Pleasure doing business."`, 3000);
   }
 }

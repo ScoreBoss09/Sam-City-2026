@@ -1,12 +1,23 @@
 import { T } from '../world/World.js';
 import { MAP } from '../config.js';
 import { Sim } from '../sim/Sim.js';
+import { QUIRKS } from '../data/character.js';
 
 const KEY = 'samcity-save-v1';
 const SAVE_V = 2;   // 2: the 8 m grid (older saves were on the small 4 m grid and can't be carried over)
-export const saveInfo = () => { try { const s = localStorage.getItem(KEY); if (!s) return null; const d = JSON.parse(s); return { v: d.v || 1, ok: (d.v || 1) === SAVE_V }; } catch (e) { return null; } };
-export const hasSave = () => { try { return !!localStorage.getItem(KEY); } catch (e) { return false; } };
-export const clearSave = () => { try { localStorage.removeItem(KEY); } catch (e) { /* private mode */ } };
+// three save slots (slot 1 is the old single save, so existing games carry on)
+export const SLOTS = 3;
+let slot = 1; try { slot = Math.min(SLOTS, Math.max(1, +localStorage.getItem('samcity-slot') || 1)); } catch (e) { /* no storage */ }
+const keyOf = (n) => (n === 1 ? KEY : KEY + '-' + n);
+export const currentSlot = () => slot;
+export function setSlot(n) { slot = n; try { localStorage.setItem('samcity-slot', String(n)); } catch (e) { /* no storage */ } }
+/** What's in a slot: null if empty, else { ok, t (saved at), pop, funds, day, month, year }. */
+export function slotInfo(n) {
+  try { const s = localStorage.getItem(keyOf(n)); if (!s) return null; const d = JSON.parse(s); return { v: d.v || 1, ok: (d.v || 1) === SAVE_V, t: d.t, pop: (d.sims || []).length, funds: d.economy && d.economy.funds, clock: d.clock }; } catch (e) { return null; }
+}
+export const saveInfo = () => slotInfo(slot);
+export const hasSave = () => { try { return !!localStorage.getItem(keyOf(slot)); } catch (e) { return false; } };
+export const clearSave = (n = slot) => { try { localStorage.removeItem(keyOf(n)); } catch (e) { /* private mode */ } };
 
 /** Snapshot of everything that matters. Sims are stored by value and rebuilt on load. */
 export function serialize(g) {
@@ -16,17 +27,22 @@ export function serialize(g) {
     v: SAVE_V, t: Date.now(), tech: g.tech.serialize(), clock: g.clock.serialize(), economy: g.economy.serialize(), story: g.story.serialize(), flags: g.flags,
     terrain: Array.from(w.terrain).join(''), roads: Array.from(w.road).join(''), zones: Array.from(w.zone).join(''),
     trees: g.terrain.trees.map((t) => (t.alive ? t.amount : 0)).join(''), nodes: g.resources.nodes.filter((n) => n.kind !== 'field').map((n) => +n.amount.toFixed(1)),
-    buildings: g.buildings.list.map((b) => ({ id: b.id, x0: b.x0, z0: b.z0, rot: b.rot, state: b.state, progress: b.progress, have: b.have, starter: b === g.starterHome, era: b.era, prio: b.prio, level: b.level || 0 })), upgrades: g.upgrades.serialize(),
-    sims: sims.map((s) => ({ name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.look, hunger: s.hunger, orient: s.orient, mood: s.moodBoost, actor: s.actor, talk: s.talkCount, gaveClue: !!s.gaveClue, samRel: s.samRel || 0, married: !!s.married,
+    buildings: g.buildings.list.map((b) => ({ id: b.id, x0: b.x0, z0: b.z0, rot: b.rot, state: b.state, progress: b.progress, have: b.have, starter: b === g.starterHome, era: b.era, prio: b.prio, crew: b.crew, level: b.level || 0, buried: b.buried || 0 })), upgrades: g.upgrades.serialize(),
+    sims: sims.map((s) => ({ name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.baseLook || s.look, hunger: s.hunger, orient: s.orient, mood: s.moodBoost, actor: s.actor, talk: s.talkCount, gaveClue: !!s.gaveClue, samRel: s.samRel || 0, married: !!s.married, quirk: s.quirk ? s.quirk.id : undefined, tm: g.talk ? g.talk.saveMem(s) : undefined,
       home: s.home ? g.buildings.list.indexOf(s.home) : -1, work: s.workplace ? g.buildings.list.indexOf(s.workplace) : -1, role: s.role, partner: s.partner ? idOf.get(s.partner) : -1, parents: s.parents.map((p) => idOf.get(p)).filter((i) => i !== undefined), coupleDay: s.coupleDay || 0,
       rel: [...s.rel.entries()].map(([id, v]) => { const o = g.population.sims.find((q) => q.id === id); return o && idOf.has(o) ? [idOf.get(o), Math.round(v)] : null; }).filter(Boolean) })),
-    raids: g.raids.serialize(), curios: g.curios.serialize(), post: g.mail.serialize(), roadPlans: g.roadPlans.serialize(), toolsTaken: g.tools.takenIds(),
-    player: { x: g.player.x, z: g.player.z, heading: g.player.heading, yaw: g.player.yaw, energy: g.player.energy, hunger: g.player.hunger, tools: [...g.player.tools], inv: g.player.inv }, piles: g.piles.serialize(),
+    raids: g.raids.serialize(), movedNodes: Object.entries(g.resources.moved).map(([id, [tx, tz]]) => [+id, tx, tz]), lamps: g.lamps.serialize(), crime: g.crime.serialize(), hazards: g.hazards.serialize(), curios: g.curios.serialize(), post: g.mail.serialize(), roadPlans: g.roadPlans.serialize(), toolsTaken: g.tools.takenIds(),
+    cars: g.cars ? g.cars.serialize() : [], player: { bike: g.player.bike, x: g.player.x, z: g.player.z, heading: g.player.heading, yaw: g.player.yaw, energy: g.player.energy, hunger: g.player.hunger, tools: [...g.player.tools], inv: g.player.inv }, piles: g.piles.serialize(),
   };
 }
-export function save(g) { if (g.demoMode || g.ending || !g.started) return false; try { localStorage.setItem(KEY, JSON.stringify(serialize(g))); return true; } catch (e) { return false; } }
-export function load() { try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+export function save(g) { if (g.demoMode || g.ending || !g.started || g.netVisitor) return false; try { localStorage.setItem(keyOf(slot), JSON.stringify(serialize(g))); return true; } catch (e) { return false; } }
+export function load() { try { const s = localStorage.getItem(keyOf(slot)); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
 
+/** A townsperson's quirk and what they remember telling Sam (see Talk), so they're the same person after loading. */
+function restoreTalk(g, sim, s) {
+  const q = s.quirk && QUIRKS.find((x) => x.id === s.quirk); if (q && sim.quirk !== q) { sim.quirk = q; if (sim.kind === 'resident') { sim.bedH = Math.max(19, Math.min(26, 21.4 + q.bed)); sim.wakeH = Math.max(4.8, Math.min(9.5, 6.6 + q.wake)); } }
+  if (s.tm && g.talk) g.talk.loadMem(sim, s.tm);
+}
 /** Rebuild the world from a snapshot (called right after a fresh Game has been constructed). */
 export function restore(g, d) {
   if ((d.v || 1) !== SAVE_V) throw new Error('This save is from the old, smaller map');
@@ -39,27 +55,29 @@ export function restore(g, d) {
   for (let i = 0; i < w.road.length; i++) { w.road[i] = +d.roads[i]; w.zone[i] = +d.zones[i]; }
   // trees and resource nodes
   g.terrain.trees.forEach((t, i) => { const a = +d.trees[i]; if (a === 0 && t.alive) g.terrain.killTree(t); else if (a > 0) { t.amount = a; if (a < 3) g.terrain.setTree(t.idx, 0.55 + 0.15 * a); } });
+  for (const [id, tx, tz] of d.movedNodes || []) { const n = g.resources.nodes.find((q) => q.seedId === id); if (n && g.resources.canReplant(tx, tz)) g.resources.moveNode(n, tx, tz); }
   g.resources.nodes.filter((n) => n.kind !== 'field').forEach((n, i) => { if (d.nodes[i] !== undefined) { n.amount = d.nodes[i]; g.resources.visual(n); } });
   g.terrain.paintAll();
   // buildings
   const made = []; g.starterHome = null; g.flags.noStarter = true;
+  if (d.tech) g.tech.load(d.tech);   // buildings go up in the right architectural age
   for (const s of d.buildings) {
     if (s.id === 'tunnel') continue;   // older saves: the tunnel is gone
     const b = B.place(s.id, s.x0, s.z0, s.rot, { instant: s.state === 'done', era: s.era ?? (d.tech ? d.tech.era : 0) });
-    if (s.state !== 'done') { b.progress = s.progress; b.have = s.have || {}; B.refreshSite(b); if (s.prio !== undefined) b.prio = s.prio; }
-    if (s.level) g.upgrades.applyLevel(b, s.level);
+    if (s.state !== 'done') { b.progress = s.progress; b.have = s.have || {}; B.refreshSite(b); if (s.prio !== undefined) b.prio = s.prio; if (s.crew) b.crew = s.crew; }
+    if (s.level) g.upgrades.applyLevel(b, s.level); if (s.buried) b.buried = s.buried;
     if (s.id === 'lift') g.lift = b; if (s.id === 'surveyor') g.surveyor = b; if (s.starter) { g.starterHome = b; b.reservedForPlayer = true; if (b.spots.bed[0]) b.spots.bed[0].taken = 'player'; }
     made.push(b);
   }
   delete g.flags.noStarter; g.security.guards = []; g.security.init(); g.raids.reset(); g.raids.load(d.raids); g.mail.load(d.post); g.curios.load(d.curios);
   g.upgrades.orders.slice().forEach((o) => g.upgrades.drop(o)); g.upgrades.load(d.upgrades, made); g.roadPlans.load(d.roadPlans); g.tools.build(g.tools.x, g.tools.z, d.toolsTaken || []); g.player.tools = new Set((d.player && d.player.tools) || []); if (d.player && d.player.hunger != null) g.player.hunger = d.player.hunger;
   // economy, clock, story
-  g.tech.load(d.tech); g.economy.load(d.economy); g.clock.load(d.clock); g.story.load(d.story); Object.assign(g.flags, d.flags);
+  g.tech.load(d.tech); g.lamps.load(d.lamps); g.crime.load(d.crime); g.hazards.load(d.hazards); g.economy.load(d.economy); g.clock.load(d.clock); g.story.load(d.story); Object.assign(g.flags, d.flags);
   // citizens
   const sims = d.sims.map((s) => {
     const home = made[s.home]; const x = home ? home.doorIn.x : g.plaza.x, z = home ? home.doorIn.z : g.plaza.z;
     const sim = new Sim(g, { name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.look, x, z, inside: home || null, actor: s.actor });
-    sim.hunger = s.hunger; sim.orient = s.orient; sim.moodBoost = s.mood || 0; sim.talkCount = s.talk || 0; sim.samRel = s.samRel || 0; sim.gaveClue = s.gaveClue; sim.coupleDay = s.coupleDay; sim.married = !!s.married; P.names.add(s.name); P.sims.push(sim); return sim;
+    sim.hunger = s.hunger; sim.orient = s.orient; sim.moodBoost = s.mood || 0; sim.talkCount = s.talk || 0; sim.samRel = s.samRel || 0; sim.gaveClue = s.gaveClue; sim.coupleDay = s.coupleDay; sim.married = !!s.married; restoreTalk(g, sim, s); P.names.add(s.name); P.sims.push(sim); return sim;
   });
   d.sims.forEach((s, i) => {
     const sim = sims[i]; if (s.home >= 0 && made[s.home]) { sim.home = made[s.home]; made[s.home].residents.push(sim); const sp = made[s.home].spots.bed.find((q) => !q.taken); if (sp) sp.taken = sim; }
@@ -67,6 +85,7 @@ export function restore(g, d) {
     if (s.partner >= 0) { sim.partner = sims[s.partner]; sim.single = false; } sim.parents = s.parents.map((j) => sims[j]);
     for (const [j, v] of s.rel) sim.rel.set(sims[j].id, v);
   });
-  const p = d.player; g.player.teleport(p.x, p.z, p.heading); g.player.yaw = p.yaw; g.player.energy = p.energy; g.player.inv = p.inv || (p.carry ? { [p.carry.mat]: p.carry.qty } : {}); g.piles.load(d.piles);
+  if (g.cars && d.cars) g.cars.load(d.cars);
+  const p = d.player; g.player.teleport(p.x, p.z, p.heading); g.player.bike = p.bike; g.player.yaw = p.yaw; g.player.energy = p.energy; g.player.inv = p.inv || (p.carry ? { [p.carry.mat]: p.carry.qty } : {}); g.piles.load(d.piles);
   g.flags.loaded = true;
 }

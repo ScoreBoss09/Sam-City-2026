@@ -31,8 +31,10 @@ function noiseFill(ctx, w, h, hex, amt, rnd) {
 const facadeCache = {};
 const facadeMats = [];
 /** Facade texture covers 4m wide x one storey (3.2m). 16px per metre. */
-export function facadeMaterial(style) {
+export function facadeMaterial(style, glass = false) {
+  if (glass) return glassFacade(style);
   if (facadeCache[style]) return facadeCache[style];
+  const holes = [];
   const f = FACADES[style] || FACADES.tan; const W = 64, H = 52; const rnd = mulberry32(style.length * 977 + style.charCodeAt(0));
   const c = mk(W, H), ctx = c.getContext('2d'); const e = mk(W, H), ex = e.getContext('2d');
   noiseFill(ctx, W, H, f.base, 14, rnd); ex.fillStyle = '#000'; ex.fillRect(0, 0, W, H);
@@ -59,13 +61,14 @@ export function facadeMaterial(style) {
     for (let i = 0; i < 24; i++) { ctx.fillRect(3 + i, 3 + i, 2, 2); ctx.fillRect(W - 5 - i, 3 + i, 2, 2); }
     ctx.fillStyle = 'rgba(0,0,0,.05)'; for (let i = 0; i < 60; i++) ctx.fillRect(rnd() * W | 0, rnd() * H | 0, 2, 1);
   }
+  else if (f.kind === 'panels') { ctx.fillRect(0, 0, W, 1); ctx.fillRect(0, H / 2 | 0, W, 1); ctx.fillRect(0, 0, 1, H); ctx.fillRect(W / 2, 0, 1, H); ctx.fillStyle = 'rgba(0,0,0,.07)'; for (let i = 0; i < 70; i++) ctx.fillRect(rnd() * W | 0, rnd() * H | 0, 1, 2 + (rnd() * 3 | 0)); }
   else { for (let i = 0; i < 40; i++) ctx.fillRect(rnd() * W | 0, rnd() * H | 0, 2, 1); }
   }
   const lit = () => rnd() > 0.3;
   if (f.kind === 'curtain') {
     for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 4; gx++) {
       const x = gx * 16, y = 2 + gy * 16;
-      ctx.fillStyle = rnd() > 0.5 ? '#4f93b8' : '#5aa4c9'; ctx.fillRect(x + 1, y + 1, 14, 14);
+      ctx.fillStyle = rnd() > 0.5 ? '#4f93b8' : '#5aa4c9'; ctx.fillRect(x + 1, y + 1, 14, 14); holes.push([x + 1, y + 1, 14, 14, 0]);
       ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(x + 2, y + 2, 5, 2);
       if (lit()) { ex.fillStyle = '#ffd98a'; ex.fillRect(x + 2, y + 2, 12, 12); }
     }
@@ -76,6 +79,7 @@ export function facadeMaterial(style) {
     for (const x of xs) {
       const y = 12, h = 26;
       const ws = Assets.has('win_modern') ? Assets.img(OLD_WINDOWS.includes(style) ? 'win_old' : 'win_modern') : null;
+      holes.push([x, y, ww, h, 1]);
       if (ws) { ctx.fillStyle = '#1b2733'; ctx.fillRect(x, y, ww, h); ctx.drawImage(ws, x - 2, y - 3, ww + 4, h + 8); if (lit()) { ex.fillStyle = '#ffcf70'; ex.fillRect(x + 1, y + 1, ww - 2, h - 1); } continue; }
       ctx.fillStyle = f.frame; ctx.fillRect(x - 2, y - 2, ww + 4, h + 4);
       ctx.fillStyle = f.win; ctx.fillRect(x, y, ww, h);
@@ -88,9 +92,34 @@ export function facadeMaterial(style) {
   const mat = new THREE.MeshStandardMaterial({
     map: tex(c, true), emissiveMap: tex(e, true), emissive: 0xffffff, emissiveIntensity: 0, roughness: 0.92, metalness: 0,
   });
+  mat.userData.canvas = c; mat.userData.holes = holes; mat.userData.frame = f.frame;
   facadeCache[style] = mat; facadeMats.push(mat); return mat;
 }
-export function setWindowGlow(v) { for (const m of facadeMats) m.emissiveIntensity = v; }
+/**
+ * The same facade with real holes where the panes are (alpha-tested), so you can see into buildings through a sheet of
+ * glass (glassMaterial, set in the middle of the wall). userData.mask cuts the same holes in the inside wall lining.
+ */
+const glassCache = {};
+function glassFacade(style) {
+  if (glassCache[style]) return glassCache[style];
+  const base = facadeMaterial(style), src = base.userData.canvas, W = src.width, H = src.height;
+  const c = mk(W, H), ctx = c.getContext('2d'); ctx.drawImage(src, 0, 0);
+  const m = mk(W, H), mx = m.getContext('2d'); mx.fillStyle = '#fff'; mx.fillRect(0, 0, W, H);
+  for (const [x, y, w, h, cross] of base.userData.holes) {
+    ctx.clearRect(x, y, w, h); mx.fillStyle = '#000'; mx.fillRect(x, y, w, h);
+    if (cross) { ctx.fillStyle = base.userData.frame; mx.fillStyle = '#fff'; for (const q of [ctx, mx]) { q.fillRect(x + (w >> 1), y, 1, h); q.fillRect(x, y + (h >> 1), w, 1); } }
+  }
+  const mat = new THREE.MeshStandardMaterial({ map: tex(c, true), roughness: 0.92, metalness: 0, alphaTest: 0.5 });
+  mat.userData.mask = tex(m, true, false); return (glassCache[style] = mat);
+}
+let _glass = null;
+/** Window glass: faintly blue, a little shiny, and lit warm from inside after dark. */
+export function glassMaterial() {
+  return _glass || (_glass = new THREE.MeshStandardMaterial({ color: 0xa9cde4, transparent: true, opacity: 0.26, roughness: 0.08, metalness: 0.5, side: THREE.DoubleSide, depthWrite: false, emissive: 0xffc070, emissiveIntensity: 0 }));
+}
+let _glow = 0;
+export function windowGlow() { return _glow; }
+export function setWindowGlow(v) { _glow = v; for (const m of facadeMats) m.emissiveIntensity = v; glassMaterial().emissiveIntensity = v * 0.45; }
 
 let _water;
 export function waterTexture() {

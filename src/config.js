@@ -12,7 +12,7 @@ export const DAY_SECONDS = DAYLIGHT_SECONDS + NIGHT_SECONDS;   // a whole day
 export const START_FUNDS = 2500;
 export const START_HOUR = 9;
 export const START_MONTH = 4;     // 0-based (4 = May)
-export const START_YEAR = 2004;
+export const START_YEAR = 1996;     // mid-90s England: Euro 96, Britpop, the Spice Girls, Pogs
 export const DAYS_PER_MONTH = 8;   // short months so the seasons come round in a play session
-export const MAX_SIMS_HARD = 90;  // absolute ceiling for the performance governor
+export const MAX_SIMS_HARD = 100000;  // no real ceiling: the performance governor (Population) only caps the town when frame rate drops
 export const MIN_SIMS = 10;

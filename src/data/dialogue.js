@@ -65,6 +65,7 @@ export const WORK = {
   brickmaker: ['Best clay on the island, that.', 'The kiln never goes cold.', 'Fired a hundred this week.', 'Every brick I make, I sign. Tiny initials. Look closely.'],
   glassblower: ['Beach sand makes lovely glass.', 'Mind the furnace, it bites.', 'Windows for the whole town, soon enough.', 'Glass is just patient sand.'],
   smith: ['Iron from the hills, steel from my forge.', 'Good steel takes patience.', 'Hammer, anvil, repeat.', 'My arms are like tree trunks. Feel that. Go on.'],
+  cook: ['Pie and chips, scampi in a basket, or a ploughman\'s. That\'s the menu.', 'Sunday roast, twelve till two. Get here early.', 'The gravy\'s Bisto. Don\'t tell anyone.', 'Chicken in a basket! Very popular at a do.'],
   publican: ['Pint? Well, a cup of tea, in your case.', 'Stew\'s on. Same recipe as always.', 'Best seat\'s by the fire.', 'I hear everything behind this bar. Everything.', 'Quiz night\'s on Thursday. Bring your brain.'],
   teacher: ['The children are coming along nicely.', 'Reading, writing and a bit of arithmetic.', 'Such bright little things.', 'One of them asked me where the sky ends. I changed the subject.', 'Nature walk tomorrow. Don\'t tell them it\'s educational.'],
   shopkeeper: ['Fresh stock every day. Same stock every day, really.', 'Business is steady. Remarkably steady.', 'Anything I can get you, Sam?', 'Visitors love a souvenir.', 'We\'ve run out of milk again. We\'ve never had milk.'],
@@ -133,3 +134,9 @@ export const BYE_SHY = ['Oh, um, bye then.', 'Nice talking... bye!', 'Ta-ra. Sor
 
 export const CHILD_TALK = ['Do you know any jokes? What\'s brown and sticky? A stick!', 'I found a frog. I called him Kevin.', 'Mum says don\'t talk to strangers. You\'re not a stranger, you\'re Sam.',
   'How high does the sky go? My teacher wouldn\'t say.', 'I can whistle. Pfffff. Nearly.', 'When I grow up I\'m going to build a castle. With a moat. And sharks.', 'Have you got any sweets?'];
+
+// mid-90s small talk (nineties.js)
+import { N90 } from './nineties.js';
+GOSSIP.nineties = N90.gossip; ABOUT2.push(...N90.about2); FAMILY.push(...N90.family); CHILD_TALK.push(...N90.child);
+import { N96 } from './nineties2.js';
+GOSSIP.nineties.push(...N96.gossip); ABOUT2.push(...N96.about2); CHILD_TALK.push(...N96.child);

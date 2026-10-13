@@ -5,7 +5,10 @@ import { MATERIALS } from '../data/buildings.js';
 export class SiteLabels {
   constructor(game) { this.game = game; this.t = 0; }
   update(dt) {
-    this.t -= dt; if (this.t > 0) return; this.t = 0.4; const g = this.game, god = g.mode === 'god';
+    const g = this.game, god = g.mode === 'god';
+    // size and position every frame (smooth while zooming); the text only needs redrawing now and then
+    for (const b of g.buildings.list) if (b.label) { const sc = god ? Math.max(8, g.god.dist * 0.16) : 3.2; b.label.scale.set(sc, sc / 4, 1); b.label.position.set(b.cx, god ? 6 + sc * 0.2 : 4.2, b.cz); }
+    this.t -= dt; if (this.t > 0) return; this.t = 0.4;
     for (const b of g.buildings.list) {
       if (b.state !== 'site') { if (b.label) { g.scene.remove(b.label); b.label.material.map.dispose(); b.label = null; } continue; }
       const miss = Object.keys(b.need).map((m) => [m, Math.max(0, b.need[m] - (b.have[m] || 0))]).filter(([, n]) => n > 0);

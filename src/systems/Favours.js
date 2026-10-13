@@ -35,7 +35,7 @@ export class Favours {
   complete(f) {
     const g = this.game, p = g.player, have = p.inv[f.mat] || 0;
     if (have < f.n) return `No rush, love. I need ${f.n} ${MATERIALS[f.mat].name.toLowerCase()}. You've got ${have} on you.`;
-    p.invTake(f.mat, f.n); g.economy.earn(f.reward); f.sim.samRel = Math.min(100, (f.sim.samRel || 0) + 18); f.sim.moodBoost += 0.3; f.dead = true; if (f.icon && f.icon.parent) f.icon.parent.remove(f.icon);
+    p.invTake(f.mat, f.n); g.economy.earn(f.reward, 'Favours'); f.sim.samRel = Math.min(100, (f.sim.samRel || 0) + 18); f.sim.moodBoost += 0.3; f.dead = true; if (f.icon && f.icon.parent) f.icon.parent.remove(f.icon);
     this.list = this.list.filter((q) => q !== f); g.flags.favours = (g.flags.favours || 0) + 1; Sfx.play('done'); g.ui.toast(`Favour done! +£${f.reward}, and ${f.sim.first} thinks the world of you.`, 3000);
     return pick(THANKS);
   }

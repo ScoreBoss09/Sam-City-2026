@@ -141,6 +141,12 @@ export class World {
   }
   /** Circle-vs-world test used by the player. wallsOnly: ignore water/forest tiles (camera). */
   /** y: how high off the ground (jumping) - low things like fences (c.h) are cleared once you're above them. */
+  /** Height of the highest furniture top (beds, tables, sofas...) under (x, z) that is no higher than `below`, or 0. */
+  topAt(x, z, r, below) {
+    const [tx, tz] = this.tileOf(x, z), a = this.colBuckets.get(this.idx(tx, tz)); let best = 0;
+    if (a) for (const c of a) if (c.top && c.top <= below && c.top > best && x > c.minx - r && x < c.maxx + r && z > c.minz - r && z < c.maxz + r) best = c.top;
+    return best;
+  }
   collides(x, z, r, wallsOnly = false, y = 0) {
     const [tx0, tz0] = this.tileOf(x - r, z - r), [tx1, tz1] = this.tileOf(x + r, z + r);
     for (let tz = tz0; tz <= tz1; tz++) for (let tx = tx0; tx <= tx1; tx++) {
@@ -149,7 +155,7 @@ export class World {
       if (!wallsOnly && t === T.WATER) return true;   // woods can be walked into (to reach the trees); only the sea stops you
       const a = this.colBuckets.get(this.idx(tx, tz));
       if (a) for (const c of a) {
-        if (c.h !== undefined && y > c.h) continue;
+        if ((c.h !== undefined && y > c.h) || (c.lo !== undefined && y < c.lo) || c.navOnly) continue;
         const cx = Math.max(c.minx, Math.min(x, c.maxx)), cz = Math.max(c.minz, Math.min(z, c.maxz));
         if ((x - cx) ** 2 + (z - cz) ** 2 < r * r) return true;
       }

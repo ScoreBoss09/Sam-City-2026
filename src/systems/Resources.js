@@ -13,10 +13,49 @@ const rockGeo = new THREE.DodecahedronGeometry(1, 0);
 export class Resources {
   constructor(game) {
     this.game = game; this.world = game.world; this.terrain = game.terrain; this.nodes = []; this.shaking = []; this.group = new THREE.Group(); this.group.visible = false; game.scene.add(this.group); this.batches = []; this.batchDirty = true;   // nodes are drawn through a few instanced batches (see syncBatches)
-    for (const sd of this.world.nodeSeeds) this.addNode({ ...sd });
+    this.world.nodeSeeds.forEach((sd, i) => this.addNode({ ...sd, seedId: i })); this.moves = []; this.moved = {};
     // nothing grows or lies on top of a building plot
     this.world.events.on('building:added', (b) => { this.batchDirty = true; for (const n of this.nodes) if (n.mesh && n.tx >= b.x0 - 1 && n.tx < b.x0 + b.w + 1 && n.tz >= b.z0 - 1 && n.tz < b.z0 + b.d + 1 && (b.def.special || (n.tx >= b.x0 && n.tx < b.x0 + b.w && n.tz >= b.z0 && n.tz < b.z0 + b.d))) { n.amount = 0; n.max = n.max || 1; this.group.remove(n.mesh); n.mesh = null; n.gone = true; n.regen = 0; } });
   }
+  // ---------- moving a bush or a rock out of the way (the Move tool in the planning view) ----------
+  movable(n) { return n && n.mesh && (n.kind === 'berry' || n.kind === 'rock') && n.seedId !== undefined; }
+  nodeAt(tx, tz) { return this.nodes.find((n) => n.tx === tx && n.tz === tz && this.movable(n)) || null; }
+  canReplant(tx, tz) { const w = this.world, i = w.idx(tx, tz); return w.isLand(tx, tz) && !w.occ[i] && !w.road[i] && !w.res[i] && !this.game.roadPlans.get(tx, tz) && !this.moves.some((m) => m.tx === tx && m.tz === tz); }
+  requestMove(n, tx, tz) {
+    const g = this.game; if (this.moves.some((m) => m.n === n)) { g.ui.toast('That one is already being moved.'); return false; }
+    if (!this.canReplant(tx, tz)) { g.ui.toast('It can\'t go there: pick clear ground.'); return false; }
+    this.moves.push({ n, tx, tz, sim: null, t: 0 }); g.ui.toast(`A villager will dig up the ${n.kind === 'berry' ? 'berry bush' : 'rock'} and move it.`, 2600); return true;
+  }
+  /** Put a node on another tile (the world's blocking and the ground painting follow it). */
+  moveNode(n, tx, tz) {
+    const w = this.world, o = w.idx(n.tx, n.tz), i = w.idx(tx, tz), id = w.res[o]; w.res[o] = 0; if (n.kind === 'rock') w.block[o] = 0;
+    const ox = n.tx, oz = n.tz; n.tx = tx; n.tz = tz; n.x = (tx + 0.5) * TILE; n.z = (tz + 0.5) * TILE; w.res[i] = id || n.seedId + 1; if (n.kind === 'rock') w.block[i] = 1;
+    if (w.nodeSeeds[n.seedId]) { w.nodeSeeds[n.seedId].tx = tx; w.nodeSeeds[n.seedId].tz = tz; } this.moved[n.seedId] = [tx, tz];
+    if (n.mesh) { n.mesh.position.set(n.x, 0, n.z); n.mesh.visible = true; } this.batchDirty = true;
+    if (this.terrain && this.terrain.paintAround) { this.terrain.paintAround(ox, oz); this.terrain.paintAround(tx, tz); this.terrain.tex.needsUpdate = true; }
+  }
+  /** Hand waiting jobs to someone free (off work, awake, outdoors or at home). */
+  assignMoves(dt) {
+    this.moveAcc = (this.moveAcc || 0) - dt; if (this.moveAcc > 0) return; this.moveAcc = 2;
+    for (const m of this.moves) {
+      if (m.sim && (m.sim.remove || m.sim.moveJob !== m)) m.sim = null; if (m.sim) continue; m.t += 2;
+      const free = this.game.population.sims.filter((s) => s.kind === 'resident' && s.age >= 14 && s.age < 70 && !s.moveJob && s.pose !== 'sleep' && !(s.down > 0) && !s.fight && ['leisure', 'home', 'visit', 'work'].includes(s.activity) && (s.activity !== 'work' || s.role === 'forager' || s.role === 'builder' || s.role === 'farmer'));
+      free.sort((a, b) => Math.hypot(a.x - m.n.x, a.z - m.n.z) - Math.hypot(b.x - m.n.x, b.z - m.n.z));
+      const s = free[0]; if (s) { s.moveJob = m; m.sim = s; m.phase = 0; } else if (m.t > 30 && !m.warned) { m.warned = true; this.game.ui.toast('Nobody is free to move it yet: someone will when they knock off work.', 2600); }
+    }
+  }
+  /** The mover: walk there, dig it up, carry it over, plant it. (called from Sim.think) */
+  driveMove(s, dt) {
+    const m = s.moveJob, g = this.game; if (!m || !this.moves.includes(m)) { s.moveJob = null; s.bag = false; return; }
+    m.tt = (m.tt || 0) + dt;
+    s.hurry = true;
+    if (m.phase === 0) { const sp = this.standPoint(m.n, s) || { x: m.n.x + 1.4, z: m.n.z + 1.0 }; if (!s.goTo({ x: sp.x, z: sp.z })) { this.drop(m, s); return; } m.phase = 1; }
+    else if (m.phase === 1 && !s.path.length) { m.phase = 2; m.tt = 0; s.faceGoal = Math.atan2(m.n.x - s.x, m.n.z - s.z); g.social.say(s, 'Right, out you come...', 2); }
+    else if (m.phase === 2) { s.digging = true; if (m.tt > 3) { s.digging = false; m.n.mesh.visible = false; this.batchDirty = true; s.bag = true; const tx = (m.tx + 0.5) * TILE + 1.4, tz = (m.tz + 0.5) * TILE + 1.0; if (!s.goTo({ x: tx, z: tz })) { m.n.mesh.visible = true; this.drop(m, s); return; } m.phase = 3; } }
+    else if (m.phase === 3 && !s.path.length) { m.phase = 4; m.tt = 0; s.faceGoal = Math.atan2((m.tx + 0.5) * TILE - s.x, (m.tz + 0.5) * TILE - s.z); }
+    else if (m.phase === 4) { s.digging = true; if (m.tt > 2) { s.digging = false; s.bag = false; s.hurry = false; this.moveNode(m.n, m.tx, m.tz); this.moves = this.moves.filter((q) => q !== m); s.moveJob = null; g.messages.push('Planning Office', `${s.first} moved the ${m.n.kind === 'berry' ? 'berry bush' : 'rock'}.`, 'good'); } }
+  }
+  drop(m, s) { s.hurry = false; s.moveJob = null; s.bag = false; s.digging = false; m.sim = null; }
   /** A hit lands on a bush / rock: it shudders. */
   shake(n) { if (n.mesh) { n.shakeT = 0.35; if (!this.shaking.includes(n)) this.shaking.push(n); } }
   /** Draw every rock, bush, berry and clay pit with one instanced draw per shape+material (was one draw per piece). */
@@ -103,6 +142,7 @@ export class Resources {
   }
   removeFields(b) { if (!b.fieldNodes) return; this.nodes = this.nodes.filter((n) => !b.fieldNodes.includes(n)); b.fieldNodes = null; }
   update(dt) {
+    this.assignMoves(dt);
     for (const n of this.nodes) { if (n.amount < n.max && n.regen) { n.amount = Math.min(n.max, n.amount + n.regen * dt); if (n.kind !== 'field' && Math.floor(n.amount * 4) !== Math.floor((n.amount - n.regen * dt) * 4)) this.visual(n); } }
   }
 }

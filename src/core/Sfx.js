@@ -7,9 +7,11 @@ export const Sfx = {
   enabled: true,
   init() {
     if (ctx || typeof AudioContext === 'undefined') return;
-    try { ctx = new AudioContext(); master = ctx.createGain(); master.gain.value = 0.35; master.connect(ctx.destination);
+    try { ctx = new AudioContext(); master = ctx.createGain(); master.gain.value = Sfx.volume; master.connect(ctx.destination);
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { ctx = null; }
   },
+  volume: 0.35,
+  setVolume(v) { this.volume = v; if (master) master.gain.value = v; },
   resume() { this.init(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {}); },
   tone(freq, dur, { type = 'square', vol = 0.25, slide = 0, delay = 0 } = {}) {
     if (!this.enabled || !ctx || ctx.state !== 'running') return; const t = ctx.currentTime + delay, o = ctx.createOscillator(), g = ctx.createGain();
@@ -21,6 +23,8 @@ export const Sfx = {
     s.buffer = noiseBuf; f.type = type; f.frequency.value = freq; f.Q.value = q; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
   },
+  /** A footfall: a soft scuff, a bit sharper when running. */
+  step(run) { this.noise(run ? 0.07 : 0.05, { freq: 260 + Math.random() * 120, q: 0.8, vol: run ? 0.07 : 0.045, type: 'lowpass' }); },
   play(name) {
     switch (name) {
       case 'chop': this.noise(0.12, { freq: 900, q: 2, vol: 0.6 }); this.tone(140, 0.12, { type: 'triangle', vol: 0.4, slide: -60 }); break;

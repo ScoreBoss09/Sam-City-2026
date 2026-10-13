@@ -1,9 +1,12 @@
 import * as THREE from 'three';
-import { TILE, UNIT, WALL_T } from '../config.js';
+import { TILE, UNIT, WALL_T, WALL_H } from '../config.js';
 import { BUILDINGS } from '../data/buildings.js';
 import { doorOffset, layoutFor } from '../data/layouts.js';
 import { Sfx } from '../core/Sfx.js';
-import { buildExterior, buildSite, buildInterior, furnitureColliders } from '../render/BuildingFactory.js';
+import { buildExterior, buildSite, buildInterior, furnitureColliders, upperColliders, roomColliders } from '../render/BuildingFactory.js';
+import { laneRect } from './Levels.js';
+import { styleDef } from '../data/ages.js';
+import { windowGlow } from '../render/Textures.js';
 
 let _contact = null;
 function contactMat() {
@@ -32,12 +35,13 @@ export class BuildingManager {
   constructor(game) {
     this.game = game; this.world = game.world; this.scene = game.scene;
     this.list = []; this.nextUid = 1; this.interiorLight = new THREE.PointLight(0xffe2b0, 0, 24, 1.1); this.scene.add(this.interiorLight);
+    { const s = new THREE.Group(), plate = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, 0.025), new THREE.MeshStandardMaterial({ color: 0xf2ecdc, roughness: 0.5 })), rock = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.06, 0.03), new THREE.MeshStandardMaterial({ color: 0xe8e0cc, roughness: 0.4 })); rock.position.z = 0.02; s.add(plate, rock); s.userData.rock = rock; s.visible = false; this.scene.add(s); this.switchMesh = s; }   // the light switch by the front door
   }
   byDef(id, doneOnly = true) { return this.list.filter((b) => b.id === id && (!doneOnly || b.state === 'done')); }
   count(id, doneOnly = true) { return this.byDef(id, doneOnly).length; }
   /** Places people go shopping / eat out (any finished building flagged shopping / dining). */
-  shops() { return this.list.filter((b) => b.state === 'done' && b.def.shopping && b.spots.visit && b.spots.visit.length); }
-  diners() { return this.list.filter((b) => b.state === 'done' && b.def.dining); }
+  shops() { const sv = this.game.service; return this.list.filter((b) => b.state === 'done' && b.def.shopping && b.spots.visit && b.spots.visit.length && (!sv || sv.open(b))); }   // (only those open: somebody behind the counter)
+  diners() { const sv = this.game.service; return this.list.filter((b) => b.state === 'done' && b.def.dining && (!sv || sv.open(b))); }
   /** Village-wide happiness from parks, the church, the pub... (each extra copy of the same thing counts half as much). */
   townJoy() {
     if (this._joyT && this.game.elapsed - this._joyT < 2) return this._joy; const seen = {}; let j = 0;
@@ -56,7 +60,7 @@ export class BuildingManager {
       const [dtx, dtz] = geo.doorTile;
       const roadOk = !needRoad || (this.world.inBounds(dtx, dtz) && (this.world.road[this.world.idx(dtx, dtz)] > 0 || (this.game.roadPlans && this.game.roadPlans.has(dtx, dtz))));
       let shoreOk = true; if (def.needsShore && fits) { shoreOk = false; for (let zz = z0 - 1; zz <= z0 + d && !shoreOk; zz++) for (let xx = x0 - 1; xx <= x0 + w; xx++) if (this.world.inBounds(xx, zz) && this.world.terrain[this.world.idx(xx, zz)] === 0) { shoreOk = true; break; } }
-      const cand = { ok: fits && roadOk && shoreOk, reason: !fits ? 'Blocked' : (!roadOk ? 'Needs road frontage' : (!shoreOk ? 'Must be on the shore' : '')), rot, x0, z0, w, d, geo };
+      const cand = { ok: fits && roadOk && shoreOk, reason: !fits ? this.blockedWhy(x0, z0, w, d) : (!roadOk ? 'Needs road frontage' : (!shoreOk ? 'Must be on the shore' : '')), rot, x0, z0, w, d, geo };
       if (cand.ok) return cand; if (!fallback || (fits && !fallback.fits)) { cand.fits = fits; fallback = cand; }
     }
     return fallback;
@@ -110,21 +114,22 @@ export class BuildingManager {
     if (b.progress >= 0.999 && this.supply(b) >= 0.999) { if (b.upgradeOf) this.game.upgrades.complete(b); else this.finish(b); } return b.progress - before;
   }
   finish(b) {
+    { const f = this.game.flags, r = f.recent || (f.recent = []); if (!b.def.special && this.game.clock) { r.push({ id: b.id, name: b.def.name, day: this.game.clock.totalDays }); if (r.length > 10) r.shift(); } }   // for the townsfolk to talk about
+    { const g = this.game, A = g.flags.asks; if (g.started && A && A[b.id]) { const who = g.population.sims.filter((s) => A[b.id].includes(s.id) && !s.remove); delete A[b.id];   // somebody asked for this
+      if (who.length) { for (const s of who) { s.moodBoost += 0.25; s.samRel = Math.min(100, (s.samRel || 0) + 8); s.wishFor = null; if (s.mesh.visible && g.social) g.social.say(s, `A ${b.def.name}! I asked for that!`, 3); }
+        g.messages.push('Town', `${who.length === 1 ? who[0].name + ' asked' : who.length + ' people asked'} for a ${b.def.name}. ${who.length === 1 ? (who[0].gender === 'f' ? 'She\'s' : 'He\'s') : 'They\'re all'} chuffed to bits.`, 'good'); } } }
     if (b.siteVis) { this.scene.remove(b.siteVis.group); b.siteVis = null; }
     const def = b.def; if (b.era === undefined) b.era = this.game.tech ? this.game.tech.era : 0;
     const ext = this.mountExterior(b);
-    b.state = 'done'; b.progress = 1; b.layout = layoutFor(def);
-    const odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h }; };
-    b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout).map(conv));
-    if (def.id === 'lift' || def.id === 'tunnel') b.colliders = ext.colliders.map(conv);
-    this.world.addColliders(b); b.nav = undefined;
+    b.state = 'done'; b.progress = 1; b.layout = layoutFor(def); if (this.game.lamps) this.game.lamps.autoFor(b);
+    this.setColliders(b);
     const L = b.layout, tw = (p) => { const [x, z] = b.toWorld(p.x, p.z); return { x, z, b }; };
-    b.spots.bed = L.beds.map((p) => { const [x, z] = b.toWorld(p.x, p.z), [ax, az] = b.toWorld(p.ax, p.az); return { x, z, ax, az, b, rotY: b.rot * Math.PI / 2, taken: null }; });
+    b.spots.bed = L.beds.map((p) => { const [x, z] = b.toWorld(p.x, p.z), [ax, az] = b.toWorld(p.ax, p.az); return { x, z, ax, az, b, rotY: b.rot * Math.PI / 2, taken: null, upstairs: !!p.up }; });
     b.spots.work = L.work.map(tw); b.spots.idle = L.idle.map(tw); b.spots.visit = L.visit.map(tw); b.spots.pickup = L.pickup.map(tw); b.spots.terminal = L.terminals.map(tw);
     // seats (chairs, sofas, benches) so sims can sit
     b.spots.seat = []; const head = (r) => (b.rot + r) * Math.PI / 2;
     const addSeat = (lx, lz, r, kind) => { const [x, z] = b.toWorld(lx, lz); b.spots.seat.push({ x, z, heading: head(r), kind, taken: null, b }); };
-    const layoutKind = ['house', 'hut', 'shack', 'cabin', 'tavern', 'apartments', 'chippy'].includes(def.layout) ? 'dining' : (['clinic', 'townhall', 'police', 'hall', 'bookies', 'postoffice'].includes(def.layout) ? 'waiting' : 'desk');
+    const layoutKind = L.seatKind || (['house', 'hut', 'shack', 'cabin', 'tavern', 'apartments', 'chippy'].includes(def.layout) ? 'dining' : (['clinic', 'townhall', 'police', 'hall', 'bookies', 'postoffice'].includes(def.layout) ? 'waiting' : 'desk'));
     for (const f of L.furniture) {
       const rr = (f.r || 0) * Math.PI / 2, c = Math.round(Math.cos(rr)), sn = Math.round(Math.sin(rr));
       if (f.t === 'chair' || f.t === 'stool') addSeat(f.x, f.z, f.r || 0, f.t === 'stool' && (def.layout === 'tavern' || def.layout === 'chippy') ? 'dining' : layoutKind);
@@ -132,6 +137,10 @@ export class BuildingManager {
       else if (f.t === 'sofa') for (const o of [-0.55, 0.55]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'sofa');
       else if (f.t === 'bench') for (const o of [-0.5, 0.5]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'waiting');
     }
+    for (const s of L.seats || []) addSeat(s.x, s.z, s.r || 0, s.kind || layoutKind);   // seats a layout lists itself (cinema rows, bar stools on a custom piece...)
+    b.spots.counters = (L.counters || []).map((c) => ({ staff: tw(c.staff), cust: tw(c.cust), kind: c.kind || 'till', goods: c.goods || null, b }));
+    b.spots.tables = (L.tables || []).map((t) => ({ ...tw(t), seats: (t.seats || []).map(tw) }));
+    b.spots.kitchen = (L.kitchen || []).map(tw);
     if (def.park === 'park') addSeat(1.4, 0.35, 0, 'bench');
     if (def.park === 'camp') for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4, lx = Math.cos(a) * 2.5, lz = Math.sin(a) * 2.5; const [x, z] = b.toWorld(lx, lz); const [cx0, cz0] = b.toWorld(0, 0); b.spots.seat.push({ x, z, heading: Math.atan2(cx0 - x, cz0 - z), kind: 'bench', taken: null, b }); }
     if (def.park === 'plaza') { addSeat(-3.8, 0.3, 0, 'bench'); addSeat(3.8, 0.3, 0, 'bench'); }
@@ -153,23 +162,48 @@ export class BuildingManager {
     this.world.events.emit('building:done', b);
   }
 
+  /** Why a plot can't be built on, in words (a bush or rock can be moved with the Move plants tool). */
+  blockedWhy(x0, z0, w, d) {
+    const W = this.world; let res = false, road = false, occ = false, water = false;
+    for (let z = z0; z < z0 + d; z++) for (let x = x0; x < x0 + w; x++) { if (!W.isLand(x, z)) { water = true; continue; } const i = W.idx(x, z); if (W.occ[i]) occ = true; else if (W.road[i]) road = true; else if (W.res[i]) res = true; }
+    return occ ? 'Blocked by another building' : water ? 'Not on water' : road ? 'Blocked by a road' : res ? 'A bush or rock is in the way: move it with the Move plants tool (🌱, key 8)' : 'Blocked';
+  }
+  /** Walls, furniture (upstairs furniture only blocks up there) and, for the sims' route finder only, the stairs. */
+  setColliders(b) {
+    const def = b.def, ext = b.ext, odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h, lo: c.lo, top: c.top, navOnly: c.navOnly }; };
+    if (b.colliders && b.colliders.length) this.world.removeColliders(b);
+    const st = ext.plan && ext.plan.stair, stairs = st ? st.lanes.map((ln) => { const r = laneRect(st, ln); return { cx: (r[0] + r[1]) / 2, cz: (r[2] + r[3]) / 2, sx: r[1] - r[0], sz: r[3] - r[2], navOnly: true }; }) : [];
+    b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout).map(conv), upperColliders(def).map(conv), roomColliders(b.layout).map(conv), stairs.map(conv));
+    if (def.id === 'lift' || def.id === 'tunnel') b.colliders = ext.colliders.map(conv);
+    this.world.addColliders(b); b.nav = undefined;
+  }
+  /** After an upgrade adds a storey: the furniture makes room for the new stairs and the colliders follow. */
+  refit(b) {
+    if (b.state !== 'done' || !b.ext) return; const lay = layoutFor(b.def); for (const k of ['furniture', 'walls', 'floors', 'lights', 'upper']) b.layout[k] = lay[k]; this.setColliders(b);
+    if (lay.beds.length && lay.beds.every((q) => q.up)) for (const s of b.spots.bed) s.upstairs = true;   // a home that's gone two-storey sleeps upstairs
+    lay.beds.forEach((q, i) => { if (q.up && b.spots.bed[i]) b.spots.bed[i].upstairs = true; });   // beds that made way for the stairs are upstairs now
+    if (b.interior) { this.scene.remove(b.interior); b.interior = null; }
+  }
   /** Build and place the outside of a finished building (in the style of its era). */
   mountExterior(b) {
-    const def = b.def, ext = buildExterior(def, b.uid, b.era ?? 0); b.ext = ext;
+    const def = b.def, g = this.game; if (b.age === undefined) b.age = g.tech ? g.tech.age : 4; const ext = buildExterior(styleDef(def, b.age), b.uid, b.era ?? 0); b.ext = ext;
     ext.group.position.set(b.cx, 0, b.cz); ext.group.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.group);
     ext.roof.position.add(new THREE.Vector3(b.cx, 0, b.cz)); ext.roof.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.roof);
     if (!def.park && !def.special) { const W = def.w * UNIT, D = def.d * UNIT; const dec = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 5), contactMat()); dec.rotation.x = -Math.PI / 2; dec.position.y = 0.045; dec.renderOrder = 1; ext.group.add(dec); }
     ext.group.traverse((o) => { if (o.isMesh) o.matrixAutoUpdate = true; });
+    if (b.glassMat) b.glassMat.dispose();
+    if (ext.glass && ext.glass.length) { b.glassMat = ext.glass[0].material.clone(); for (const m of ext.glass) m.material = b.glassMat; b.litK = 0; }   // its own lights
     return ext;
   }
   /** Modernise a building: same footprint, colliders and people, new fittings for the new era. */
   restyle(b, era) {
     if (b.state !== 'done' || !b.ext || b.def.special || b.def.park) { b.era = era; return; }
-    b.era = era; this.scene.remove(b.ext.group, b.ext.roof); disposeOwned(b.ext.group); disposeOwned(b.ext.roof); this.mountExterior(b); b.doorK = 0; if (b.def.cart && this.game.upgrades) this.game.upgrades.cartProp(b);
+    b.era = era; if (this.game.tech) b.age = this.game.tech.age; this.scene.remove(b.ext.group, b.ext.roof); disposeOwned(b.ext.group); disposeOwned(b.ext.roof); this.mountExterior(b); b.doorK = 0; if (b.def.cart && this.game.upgrades) this.game.upgrades.cartProp(b);
     if (b.interior) { this.scene.remove(b.interior); b.interior = null; }
     const g = this.game; if (g.particles) g.particles.burst(b.cx, (b.def.floors || 1) * 3.2 + 1, b.cz, 0xfff3a0, 14, 2.5, 3, 0.18);
   }
   remove(b) {
+    if (b === this.game.starterHome) { this.game.starterHome = null; this.game.messages.push('Planning Office', 'Sam\'s home has been knocked down. The next house to be finished will be his.', 'warn'); }   // the H goes with it
     if (this.game.resources) this.game.resources.removeFields(b);
     if (this.game.upgrades) { const o = this.game.upgrades.orderFor(b); if (o) this.game.upgrades.drop(o); }
     if (b.ext) { this.scene.remove(b.ext.group, b.ext.roof); disposeOwned(b.ext.group); disposeOwned(b.ext.roof); }
@@ -181,10 +215,28 @@ export class BuildingManager {
     this.world.events.emit('building:removed', b);
   }
 
+  church() { return this.list.find((b) => b.id === 'church' && b.state === 'done') || this.list.find((b) => b.id === 'chapel' && b.state === 'done') || null; }
+  hospital() { return this.list.find((b) => b.id === 'clinic' && b.state === 'done') || this.list.find((b) => b.id === 'surgery' && b.state === 'done') || null; }
+  /** Is anybody in there with the lights on? */
+  isLit(b, h) {
+    if (this.game.hazards && this.game.hazards.powerCut > 0 && this.game.tech && this.game.tech.era >= 1) return false;
+    if (b.light !== undefined && b.lightDay === (this.game.clock.totalDays || 0)) return b.light;   // Sam flicked the switch today
+    const awake = (s) => s.inside === b && s.pose !== 'sleep';
+    if (b.def.cat === 'res') return b.residents.some(awake);
+    if (b.workers.some(awake)) return true;
+    if (b.def.dining || b.id === 'nightclub') return h >= 17 || h < (b.id === 'nightclub' ? 2 : 0.5);
+    return (b.def.shopping || b.def.transit) && h >= 7 && h < 21;
+  }
+  /** Where the light switch is: on the inside wall beside the front door. */
+  switchAt(b) {
+    if (!b.doorPos || !b.doorIn) return null; const nx = b.doorIn.x - b.doorPos.x, nz = b.doorIn.z - b.doorPos.z, n = Math.hypot(nx, nz) || 1, ux = nx / n, uz = nz / n, k = -0.3 + WALL_T / 2 + 0.02;
+    return { x: b.doorPos.x + ux * k + uz * 0.95, z: b.doorPos.z + uz * k - ux * 0.95, rot: Math.atan2(ux, uz) };
+  }
+  flipLight(b) { const on = !this.isLit(b, this.game.clock.hour); b.light = on; b.lightDay = this.game.clock.totalDays || 0; Sfx.play('ui'); return on; }
   /** Can Sam see the people inside? Yes when Sam is in there, or the front door is open and Sam is nearby. */
   canSeeInto(b) {
-    if (b === this.playerInside) return true; const g = this.game; if (g.mode !== 'sim' || !(b.doorK > 0.15) || !b.doorPos) return false;
-    return Math.hypot(g.player.x - b.doorPos.x, g.player.z - b.doorPos.z) < 32;
+    if (b === this.playerInside) return true; const g = this.game; if (g.mode !== 'sim' || !b.doorPos) return false;
+    const d = Math.hypot(g.player.x - b.cx, g.player.z - b.cz); return d < 24 || (b.doorK > 0.15 && d < 32);   // through the windows, or the open door
   }
   /** Is world point (x,z) on the building itself (not just its plot)? pad: extra metres around it. */
   onBuilding(b, x, z, pad = 0) { const c = COS[b.rot], s = SIN[b.rot], dx = x - b.cx, dz = z - b.cz, lx = dx * c - dz * s, lz = dx * s + dz * c; return Math.abs(lx) <= b.def.w * UNIT / 2 + pad && Math.abs(lz) <= b.def.d * UNIT / 2 + pad; }
@@ -219,7 +271,7 @@ export class BuildingManager {
   navGrid(b) {
     if (b.nav !== undefined) return b.nav; if (b.def.open || b.def.park || !b.colliders) return (b.nav = null);
     const C = 0.5, ox = b.x0 * TILE, oz = b.z0 * TILE, W = Math.round(b.w * TILE / C), H = Math.round(b.d * TILE / C), free = new Uint8Array(W * H), R = 0.28;
-    for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) { const px = ox + (x + 0.5) * C, pz = oz + (z + 0.5) * C; let ok = true; for (const c of b.colliders) if (px > c.minx - R && px < c.maxx + R && pz > c.minz - R && pz < c.maxz + R) { ok = false; break; } free[z * W + x] = ok ? 1 : 0; }
+    for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) { const px = ox + (x + 0.5) * C, pz = oz + (z + 0.5) * C; let ok = true; for (const c of b.colliders) if (c.lo === undefined && px > c.minx - R && px < c.maxx + R && pz > c.minz - R && pz < c.maxz + R) { ok = false; break; } free[z * W + x] = ok ? 1 : 0; }
     return (b.nav = { W, H, ox, oz, C, free });
   }
   /** Which finished building contains world point (x,z)? Used for roof cut-away and sim visibility. */
@@ -232,11 +284,17 @@ export class BuildingManager {
     const inside = sim ? this.buildingAtPoint(pl.x, pl.z) : null; this.playerInside = inside; this._builtThisFrame = false;   // at most one interior built per frame (no hitch)
     for (const b of this.list) {
       if (b.state !== 'done' || !b.ext) continue;
-      b.ext.roof.visible = b !== inside;
+      const mine = b === inside, py = pl.floorY || 0, R = pl.ride && pl.ride.b === b ? Math.round(Math.max(pl.ride.to, pl.ride.from) / WALL_H) : 0, lvl = mine ? Math.max(Math.floor((py + 0.6) / WALL_H), R) : 99, P = b.ext.plan;   // in the lift: the floor you're going to is already there
+      b.ext.roof.visible = !mine || !!(P && P.roof && py > P.H - 0.6);
+      const cp = g.camera.position, far = (cp.x - b.cx) ** 2 + (cp.z - b.cz) ** 2 + cp.y * cp.y > 110 * 110;   // far off: skip the glass and the upstairs (draw calls)
+      const LV = b.ext.levels; if (LV) for (let k = 1; k < LV.length; k++) LV[k].visible = (!far || (P.roof && k === P.n)) && k <= lvl + 1;   // the roof itself is always drawn
+      const RD = b.ext.roofDoor; if (RD) { const want = b.roofDoorOpen ? 1 : 0; RD.open += (want - RD.open) * Math.min(1, dt * 6); RD.pivot.rotation.y = RD.open * 1.5; if (b.roofDoorOpen && g.elapsed > (b.roofDoorT || 0) && !(mine && py > P.H - 0.6 && Math.hypot(pl.x - b.cx, pl.z - b.cz) < 30)) b.roofDoorOpen = false; }
+      if (b.ext.glass && b.ext._far !== far) { b.ext._far = far; for (const m of b.ext.glass) m.visible = !far; }
+      if (b.ext.liftCab) b.ext.liftCab.position.y = 0.08 + (b.liftY || 0);
       const near = sim && Math.hypot(b.cx - pl.x, b.cz - pl.z) < 26 && b.layout && b.layout.furniture.length;
       const see = near && this.canSeeInto(b);   // furniture is only drawn when Sam is inside or looking through the open door
       if (see && !b.interior && !this._builtThisFrame) { this._builtThisFrame = true; b.interior = buildInterior(b); b.interior.position.set(b.cx, 0, b.cz); b.interior.rotation.y = b.rot * Math.PI / 2; b.interior.traverse((o) => { if (o.isMesh) o.castShadow = false; }); this.scene.add(b.interior); }
-      if (b.interior) b.interior.visible = !!see;
+      if (b.interior) { b.interior.visible = !!see; const il = b.interior.userData.lv; if (il) for (let k = 1; k < il.length; k++) if (il[k]) il[k].visible = k <= lvl; }
     }
     // doors swing open when anyone is close, then shut behind them
     const cam = g.camera.position, sims = g.population.sims;
@@ -250,10 +308,20 @@ export class BuildingManager {
       const k = b.doorK || 0, nk = Math.max(0, Math.min(1, k + (want ? 4 : -2.2) * dt));
       if (nk !== k) { if (k === 0 && nk > 0 && sim && Math.hypot(pl.x - dp.x, pl.z - dp.z) < 14) Sfx.play('door'); b.doorK = nk; const e = nk * nk * (3 - 2 * nk); for (const d of D) d.pivot.rotation.y = d.open * e; }
     }
+    // window lights: on while somebody in there is awake (or the place is open), off when they've gone to bed
+    if (this._acc + dt > 0.25) {
+      const glow = windowGlow(), h = g.clock.hour;
+      for (const b of this.list) { if (!b.glassMat || b.state !== 'done' || b.burning) continue; const want = glow > 0.05 && this.isLit(b, h) ? 1 : 0; b.litK += (want - b.litK) * 0.35; b.glassMat.emissiveIntensity = glow * 0.45 * (0.03 + 0.97 * b.litK); if (b.ext && b.ext.curtains) b.ext.curtains.visible = glow > 0.25 && (b.residents.some((s) => s.inside === b) || b === this.playerInside || (b.residents.length > 0 && (h >= 22.5 || h < 6.5))); }   // curtains drawn after dark while anyone's home
+    }
     // warm interior light follows the player indoors
     this._acc = (this._acc || 0) + dt; this.t = (this.t || 0) + dt; const tick = this._acc > 0.25; if (tick) this._acc = 0;
     for (const b of this.list) if (b.ext && b.ext.update && b.state === 'done') { if (b.def.park === 'camp' || b.ext.everyFrame || tick) b.ext.update(dt, this.t, this.game.economy.stock, b); }
     const L = this.interiorLight;
-    if (inside && !inside.def.open) { L.position.set(inside.cx, 2.6, inside.cz); L.intensity = 38; } else L.intensity = 0;
+    const sw = this.switchMesh; sw.visible = false;
+    if (inside && !inside.def.open) {
+      const on = this.isLit(inside, g.clock.hour), day = g.atmosphere ? g.atmosphere.dayLevel ?? 1 : 1;   // off: just what comes in through the windows
+      L.position.set(inside.cx, 2.6 + (pl.floorY || 0), inside.cz); L.intensity = inside.burning ? 28 + Math.random() * 30 : on ? ((pl.floorY || 0) > 0.5 ? 22 : 38) : 2 + 12 * day;
+      const q = (pl.floorY || 0) < 0.5 && g.tech && g.tech.era >= 1 && this.switchAt(inside); if (q) { sw.visible = true; sw.position.set(q.x, 1.3, q.z); sw.rotation.y = q.rot; sw.userData.rock.rotation.x = on ? -0.35 : 0.35; }
+    } else L.intensity = 0;
   }
 }

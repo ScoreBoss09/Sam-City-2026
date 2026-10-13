@@ -22,7 +22,7 @@ export const A = {
     hungry: ['I could eat a scabby horse.', 'I\'d sell my nan for a kebab right now.', 'Starving. I\'d even eat a Findus Crispy Pancake.', 'My belly\'s making noises like a dial-up modem.'],
     tired: ['I\'m knackered. Cream crackered.', 'Didn\'t sleep. Neighbours were at it like rabbits again.', 'I\'m so tired I could kip on a washing line.'],
     homeless: ['Got nowhere to kip. Sleeping in a hedge is not as romantic as it sounds.', 'No bed, Sam. I\'m one cardboard box away from a Big Issue stall.'],
-    partner: ['{p} and me are getting on great. Mostly. Except the snoring. And the farting.', '{p} still makes my knees go funny. Could be arthritis, mind.', 'Me and {p}? Like Posh and Becks, but skint.'],
+    partner: ['{p} and me are getting on great. Mostly. Except the snoring. And the farting.', '{p} still makes my knees go funny. Could be arthritis, mind.', 'Me and {p}? Like Torvill and Dean, but skint.'],
     lonely: ['Haven\'t pulled since I got here. Not even close.', 'Bit lonely. Even the seagulls ignore me.'],
     newcomer: ['Only just got off the Lift. Still not sure what\'s going on, but the beer\'s cheap.', 'New here. Nobody warned me about the smell from the quarry.'],
     raid: ['Those raiders scared the living shite out of me.', 'Raiders! On a Tuesday! The cheek of it.'],
@@ -68,7 +68,7 @@ export const A = {
     sam: ['Word is you\'re a bit of a sort, Sam.', 'Everyone fancies you, Sam. Well. Two people. One\'s the vicar.', 'They reckon you\'re the hardest worker here. And the sweatiest.'],
     pub: ['Pub quiz on Thursday. Last time {a} answered "Michael Barrymore" to every question.', 'Someone threw up in the pub plant pot. Third time this month.'],
   },
-  ABOUT2: ['I once met Noel Edmonds. He was shorter than you\'d think.', 'I was at Euro 96. Cried like a baby at the penalties. Still not over it.', 'I\'m Oasis, not Blur. Fight me.', 'I\'m Blur, not Oasis. I have taste.', 'I\'ve seen every episode of Only Fools and Horses. Twice. The chandelier one, ten times.', 'I had a Tamagotchi once. It died. I didn\'t cope well.', 'I can do the entire Macarena. Drunk or sober.', 'My ex ran off with a man who sold double glazing. Good riddance, but I miss the windows.', 'I still owe Blockbuster for a copy of Basic Instinct. From 1993.'],
+  ABOUT2: ['I once met Noel Edmonds. He was shorter than you\'d think.', 'I was at Euro 96. Cried like a baby at the penalties. Still not over it.', 'I\'m Oasis, not Blur. Fight me.', 'I\'m Blur, not Oasis. I have taste.', 'I\'ve seen every episode of Only Fools and Horses. Twice. The chandelier one, ten times.', 'I had a goldfish from the fair once. Won it on the hook-a-duck. Didn\'t last the week. I didn\'t cope well.', 'I can do the entire Macarena. Drunk or sober.', 'My ex ran off with a man who sold double glazing. Good riddance, but I miss the windows.', 'I still owe Blockbuster for a copy of Basic Instinct. From 1993.'],
   HELP: ['If in doubt, build a pub. That\'s my answer to everything.', 'Don\'t eat the yellow snow. Or the chippy\'s pickled eggs.', 'Tap the gold bit when you\'re working. Keep the chain going and it goes like the clappers.', 'Bigger village, bigger buildings. Get more people in, the Council coughs up new permits.', 'Can\'t get timber? Order it down the Lift. The intercom\'s on the post next to it.', 'Never trust a man in a shell suit.'],
   BYE: ['Laters, Sam!', 'Ta-ra, you big lump!', 'Catch you on the flip side.', 'Don\'t do anything I wouldn\'t do. That leaves you a lot of options.', 'Right, I\'m off to the pub. Don\'t tell the wife.', 'Toodle-pip, you absolute plum.'],
   BYE_GRUMPY: ['Sod off, then.', 'Bugger off. Nicely.', 'Yeah, yeah. Go on.'],
@@ -116,6 +116,12 @@ export const PHONE_CALLS_CLEAN = [
   ['Wrong Number', '"Is that the Chinese takeaway? No? Sorry, love."'],
 ];
 
-export const HORSES = ['Norfolk Enchants', 'Mr Blobby\'s Revenge', 'Lambrini Lass', 'Del Boy Dreams', 'Pot Noodle Prince', 'Gazza\'s Knee', 'Three Lions', 'Wonderwall', 'Sir Cliff', 'Teletext Page 302', 'Spice Bucket', 'Bum Note', 'Big Knockers', 'Hairy Biker', 'Saucy Sue', 'Tamagotchi Tears', 'Shell Suit Sid', 'Fat Les', 'Cheeky Monkey', 'Bob\'s Full House'];
+export const HORSES = ['Norfolk Enchants', 'Mr Blobby\'s Revenge', 'Lambrini Lass', 'Del Boy Dreams', 'Pot Noodle Prince', 'Gazza\'s Knee', 'Three Lions', 'Wonderwall', 'Sir Cliff', 'Teletext Page 302', 'Spice Bucket', 'Bum Note', 'Big Knockers', 'Hairy Biker', 'Saucy Sue', 'Pogs Galore', 'Shell Suit Sid', 'Fat Les', 'Cheeky Monkey', 'Bob\'s Full House'];
 export const RACE_WIN = ['{h} romps home! You win £{w}! The bookie looks like he\'s swallowed a wasp.', 'Get in! {h} by a nose! £{w} in your sweaty hand.', '{h} wins! You do a little dance. The old boy by the telly calls you a jammy git. £{w}!'];
 export const RACE_LOSE = ['{h} falls over at the first fence and has a little sit down. Your £{s} is gone.', '{h} stops to eat a hedge. You lose £{s}.', '{h} comes in last. Behind a dog that wandered onto the course. £{s} gone.', '{h} trips over its own feet. Like you on a Friday. £{s} down the drain.'];
+
+// more grown-up 90s chatter (nineties.js)
+import { N90 } from './nineties.js';
+A.CHAT.push(...N90.chat); A.PUB.push(...N90.pub); A.GOSSIP.nineties = N90.gossipAdult;
+import { N96 } from './nineties2.js';
+A.CHAT.push(...N96.chat); A.PUB.push(...N96.pub); A.GOSSIP.nineties.push(...N96.gossipAdult);
