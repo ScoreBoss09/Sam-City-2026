@@ -2,7 +2,8 @@ import * as THREE from 'three';
 
 /**
  * Where things are happening: a fight, a robbery, a fire, a film crew, a pig on the loose. Each marker shows on the
- * minimap / big map and as a floating icon over the spot (it follows a person if given one), until it times out.
+ * minimap / big map and as a floating icon over the spot (it follows a person if given one), and goes the moment the
+ * thing is over (the alive check), or after 25 s for a passing moment with no check.
  */
 export class Markers {
   constructor(game) { this.game = game; this.list = []; this.tex = {}; }
@@ -18,8 +19,23 @@ export class Markers {
     x.beginPath(); x.moveTo(24, 50); x.lineTo(40, 50); x.lineTo(32, 62); x.fillStyle = '#ffd23f'; x.fill(); x.font = '30px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, 32, 29);
     return (this.tex[ch] = new THREE.CanvasTexture(c));
   }
+  /** Ongoing events that don't place their own marker get one each, for exactly as long as they last. */
+  watch() {
+    const g = this.game, C = g.celebrations, R = g.raids, E = g.events, live = (r) => !r.captured && !r.remove;
+    const W = [
+      ['raid', () => R && R.state === 'active' && R.raiders.some(live), () => { const s = R.raiders.find(live); return [s.x, s.z, s]; }, '⚔️', 'Raiders'],
+      ['wed', () => C && C.wed && C.wed.live, () => [C.wed.church.cx, C.wed.church.cz], '💒', 'Wedding'],
+      ['bonfire', () => C && C.bonfire && C.bonfire.live, () => [C.bonfire.x, C.bonfire.z], '🎆', 'Bonfire Night'],
+      ['market', () => C && !!C.market, () => [C.market.x, C.market.z], '🧺', 'Market day'],
+      ['fete', () => E && !!E.fete, () => [E.fete.x, E.fete.z], '🎪', 'Village fête'],
+    ];
+    for (const [key, on, where, icon, label] of W) {
+      if (this.list.some((m) => m.key === key) || !on()) continue;
+      const [x, z, follow] = where(), m = this.add(x, z, icon, label, 3600, follow || null, () => !!on()); m.key = key;
+    }
+  }
   update() {
-    const g = this.game, cam = g.camera.position;
+    const g = this.game, cam = g.camera.position; if ((this.wt = (this.wt || 0) - 1) <= 0) { this.wt = 30; this.watch(); }
     for (const m of this.list) {
       const f = m.follow; if (f && !f.remove) { m.x = f.x; m.z = f.z; }
       if (g.elapsed > m.until || (f && f.remove) || (m.alive && !m.alive())) { g.scene.remove(m.sp); m.dead = true; continue; }

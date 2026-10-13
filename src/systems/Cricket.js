@@ -41,7 +41,7 @@ export class Cricket {
     m.spot = (s) => m.roles.get(s) || null; m.hold = (s) => m.roles.has(s);
     const geo = new THREE.SphereGeometry(0.07, 6, 4); m.ball = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x9a1a1a })); m.ball.visible = false; g.scene.add(m.ball);
     m.bowler = home[0]; m.striker = away[0]; m.next = 2;
-    if (g.markers) g.markers.add(f.cx, f.cz, '🏏', 'Sunday cricket', 4 * 60);
+    if (g.markers) g.markers.add(f.cx, f.cz, '🏏', 'Sunday cricket', 4 * 3600, null, () => m.live);
     g.messages.push('Town', `Sunday cricket on the green: ${TEAMS[0][0]} v ${opp[0]}. Bring a flask.`);
   }
   play(dt) {

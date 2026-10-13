@@ -110,7 +110,7 @@ export class Player {
   phoneCall() {
     const g = this.game; if (this.callT > 0) return; if (!g.economy.spend(0.1, 'Phone calls')) { g.ui.toast('You haven\'t got 10p. Skint.'); return; }
     this.callT = 4; Sfx.play('ring'); const L = g.ui.adult ? PHONE_CALLS : PHONE_CALLS_CLEAN, [who, text] = pick(L); g.flags.calls = (g.flags.calls || 0) + 1;
-    setTimeout(() => { g.messages.push('☎ ' + who, text, ''); g.ui.toast('☎ ' + who + ': ' + text, 6000); }, 1800);
+    setTimeout(() => { g.messages.push('☎ ' + who, text, 'quiet'); g.ui.toast('☎ ' + who + ': ' + text, 6000); }, 1800);
   }
   /** The Bookies: £20 on a horse. Odds are rubbish, as is tradition. */
   placeBet() {

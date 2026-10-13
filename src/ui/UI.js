@@ -158,10 +158,27 @@ export class UI {
   setHover(text) { const h = $('hover'); h.textContent = text; h.classList.remove('hidden'); this.hoverTimer = 0.2; }
 
   // ---------- messages / toasts ----------
+  /**
+   * Only what matters pops up: alarms, the story, milestones, and problems that need Sam (fires, floods, the food running
+   * out, the bank, the guards, anything that's about him). Everything else (arrivals, gossip, the cricket, street fights,
+   * the ice-cream van) goes quietly into the town news, and incidents have their own icon on the map.
+   */
+  loud(m) {
+    if (m.kind === 'quiet') return false; if (m.kind === 'alarm' || m.kind === 'story') return true;
+    const F = m.from;
+    if (['The Council', 'Progress', 'Objective complete', 'Parish Council', 'Demo', 'Multiplayer', 'Raid night', 'Mods'].includes(F)) return true;
+    if (['Fire!', 'Stockyard', 'The Water Board', 'The Harbour Master', 'The Electricity Board', 'Lift Guard', 'Hospital', 'Midshires Bank', 'Treasury', 'Weather', 'Logistics', 'Fire brigade'].includes(F)) return m.kind === 'warn' || (F === 'Treasury') || (F === 'Midshires Bank' && m.kind === 'good');
+    if (F === 'Planning Office') return m.kind === 'good' || m.kind === 'warn';
+    if (F === 'Police' || F === 'Police report') return /\bSam\b/.test(m.text) || m.text.startsWith('999');
+    return false;
+  }
   addMessage(m) {
-    const el = document.createElement('div'); el.className = 'msg ' + (m.kind || ''); el.innerHTML = `<b>${m.from}:</b> ${this.keyText(m.text)}`; const box = $('messages'); box.appendChild(el);
-    while (box.children.length > 3) box.removeChild(box.firstChild);
-    setTimeout(() => { el.style.transition = 'opacity 1s'; el.style.opacity = 0; setTimeout(() => el.remove(), 1000); }, 7000);
+    if (!this.loud(m)) return;
+    const box = $('messages'); if ([...box.children].some((e) => e.dataset.txt === m.from + m.text)) return;   // not the same thing twice
+    const el = document.createElement('div'); el.className = 'msg ' + (m.kind || ''); el.dataset.txt = m.from + m.text;
+    el.innerHTML = `<div class="msg-from">${m.from}</div><div class="msg-text">${this.keyText(m.text)}</div>`; box.appendChild(el);
+    while (box.children.length > 2) box.removeChild(box.firstChild);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 600); }, m.kind === 'alarm' ? 8000 : 5500);
   }
   setCountdown(n, label) { const c = $('countdown'); if (n == null) { c.classList.add('hidden'); return; } c.classList.remove('hidden'); if (c.dataset.n !== String(n)) { c.dataset.n = n; c.innerHTML = `<div>${label}</div><b>${n}</b>`; c.classList.remove('tick'); void c.offsetWidth; c.classList.add('tick'); Sfx.play('deny'); } }
   setAlert(text) { const a = $('alertbar'); if (!a) return; if (text) { a.textContent = text; a.classList.remove('hidden'); } else a.classList.add('hidden'); }

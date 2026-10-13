@@ -143,7 +143,7 @@ export class Population {
     const g = this.game, h = s.home; if (!h) return; const i = h.residents.indexOf(s); if (i >= 0) h.residents.splice(i, 1); for (const sp of h.spots.bed) if (sp.taken === s) sp.taken = null;
     s.endActivity(); s.home = null; s.homeless = true; s.phase = 0;
     const L = s.baseLook || s.look; s.baseLook = null; s.outfit = null; s.look = { ...L, shirt: 0x5a5448, shirt2: 0x3e3a32, pants: 0x3a3832, shoes: 0x2a2018, longSleeve: true, accessory: null, tie: false }; s.rebuildMesh();
-    g.messages.push('Town', `${s.name} has been out of work for over a week, couldn't pay the rent, and is sleeping rough.`, 'warn'); if (g.markers) g.markers.add(s.x, s.z, '🛌', s.first + ' sleeping rough', 90, s);
+    g.messages.push('Town', `${s.name} has been out of work for over a week, couldn't pay the rent, and is sleeping rough.`, 'warn'); if (g.markers) g.markers.add(s.x, s.z, '🛌', s.first + ' sleeping rough', 90, s, () => s.homeless && !s.remove);
   }
   assignHome(s) {
     for (const b of this.game.buildings.list) {

@@ -121,8 +121,8 @@ export class Game {
   }
   start() {
     this.started = true; this.ui.start();
-    INTRO.forEach(([f, t], i) => setTimeout(() => this.messages.push(f, t), 600 + i * 2500));
-    this.ui.renderObjectives(); this.ui.toast('Welcome! Start with the objective on the right. Nothing gets built until you order it here.', 5500);
+    INTRO.forEach(([f, t]) => this.messages.push(f, t, 'quiet'));   // (in the town news; the objective says what to do)
+    this.ui.renderObjectives();
   }
   startDialogue(sim) {
     sim.frozen = true; sim.talkingToPlayer = true; if (sim.chat) this.social.endChat(sim); sim.heading = Math.atan2(this.player.x - sim.x, this.player.z - sim.z); this.player.heading = Math.atan2(sim.x - this.player.x, sim.z - this.player.z);

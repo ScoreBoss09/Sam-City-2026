@@ -36,7 +36,7 @@ export class Happenings {
     if (mornin && age >= 3) opts.push(['milkfloat', 2]);
     opts.push(['chimney', pop < 25 ? 0 : winter ? 0.8 : 0.2], ['stagelight', stage >= 3 && days >= 28 && !g.flags.stagelight ? 0.6 : 0]);
     const live = opts.filter((o) => o[1] > 0); if (!kind && !live.length) return; const k = kind || g.population.weighted(live); this.count++; g.flags.happenings = this.count;
-    const fn = this[k]; if (fn) { const r = fn.call(this); if (r) this.live.push(r); }
+    const fn = this[k]; if (fn) { this.marks = []; const r = fn.call(this); if (r) this.live.push(r); for (const m of this.marks) if (r) { const was = m.alive; m.alive = () => !r.done && this.live.includes(r) && (!was || was()); m.until = this.game.elapsed + 3600; } this.marks = null; }   // its map icon goes the moment it's over
   }
   /** Somewhere in the street near Sam (or the middle of town in the planning view). */
   spot(r = 40) {
@@ -44,9 +44,9 @@ export class Happenings {
     for (let i = 0; i < 30; i++) { const x = cx + (Math.random() - 0.5) * r * 2, z = cz + (Math.random() - 0.5) * r * 2, tx = Math.floor(x / 8), tz = Math.floor(z / 8); if (w.inBounds(tx, tz) && w.road[w.idx(tx, tz)]) return { x: (tx + 0.5) * 8, z: (tz + 0.5) * 8 }; }
     return { x: cx, z: cz };
   }
-  mark(p, icon, label, secs = 90, follow = null) { if (this.game.markers) this.game.markers.add(p.x, p.z, icon, label, secs, follow); }
+  mark(p, icon, label, secs = 90, follow = null) { const m = this.game.markers && this.game.markers.add(p.x, p.z, icon, label, secs, follow); if (m && this.marks) this.marks.push(m); return m; }
   near(x, z, r) { return this.game.population.sims.filter((s) => !s.inside && !s.fight && !s.crook && s.pose !== 'sleep' && !(s.down > 0) && s.activity !== 'police' && s.kind !== 'security' && Math.hypot(s.x - x, s.z - z) < r); }
-  say(text, kind = 'info', toast = true) { const g = this.game; g.messages.push('Town news', text, kind); if (toast) g.ui.toast(text, 3200); }
+  say(text, kind = 'info', toast = false) { const g = this.game; g.messages.push('Town news', text, kind === 'warn' ? kind : 'quiet'); if (toast) g.ui.toast(text, 3200); }   // town news goes in the log (the map icon is the notification)
   gather(p, r, n, emote) { for (const s of this.near(p.x, p.z, r).slice(0, n)) { const a = Math.random() * 6.28, d = 2.5 + Math.random() * 2.5; s.goTo({ x: p.x + Math.cos(a) * d, z: p.z + Math.sin(a) * d, face: Math.atan2(-Math.cos(a), -Math.sin(a)) }); if (emote) s.emote = { upper: emote, t: 3 }; } }
 
   icecream() {
@@ -55,7 +55,9 @@ export class Happenings {
     for (const [x, z] of [[-0.95, 1.4], [0.95, 1.4], [-0.95, -1.4], [0.95, -1.4]]) b(0.25, 0.6, 0.6, 0x111111, x, 0.3, z);
     van.position.set(p.x + 2.2, 0, p.z); g.scene.add(van); this.say('🍦 The ice-cream van is here! Greensleeves and a 99 with a flake.'); this.mark(p, '🍦', 'Ice-cream van', 90);
     this.gather(p, 35, 6, 'cheer'); let t = 0, ch = 0; const TUNE = [784, 880, 988, 1047, 988, 880, 784, 659];
-    return { update: (dt) => { t += dt; if (g.mode === 'sim' && Math.hypot(g.player.x - p.x, g.player.z - p.z) < 40 && (ch -= dt) <= 0) { ch = 0.28; Sfx.tone(TUNE[Math.floor(t / 0.28) % 8], 0.24, { type: 'triangle', vol: 0.04 }); } }, get done() { return t > 90; }, end: () => { g.scene.remove(van); for (const s of this.near(p.x, p.z, 12)) s.moodBoost += 0.05; } };
+    let near = false; const chime = () => TUNE.forEach((f, i) => Sfx.tone(f, 0.24, { type: 'triangle', vol: 0.035, delay: i * 0.28 }));   // the chimes once when it pulls up and once when Sam walks up to it, not on a loop
+    if (g.mode === 'sim' && Math.hypot(g.player.x - p.x, g.player.z - p.z) < 40) chime();
+    return { update: (dt) => { t += dt; const n = g.mode === 'sim' && Math.hypot(g.player.x - p.x, g.player.z - p.z) < 18; if (ch > 0) ch -= dt; if (n && !near && ch <= 0) { chime(); ch = 40; } near = n; }, get done() { return t > 90; }, end: () => { g.scene.remove(van); for (const s of this.near(p.x, p.z, 12)) s.moodBoost += 0.05; } };
   }
   pig() {
     const g = this.game, fb = g.buildings.list.find((b) => b.state === 'done' && ['farm', 'allotment', 'stables'].includes(b.id)); if (!fb) return null; g.flags.pigDay = g.clock.totalDays;
