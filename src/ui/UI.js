@@ -47,7 +47,15 @@ export class UI {
   reportError(e) {
     const now = performance.now(), msg = String((e && e.message) || e); if (this._errT && now - this._errT < 8000 && msg === this._errMsg) return; this._errT = now; this._errMsg = msg;
     const where = ((e && e.stack) || '').split('\n').slice(1, 2).join('').replace(/^\s*at\s*/, '').replace(/https?:\/\/[^/]+\//, '').slice(0, 90);
-    this.toast(`⚠ Oops, a bug: ${msg.slice(0, 80)} (${where}). The game keeps going; tell Claude this text if it repeats.`, 7000);
+    this.game.perf && this.game.perf.note(`error: ${msg.slice(0, 120)} (${where})`);
+    this.showError(`Oops, a bug: ${msg.slice(0, 120)} (${where}). The game keeps going; press F8 and copy the report to Claude if it repeats.`);
+  }
+  /** A problem the player must see: a red banner above every menu (sticky ones offer a reload; the town is saved first). */
+  showError(text, sticky = false) {
+    let b = $('errbar'); if (!b) { b = document.createElement('div'); b.id = 'errbar'; document.body.appendChild(b); }
+    b.innerHTML = `<b>⚠</b><span>${text}</span>${sticky ? '<button data-e="reload">Reload</button>' : ''}<button data-e="x">✕</button>`; b.className = 'on';
+    b.onclick = (e) => { const a = e.target.dataset.e; if (a === 'reload') { try { this.game.save(); } catch (er) { /* saved already */ } location.reload(); } else if (a === 'x') b.className = ''; };
+    clearTimeout(this._errHide); if (!sticky) this._errHide = setTimeout(() => { b.className = ''; }, 12000);
   }
   show(...ids) { for (const i of ids) $(i).classList.remove('hidden'); }
   hide(...ids) { for (const i of ids) $(i).classList.add('hidden'); }
@@ -61,7 +69,7 @@ export class UI {
     $('c-mode').textContent = god ? 'PLANNING VIEW' : 'SAM (' + (this.game.player.third ? '3rd' : '1st') + ' person)';
     if (god) this.game.input.unlock();
   }
-  start() { this.hide('title'); this.show('hud-info', 'objectives', 'clockbox', 'stock'); this.setMode(this.game.mode); }
+  start() { document.body.classList.remove('ontitle'); this.hide('title'); this.show('hud-info', 'objectives', 'clockbox', 'stock'); this.setMode(this.game.mode); }
 
   // ---------- controller ----------
   /** Swap keyboard hints for controller buttons while a pad is in use. */
@@ -415,7 +423,8 @@ export class UI {
     if (this.dialogue) { const d = this.dialogue; d.shown = Math.min(d.full.length, d.shown + dt * 55); $('d-text').textContent = d.full.slice(0, Math.floor(d.shown)); }
     if (g.input.hit('KeyH')) { $('help').classList.remove('hidden'); $('help').classList.toggle('want'); this.helpT = 0; }   // the full controls line, only when asked for
     if (!g.input.padActive || !g.input.pad.connected) this.padLegend(this.dialogue ? { id: 'dialogue' } : this.padScope(), false);
-    if (document.body.classList.contains('pad') !== !!g.input.padActive) document.body.classList.toggle('pad', !!g.input.padActive);   // keyboard caps or controller glyphs
+    this._padT = (this._padT || 0) - dt; if (this._padT <= 0 && document.body.classList.contains('pad') !== !!g.input.padActive) { this._padT = 0.5; document.body.classList.toggle('pad', !!g.input.padActive); }   // keyboard caps or controller glyphs (at most twice a second: a drifting stick and a mouse mustn't restyle every frame)
+    { const pp = $('pausedpill'), on = g.started && !g.ending && g.clock.speed === 0 && !this.modalOpen && !(g.introScene && g.introScene.live); if (pp && pp.classList.contains('hidden') === on) pp.classList.toggle('hidden', !on); }   // paused: say so, plainly, until it isn't
     this.acc += dt; if (this.acc < 0.25) return; this.acc = 0;
     const c = g.clock, P = g.population;
     $('h-pop').textContent = P.count().toLocaleString(); $('h-funds').textContent = fmtMoney(g.economy.funds); $('h-month').textContent = MONTHS[c.month]; $('h-year').textContent = c.year; $('h-sims').textContent = `${P.sims.filter((s) => !s.hidden).length}${P.simCap < 100000 ? "/" + P.simCap : ""}`;
