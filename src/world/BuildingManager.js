@@ -170,7 +170,7 @@ export class BuildingManager {
   }
   /** Walls, furniture (upstairs furniture only blocks up there) and, for the sims' route finder only, the stairs. */
   setColliders(b) {
-    const def = b.def, ext = b.ext, odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h, lo: c.lo, top: c.top, navOnly: c.navOnly }; };
+    const def = b.def, ext = b.ext, odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h, lo: c.lo, top: c.top, navOnly: c.navOnly, cam: c.cam }; };
     if (b.colliders && b.colliders.length) this.world.removeColliders(b);
     const st = ext.plan && ext.plan.stair, stairs = st ? st.lanes.map((ln) => { const r = laneRect(st, ln); return { cx: (r[0] + r[1]) / 2, cz: (r[2] + r[3]) / 2, sx: r[1] - r[0], sz: r[3] - r[2], navOnly: true }; }) : [];
     b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout).map(conv), upperColliders(def).map(conv), roomColliders(b.layout).map(conv), stairs.map(conv));
@@ -271,7 +271,7 @@ export class BuildingManager {
   navGrid(b) {
     if (b.nav !== undefined) return b.nav; if (b.def.open || b.def.park || !b.colliders) return (b.nav = null);
     const C = 0.5, ox = b.x0 * TILE, oz = b.z0 * TILE, W = Math.round(b.w * TILE / C), H = Math.round(b.d * TILE / C), free = new Uint8Array(W * H), R = 0.28;
-    for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) { const px = ox + (x + 0.5) * C, pz = oz + (z + 0.5) * C; let ok = true; for (const c of b.colliders) if (c.lo === undefined && px > c.minx - R && px < c.maxx + R && pz > c.minz - R && pz < c.maxz + R) { ok = false; break; } free[z * W + x] = ok ? 1 : 0; }
+    for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) { const px = ox + (x + 0.5) * C, pz = oz + (z + 0.5) * C; let ok = true; for (const c of b.colliders) if (c.lo === undefined && !c.cam && px > c.minx - R && px < c.maxx + R && pz > c.minz - R && pz < c.maxz + R) { ok = false; break; } free[z * W + x] = ok ? 1 : 0; }
     return (b.nav = { W, H, ox, oz, C, free });
   }
   /** Which finished building contains world point (x,z)? Used for roof cut-away and sim visibility. */

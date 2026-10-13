@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { WEAPONS } from '../systems/Combat.js';
-import { stepLevel, inLift } from '../world/Levels.js';
+import { stepLevel, inLift, laneRect, flightH } from '../world/Levels.js';
 import { makeRide, VEHICLE_SPEED, VEHICLE_NAMES } from '../render/Vehicles.js';
-import { TILE, WALL_H } from '../config.js';
+import { TILE, WALL_H, WALL_T } from '../config.js';
 import { ROLES, MATERIALS } from '../data/buildings.js';
 import { T } from '../world/World.js';
 import { createRig } from '../render/SimRig.js';
@@ -635,7 +635,7 @@ export class Player {
   // ---------- visuals ----------
   syncMesh(dt) {
     const g = this.game, m = this.mesh, godView = g.mode === 'god'; this.rig.lod.visible = false;
-    m.visible = !this.dead && !(g.mode === 'sim' && (!this.third || this.scoped()) && !this.sleeping);
+    m.visible = !this.dead && !(g.mode === 'sim' && (!this.third || this.scoped() || (this.camD !== undefined && this.camD < 0.5)) && !this.sleeping);   // (the camera squeezed right up behind him indoors: he's not drawn)
     m.position.set(this.x, (this.jumpY || 0) + (this.floorY || 0), this.z); m.rotation.y = this.heading;
     if (this.transit && !this.transit.cabin) m.visible = false;
     if (this.veh) { const lift = this.veh.userData.seat - 0.5; m.position.y += lift; this.veh.position.y = -lift; for (const [w, r] of this.veh.userData.wheels || []) w.rotation.x += (this.dist || 0) / r; }
@@ -690,6 +690,21 @@ export class Player {
     this.cut = now;
   }
   /** Camera for sim mode (first/third person). */
+  /** Is the camera's spot inside something solid: walls, tall furniture, a shut front door or the boxed-in side of a staircase? */
+  camBlocked(x, z, y, r) {
+    if (this.game.world.collides(x, z, r, true, y)) return true;
+    if (y < 2.6 && this.doorBlocks(x, z, r)) return true;
+    // upstairs the outside walls are solid all round (the front door's gap in the wall colliders only matters downstairs)
+    const pb = this.game.buildings.playerInside, pp = pb && pb.ext && pb.ext.plan;
+    if (pp && y > WALL_H - 0.4) { const a = pb.rot * Math.PI / 2, c = Math.cos(a), sn = Math.sin(a), dx = x - pb.cx, dz = z - pb.cz, lx = dx * c - dz * sn, lz = dx * sn + dz * c; if (Math.abs(lx) > pp.W / 2 - WALL_T - r || Math.abs(lz) > pp.D / 2 - WALL_T - r) return true; }
+    const q = this.planAt(x, z), st = q && q.p.stair; if (!st) return false;
+    for (const lane of st.lanes) {
+      const L = laneRect(st, lane); if (q.lx < L[0] - r || q.lx > L[1] + r || q.lz < L[2] - r || q.lz > L[3] + r) continue;
+      const s = Math.max(st.s0, Math.min(st.s1, st.ax === 'x' ? q.lx : q.lz));
+      for (const k of lane.flights) if (y > k * WALL_H - 0.2 && y < flightH(st, k, s) + 1.0) return true;   // under the flight, or down among the treads and the bannister
+    }
+    return false;
+  }
   placeCamera(cam) {
     const w = this.game.world, [hx, hy, hz] = this.headPos();
     const fx = -Math.sin(this.yaw) * Math.cos(this.pitch), fy = Math.sin(this.pitch), fz = -Math.cos(this.yaw) * Math.cos(this.pitch);
@@ -697,7 +712,7 @@ export class Player {
     if (this.sleeping || this.sedated > 0 || this.down > 0) { cam.position.set(this.x, 1.2, this.z); cam.lookAt(this.x - Math.sin(this.heading) * 0, 4, this.z + 0.001); return; }
     const sh = this.shake > 0 ? this.shake * 0.12 : 0, jx = sh ? (Math.random() - 0.5) * sh : 0, jy = sh ? (Math.random() - 0.5) * sh : 0;
     { const W = WEAPONS[this.gun], fov = 72 - (72 - (W ? W.fov : 56)) * (this.aimK || 0) + (this.speed > 6 && !this.mounted ? 5 : 0); if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * 0.15; cam.updateProjectionMatrix(); } }   // aim: zoom in; sprint: a touch wider
-    { const nf = this.game.combat.on && (!this.third || this.scoped()) ? 0.04 : 0.3; if (cam.near !== nf) { cam.near = nf; cam.updateProjectionMatrix(); } }   // first person with a gun: a near plane close enough for the hands
+    { const nf = this.game.combat.on && (!this.third || this.scoped()) ? 0.04 : this.game.buildings.playerInside ? 0.1 : 0.3; if (cam.near !== nf) { cam.near = nf; cam.updateProjectionMatrix(); } }   // first person with a gun: a near plane close enough for the hands; indoors: close enough that the edges of the view never reach through a wall
     const vt = performance.now(), vdt = Math.min(0.1, (vt - (this._vmT || vt)) / 1000) || 1 / 60; this._vmT = vt;
     if (!this.third || this.scoped()) { if (this.cut && this.cut.size) this.cutaway(null); const sw = (this.drunk || 0) > 0.4 ? (this.drunk - 0.4) * 0.25 : 0, t = this.game.elapsed; cam.position.set(hx + jx, hy + jy, hz); cam.lookAt(hx + fx + Math.sin(t * 0.9) * sw, hy + fy + Math.sin(t * 1.3) * sw * 0.5, hz + fz + Math.cos(t * 0.7) * sw); this.game.combat.viewModel(this, cam, vdt); return; }
     this.game.combat.viewModel(this, null);
@@ -706,9 +721,18 @@ export class Player {
     const ak = this.aimK || 0, py = this.floorY || 0, q0 = this.planAt(this.x, this.z), q = q0 && this.game.buildings.onBuilding(q0.b, this.x, this.z, -0.3) ? q0 : null, onRoof = (q && py > q.p.H - 0.6) || !!this.transit, indoor = !!this.game.buildings.playerInside && !onRoof;
     const maxD = indoor ? Math.min(this.camDist, 2.7) : this.camDist; let d = maxD * (1 - ak) + Math.min(maxD, 2.1) * ak;
     let so = (indoor ? 0.42 : 0.55 + 0.2 * ak) * (this.shoulder || 1); const ty = (this.eyeH || 1.65) + 0.1 + py;
-    if (w.collides(hx + Math.cos(this.yaw) * so, hz - Math.sin(this.yaw) * so, 0.22, true, ty)) so = 0;   // no room for the shoulder offset: straight behind
-    const tx = hx + Math.cos(this.yaw) * so, tz = hz - Math.sin(this.yaw) * so, ceil = indoor ? (Math.floor((py + 0.6) / WALL_H) + 1) * WALL_H - 0.35 : 1e9, lift = (t) => 0.4 * Math.min(1, t / 2);
-    if (!onRoof) { let ok = 0.35; for (let t = 0.35; t <= d; t += 0.1) { const cx = tx - fx * t, cz = tz - fz * t, cy = Math.min(ceil, ty - fy * t + lift(t)); if (cy < py + 0.25 || w.collides(cx, cz, 0.3, true, cy)) break; ok = t; } d = Math.min(d, Math.max(0.35, ok - 0.12)); }
+    if (this.camBlocked(hx + Math.cos(this.yaw) * so, hz - Math.sin(this.yaw) * so, ty, 0.22)) so = 0;   // no room for the shoulder offset: straight behind
+    // indoors the camera stays under the door heads (2 m up) and under the ceiling, so it never rises over a wall into the next room
+    let tx = hx + Math.cos(this.yaw) * so, tz = hz - Math.sin(this.yaw) * so; const ceil = indoor ? Math.min((Math.floor((py + 0.6) / WALL_H) + 1) * WALL_H - 0.35, py + 2.0) : 1e9, lift = (t) => (indoor ? 0.15 : 0.4) * Math.min(1, t / 2);
+    if (onRoof && q) {   // on a roof: the boom stops short of the stair hut, the lift housing and the plant on the roof
+      const p = q.p, huts = [p.hut && p.hut.rect, p.lift && [p.lift.x0 - 0.15, p.lift.x1, p.lift.z0, p.lift.z1 + 0.15], ...(q.b.ext.roofCols || [])].filter(Boolean), a = q.b.rot * Math.PI / 2, c = Math.cos(a), sn = Math.sin(a);
+      const loc = (x, z) => { const dx = x - q.b.cx, dz = z - q.b.cz; return [dx * c - dz * sn, dx * sn + dz * c]; }, inR = (r, [lx, lz]) => lx > r[0] - 0.3 && lx < r[1] + 0.3 && lz > r[2] - 0.3 && lz < r[3] + 0.3;
+      const here = loc(hx, hz), solid = huts.filter((r) => !inR(r, here));   // (not the one he's standing in: inside the stair hut the boom is free)
+      if (solid.some((r) => inR(r, loc(tx, tz)))) { tx = hx; tz = hz; }   // right beside the hut: no shoulder offset
+      const box = huts.find((r) => here[0] > r[0] && here[0] < r[1] && here[1] > r[2] && here[1] < r[3]), inBox = (at) => at[0] > box[0] + 0.25 && at[0] < box[1] - 0.25 && at[1] > box[2] + 0.25 && at[1] < box[3] - 0.25;   // inside the hut itself: the camera stays in with him
+      let ok = 0; for (let t = 0.1; t <= d; t += 0.1) { const at = loc(tx - fx * t, tz - fz * t); if ((ty - fy * t + lift(t) < p.H + 3.2 && solid.some((r) => inR(r, at))) || (box && !inBox(at))) break; ok = t; } d = Math.min(d, Math.max(0.1, ok - 0.12));
+    }
+    if (!onRoof) { let ok = 0; for (let t = 0.1; t <= d; t += 0.1) { const cx = tx - fx * t, cz = tz - fz * t, cy = Math.min(ceil, ty - fy * t + lift(t)); if (cy < py + 0.25 || this.camBlocked(cx, cz, cy, 0.3)) break; ok = t; } d = Math.min(d, Math.max(0.1, ok - 0.12)); }   // squeezed right in: Sam fades out (see syncMesh)
     this.camD = this.camD === undefined || d < this.camD ? d : this.camD + (d - this.camD) * Math.min(1, vdt * 3); const cd = this.camD;
     cam.position.set(tx - fx * cd + jx, Math.min(ceil, Math.max(0.4 + py, ty - fy * cd + lift(cd))) + jy, tz - fz * cd); cam.lookAt(tx, ty, tz); this.cutaway(cam.position.x, cam.position.z, hx, hz);
   }

@@ -155,7 +155,7 @@ export class World {
       if (!wallsOnly && t === T.WATER) return true;   // woods can be walked into (to reach the trees); only the sea stops you
       const a = this.colBuckets.get(this.idx(tx, tz));
       if (a) for (const c of a) {
-        if ((c.h !== undefined && y > c.h) || (c.lo !== undefined && y < c.lo) || c.navOnly) continue;
+        if ((c.h !== undefined && y > c.h) || (c.lo !== undefined && y < c.lo) || c.navOnly || (c.cam && !wallsOnly)) continue;   // (cam: door leaves and frames stop the camera and bullets, not people)
         const cx = Math.max(c.minx, Math.min(x, c.maxx)), cz = Math.max(c.minz, Math.min(z, c.maxz));
         if ((x - cx) ** 2 + (z - cz) ** 2 < r * r) return true;
       }
