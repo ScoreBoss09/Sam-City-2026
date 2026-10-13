@@ -18,6 +18,9 @@ export function slotInfo(n) {
 export const saveInfo = () => slotInfo(slot);
 export const hasSave = () => { try { return !!localStorage.getItem(keyOf(slot)); } catch (e) { return false; } };
 export const clearSave = (n = slot) => { try { localStorage.removeItem(keyOf(n)); } catch (e) { /* private mode */ } };
+/** A save as text (to download and send), and putting one back into a slot. */
+export const exportSlot = (n) => { try { return localStorage.getItem(keyOf(n)); } catch (e) { return null; } };
+export function importSlot(n, text) { const d = JSON.parse(text); if (!d || !d.sims || !d.economy) throw new Error('That file isn\'t a Sam City save.'); localStorage.setItem(keyOf(n), JSON.stringify(d)); return d; }
 
 /** Snapshot of everything that matters. Sims are stored by value and rebuilt on load. */
 export function serialize(g) {

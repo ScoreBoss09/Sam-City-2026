@@ -147,7 +147,12 @@ export class Game {
   /** Run one town system: tell the watchdog which one (so a freeze names it) and note any call that takes over 250 ms. */
   sys(k, dt) {
     const o = this[k]; if (!o) return; this.watchdog.beat('town: ' + k); const t = performance.now(); o.update(dt); const d = performance.now() - t;
-    if (d > 250) { this.perf.note(`slow: ${k} took ${Math.round(d)} ms`); if (performance.now() - (this._slowW || 0) > 2000) { this._slowW = performance.now(); try { const L = JSON.parse(localStorage.getItem('samcity-slow') || '[]'); L.push({ k, ms: Math.round(d), at: Date.now() }); localStorage.setItem('samcity-slow', JSON.stringify(L.slice(-12))); } catch (e) { /* no storage */ } } }
+    if (d > 250) this.slowNote(k, d);
+  }
+  /** Something took far too long: into the F8 report, and kept (across a reload) for the next start's message. */
+  slowNote(what, ms) {
+    this.perf.note(`slow: ${what} took ${Math.round(ms)} ms`); if (performance.now() - (this._slowW || 0) < 1500) return; this._slowW = performance.now();
+    try { const L = JSON.parse(localStorage.getItem('samcity-slow') || '[]'); L.push({ k: what, ms: Math.round(ms), at: Date.now() }); localStorage.setItem('samcity-slow', JSON.stringify(L.slice(-12))); } catch (e) { /* no storage */ }
   }
   /** The title screen: a slow flight round the island behind the menu (the planning camera itself isn't touched). */
   titleFlight(dt) {
