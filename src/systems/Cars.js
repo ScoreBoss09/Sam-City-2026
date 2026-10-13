@@ -98,7 +98,7 @@ export class Cars {
     const g = this.game, s = c.trip && c.trip.s; c.state = 'pulled'; c.pulledT = 20; c.v = 0;
     g.social.say(cop, pick(c.drunk > 0 ? ['Evening. Been drinking, have we?', 'Blow into this for me, sir.', 'Step out of the car, please.'] : ['Bit of a hurry, sir?', 'Do you know how fast you were going?', 'Nice car. Shame about the driving.']), 3);
     g.messages.push('Police', `${s ? s.name : 'A driver'} was pulled over for ${c.drunk > 0 ? 'drink-driving' : 'dangerous driving'}.${c.drunk > 0 ? ' Banned for a year and a night in the cells.' : ' A fine and points on the licence.'}`);
-    if (g.markers) g.markers.add(c.x, c.z, '🚔', c.drunk > 0 ? 'Drink-driver stopped' : 'Speeding driver stopped', 40);
+    if (g.markers) g.markers.add(c.x, c.z, '🚔', c.drunk > 0 ? 'Drink-driver stopped' : 'Speeding driver stopped', 120, null, () => c.state === 'pulled');
     c.drunk = 0; c.racer = false;
   }
   /** At the destination: find a space (car park or kerb), park, and let the driver out. */
@@ -112,7 +112,7 @@ export class Cars {
   /** Parked cars Sam can get into (called from Player.findTarget). */
   targets(P, consider) {
     const g = this.game; if (P.mounted || P.transit) return;
-    if (!(P.car && P.car.c && P.car.c.mine) && g.tech && g.tech.era >= 1) for (const b of g.buildings.list) { if (b.id !== 'garage' || b.state !== 'done' || !b.doorOut) continue; const d = Math.hypot(b.doorOut.x - P.x, b.doorOut.z - P.z); if (d < 4) consider({ kind: 'act', text: 'Buy a car (£1,200)', act: () => this.buy(b) }, d - 0.4); }
+    if (!(P.car && P.car.c && P.car.c.mine) && g.tech && g.tech.era >= 1) for (const b of g.buildings.list) { if (b.id !== 'garage' || b.state !== 'done' || !b.doorOut) continue; const d = Math.hypot(b.doorOut.x - P.x, b.doorOut.z - P.z); if (d < 4) consider({ kind: 'act', text: 'Buy a car (£1,200)', act: () => this.buy(b) }, d - 0.4, undefined, undefined, [b.doorOut.x, b.doorOut.z]); }
     for (const c of this.list) { if (c.state !== 'parked' || c.taken || (c.y || 0) > 0.5) continue; const d = Math.hypot(c.x - P.x, c.z - P.z); if (d > 2.8) continue;
       consider({ kind: 'act', text: c.mine ? 'Get in your car' : `Get in ${c.home ? 'the ' + (c.home.residents[0] ? c.home.residents[0].surname + 's\'' : 'neighbours\'') : 'this'} car (it isn't yours...)`, act: () => this.take(c) }, d - 0.3, c.x, c.z); }
   }

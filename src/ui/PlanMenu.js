@@ -4,13 +4,10 @@ import { Sfx } from '../core/Sfx.js';
 import { purposeOf } from '../data/purpose.js';
 import { AGES, AGE_NEEDS, AGE_ICON } from '../data/ages.js';
 import { moneyHTML, perDayTable } from './Money.js';
+import { ICON, CAT_ICON } from '../data/icons.js';
 
 const $ = (id) => document.getElementById(id);
 const CATS = [...TOOL_MENUS.build.map(([n, l]) => [n, l, 'build']), ['Parks', TOOL_MENUS.park, 'park'], ['Utilities', TOOL_MENUS.util, 'util']];
-const CAT_ICON = { Homes: '🏠', Food: '🍞', Industry: '🏭', Civic: '🏛️', Commerce: '🛍️', Transport: '🚂', Parks: '🌳', Utilities: '⚡' };
-const ICON = { shack: '🛖', hut: '🛖', cabin: '🏡', bungalow: '🏠', cottage: '🏡', semi: '🏘️', townhouse: '🏘️', flats: '🏢', apartments: '🏢', forager: '🫐', allotment: '🥕', fisher: '🎣', bakery: '🥖', farm: '🌾', harbour: '⚓', chippy: '🍟', tavern: '🍺',
-  lumbercamp: '🪓', quarry: '⛏️', contractor: '🔨', brickworks: '🧱', glassworks: '🪟', foundry: '⚙️', factory: '🏭', stockyard: '📦', postbox: '📮', surveyor: '📐', villagehall: '🏛️', postoffice: '🏤', school: '🏫', library: '📚', church: '⛪', townhall: '🏛️', clinic: '🏥', police: '🚓',
-  newsagent: '📰', shop: '🏪', launderette: '🧺', video: '📼', bookies: '🐎', office: '🏢', hotel: '🏨', skyscraper: '🏙️', campfire: '🔥', phonebox: '☎️', billboard: '🪧', carpark: '🅿️', park: '🌳', busstop: '🚏', bandstand: '🎺', plaza: '⛲', ballfield: '🏏', well: '🪣', power: '⚡', water: '💧', terrace: '🏘️', caravan: '🚐', maisonettes: '🏬', curryhouse: '🍛', cafe: '☕', supermarket: '🛒', arcade: '🕹️', records: '💿', bank: '🏦', nightclub: '🪩', cinema: '🎬', garage: '🔧', firestation: '🚒', leisure: '🏊', secondary: '🎒', stables: '🐴', cycleshop: '🚲', railstation: '🚂', monostation: '🚝', skylift: '🚡', watchhouse: '🏮', chapel: '⛪', graveyard: '🪦', surgery: '🩺', lockup: '🏰', butcher: '🥩', kebab: '🥙', offy: '🍾', snooker: '🎱', wmc: '🍺', bingo: '🎟️', hairdresser: '💇', toyshop: '🧸', poundshop: '💷', tanning: '☀️', phoneshop: '📱', computers: '💾', bowling: '🎳', laserquest: '🔫', youthclub: '🏓' };
 const matText = (m) => Object.entries(m).map(([k, n]) => `${n} ${MATERIALS[k].name.toLowerCase()}`).join(', ');
 
 /**
@@ -31,7 +28,7 @@ export class PlanMenu {
     const tabs = [['build', '🏗️ Build'], ['queue', `📋 Work queue (${Q.length})`], ['upgrades', `⬆️ Upgrades${canUp ? ` (${canUp})` : ''}`], ['money', '💷 Money & goods']];
     let body = '';
     if (this.tab === 'build') body = this.renderBuild(); else if (this.tab === 'queue') body = this.renderQueue(Q); else if (this.tab === 'money') body = `<div class="pmoney">${moneyHTML(g)}${perDayTable(g.economy)}</div>`; else body = this.renderUpgrades(ups);
-    const html = `<div class="pwin"><div class="phead"><b>📐 PLANNING</b><span class="funds">Funds</span>${g.net && g.net.role === 'host' ? `<button data-a="raid">${g.raidNight ? '🎯 Raid night on' : '🎯 Start Raid night'}</button>` : ''}<button data-a="perf">📊 Report</button><button data-a="close">✖ Close${pad ? ' ○' : ' (Esc)'}</button></div>
+    const html = `<div class="pwin"><div class="phead"><b>📐 PLANNING</b><span class="funds">Funds</span>${g.net && g.net.role === 'host' ? `<button data-a="raid">${g.raidNight ? '🎯 Raid night on' : '🎯 Start Raid night'}</button>` : ''}<button data-a="perf">📊 Report</button><button data-a="close" class="xbtn" title="Close">✕</button></div>
       <div class="ptabs">${tabs.map(([k, n]) => `<button data-a="tab" data-k="${k}" class="${k === this.tab ? 'on' : ''}">${n}</button>`).join('')}<span class="hint">${pad ? '<b class="ps">L1</b>/<b class="ps">R1</b> page · <b class="ps">L2</b>/<b class="ps">R2</b> category · <b class="ps ps-x">✕</b> choose · <b class="ps ps-o">○</b> close' : 'B opens this · Esc closes'}</span></div>${body}</div>`;
     // the menu redraws every second on the queue and upgrades pages: only touch the page if something changed, and keep the scroll
     const el = $('planmenu'), keep = this.focusFirst ? 0 : (el.querySelector('.pwin') || {}).scrollTop || 0;
@@ -56,11 +53,11 @@ export class PlanMenu {
       if (asked) status = `🙋 ${asked} asked for one · ` + status;
       return `<button class="card ${n ? 'built' : ''} ${un ? '' : 'locked'} ${g.god.tool.sub === k ? 'on' : ''}" data-a="${act}" data-k="${k}"><span class="ic">${ICON[k] || '🏠'}</span>${tick}<b>${d.name}</b><small>${status}</small><small class="pp">${purposeOf(k, d)}</small></button>`;
     }).join('');
-    return `<div class="pcats">${cats}</div><div class="pcards">${cards || '<div class="pnote">Nothing here yet. Grow the town.</div>'}</div>${next ? `<div class="pnote">🔒 More buildings at ${next} residents.</div>` : ''}<div class="pnote">${AGE_ICON[g.tech.age]} ${AGES[g.tech.age]} age.${g.tech.age < 4 ? ` Next: the ${AGES[g.tech.age + 1]} age, when you have ${AGE_NEEDS[g.tech.age + 1]} (new buildings, upgrades and a new look for the town).` : ''}</div><div class="pnote">✓ = you have one already. Pick a building, then place it on the map (${g.input.padActive ? '✕ to place, △ to rotate, ○ to cancel' : 'click to place, R rotates, Esc cancels'}).</div>`;
+    return `<div class="pcats">${cats}</div><div class="pcards">${cards || '<div class="pnote">Nothing here yet. Grow the town.</div>'}</div>${next ? `<div class="pnote">🔒 More buildings at ${next} residents.</div>` : ''}<div class="pnote">${AGE_ICON[g.tech.age]} ${AGES[g.tech.age]} age.${g.tech.age < 4 ? ` Next: the ${AGES[g.tech.age + 1]} age, when you have ${AGE_NEEDS[g.tech.age + 1]} (new buildings, upgrades and a new look for the town).` : ''}</div>`;
   }
   renderQueue(Q) {
     const g = this.game, builders = g.population.sims.filter((s) => s.role === 'builder' && !s.remove), busy = builders.filter((s) => s.job).length; this.q = Q;
-    if (!Q.length && !g.piles.list.length) return '<div class="pnote">Nothing to build. Place buildings, draw paths or order upgrades and they appear here in order.</div>';
+    if (!Q.length && !g.piles.list.length) return '<div class="pnote">Nothing queued.</div>';
     const rows = Q.map((it, i) => {
       let name, info, frac = 0;
       if (it.kind === 'roads') { const n = g.roadPlans.count; name = '🛣️ Paths and roads'; info = `${n} tile${n > 1 ? 's' : ''} to dig`; }
@@ -72,16 +69,16 @@ export class PlanMenu {
         <button data-a="q" data-m="top" data-i="${i}" ${i === 0 ? 'disabled' : ''} title="Do this first">⤒ Top</button><button data-a="q" data-m="up" data-i="${i}" ${i === 0 ? 'disabled' : ''}>▲</button><button data-a="q" data-m="down" data-i="${i}" ${i === Q.length - 1 ? 'disabled' : ''}>▼</button>${it.s ? `<button data-a="q" data-m="crew" data-i="${i}" title="How many builders this job takes">👷 ${it.s.crew || 'Auto'}</button><button data-a="q" data-m="show" data-i="${i}">👁</button>` : ''}${it.kind === 'upgrade' ? `<button data-a="q" data-m="cancel" data-i="${i}">✖</button>` : ''}</div>`;
     }).join('');
     const dock = g.construction.dockPiles ? g.piles.list.filter((p) => g.lift && Math.hypot(p.x - g.logistics.dock().x, p.z - g.logistics.dock().z) < 7) : [], dockTxt = dock.length ? `<div class="qrow"><span class="qn">📦</span><div class="qi"><b>Goods waiting at the Lift</b><small>${dock.map((p) => Object.entries(p.items).map(([m, n]) => n + ' ' + m).join(', ')).join(', ')} · ${g.population.sims.filter((q) => q.job && q.job.type === 'fetch').length} builder(s) carting it to the Stockyard${g.depot ? '' : ' (no Stockyard yet!)'}</small></div></div>` : '';
-    return `<div class="pnote">Builders work from the top down: everyone helps with the top job first (fetching its materials, then building), and only moves down the list when it's waiting for something. 👷 sets a job's crew (Auto starts 2 and grows to 6; a number is exactly that many). ${builders.length ? `Builders: ${builders.length} (${busy} busy).` : '<b>No builders yet: build a Builders\' Yard, or do it yourself as Sam.</b>'}</div><div class="pcats">Jobs at once: ${[[0, 'As many as possible'], [1, 'One'], [2, 'Two'], [3, 'Three']].map(([n, l]) => `<button data-a="qfocus" data-n="${n}" class="${(g.flags.qFocus || 0) === n ? 'on' : ''}">${l}</button>`).join('')}</div>${dockTxt}${rows}`;
+    return `<div class="pcats">Jobs at once: ${[[0, 'As many as possible'], [1, 'One'], [2, 'Two'], [3, 'Three']].map(([n, l]) => `<button data-a="qfocus" data-n="${n}" class="${(g.flags.qFocus || 0) === n ? 'on' : ''}">${l}</button>`).join('')}</div>${dockTxt}${rows}`;
   }
   renderUpgrades(ups) {
     const g = this.game, U = g.upgrades;
-    if (!ups.length) return '<div class="pnote">Nothing to upgrade yet. Homes can get an upstairs and a Tudor makeover; yards that gather (forager, lumber camp, quarry, fisher, farm...) can get carts; the Builders\' Yard can get wheelbarrows.</div>';
+    if (!ups.length) return '<div class="pnote">Nothing to upgrade yet.</div>';
     // one row per building type and level: upgrade one (the nearest to the view) or all of them at once
     const groups = new Map(); for (const b of ups) { const k = b.id + ':' + (b.level || 0); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(b); }
     this.groups = [...groups.values()].sort((a, b) => a[0].def.name.localeCompare(b[0].def.name) || (a[0].level || 0) - (b[0].level || 0));
     const all = ups.filter((b) => U.check(b).ok).length;
-    return `<div class="pnote">Upgrades cost materials and builder time, like a new building, and join the bottom of the Work queue. The people inside carry on as normal.</div>${all > 1 ? `<div class="qrow"><button data-a="upevery">⬆️ Upgrade everything that's ready (${all})</button></div>` : ''}` + this.groups.map((L, i) => {
+    return `${all > 1 ? `<div class="qrow"><button data-a="upevery">⬆️ Upgrade everything that's ready (${all})</button></div>` : ''}` + this.groups.map((L, i) => {
       const b = L[0], up = U.next(b) || U.orderFor(b).up, steps = U.steps(b), stars = steps.map((_, k) => (k < (b.level || 0) ? '★' : '☆')).join(''), queued = L.filter((q) => U.orderFor(q)).length, ready = L.filter((q) => U.check(q).ok), why = ready.length ? '' : U.check(L.find((q) => !U.orderFor(q)) || b).why;
       const btns = ready.length ? `<button data-a="up1" data-i="${i}">⬆️ Upgrade one</button>${ready.length > 1 ? `<button data-a="upall" data-i="${i}">⬆️ All ${ready.length}</button>` : ''}` : `<span class="st">${queued === L.length ? 'all in the work queue' : why}</span>`;
       return `<div class="qrow"><span class="qn">${ICON[b.id] || '🏠'}</span><div class="qi"><b>${b.def.name}${L.length > 1 ? ` ×${L.length}` : ''} <span class="stars">${stars}</span></b><small>${up.icon} <b>${up.name}</b>: ${up.desc}<br>Needs ${U.costText(up)} each${queued ? ` · ${queued} in the work queue` : ''}</small></div>${btns}<button data-a="show" data-i="${i}">👁</button></div>`;

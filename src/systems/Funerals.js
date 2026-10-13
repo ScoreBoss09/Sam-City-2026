@@ -59,7 +59,7 @@ export class Funerals {
       return this.behind(f, s);
     };
     f.hold = (s) => f.stage === 'walk' ? false : true;
-    if (g.markers) g.markers.add(church.cx, church.cz, '⚱️', `Funeral of ${q.first}`, 240);
+    if (g.markers) g.markers.add(church.cx, church.cz, '⚱️', `Funeral of ${q.first}`, 3600, null, () => this.f === f);
     g.messages.push('St Sam\'s', `The funeral of ${q.name} is under way.`);
   }
   /** Follow the hearse: two by two behind it, the closest family first. */

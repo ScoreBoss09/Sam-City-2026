@@ -49,7 +49,7 @@ export class Protests {
     for (const s of members) { s.phase = 0; const pl = placard(cause.board); s.rig.armR.hand.add(pl); p.placards.set(s, pl); }
     let k = 0; p.spot = () => { const a = (k++ * 2.4) % 6.28, r = 1.5 + (k % 3) * 1.1; return { x: x + Math.cos(a) * r, z: z + Math.sin(a) * r * 0.6, face: Math.PI }; }; p.hold = () => true;
     g.messages.push('Town', `${big ? 'A big protest' : 'A protest'} outside the ${site.def.name}: "${cause.board}". ${big ? 'Half the town has turned out to watch.' : 'Nobody looks very impressed.'}`, big ? 'warn' : '');
-    if (g.markers) g.markers.add(x, z, '📢', cause.board, big ? 240 : 120); return true;
+    if (g.markers) g.markers.add(x, z, '📢', cause.board, 3600, null, () => this.p === p); return true;
   }
   update(dt) {
     const g = this.game, p = this.p; if (!p) return; const crowd = [...p.members].filter((s) => !s.remove && s.activity === 'event');
@@ -74,8 +74,8 @@ export class Protests {
     p.stage = 'riot'; p.riotUntil = p.t + 60; Sfx.play('bell');
     for (let i = 0; i < n; i++) { const P = g.population.makePerson({ kind: 'visitor', gender: 'm' }); const s = g.population.spawnAt(from.x + (i % 3) * 0.8, from.z + Math.floor(i / 3) * 0.8, { name: 'PC ' + P.surname, first: 'PC', surname: P.surname, kind: 'guest', trait: 'busy', look: { ...P.look, shirt: 0x1b2340, pants: 0x1b2340, accessory: 'uniform', hat: null }, gender: 'm', age: 30 });
       const gear = riotGear(); s.rig.armL.hand.add(gear.sh); s.rig.head.add(gear.helm, gear.visor); s.hurry = true; p.riot.push(s); }
-    g.messages.push('Police', 'The riot police have arrived: shields, helmets and batons. This could get nasty.', 'warn'); g.ui.toast('🚔 Riot police!', 2600);
-    if (g.markers) g.markers.add(p.x, p.z, '🛡️', 'Riot police', 90);
+    g.messages.push('Police', 'The riot police have arrived: shields, helmets and batons. This could get nasty.', 'warn');
+    if (g.markers) g.markers.add(p.x, p.z, '🛡️', 'Riot police', 3600, null, () => this.p === p && p.riot.some((s) => !s.remove));
   }
   /** Each officer picks a protester still standing, wades in, and down they go. */
   drive(p, dt, crowd) {
@@ -96,7 +96,7 @@ export class Protests {
   torch(p) {
     const g = this.game, c = g.cars && g.cars.list.filter((q) => q.state === 'parked' && !q.taken && !q.mine && Math.hypot(q.x - p.x, q.z - p.z) < 60)[0]; if (!c) return;
     c.burning = 90; c.state = 'burnt'; c.mesh.traverse((o) => { if (o.isMesh && o.material && o.material.color) { o.material = o.material.clone(); o.material.color.multiplyScalar(0.25); } });
-    g.messages.push('Police', 'A car has been set alight in the street!', 'warn'); if (g.markers) g.markers.add(c.x, c.z, '🔥', 'Car on fire', 90);
+    g.messages.push('Police', 'A car has been set alight in the street!', 'warn'); if (g.markers) g.markers.add(c.x, c.z, '🔥', 'Car on fire', 600, null, () => c.burning > 0);
   }
   end(busted) {
     const g = this.game, p = this.p; if (!p) return; this.p = null; p.live = false;

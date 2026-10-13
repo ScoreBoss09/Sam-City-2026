@@ -88,7 +88,8 @@ function addWall(g, cols, mat, cx, cz, sx, sz, h = null, y = 0) {
  */
 const CURTAIN_COLS = [0x8a2a3a, 0x3a5a8a, 0xc8a24a, 0x4a7a4a, 0xd8c8b0, 0x7a4a8a, 0xb8603a];
 /** Swap the procedural walls, linings, painted glass and front clutter for a Blender shell (real windows where the model has them). Keeps floors, doors, bins and colliders. */
-function useShell(g, roof, cols, shell, { W, D, T, H, keep }) {
+function useShell(g, roof, cols, shell, { W, D, T, H, keep, name }) {
+  const insets = shellInsets(name, shell, W, D, T, H);   // (measured before the shell's meshes move into the building)
   const bb = new THREE.Box3(), c = new THREE.Vector3(), glass = glassMaterial();
   for (const o of [...g.children]) {
     if (o.userData.keep) continue;
@@ -100,6 +101,37 @@ function useShell(g, roof, cols, shell, { W, D, T, H, keep }) {
   roof.clear(); g.add(...shell.shell.children); if (shell.glass) for (const m of [...shell.glass.children]) { m.material = glass; m.castShadow = false; g.add(m); }
   if (shell.roof) { shell.roof.position.y = -H; roof.add(shell.roof); }
   if (W === 8) cols.push({ cx: 1.7, cz: D / 2 + 0.38, sx: 3.2, sz: 0.76, h: 2.8 });   // the bay window
+  cols.push(...insets);
+}
+/**
+ * Where a Blender shell's walls stand further into the rooms than the standard wall colliders (a thicker front wall, deep
+ * window reveals...), extra collider strips on each storey so Sam and the camera stop at the wall that's drawn.
+ * Measured once per shell by casting rays at its inside faces, then cached.
+ */
+const INSETS = new Map();
+function shellInsets(name, shell, W, D, T, H) {
+  const key = name + '|' + W + 'x' + D + '|' + H; if (INSETS.has(key)) return INSETS.get(key);
+  const meshes = [...shell.shell.children, ...(shell.glass ? shell.glass.children : [])].filter((o) => o.isMesh || o.isGroup); const objs = [];
+  for (const m of meshes) m.traverse((o) => { if (o.isMesh) { o.updateMatrixWorld(true); objs.push(o); } });
+  const rc = new THREE.Raycaster(), out = [], step = 0.25, floors = Math.max(1, Math.round(H / WALL_H));
+  // [along x?, the wall's inner face (from the standard colliders), outward sign]
+  for (const [alongX, face, sg] of [[true, D / 2 - T, 1], [true, -D / 2 + T, -1], [false, W / 2 - T, 1], [false, -W / 2 + T, -1]]) {
+    const L = (alongX ? W : D) / 2 - T;
+    for (let k = 0; k < floors; k++) {
+      let run = null; const flush = () => { if (run && run.b - run.a > 0.2) { const depth = run.depth, mid = face - sg * depth / 2, c = { cx: alongX ? (run.a + run.b) / 2 : mid, cz: alongX ? mid : (run.a + run.b) / 2, sx: alongX ? run.b - run.a : depth, sz: alongX ? depth : run.b - run.a }; if (k) { c.lo = k * WALL_H - 0.3; c.h = (k + 1) * WALL_H - 0.27; } else c.h = WALL_H - 0.27; out.push(c); } run = null; };
+      for (let u = -L + step / 2; u < L; u += step) {
+        let depth = 1e9;
+        for (const y of [k * WALL_H + 1.0, k * WALL_H + 1.9]) {
+          const o = alongX ? new THREE.Vector3(u, y, face - sg * 1.2) : new THREE.Vector3(face - sg * 1.2, y, u);
+          rc.set(o, alongX ? new THREE.Vector3(0, 0, sg) : new THREE.Vector3(sg, 0, 0)); rc.far = 1.25;
+          const h = rc.intersectObjects(objs, false)[0]; if (h) depth = depth === 1e9 ? 1.2 - h.distance : Math.max(depth, 1.2 - h.distance);
+        }
+        if (depth > 0.04 && depth < 0.9) { if (run && Math.abs(run.depth - depth) < 0.05) run.b = u + step / 2; else { flush(); run = { a: u - step / 2, b: u + step / 2, depth }; } } else flush();
+      }
+      flush();
+    }
+  }
+  INSETS.set(key, out); return out;
 }
 function buildCurtains(def, g, uid, T, door, dw) {
   const f = FACADES[def.wall] || FACADES.tan, n = f.wins; if (!n || f.kind === 'curtain') return null;
@@ -332,7 +364,7 @@ function buildExterior0(def, uid = 1, era = 2) {
     }
     if (def.roof === 'spire') { roofCols.push([-(W - 6) / 2, (W - 6) / 2, -(D - 6) / 2, (D - 6) / 2]); box(roof, W - 6, 3, D - 6, 0x39434d, 0, 0.05, 0); box(roof, 0.35, 10, 0.35, 0xcccccc, 0, 3.3, 0); box(roof, 0.5, 0.5, 0.5, 0xff3030, 0, 13.3, 0, { emissive: 0xff2020, emissiveIntensity: 1.2 }); }
   }
-  if (shell) useShell(g, roof, cols, shell, { W, D, T, H, keep: [mat, lm] });
+  if (shell) useShell(g, roof, cols, shell, { W, D, T, H, keep: [mat, lm], name: def.id });
   const curtains = def.cat === 'res' && !def.large && !shell ? buildCurtains(def, g, uid, T, door, dw) : null;
   { const sx = mx < 0.06 ? (W - 0.14) / W : 1, sz = mz < 0.06 ? (D - 0.14) / D : 1; if (sx !== 1 || sz !== 1) { g.scale.set(sx, 1, sz); roof.scale.set(sx, 1, sz); } }   // fills its plot exactly: pull the walls in a touch so they don't fight next door's
   ALIGN = null;
@@ -669,10 +701,19 @@ function buildRooms(b, g) {
   for (const f of lay.floors || []) { const k = f.k || 0, o = new THREE.Mesh(new THREE.PlaneGeometry(f.x1 - f.x0, f.z1 - f.z0), floorMat(f.kind, f.col)); o.rotation.x = -Math.PI / 2; o.position.set((f.x0 + f.x1) / 2, (k ? k * H + 0.03 : 0.15), (f.z0 + f.z1) / 2); o.receiveShadow = true; o.material.map.repeat.set((f.x1 - f.x0) / 1.5, (f.z1 - f.z0) / 1.5); lv(k).add(o); }
   for (const p of lay.lights || []) { const k = p.k || 0, y = (k + 1) * H - 0.3, grp = lv(k); const cord = new THREE.Mesh(unit, stdMat(0xf4f0e6)); cord.scale.set(0.02, 0.35, 0.02); cord.position.set(p.x, y - 0.15, p.z); grp.add(cord); const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.24, 0.22, 8), stdMat(0xf4e0b0, { emissive: 0xffd080, emissiveIntensity: 0.55 })); sh.position.set(p.x, y - 0.4, p.z); grp.add(sh); }
 }
-/** The colliders of a planned interior's walls (the solid stretches between doorways), on their own storeys. */
+/** The colliders of a planned interior's walls (the solid stretches between doorways), on their own storeys, as tall as they're drawn (so the camera can't look over them). */
 export function roomColliders(lay) {
   const out = [];
-  for (const w of (lay && lay.walls) || []) for (const [x0, x1, z0, z1] of wallPieces(w).pieces) { const k = w.k || 0, c = { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, sx: x1 - x0, sz: z1 - z0 }; if (k) { c.lo = k * WALL_H - 0.3; c.h = k * WALL_H + 2.3; } else c.h = 2.6; out.push(c); }
+  for (const w of (lay && lay.walls) || []) {
+    const P = wallPieces(w), k = w.k || 0, y0 = k * WALL_H, lo = k ? k * WALL_H - 0.3 : undefined;
+    for (const [x0, x1, z0, z1] of P.pieces) out.push({ cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, sx: x1 - x0, sz: z1 - z0, lo, h: (k + 1) * WALL_H - 0.27 });
+    // the open door leaf and the frame posts in each doorway: they stop the camera (not people, who brush past them)
+    for (const [a, c] of P.doors) {
+      const at = (s, ww, dd) => out.push({ cx: P.alongX ? s : P.c, cz: P.alongX ? P.c : s, sx: P.alongX ? ww : dd, sz: P.alongX ? dd : ww, lo, h: y0 + 2.15, cam: true });
+      at(a + 0.04, 0.08, 0.16); at(c - 0.04, 0.08, 0.16);
+      out.push({ cx: P.alongX ? a + 0.08 : P.c + 0.5, cz: P.alongX ? P.c + 0.5 : a + 0.08, sx: P.alongX ? 0.05 : 0.95, sz: P.alongX ? 0.95 : 0.05, lo, h: y0 + 2.05, cam: true });
+    }
+  }
   return out;
 }
 export function buildInterior(b) {
@@ -695,7 +736,7 @@ export function buildInterior(b) {
   return g;
 }
 /** Colliders for the furniture upstairs: they only block at their own storey (lo..h). */
-export function upperColliders(def) { return upperFurniture(def).filter((f) => f.solid).map((f) => ({ cx: f.x, cz: f.z, sx: f.sx * 0.92, sz: f.sz * 0.92, lo: f.k * WALL_H - 0.3, h: f.k * WALL_H + 2.3 })); }
+export function upperColliders(def) { return upperFurniture(def).filter((f) => f.solid).map((f) => ({ cx: f.x, cz: f.z, sx: f.sx * 0.92, sz: f.sz * 0.92, lo: f.k * WALL_H - 0.3, h: f.k * WALL_H + 2.3, furn: true })); }
 
 const TOPS = { bed: 0.55, dbed: 0.55, bunk: 0, cot: 0, table: 0.78, sofa: 0.8, armchair: 0.8, coffeetable: 0.45, desk: 0.78, kitchen: 0.95, bath: 0.6, dresser: 0.85, bedside: 0.6, tvunit: 0.6, phonetable: 0.75, homepc: 0.78, chest: 0.6, crate: 0.7, bench: 0.5, pooltable: 0.85, snookertable: 0.85 };
 export function furnitureColliders(lay) {
@@ -704,7 +745,7 @@ export function furnitureColliders(lay) {
     const d = FURN[f.t]; if (!d || !d.solid) continue;
     let [sx, sz] = d.s; if ((f.r || 0) % 2) [sx, sz] = [sz, sx];
     const top = d.h || TOPS[f.t];   // low pieces can be jumped onto and stood on
-    out.push({ cx: f.x, cz: f.z, sx: sx * 0.92, sz: sz * 0.92, h: top || 2.5, top });
+    out.push({ cx: f.x, cz: f.z, sx: sx * 0.92, sz: sz * 0.92, h: top || 2.5, top, furn: true });
   }
   return out;
 }

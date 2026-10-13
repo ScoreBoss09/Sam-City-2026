@@ -73,7 +73,7 @@ export class Crime {
       for (let i = 0; i < 3; i++) { const P = g.population.makePerson({ kind: 'visitor', gender: 'm' }), look = { ...P.look, shirt: 0x1a1a1a, pants: 0x1a1a22, hat: { type: 'beanie', color: 0x111111 }, facial: null };
         const s = g.population.spawnAtLift({ name: P.name, first: P.first, surname: P.surname, kind: 'visitor', trait: 'busy', look, gender: 'm', age: P.age });
         s.crook = { type: 'robber', state: 'prowl', t: 0, repath: 0, loot: 0, items: null, seen: true, fixed: b, lead: i === 0 }; s.hp = 120; s.hurry = true; }
-      this.stats.crimes++; if (g.markers) g.markers.add(b.cx, b.cz, '🔫', `Raid on the ${b.def.name}!`, 120);
+      this.stats.crimes++; if (g.markers) g.markers.add(b.cx, b.cz, '🔫', `Raid on the ${b.def.name}!`, 3600, null, () => g.population.sims.some((s) => s.crook && s.crook.fixed === b && !s.remove));
       g.messages.push('Police', `999! Three men in balaclavas are heading for the ${b.def.name}!`, 'warn'); g.ui.toast(`🚨 Armed robbery at the ${b.def.name}!`, 3500); Sfx.play('bell');
     } else if ((h >= 1 && h < 4)) {
       const L = g.buildings.list.filter((b) => b.state === 'done' && !b.def.park && !b.def.special && (b.def.shopping || b.def.cat === 'ind')); const b = pick(L); if (!b || !g.hazards) return;
@@ -99,13 +99,11 @@ export class Crime {
       const n = Math.min(pool.length - pool.length % 2, 6 + Math.floor(Math.random() * 6)), crew = pool.sort(() => Math.random() - 0.5).slice(0, n);
       for (let i = 0; i < crew.length; i += 2) this.startFight(crew[i], crew[i + 1]);
       for (const s of crew) if (Math.random() < 0.4) this.game.social.say(s, pick(FIGHT_START), 2.2);
-      if (Math.hypot(g.player.x - site.cx, g.player.z - site.cz) < 80) g.ui.toast(`🥊🥊 A full-scale brawl outside ${site.def.name}!`, 3200);
-      g.messages.push('Town news', `Mass brawl outside ${site.def.name}: ${crew.length} involved.`, 'warn'); g.markers && g.markers.add(site.cx, site.cz, '🥊', 'Mass brawl', 60); return;
+      g.messages.push('Town news', `Mass brawl outside ${site.def.name}: ${crew.length} involved.`, 'quiet'); g.markers && g.markers.add(site.cx, site.cz, '🥊', 'Mass brawl', 600, null, () => crew.some((s) => s.fight && !s.remove)); return;
     }
     const a = pool[0], b = pool.slice(1).sort((p, q) => Math.hypot(p.x - a.x, p.z - a.z) - Math.hypot(q.x - a.x, q.z - a.z))[0]; if (!a || !b) return;
     this.startFight(a, b); g.social.say(a, pick(FIGHT_START), 2.5); g.markers && g.markers.add(a.x, a.z, '🥊', 'Fight', 120, a, () => !!a.fight);
-    if (Math.hypot(g.player.x - a.x, g.player.z - a.z) < 60) g.ui.toast(`🥊 A fight has broken out${site ? ` outside ${site.def.name}` : ''}!`, 2800);
-    g.messages.push('Town news', `${a.first} and ${b.first} came to blows${site ? ` outside ${site.def.name}` : ' in the street'}.`, 'warn');
+    g.messages.push('Town news', `${a.first} and ${b.first} came to blows${site ? ` outside ${site.def.name}` : ' in the street'}.`, 'quiet');
   }
   startFight(a, b) { for (const [x, y] of [[a, b], [b, a]]) { if (x === this.game.player) continue; x.fight = { foe: y, t: 0, cd: 0.5 + Math.random() * 0.5, repath: 0 }; x.hp = x.hp ?? 100; } }
 
@@ -169,7 +167,7 @@ export class Crime {
     g.social.say(s, pick(CROOK), 1.8); this.report(s, `A ${c.type} struck near ${this.where(s)}.`); this.flee(s);
   }
   flee(s) { s.crook.state = 'flee'; s.crook.repath = 0; s.path = []; s.hurry = true; }
-  report(s, text) { s.crook.seen = true; this.game.messages.push('Police report', text, 'warn'); this.game.markers && this.game.markers.add(s.x, s.z, '🚨', text, 90, s); }
+  report(s, text) { s.crook.seen = true; this.game.messages.push('Police report', text, 'warn'); this.game.markers && this.game.markers.add(s.x, s.z, '🚨', text, 600, s, () => !!s.crook && !s.remove); }
   where(s) { const b = this.game.buildings.list.filter((q) => q.state === 'done' && !q.def.park).sort((a, q) => Math.hypot(a.cx - s.x, a.cz - s.z) - Math.hypot(q.cx - s.x, q.cz - s.z))[0]; return b ? `the ${b.def.name}` : 'the square'; }
 
   driveFight(s, dt) {

@@ -195,11 +195,11 @@ export class Transport {
     if (P.transit && P.transit.cabin) { const R = P.transit, L = R.L, n = this.stopHere(L, R.car); if (n >= 0 && n !== R.from) consider({ kind: 'act', text: `Get off here: ${this.stopName(L.st[n])}`, act: () => this.samOff() }, 0); else if (n < 0) R.from = -1; return; }
     for (const b of g.buildings.list) {
       if (b.state !== 'done' || !b.doorOut) continue; const d = Math.hypot(b.doorOut.x - P.x, b.doorOut.z - P.z); if (d > 4.2) continue;
-      if (b.id === 'cycleshop') { const lv = b.def.vehicle || 0, price = BIKE_PRICE[lv]; if ((P.bike ?? -1) < lv) consider({ kind: 'act', text: `Buy a ${VEHICLE_NAMES[lv]} (£${price})  then B to ride`, act: () => this.buyBike(lv, price) }, d - 0.5); }
+      if (b.id === 'cycleshop') { const lv = b.def.vehicle || 0, price = BIKE_PRICE[lv]; if ((P.bike ?? -1) < lv) consider({ kind: 'act', text: `Buy a ${VEHICLE_NAMES[lv]} (£${price})  then B to ride`, act: () => this.buyBike(lv, price) }, d - 0.5, undefined, undefined, [b.doorOut.x, b.doorOut.z]); }
       if (b.def.transit) {
-        const L = this.lines[b.def.transit]; if (!L) { consider({ kind: 'info', text: `Build another ${b.def.name} to open the line (lay the track with the Track tool)` }, d); continue; }
+        const L = this.lines[b.def.transit]; if (!L) { consider({ kind: 'info', text: `Build another ${b.def.name} to open the line (lay the track with the Track tool)` }, d, undefined, undefined, [b.doorOut.x, b.doorOut.z]); continue; }
         const i = L.st.indexOf(b); if (i < 0) continue;
-        consider({ kind: 'act', text: `Buy a ticket (£${L.K.fare}) and wait on the platform for the ${L.K.name}`, act: () => this.samUp(L, i) }, d - 0.5);
+        consider({ kind: 'act', text: `Buy a ticket (£${L.K.fare}) and wait on the platform for the ${L.K.name}`, act: () => this.samUp(L, i) }, d - 0.5, undefined, undefined, [b.doorOut.x, b.doorOut.z]);
       }
     }
   }

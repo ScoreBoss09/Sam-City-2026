@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { WEAPONS } from '../systems/Combat.js';
-import { stepLevel, inLift } from '../world/Levels.js';
+import { stepLevel, inLift, laneRect, flightH } from '../world/Levels.js';
 import { makeRide, VEHICLE_SPEED, VEHICLE_NAMES } from '../render/Vehicles.js';
-import { TILE, WALL_H } from '../config.js';
+import { TILE, WALL_H, WALL_T } from '../config.js';
 import { ROLES, MATERIALS } from '../data/buildings.js';
 import { T } from '../world/World.js';
 import { createRig } from '../render/SimRig.js';
@@ -13,6 +13,15 @@ import { SHOP_GOODS, GENERIC_GOODS } from '../data/shopgoods.js';
 import { PHONE_CALLS, PHONE_CALLS_CLEAN, HORSES, RACE_WIN, RACE_LOSE } from '../data/humour.js';
 
 const R = 0.4;
+/** Does the segment (x0,z0)-(x1,z1) cross box q ({ minx, maxx, minz, maxz }), ignoring its last `skipEnd` metres? */
+function segBox(x0, z0, x1, z1, q, skipEnd = 0) {
+  const dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz) || 1; let t0 = 0, t1 = Math.max(0, (L - skipEnd) / L);
+  for (const [o, d, mn, mx] of [[x0, dx, q.minx, q.maxx], [z0, dz, q.minz, q.maxz]]) {
+    if (Math.abs(d) < 1e-9) { if (o <= mn || o >= mx) return false; continue; }
+    let u = (mn - o) / d, v = (mx - o) / d; if (u > v) [u, v] = [v, u]; t0 = Math.max(t0, u); t1 = Math.min(t1, v); if (t0 >= t1) return false;
+  }
+  return true;
+}
 const R_IN = 0.28;   // slimmer indoors, where doorways are 1.2 m and the furniture is close together
 export const TOOLS = { axe: 'Axe', pick: 'Pickaxe', shovel: 'Shovel', basket: 'Basket', rod: 'Fishing rod', hammer: 'Hammer' };
 export const TOOL_ICON = { axe: '🪓', pick: '⛏', shovel: '🥄', basket: '🧺', rod: '🎣', hammer: '🔨' };
@@ -101,7 +110,7 @@ export class Player {
   phoneCall() {
     const g = this.game; if (this.callT > 0) return; if (!g.economy.spend(0.1, 'Phone calls')) { g.ui.toast('You haven\'t got 10p. Skint.'); return; }
     this.callT = 4; Sfx.play('ring'); const L = g.ui.adult ? PHONE_CALLS : PHONE_CALLS_CLEAN, [who, text] = pick(L); g.flags.calls = (g.flags.calls || 0) + 1;
-    setTimeout(() => { g.messages.push('☎ ' + who, text, ''); g.ui.toast('☎ ' + who + ': ' + text, 6000); }, 1800);
+    setTimeout(() => { g.messages.push('☎ ' + who, text, 'quiet'); g.ui.toast('☎ ' + who + ': ' + text, 6000); }, 1800);
   }
   /** The Bookies: £20 on a horse. Odds are rubbish, as is tradition. */
   placeBet() {
@@ -353,46 +362,49 @@ export class Player {
     const g = this.game, px = this.x, pz = this.z, B = g.buildings.list; let best = null, bd = 1e9;
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), full = this.invRoom() <= 0;
     // prefer what Sam is facing (the camera direction): things behind count as further away
-    const consider = (t, d, x, z) => { if (x !== undefined) { const dx = x - px, dz = z - pz, l = Math.hypot(dx, dz); if (l > 0.3) d += (1 - (dx * fx + dz * fz) / l) * 0.9; } if (d < bd) { bd = d; best = t; } };
+    // ...and nothing through a wall or a shut door: a target with a position (x, z, or `at` for one that doesn't steer by facing) has to be in sight
+    const eyeY = (this.floorY || 0) + 1.3, shut = g.buildings.list.filter((b) => b.ext && b.ext.doors && b.ext.doors.length && (b.doorK || 0) <= 0.6 && Math.abs(b.cx - px) < 16 && Math.abs(b.cz - pz) < 16).map((b) => g.buildings.doorRect(b));
+    const seen = (x, z) => !g.world.wallBetween(px, pz, x, z, eyeY) && !shut.some((q) => segBox(px, pz, x, z, q, 0.6));
+    const consider = (t, d, x, z, at) => { const q = at || (x !== undefined ? [x, z] : null); if (q && !seen(q[0], q[1])) return; if (x !== undefined) { const dx = x - px, dz = z - pz, l = Math.hypot(dx, dz); if (l > 0.3) d += (1 - (dx * fx + dz * fz) / l) * 0.9; } if (d < bd) { bd = d; best = t; } };
     for (const s of g.population.sims) {
       if (s.kind === 'raider' || s.kind === 'guest') continue;
       if (s.pose === 'sleep' || s.hidden || !s.mesh.visible || (s.inside && s.inside !== g.buildings.playerInside && !s.inside.def.open)) continue;
       const dx = s.x - px, dz = s.z - pz, d = Math.hypot(dx, dz); if (d > 2.6) continue;
       if (!this.third && d > 0.8 && (dx * fx + dz * fz) / d < 0.3) continue;
-      consider({ kind: 'sim', sim: s, text: `Talk to ${s.name} (${s.roleName})` }, d - 0.5);
+      consider({ kind: 'sim', sim: s, text: `Talk to ${s.name} (${s.roleName})` }, d - 0.5, undefined, undefined, [s.x, s.z]);
     }
-    if (g.raids.pickup && !this.weapon) { const q = g.raids.pickup, d = Math.hypot(q.x - px, q.z - pz); if (d < 2.6) consider({ kind: 'weapon', text: 'Take the militia club  (F to swing)' }, d - 1); }
-    for (const it of g.tools.items) { if (it.taken) continue; const d = Math.hypot(it.x - px, it.z - pz); if (d < 2.5) consider({ kind: 'tool', item: it, text: `Pick up the ${TOOLS[it.id]}` }, d - 2); }
-    { const cu = g.curios && g.curios.near(px, pz, 2.2); if (cu) consider({ kind: 'curio', item: cu, text: `Pick up something shiny...` }, Math.hypot(cu.x - px, cu.z - pz) - 1.5); }
+    if (g.raids.pickup && !this.weapon) { const q = g.raids.pickup, d = Math.hypot(q.x - px, q.z - pz); if (d < 2.6) consider({ kind: 'weapon', text: 'Take the militia club  (F to swing)' }, d - 1, undefined, undefined, [q.x, q.z]); }
+    for (const it of g.tools.items) { if (it.taken) continue; const d = Math.hypot(it.x - px, it.z - pz); if (d < 2.5) consider({ kind: 'tool', item: it, text: `Pick up the ${TOOLS[it.id]}` }, d - 2, undefined, undefined, [it.x, it.z]); }
+    { const cu = g.curios && g.curios.near(px, pz, 2.2); if (cu) consider({ kind: 'curio', item: cu, text: `Pick up something shiny...` }, Math.hypot(cu.x - px, cu.z - pz) - 1.5, undefined, undefined, [cu.x, cu.z]); }
     if (g.hazards) for (const f of g.hazards.fires) { const b = f.b, d = Math.max(0, Math.hypot(b.cx - px, b.cz - pz) - Math.max(b.def.w, b.def.d) * 2); if (d < 4) consider({ kind: 'douse', b, hold: true, text: `Fight the fire at the ${b.def.name}! (hold E)` }, d - 3); }
     if (g.transport) g.transport.targets(this, consider); if (g.cars) g.cars.targets(this, consider); if (g.happenings) g.happenings.targets(this, consider);
     { const L = g.lift, h = L && L.ext && L.ext.hatch; if (h) { const [hx, hz] = L.toWorld(h.x, h.z), d = Math.hypot(hx - px, hz - pz); if (d < 2.2) consider({ kind: 'hatch', b: L, text: 'Order supplies on the Lift intercom' }, d - 1.0, hx, hz); } }
     { const nd = this.nearDoor(); if (nd) { const d = Math.hypot(nd.doorPos.x - px, nd.doorPos.z - pz); consider({ kind: 'info', text: `Press C to ${(nd.doorK || 0) > 0.5 ? 'close' : 'open'} the door` }, d + 0.9); } }
     for (const st of g.celebrations.stalls) { const d = Math.hypot(st.x - px, st.z - pz); if (d < 2.4) consider({ kind: 'stall', stall: st, text: g.celebrations.stallText(st) }, d - 0.8, st.x, st.z); }
-    for (const p of g.piles.list) { const d = Math.hypot(p.x - px, p.z - pz); if (d < 2.2) consider({ kind: 'pile', pile: p, text: full ? 'Your backpack is full' : `Pick up ${Object.entries(p.items).map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }, d - 1.2); }
-    for (const b of B) if (b.state === 'done' && b.def.park === 'camp' && (this.inv.food || 0) >= 2 && this.hunger > 15) { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 4.5) consider({ kind: 'cook', b, text: 'Cook a hot meal on the fire (uses 2 food)' }, d - 2.5); }
+    for (const p of g.piles.list) { const d = Math.hypot(p.x - px, p.z - pz); if (d < 2.2) consider({ kind: 'pile', pile: p, text: full ? 'Your backpack is full' : `Pick up ${Object.entries(p.items).map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }, d - 1.2, undefined, undefined, [p.x, p.z]); }
+    for (const b of B) if (b.state === 'done' && b.def.park === 'camp' && (this.inv.food || 0) >= 2 && this.hunger > 15) { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 4.5) consider({ kind: 'cook', b, text: 'Cook a hot meal on the fire (uses 2 food)' }, d - 2.5, undefined, undefined, [b.cx, b.cz]); }
     for (const b of B) if (b.state === 'done' && b.spots.seat && (b.def.open || b.def.park || b === g.buildings.playerInside)) for (const s of b.spots.seat) { if (s.taken) continue; const d = Math.hypot(s.x - px, s.z - pz); if (d < (b.def.park === 'camp' ? 2.2 : 1.4)) consider({ kind: 'seat', seat: s, b, text: b.def.park === 'camp' ? 'Sit by the fire' : 'Sit down' }, d + 0.3, s.x, s.z); }
     if (g.roadPlans.count) {
       const p0 = g.roadPlans.at(px, pz); let rp = p0, rd = 0; if (!rp) { for (const q of g.roadPlans.plans.values()) { const d = Math.hypot(q.cx - px, q.cz - pz); if (d < 3.4 && (!rp || d < rd)) { rp = q; rd = d; } } }
-      if (rp) consider(this.tools.has('shovel') ? { kind: 'road', plan: rp, work: 'dig', text: `Dig the ${rp.type === 2 ? 'paved road (uses 1 stone)' : 'path'}` } : { kind: 'info', text: 'You need the Shovel to dig paths. Pick it up from the Tool Rack.' }, rd + 0.3);
+      if (rp) consider(this.tools.has('shovel') ? { kind: 'road', plan: rp, work: 'dig', text: `Dig the ${rp.type === 2 ? 'paved road (uses 1 stone)' : 'path'}` } : { kind: 'info', text: 'You need the Shovel to dig paths. Pick it up from the Tool Rack.' }, rd + 0.3, undefined, undefined, [rp.cx, rp.cz]);
     }
-    { const v = g.celebrations.guests.v; if (v && v.s.mesh.visible) { const d = Math.hypot(v.s.x - px, v.s.z - pz); if (d < 2.6) consider({ kind: 'act', text: `Ask ${v.G.name} for a photo and an autograph`, act: () => g.celebrations.guests.meet() }, d - 1.5); } }
+    { const v = g.celebrations.guests.v; if (v && v.s.mesh.visible) { const d = Math.hypot(v.s.x - px, v.s.z - pz); if (d < 2.6) consider({ kind: 'act', text: `Ask ${v.G.name} for a photo and an autograph`, act: () => g.celebrations.guests.meet() }, d - 1.5, undefined, undefined, [v.s.x, v.s.z]); } }
     for (const b of g.upgrades.orders.length ? B.concat(g.upgrades.orders) : B) {
       if (b.state === 'done') {
         if ((b.id === 'church' || b.id === 'chapel') && b.spots.seat.length) { const d = Math.hypot(b.doorIn.x - px, b.doorIn.z - pz); if (d < 2.6) consider({ kind: 'act', text: 'Read the parish register (births and deaths)', act: () => g.ui.openTerminal(b, 'register') }, d + 0.4); }
-        if (b === g.buildings.playerInside && !b.def.open && (this.floorY || 0) < 0.5) { const q = g.buildings.switchAt(b); if (q) { const d = Math.hypot(q.x - px, q.z - pz), lit = g.buildings.isLit(b, g.clock.hour), el = g.tech && g.tech.era >= 1; if (d < 1.7) consider({ kind: 'act', text: el ? (lit ? 'Switch the light off' : 'Switch the light on') : (lit ? 'Put the lamp out' : 'Light the lamp'), act: () => g.buildings.flipLight(b) }, d + 0.2); } }
+        if (b === g.buildings.playerInside && !b.def.open && (this.floorY || 0) < 0.5) { const q = g.buildings.switchAt(b); if (q) { const d = Math.hypot(q.x - px, q.z - pz), lit = g.buildings.isLit(b, g.clock.hour), el = g.tech && g.tech.era >= 1; if (d < 1.7) consider({ kind: 'act', text: el ? (lit ? 'Switch the light off' : 'Switch the light on') : (lit ? 'Put the lamp out' : 'Light the lamp'), act: () => g.buildings.flipLight(b) }, d + 0.2, undefined, undefined, [q.x, q.z]); } }
         if (b.id === 'phonebox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) consider({ kind: 'phone', b, text: 'Make a call (10p)' }, d - 0.8, b.cx, b.cz); }
         if (b.id === 'bookies' && b.spots.visit[0]) { const v = b.spots.visit[0], d = Math.hypot(v.x - px, v.z - pz); if (d < 2.2) consider({ kind: 'bet', b, text: 'Have a flutter on the horses (£20)' }, d - 0.6, v.x, v.z); }
         if (b.id === 'postbox') { const d = Math.hypot(b.cx - px, b.cz - pz); if (d < 2.4) { const n = g.mail.unread(); consider({ kind: 'post', b, text: n ? `Check the post (✉ ${n} new)` : 'Check the post' }, d - 1.0, b.cx, b.cz); } }
-        for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: (b.era ?? 0) >= 2 ? 'Use the computer terminal' : 'Use the planning desk (ledgers and forms)' }, d); }
-        for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.invTotal() ? `Open the Stockyard (store ${this.invText()}, or take things)` : 'Open the Stockyard (take what you need)' }, d); }
-        if (b === g.starterHome && b.spots.bed[0]) { const s = b.spots.bed[0], d = Math.hypot(s.x - px, s.z - pz); if (d < 2.6) consider({ kind: 'bed', b, spot: s, text: 'Sleep in your bed' }, d); }
+        for (const t of b.spots.terminal) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 1.9) consider({ kind: 'terminal', b, text: (b.era ?? 0) >= 2 ? 'Use the computer terminal' : 'Use the planning desk (ledgers and forms)' }, d, undefined, undefined, [t.x, t.z]); }
+        for (const t of b.spots.pickup) { const d = Math.hypot(t.x - px, t.z - pz); if (d < 2.8) consider({ kind: 'depot', b, text: this.invTotal() ? `Open the Stockyard (store ${this.invText()}, or take things)` : 'Open the Stockyard (take what you need)' }, d, undefined, undefined, [t.x, t.z]); }
+        if (b === g.starterHome && b.spots.bed[0]) { const s = b.spots.bed[0], d = Math.hypot(s.x - px, s.z - pz); if (d < 2.6) consider({ kind: 'bed', b, spot: s, text: 'Sleep in your bed' }, d, undefined, undefined, [s.x, s.z]); }
         if (b.def.jobs && b.id !== 'contractor') {
           const role = Object.keys(b.def.jobs)[0];
           for (const t of b.spots.work) {
             const d = Math.hypot(t.x - px, t.z - pz); if (d > 1.6) continue;
             const manned = g.population.sims.some((s) => s.inside === b && Math.hypot(s.x - t.x, s.z - t.z) < 1.2);
-            if (!manned) consider({ kind: 'work', b, role, text: `Work a shift as ${ROLES[role].name}  (hold E, earns city funds)`, hold: true }, d + 0.3);
+            if (!manned) consider({ kind: 'work', b, role, text: `Work a shift as ${ROLES[role].name}  (hold E, earns city funds)`, hold: true }, d + 0.3, undefined, undefined, [t.x, t.z]);
           }
         }
         if (g.service && g.service.isPublic(b) && !b.open && g.buildings.playerInside === b) consider({ kind: 'info', text: `Closed. Nobody's behind the counter at the ${b.def.name} right now.` }, 2.5);
@@ -409,7 +421,7 @@ export class Player {
           else if (g.construction.workable(b) && !this.tools.has('hammer')) t = { kind: 'info', text: 'You need the Hammer to build. Pick it up from the Tool Rack.' };
           else if (g.construction.workable(b)) t = { kind: 'site', b, work: 'build', text: `Build the ${b.def.name}` };
           else { const miss = Object.keys(b.need).map((m) => [m, b.need[m] - (b.have[m] || 0)]).filter(([, n]) => n > 0); t = { kind: 'info', text: `${b.def.name} needs ${miss.map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', ')}` }; }
-          consider(t, d + 0.2);
+          consider(t, d + 0.2, undefined, undefined, [Math.max(b.x0 * TILE + 1, Math.min(px, (b.x0 + b.w) * TILE - 1)), Math.max(b.z0 * TILE + 1, Math.min(pz, (b.z0 + b.d) * TILE - 1))]);   // (a metre into the plot: its edge can be right at a neighbour's wall)
         }
       }
     }
@@ -635,7 +647,7 @@ export class Player {
   // ---------- visuals ----------
   syncMesh(dt) {
     const g = this.game, m = this.mesh, godView = g.mode === 'god'; this.rig.lod.visible = false;
-    m.visible = !this.dead && !(g.mode === 'sim' && (!this.third || this.scoped()) && !this.sleeping);
+    m.visible = !this.dead && !(g.mode === 'sim' && (!this.third || this.scoped() || (this.camD !== undefined && this.camD < 0.5)) && !this.sleeping);   // (the camera squeezed right up behind him indoors: he's not drawn)
     m.position.set(this.x, (this.jumpY || 0) + (this.floorY || 0), this.z); m.rotation.y = this.heading;
     if (this.transit && !this.transit.cabin) m.visible = false;
     if (this.veh) { const lift = this.veh.userData.seat - 0.5; m.position.y += lift; this.veh.position.y = -lift; for (const [w, r] of this.veh.userData.wheels || []) w.rotation.x += (this.dist || 0) / r; }
@@ -690,6 +702,21 @@ export class Player {
     this.cut = now;
   }
   /** Camera for sim mode (first/third person). */
+  /** Is the camera's spot inside something solid: walls, tall furniture, a shut front door or the boxed-in side of a staircase? */
+  camBlocked(x, z, y, r) {
+    if (this.game.world.collides(x, z, r, true, y)) return true;
+    if (y < 2.6 && this.doorBlocks(x, z, r)) return true;
+    // upstairs the outside walls are solid all round (the front door's gap in the wall colliders only matters downstairs)
+    const pb = this.game.buildings.playerInside, pp = pb && pb.ext && pb.ext.plan;
+    if (pp && y > WALL_H - 0.4) { const a = pb.rot * Math.PI / 2, c = Math.cos(a), sn = Math.sin(a), dx = x - pb.cx, dz = z - pb.cz, lx = dx * c - dz * sn, lz = dx * sn + dz * c; if (Math.abs(lx) > pp.W / 2 - WALL_T - r || Math.abs(lz) > pp.D / 2 - WALL_T - r) return true; }
+    const q = this.planAt(x, z), st = q && q.p.stair; if (!st) return false;
+    for (const lane of st.lanes) {
+      const L = laneRect(st, lane); if (q.lx < L[0] - r || q.lx > L[1] + r || q.lz < L[2] - r || q.lz > L[3] + r) continue;
+      const s = Math.max(st.s0, Math.min(st.s1, st.ax === 'x' ? q.lx : q.lz));
+      for (const k of lane.flights) if (y > k * WALL_H - 0.2 && y < flightH(st, k, s) + 1.0) return true;   // under the flight, or down among the treads and the bannister
+    }
+    return false;
+  }
   placeCamera(cam) {
     const w = this.game.world, [hx, hy, hz] = this.headPos();
     const fx = -Math.sin(this.yaw) * Math.cos(this.pitch), fy = Math.sin(this.pitch), fz = -Math.cos(this.yaw) * Math.cos(this.pitch);
@@ -697,7 +724,7 @@ export class Player {
     if (this.sleeping || this.sedated > 0 || this.down > 0) { cam.position.set(this.x, 1.2, this.z); cam.lookAt(this.x - Math.sin(this.heading) * 0, 4, this.z + 0.001); return; }
     const sh = this.shake > 0 ? this.shake * 0.12 : 0, jx = sh ? (Math.random() - 0.5) * sh : 0, jy = sh ? (Math.random() - 0.5) * sh : 0;
     { const W = WEAPONS[this.gun], fov = 72 - (72 - (W ? W.fov : 56)) * (this.aimK || 0) + (this.speed > 6 && !this.mounted ? 5 : 0); if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * 0.15; cam.updateProjectionMatrix(); } }   // aim: zoom in; sprint: a touch wider
-    { const nf = this.game.combat.on && (!this.third || this.scoped()) ? 0.04 : 0.3; if (cam.near !== nf) { cam.near = nf; cam.updateProjectionMatrix(); } }   // first person with a gun: a near plane close enough for the hands
+    { const nf = this.game.combat.on && (!this.third || this.scoped()) ? 0.04 : this.game.buildings.playerInside ? 0.1 : 0.3; if (cam.near !== nf) { cam.near = nf; cam.updateProjectionMatrix(); } }   // first person with a gun: a near plane close enough for the hands; indoors: close enough that the edges of the view never reach through a wall
     const vt = performance.now(), vdt = Math.min(0.1, (vt - (this._vmT || vt)) / 1000) || 1 / 60; this._vmT = vt;
     if (!this.third || this.scoped()) { if (this.cut && this.cut.size) this.cutaway(null); const sw = (this.drunk || 0) > 0.4 ? (this.drunk - 0.4) * 0.25 : 0, t = this.game.elapsed; cam.position.set(hx + jx, hy + jy, hz); cam.lookAt(hx + fx + Math.sin(t * 0.9) * sw, hy + fy + Math.sin(t * 1.3) * sw * 0.5, hz + fz + Math.cos(t * 0.7) * sw); this.game.combat.viewModel(this, cam, vdt); return; }
     this.game.combat.viewModel(this, null);
@@ -706,9 +733,18 @@ export class Player {
     const ak = this.aimK || 0, py = this.floorY || 0, q0 = this.planAt(this.x, this.z), q = q0 && this.game.buildings.onBuilding(q0.b, this.x, this.z, -0.3) ? q0 : null, onRoof = (q && py > q.p.H - 0.6) || !!this.transit, indoor = !!this.game.buildings.playerInside && !onRoof;
     const maxD = indoor ? Math.min(this.camDist, 2.7) : this.camDist; let d = maxD * (1 - ak) + Math.min(maxD, 2.1) * ak;
     let so = (indoor ? 0.42 : 0.55 + 0.2 * ak) * (this.shoulder || 1); const ty = (this.eyeH || 1.65) + 0.1 + py;
-    if (w.collides(hx + Math.cos(this.yaw) * so, hz - Math.sin(this.yaw) * so, 0.22, true, ty)) so = 0;   // no room for the shoulder offset: straight behind
-    const tx = hx + Math.cos(this.yaw) * so, tz = hz - Math.sin(this.yaw) * so, ceil = indoor ? (Math.floor((py + 0.6) / WALL_H) + 1) * WALL_H - 0.35 : 1e9, lift = (t) => 0.4 * Math.min(1, t / 2);
-    if (!onRoof) { let ok = 0.35; for (let t = 0.35; t <= d; t += 0.1) { const cx = tx - fx * t, cz = tz - fz * t, cy = Math.min(ceil, ty - fy * t + lift(t)); if (cy < py + 0.25 || w.collides(cx, cz, 0.3, true, cy)) break; ok = t; } d = Math.min(d, Math.max(0.35, ok - 0.12)); }
+    if (this.camBlocked(hx + Math.cos(this.yaw) * so, hz - Math.sin(this.yaw) * so, ty, 0.22)) so = 0;   // no room for the shoulder offset: straight behind
+    // indoors the camera stays under the door heads (2 m up) and under the ceiling, so it never rises over a wall into the next room
+    let tx = hx + Math.cos(this.yaw) * so, tz = hz - Math.sin(this.yaw) * so; const ceil = indoor ? Math.min((Math.floor((py + 0.6) / WALL_H) + 1) * WALL_H - 0.35, py + 2.0) : 1e9, lift = (t) => (indoor ? 0.15 : 0.4) * Math.min(1, t / 2);
+    if (onRoof && q) {   // on a roof: the boom stops short of the stair hut, the lift housing and the plant on the roof
+      const p = q.p, huts = [p.hut && p.hut.rect, p.lift && [p.lift.x0 - 0.15, p.lift.x1, p.lift.z0, p.lift.z1 + 0.15], ...(q.b.ext.roofCols || [])].filter(Boolean), a = q.b.rot * Math.PI / 2, c = Math.cos(a), sn = Math.sin(a);
+      const loc = (x, z) => { const dx = x - q.b.cx, dz = z - q.b.cz; return [dx * c - dz * sn, dx * sn + dz * c]; }, inR = (r, [lx, lz]) => lx > r[0] - 0.3 && lx < r[1] + 0.3 && lz > r[2] - 0.3 && lz < r[3] + 0.3;
+      const here = loc(hx, hz), solid = huts.filter((r) => !inR(r, here));   // (not the one he's standing in: inside the stair hut the boom is free)
+      if (solid.some((r) => inR(r, loc(tx, tz)))) { tx = hx; tz = hz; }   // right beside the hut: no shoulder offset
+      const box = huts.find((r) => here[0] > r[0] && here[0] < r[1] && here[1] > r[2] && here[1] < r[3]), inBox = (at) => at[0] > box[0] + 0.25 && at[0] < box[1] - 0.25 && at[1] > box[2] + 0.25 && at[1] < box[3] - 0.25;   // inside the hut itself: the camera stays in with him
+      let ok = 0; for (let t = 0.1; t <= d; t += 0.1) { const at = loc(tx - fx * t, tz - fz * t); if ((ty - fy * t + lift(t) < p.H + 3.2 && solid.some((r) => inR(r, at))) || (box && !inBox(at))) break; ok = t; } d = Math.min(d, Math.max(0.1, ok - 0.12));
+    }
+    if (!onRoof) { let ok = 0; for (let t = 0.1; t <= d; t += 0.1) { const cx = tx - fx * t, cz = tz - fz * t, cy = Math.min(ceil, ty - fy * t + lift(t)); if (cy < py + 0.25 || this.camBlocked(cx, cz, cy, 0.3)) break; ok = t; } d = Math.min(d, Math.max(0.1, ok - 0.12)); }   // squeezed right in: Sam fades out (see syncMesh)
     this.camD = this.camD === undefined || d < this.camD ? d : this.camD + (d - this.camD) * Math.min(1, vdt * 3); const cd = this.camD;
     cam.position.set(tx - fx * cd + jx, Math.min(ceil, Math.max(0.4 + py, ty - fy * cd + lift(cd))) + jy, tz - fz * cd); cam.lookAt(tx, ty, tz); this.cutaway(cam.position.x, cam.position.z, hx, hz);
   }

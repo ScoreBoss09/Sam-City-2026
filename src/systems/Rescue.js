@@ -70,7 +70,7 @@ export class Rescue {
   ambulance(j, cl) {
     const g = this.game, m = makeCarMesh(0xf4f4f4, true); g.scene.add(m);
     j.amb = { mesh: m, x: cl.doorOut.x, z: cl.doorOut.z, h: 0, path: this.route(cl.doorOut, j.v), siren: 0 }; j.clinic = cl; j.dest = cl;
-    g.messages.push('Town', `An ambulance is on its way to ${j.v.name}.`); if (g.markers) g.markers.add(j.v.x, j.v.z, '🚑', 'Ambulance called', 60);
+    g.messages.push('Town', `An ambulance is on its way to ${j.v.name}.`); if (g.markers) g.markers.add(j.v.x, j.v.z, '🚑', 'Ambulance called', 3600, null, () => !j.done && !!j.amb);
   }
   drive(j, dt) {
     const g = this.game, a = j.amb, q = a.path[0];

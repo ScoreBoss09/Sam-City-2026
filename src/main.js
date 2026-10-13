@@ -7,8 +7,8 @@ preloadModels();   // furniture models (assets/models) load in the background
 import { installPack, clearStored } from './core/TexturePack.js';
 
 const params = new URLSearchParams(location.search);
-document.getElementById('ver').textContent = 'version ' + VERSION;
-await Assets.load();
+document.getElementById('ver').textContent = 'version ' + VERSION; document.getElementById('titlever').textContent = 'Version ' + VERSION;
+await Promise.all([Assets.load(), document.fonts ? Promise.all(['400 16px Barlow', '600 16px Barlow', '700 16px Barlow', '700 16px "Barlow Condensed"'].map((f) => document.fonts.load(f))).catch(() => {}) : null]);   // (the canvas signs and bubbles use the UI type too)
 import { Mods } from './core/Mods.js';
 await Mods.load();   // mods/index.json: extra textures, speech, adverts, guests, shop goods, buildings, events, scripts
 const game = new Game(document.getElementById('view'), { scale: parseFloat(params.get('scale')) || 0.6, post: params.get('post') !== '0' });
@@ -63,7 +63,7 @@ $('btn-options').onclick = () => showMenu('menu-options'); $('btn-options-back')
   let vol = +get('samcity-volume', 7); const setV = (v) => { vol = Math.max(0, Math.min(10, v)); put('samcity-volume', vol); Sfx.setVolume(vol * 0.05); $('vol').textContent = vol; };
   $('vol-down').onclick = () => setV(vol - 1); $('vol-up').onclick = () => setV(vol + 1); setV(vol);
   // tick boxes become buttons too, so a controller can change them
-  for (const lab of document.querySelectorAll('#menu-options label.opt')) { const inp = lab.querySelector('input'), b = document.createElement('button'); b.className = 'optbtn'; b.dataset.opt = inp.id; const txt = lab.textContent.trim(); const draw = () => { b.textContent = (inp.checked ? '☑ ' : '☐ ') + txt; }; draw(); b.onclick = () => { inp.checked = !inp.checked; inp.onchange && inp.onchange(); draw(); }; inp.addEventListener('change', draw); lab.after(b); lab.classList.add('hidden'); } }
+  for (const lab of document.querySelectorAll('#menu-options label.opt')) { const inp = lab.querySelector('input'), b = document.createElement('button'); b.className = 'optbtn'; b.dataset.opt = inp.id; const txt = lab.textContent.trim(); const draw = () => { b.innerHTML = `<span>${txt}</span><i class="sw${inp.checked ? ' on' : ''}"></i>`; }; draw(); b.onclick = () => { inp.checked = !inp.checked; inp.onchange && inp.onchange(); draw(); }; inp.addEventListener('change', draw); lab.after(b); lab.classList.add('hidden'); } }
 window.addEventListener('beforeunload', () => game.save());
 document.addEventListener('visibilitychange', () => { if (document.hidden) game.save(); });
 $('btn-demo').onclick = () => begin(true);

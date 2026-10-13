@@ -126,6 +126,13 @@ Roads tool → **Street lamps**: £15 a lamp on any road or path. Point at the c
 ## Sam's own life while you plan
 In the planning view Sam carries on by himself: he sleeps at night, eats when hungry, fetches materials and builds the top job on the Work queue, digs paths, chops timber or picks berries when stocks are low, works shifts, chats with people and sits on benches. The clock box says what he's doing, and when you press TAB you take over wherever he is. During the opening tutorial he leaves the work to you.
 
+## Menus, maps and news
+Every screen shares one look: the title menu (with the island flying by behind it), the pause menu, the Planning menu, the terminals, the Postbox, the Stockyard, shops, the backpack and the journal. There are no instructions written into the menus; a bar along the bottom shows what the buttons do (key caps on keyboard, controller buttons on a pad). H still shows the full controls line, and the pause menu lists all the controls.
+
+**The map:** the corner map and the island map (M, or R3; it opens from the planning view too) show a round pin for every place in town (shops, pubs, the post office, the church...), coloured by kind, plus Sam's home and building sites. Anything going on (a fight, a fire, a robbery, a protest, the ice-cream van, morris dancers, a wedding, market day) has a red pin, on the map and floating over the spot, for exactly as long as it lasts. The island map has a key down the side: what's happening now, then every kind of place in town.
+
+**Notifications:** only what matters pops up: alarms, the story, milestones, and problems that need you (a fire, a flood, a power cut, the food running out, the bank, the guards, the police when it's about Sam). Everything else (arrivals, gossip, the cricket, street fights, lottery wins) goes into **Town news** in the Postbox, newest first, and the townsfolk still talk about it.
+
 ## Performance report
 Press **F8**, or the 📊 button under the clock (or 📊 Report in the Planning menu), then **Copy**, and paste it to Claude. It lists frame rate and stutters, what takes the time, draw calls, your GPU and browser, and the size of the town.
 
