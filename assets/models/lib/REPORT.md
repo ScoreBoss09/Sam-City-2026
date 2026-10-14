@@ -1,9 +1,12 @@
 # Asset check
 
-1 model(s): 1 fine, 0 need attention.
+4 model(s): 4 fine, 0 need attention.
 
 | Model | Category | Triangles (before → after, budget) | Distance versions | Materials | Draw calls | File size | Verdict |
 |---|---|---|---|---|---|---|---|
+| plant | furniture | 532 → **532** (2,000) | none | 1 → 1 | 1 → 1 | 40 KB → 8 KB (all versions) | OK |
+| plant_2 | furniture | 482 → **482** (2,000) | none | 1 → 1 | 1 → 1 | 36 KB → 7 KB (all versions) | OK |
+| plant_3 | furniture | 844 → **844** (2,000) | none | 1 → 1 | 1 → 1 | 62 KB → 11 KB (all versions) | OK |
 | wall_clock | props | 432 → **432** (500) | none | 1 → 1 | 3 → 3 | 47 KB → 21 KB (all versions) | OK |
 
 ### wall_clock

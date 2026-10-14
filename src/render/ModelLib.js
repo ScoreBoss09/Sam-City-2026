@@ -30,6 +30,14 @@ export class ModelLib {
     if (all.length) Promise.all(all).then(() => { const B = this.game.buildings; if (B && B.refreshInteriors) B.refreshInteriors(); });   // rooms already built with the old block models are rebuilt with the real ones
     return this;
   }
+  /** The loaded versions of a model and its variations (name, name_1, name_2, name_3...), in order: [] if none are ready. */
+  variants(name) {
+    const k = this._vk || (this._vk = new Map()); let all = k.get(name);
+    if (!all) { const re = new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(_\\d+)?$'); all = Object.keys(this.list).filter((n) => re.test(n)).sort((a, c) => (a.length - c.length) || a.localeCompare(c)); k.set(name, all); }
+    return all.filter((n) => { const e = this.cache.get(n); return e && e.v; });
+  }
+  /** A plain copy of the full version (no distance versions), for things that get merged into a room: null if not loaded. */
+  copyStatic(name) { const e = this.cache.get(name); if (!e || !e.v) return null; const o = e.v.levels[0].clone(true); o.userData = { asset: name }; return o; }
   /** A copy if it's loaded already, else null (interiors fall back to their old block model). */
   copy(name) { const e = this.cache.get(name); return e && e.v ? this.spawn(name) : null; }
   has(name) { return !!this.list[name]; }

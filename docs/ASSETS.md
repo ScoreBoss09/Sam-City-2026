@@ -76,4 +76,6 @@ game.models.turn(bike, 'wheel_front', distance / 0.34); // spin a part kept sepa
 
 Every copy shares its geometry and materials with all the others, and switches between its distance versions by itself.
 
-A model then needs hooking up to whatever uses it (the bikes townsfolk ride, a shop's furniture, and so on), and that is done per kind of model.
+**Furniture swaps in by itself.** A model named after one of the game's furniture pieces (the entries in [INTERIOR_ASSETS.md](INTERIOR_ASSETS.md) that say "replaces `x`") takes that piece's place in every room as soon as it has passed the check: `furniture/plant.glb` replaced the old block plant in about 170 buildings. Its variations (`plant_2`, `plant_3`) are mixed in by position. Copies of the same model in a building are merged into one draw call.
+
+Everything else needs hooking up to whatever uses it, and that is done per kind of model: entries that say "in place of `x` here" (only in certain buildings), the wall clock, the bikes townsfolk ride, and so on.
