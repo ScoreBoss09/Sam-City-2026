@@ -42,12 +42,13 @@ export const BUDGETS = {
   props: { tris: 500, mats: 2, tex: 512, lod: [10, 25], far: 70, label: 'Small props (cups, signs, bins)' },
   furniture: { tris: 2000, mats: 3, tex: 1024, lod: [12, 30], far: 80, label: 'Furniture' },
   people: { tris: 3000, mats: 3, tex: 1024, lod: [15, 40], far: 140, label: 'People' },
+  animals: { tris: 3000, mats: 3, tex: 1024, lod: [15, 40], far: 140, label: 'Animals (horses, dogs)' },
   bikes: { tris: 4000, mats: 3, tex: 1024, lod: [15, 40], far: 140, label: 'Bikes and motorbikes' },
   cars: { tris: 8000, mats: 4, tex: 1024, lod: [20, 55], far: 220, label: 'Cars, vans and buses' },
   buildings: { tris: 20000, mats: 6, tex: 2048, lod: [45, 110], far: 600, label: 'Building shells' },
   guns: { tris: 10000, mats: 4, tex: 2048, lod: null, far: 0, label: 'First-person guns (one on screen)' },
 };
-const ALIASES = { prop: 'props', vehicles: 'cars', car: 'cars', bike: 'bikes', person: 'people', building: 'buildings', gun: 'guns', weapons: 'guns' };
+const ALIASES = { prop: 'props', vehicles: 'cars', car: 'cars', bike: 'bikes', person: 'people', animal: 'animals', building: 'buildings', gun: 'guns', weapons: 'guns' };
 const KEEP_SEPARATE = /wheel|door|keep_|move_/i;   // parts the game moves
 const LOD_RATIO = [0.4, 0.12], LOD_ERR = [[0.01, 0.025, 0.05], [0.04, 0.09, 0.18]];
 
