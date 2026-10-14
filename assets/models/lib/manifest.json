@@ -1,543 +1,631 @@
-{
- "note": "Written by tools/assets/check.mjs: models the game can load (src/render/Assets.js).",
+{"note": "Written by tools/assets/check.mjs: the models the game can load (src/render/ModelLib.js). Reports are in reports.json.",
  "assets": {
-  "props/wall_clock": {
-   "cat": "props",
-   "files": [
-    "props/wall_clock.glb"
-   ],
-   "dist": [
-    0
-   ],
-   "shareMats": false,
-   "far": 70,
-   "tris": [
-    432
-   ],
-   "size": [
-    0.35,
-    0.35,
-    0.06
-   ],
-   "report": {
-    "name": "wall_clock",
-    "cat": "props",
-    "file": "assets/incoming/props/wall_clock.glb",
-    "verdict": "OK",
-    "budget": 500,
-    "before": {
-     "tris": 432,
-     "mats": 1,
-     "calls": 3,
-     "bytes": 48132,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "after": {
-     "tris": 432,
-     "mats": 1,
-     "calls": 3,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "lods": [],
-    "size": [
-     0.35,
-     0.35,
-     0.06
-    ],
-    "fitErr": 0,
-    "notes": [
-     "kept separate so the game can move them: move_hand_hour, move_hand_min"
-    ],
-    "warn": [],
-    "bytesOut": 21756
-   }
-  },
-  "furniture/plant": {
-   "cat": "furniture",
-   "files": [
-    "furniture/plant.glb"
-   ],
-   "dist": [
-    0
-   ],
-   "shareMats": false,
-   "far": 80,
-   "tris": [
-    532
-   ],
-   "size": [
-    0.48,
-    1.3,
-    0.44
-   ],
-   "report": {
-    "name": "plant",
-    "cat": "furniture",
-    "file": "assets/incoming/furniture/plant.glb",
-    "verdict": "OK",
-    "budget": 2000,
-    "before": {
-     "tris": 532,
-     "mats": 1,
-     "calls": 1,
-     "bytes": 40568,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        256,
-        256
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "after": {
-     "tris": 532,
-     "mats": 1,
-     "calls": 1,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        256,
-        256
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "lods": [],
-    "size": [
-     0.48,
-     1.3,
-     0.44
-    ],
-    "fitErr": 0,
-    "notes": [],
-    "warn": [],
-    "bytesOut": 8360
-   }
-  },
-  "furniture/plant_2": {
-   "cat": "furniture",
-   "files": [
-    "furniture/plant_2.glb"
-   ],
-   "dist": [
-    0
-   ],
-   "shareMats": false,
-   "far": 80,
-   "tris": [
-    482
-   ],
-   "size": [
-    0.44,
-    1.3,
-    0.48
-   ],
-   "report": {
-    "name": "plant_2",
-    "cat": "furniture",
-    "file": "assets/incoming/furniture/plant_2.glb",
-    "verdict": "OK",
-    "budget": 2000,
-    "before": {
-     "tris": 482,
-     "mats": 1,
-     "calls": 1,
-     "bytes": 36972,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        256,
-        256
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "after": {
-     "tris": 482,
-     "mats": 1,
-     "calls": 1,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        256,
-        256
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "lods": [],
-    "size": [
-     0.44,
-     1.3,
-     0.48
-    ],
-    "fitErr": 0,
-    "notes": [],
-    "warn": [],
-    "bytesOut": 7128
-   }
-  },
-  "furniture/plant_3": {
-   "cat": "furniture",
-   "files": [
-    "furniture/plant_3.glb"
-   ],
-   "dist": [
-    0
-   ],
-   "shareMats": false,
-   "far": 80,
-   "tris": [
-    844
-   ],
-   "size": [
-    0.43,
-    1.3,
-    0.48
-   ],
-   "report": {
-    "name": "plant_3",
-    "cat": "furniture",
-    "file": "assets/incoming/furniture/plant_3.glb",
-    "verdict": "OK",
-    "budget": 2000,
-    "before": {
-     "tris": 844,
-     "mats": 1,
-     "calls": 1,
-     "bytes": 63036,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        256,
-        256
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "after": {
-     "tris": 844,
-     "mats": 1,
-     "calls": 1,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        256,
-        256
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "lods": [],
-    "size": [
-     0.43,
-     1.3,
-     0.48
-    ],
-    "fitErr": 0,
-    "notes": [],
-    "warn": [],
-    "bytesOut": 10868
-   }
-  },
-  "furniture/chair": {
-   "cat": "furniture",
-   "files": [
-    "furniture/chair.glb"
-   ],
-   "dist": [
-    0
-   ],
-   "shareMats": false,
-   "far": 80,
-   "tris": [
-    324
-   ],
-   "size": [
-    0.44,
-    0.9,
-    0.46
-   ],
-   "report": {
-    "name": "chair",
-    "cat": "furniture",
-    "file": "assets/incoming/furniture/chair.glb",
-    "verdict": "OK",
-    "budget": 2000,
-    "before": {
-     "tris": 324,
-     "mats": 1,
-     "calls": 1,
-     "bytes": 40160,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "after": {
-     "tris": 324,
-     "mats": 1,
-     "calls": 1,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "lods": [],
-    "size": [
-     0.44,
-     0.9,
-     0.46
-    ],
-    "fitErr": 0,
-    "notes": [],
-    "warn": [],
-    "bytesOut": 21624
-   }
-  },
-  "furniture/counter": {
-   "cat": "furniture",
-   "files": [
-    "furniture/counter.glb"
-   ],
-   "dist": [
-    0
-   ],
-   "shareMats": false,
-   "far": 80,
-   "tris": [
-    324
-   ],
-   "size": [
-    2.6,
-    1,
-    0.8
-   ],
-   "report": {
-    "name": "counter",
-    "cat": "furniture",
-    "file": "assets/incoming/furniture/counter.glb",
-    "verdict": "OK",
-    "budget": 2000,
-    "before": {
-     "tris": 324,
-     "mats": 1,
-     "calls": 1,
-     "bytes": 40148,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "after": {
-     "tris": 324,
-     "mats": 1,
-     "calls": 1,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "lods": [],
-    "size": [
-     2.6,
-     1,
-     0.8
-    ],
-    "fitErr": 0,
-    "notes": [],
-    "warn": [],
-    "bytesOut": 21108
-   }
-  },
-  "furniture/stool": {
-   "cat": "furniture",
-   "files": [
-    "furniture/stool.glb"
-   ],
-   "dist": [
-    0
-   ],
-   "shareMats": false,
-   "far": 80,
-   "tris": [
-    640
-   ],
-   "size": [
-    0.38,
-    0.75,
-    0.38
-   ],
-   "report": {
-    "name": "stool",
-    "cat": "furniture",
-    "file": "assets/incoming/furniture/stool.glb",
-    "verdict": "OK",
-    "budget": 2000,
-    "before": {
-     "tris": 640,
-     "mats": 1,
-     "calls": 1,
-     "bytes": 62900,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "after": {
-     "tris": 640,
-     "mats": 1,
-     "calls": 1,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "lods": [],
-    "size": [
-     0.38,
-     0.75,
-     0.38
-    ],
-    "fitErr": 0,
-    "notes": [],
-    "warn": [],
-    "bytesOut": 24652
-   }
-  },
-  "furniture/table": {
-   "cat": "furniture",
-   "files": [
-    "furniture/table.glb"
-   ],
-   "dist": [
-    0
-   ],
-   "shareMats": false,
-   "far": 80,
-   "tris": [
-    228
-   ],
-   "size": [
-    0.9,
-    0.75,
-    0.9
-   ],
-   "report": {
-    "name": "table",
-    "cat": "furniture",
-    "file": "assets/incoming/furniture/table.glb",
-    "verdict": "OK",
-    "budget": 2000,
-    "before": {
-     "tris": 228,
-     "mats": 1,
-     "calls": 1,
-     "bytes": 33236,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "after": {
-     "tris": 228,
-     "mats": 1,
-     "calls": 1,
-     "tex": [
-      {
-       "name": "texture",
-       "size": [
-        512,
-        512
-       ],
-       "type": "image/png"
-      }
-     ]
-    },
-    "lods": [],
-    "size": [
-     0.9,
-     0.75,
-     0.9
-    ],
-    "fitErr": 0,
-    "notes": [],
-    "warn": [],
-    "bytesOut": 20320
-   }
-  }
- }
-}
+  "animals/horse": {"cat":"animals","files":["animals/horse.glb"],"dist":[0],"shareMats":false,"far":140,"tris":[140],"size":[0.46,1.67,2.4]},
+  "cars/car": {"cat":"cars","files":["cars/car.glb"],"dist":[0],"shareMats":false,"far":220,"tris":[284],"size":[1.62,1.18,3.88],"hold":"hard to read: needs clearer wheels, windows and bumpers"},
+  "cars/estate": {"cat":"cars","files":["cars/estate.glb"],"dist":[0],"shareMats":false,"far":220,"tris":[272],"size":[1.62,1.18,4.07]},
+  "cars/firetruck": {"cat":"cars","files":["cars/firetruck.glb"],"dist":[0],"shareMats":false,"far":220,"tris":[352],"size":[2.19,2.54,5.23],"hold":"yellow and boxy: should be a red fire engine with ladders and blue lights"},
+  "cars/forklift": {"cat":"cars","files":["cars/forklift.glb"],"dist":[0],"shareMats":false,"far":220,"tris":[284],"size":[1.16,1.77,2.6]},
+  "cars/hatchback": {"cat":"cars","files":["cars/hatchback.glb"],"dist":[0],"shareMats":false,"far":220,"tris":[272],"size":[1.62,1.18,4.07]},
+  "cars/saloon": {"cat":"cars","files":["cars/saloon.glb"],"dist":[0],"shareMats":false,"far":220,"tris":[272],"size":[1.62,1.18,4.07]},
+  "cars/tractor": {"cat":"cars","files":["cars/tractor.glb"],"dist":[0],"shareMats":false,"far":220,"tris":[272],"size":[1.53,1.86,3.11]},
+  "furniture/adviser_desk": {"cat":"furniture","files":["furniture/adviser_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.4,0.68,0.7]},
+  "furniture/air_hockey": {"cat":"furniture","files":["furniture/air_hockey.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[212],"size":[1.2,0.9,2.2]},
+  "furniture/airer": {"cat":"furniture","files":["furniture/airer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.72,1.11,0.4],"hold":"a grey box: should be a clothes airer"},
+  "furniture/ale_stillage": {"cat":"furniture","files":["furniture/ale_stillage.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[264],"size":[2,1.11,0.8]},
+  "furniture/allotment_shed": {"cat":"furniture","files":["furniture/allotment_shed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,2.03,1.26]},
+  "furniture/altar": {"cat":"furniture","files":["furniture/altar.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[54],"size":[1.6,0.93,0.63],"hold":"a grey box: needs the altar table with a cloth, cross and candles"},
+  "furniture/annealing_oven": {"cat":"furniture","files":["furniture/annealing_oven.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[1.47,1.32,0.91]},
+  "furniture/anvil": {"cat":"furniture","files":["furniture/anvil.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,0.74,0.24],"hold":"a grey box: should be an anvil on a block"},
+  "furniture/arcade": {"cat":"furniture","files":["furniture/arcade.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.83,1.79,0.83],"hold":"close, but the one it replaces reads better: needs the lit marquee, joystick and buttons"},
+  "furniture/arcade_gun": {"cat":"furniture","files":["furniture/arcade_gun.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.83,1.79,0.83]},
+  "furniture/arcade_pinball": {"cat":"furniture","files":["furniture/arcade_pinball.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.83,1.79,0.83]},
+  "furniture/arcade_racer": {"cat":"furniture","files":["furniture/arcade_racer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.83,1.79,0.83]},
+  "furniture/arena_wall": {"cat":"furniture","files":["furniture/arena_wall.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,1.3,0.24]},
+  "furniture/armchair": {"cat":"furniture","files":["furniture/armchair.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.78,0.94,0.68],"hold":"a wooden chair: should be a padded armchair"},
+  "furniture/av_trolley": {"cat":"furniture","files":["furniture/av_trolley.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[196],"size":[0.61,1.6,0.6]},
+  "furniture/ba_rack": {"cat":"furniture","files":["furniture/ba_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[372],"size":[1.2,1.6,0.5]},
+  "furniture/backbar": {"cat":"furniture","files":["furniture/backbar.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[3.6,1.81,0.5],"hold":"a plain cabinet: the back bar needs its shelves of bottles and glasses"},
+  "furniture/backwash": {"cat":"furniture","files":["furniture/backwash.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[248],"size":[0.64,0.99,1.1]},
+  "furniture/bake_bench": {"cat":"furniture","files":["furniture/bake_bench.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.02,0.86,0.65]},
+  "furniture/ball_rack": {"cat":"furniture","files":["furniture/ball_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[300],"size":[1.8,1.2,0.4]},
+  "furniture/ball_return": {"cat":"furniture","files":["furniture/ball_return.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[460],"size":[0.8,0.9,1]},
+  "furniture/bankcounter": {"cat":"furniture","files":["furniture/bankcounter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[3.6,1.65,0.8],"hold":"a plain counter: the glass screens and cashier windows are what make it a bank"},
+  "furniture/bar": {"cat":"furniture","files":["furniture/bar.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[4,0.95,0.9],"hold":"a plain counter: needs the beer pumps and drip trays"},
+  "furniture/barrel": {"cat":"furniture","files":["furniture/barrel.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.6,0.8,0.6],"hold":"a cabinet: should be a wooden barrel with hoops"},
+  "furniture/barrier": {"cat":"furniture","files":["furniture/barrier.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[36],"size":[2.78,1.2,0.44]},
+  "furniture/basin": {"cat":"furniture","files":["furniture/basin.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[64],"size":[0.54,0.85,0.35]},
+  "furniture/bath": {"cat":"furniture","files":["furniture/bath.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.65,0.55,0.72]},
+  "furniture/bath_avocado": {"cat":"furniture","files":["furniture/bath_avocado.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.65,0.55,0.72]},
+  "furniture/beanbag": {"cat":"furniture","files":["furniture/beanbag.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.64,0.55,0.63]},
+  "furniture/bed": {"cat":"furniture","files":["furniture/bed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.95,0.51,1.89]},
+  "furniture/bedside": {"cat":"furniture","files":["furniture/bedside.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.45,0.44,0.4],"hold":"reads as a small bed: should be a bedside cabinet with a lamp"},
+  "furniture/bedside_hospital": {"cat":"furniture","files":["furniture/bedside_hospital.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.45,0.51,0.45]},
+  "furniture/beer_fridge": {"cat":"furniture","files":["furniture/beer_fridge.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[74],"size":[0.57,1.8,0.6]},
+  "furniture/bellows": {"cat":"furniture","files":["furniture/bellows.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[64],"size":[0.96,0.74,0.48]},
+  "furniture/bench": {"cat":"furniture","files":["furniture/bench.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.84,0.43,0.43]},
+  "furniture/bench_modern": {"cat":"furniture","files":["furniture/bench_modern.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.66,0.43,0.43]},
+  "furniture/bench_waiting": {"cat":"furniture","files":["furniture/bench_waiting.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.84,0.76,0.43]},
+  "furniture/betting_counter": {"cat":"furniture","files":["furniture/betting_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.8,1.34,0.9]},
+  "furniture/bike": {"cat":"furniture","files":["furniture/bike.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[884],"size":[0.4,0.71,1.69]},
+  "furniture/bike_bmx": {"cat":"furniture","files":["furniture/bike_bmx.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[884],"size":[0.4,0.71,1.69]},
+  "furniture/bike_chopper": {"cat":"furniture","files":["furniture/bike_chopper.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[884],"size":[0.4,0.71,1.69]},
+  "furniture/bike_mtb": {"cat":"furniture","files":["furniture/bike_mtb.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[884],"size":[0.4,0.71,1.69]},
+  "furniture/bike_wall": {"cat":"furniture","files":["furniture/bike_wall.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[644],"size":[2.1,1.05,0.28]},
+  "furniture/billboard": {"cat":"furniture","files":["furniture/billboard.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[86],"size":[5.88,4.41,0.36]},
+  "furniture/bingo_board": {"cat":"furniture","files":["furniture/bingo_board.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[2.94,1.47,0.12]},
+  "furniture/bingostand": {"cat":"furniture","files":["furniture/bingostand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.32,1.52,0.94],"hold":"a grey cabinet: needs the ball machine (a glass bowl of balls) and the microphone"},
+  "furniture/board": {"cat":"furniture","files":["furniture/board.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[74],"size":[1.41,1.42,0.08],"hold":"a small framed sign: should be a big board (chalkboard or notice board), 3 m wide"},
+  "furniture/board_wall": {"cat":"furniture","files":["furniture/board_wall.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[74],"size":[1.41,1.42,0.08]},
+  "furniture/book_trolley": {"cat":"furniture","files":["furniture/book_trolley.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[0.9,1,0.4]},
+  "furniture/booth_seats": {"cat":"furniture","files":["furniture/booth_seats.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.02,0.95,1.15]},
+  "furniture/boss_desk": {"cat":"furniture","files":["furniture/boss_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2,0.68,0.9]},
+  "furniture/bowl_seats": {"cat":"furniture","files":["furniture/bowl_seats.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[240],"size":[2.14,0.72,1.23]},
+  "furniture/bread_oven_brick": {"cat":"furniture","files":["furniture/bread_oven_brick.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[1.47,1.5,1.08]},
+  "furniture/bread_shelf": {"cat":"furniture","files":["furniture/bread_shelf.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2.1,2,0.5]},
+  "furniture/bread_slicer": {"cat":"furniture","files":["furniture/bread_slicer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,0.83,0.4]},
+  "furniture/brick_racks": {"cat":"furniture","files":["furniture/brick_racks.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2,1.6,0.6]},
+  "furniture/briefing_bench": {"cat":"furniture","files":["furniture/briefing_bench.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.84,0.48,0.43]},
+  "furniture/brochure_stand": {"cat":"furniture","files":["furniture/brochure_stand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.3,1.39,0.27]},
+  "furniture/bunk": {"cat":"furniture","files":["furniture/bunk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[144],"size":[0.95,1.35,1.89]},
+  "furniture/bus_shelter": {"cat":"furniture","files":["furniture/bus_shelter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[3,2.4,1.4]},
+  "furniture/butcher_block": {"cat":"furniture","files":["furniture/butcher_block.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[48],"size":[0.73,0.59,0.58]},
+  "furniture/butter_churn": {"cat":"furniture","files":["furniture/butter_churn.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[168],"size":[0.32,0.79,0.17]},
+  "furniture/cafe_counter": {"cat":"furniture","files":["furniture/cafe_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.6,1.03,0.8]},
+  "furniture/cake_counter": {"cat":"furniture","files":["furniture/cake_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.4,1.03,0.8]},
+  "furniture/candle_stand": {"cat":"furniture","files":["furniture/candle_stand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[282],"size":[0.62,0.87,0.14]},
+  "furniture/car_lift": {"cat":"furniture","files":["furniture/car_lift.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[200],"size":[3.2,2.2,1.2]},
+  "furniture/caravan_bed": {"cat":"furniture","files":["furniture/caravan_bed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.33,0.45,1.8]},
+  "furniture/caravan_dinette": {"cat":"furniture","files":["furniture/caravan_dinette.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[2,0.81,1.5]},
+  "furniture/caravan_kitchen": {"cat":"furniture","files":["furniture/caravan_kitchen.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[444],"size":[1.6,1.67,0.52]},
+  "furniture/card_catalogue": {"cat":"furniture","files":["furniture/card_catalogue.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.95,1.2,0.5]},
+  "furniture/cd_wall": {"cat":"furniture","files":["furniture/cd_wall.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[54],"size":[1.68,1.85,0.24]},
+  "furniture/cells": {"cat":"furniture","files":["furniture/cells.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[76],"size":[2.4,2.22,1.27],"hold":"a grey box: needs the bars of a police cell"},
+  "furniture/cement_mixer": {"cat":"furniture","files":["furniture/cement_mixer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.8,1.3,1.1]},
+  "furniture/chair": {"cat":"furniture","files":["furniture/chair.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[324],"size":[0.44,0.9,0.46]},
+  "furniture/chair_office": {"cat":"furniture","files":["furniture/chair_office.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[224],"size":[0.55,0.99,0.49]},
+  "furniture/chair_stacking": {"cat":"furniture","files":["furniture/chair_stacking.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.41,0.79,0.4]},
+  "furniture/chair_velvet": {"cat":"furniture","files":["furniture/chair_velvet.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[96],"size":[0.46,0.94,0.44]},
+  "furniture/change_machine": {"cat":"furniture","files":["furniture/change_machine.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[182],"size":[0.46,1.13,0.33]},
+  "furniture/changing_bench": {"cat":"furniture","files":["furniture/changing_bench.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.84,1.72,0.36]},
+  "furniture/checkout": {"cat":"furniture","files":["furniture/checkout.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[278],"size":[0.9,1.11,2.4],"hold":"a counter with a till: needs the conveyor belt and the number light on a pole"},
+  "furniture/cheque_stand": {"cat":"furniture","files":["furniture/cheque_stand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.72,1.02,0.34]},
+  "furniture/chest": {"cat":"furniture","files":["furniture/chest.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[36],"size":[0.95,0.55,0.53]},
+  "furniture/chest_freezer": {"cat":"furniture","files":["furniture/chest_freezer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[72],"size":[1.42,0.9,0.69]},
+  "furniture/chocolate_machine": {"cat":"furniture","files":["furniture/chocolate_machine.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[0.55,1.5,0.37]},
+  "furniture/choir_stalls": {"cat":"furniture","files":["furniture/choir_stalls.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[3,1.2,0.8]},
+  "furniture/cig_machine": {"cat":"furniture","files":["furniture/cig_machine.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[0.64,1.5,0.37]},
+  "furniture/cinema_seats": {"cat":"furniture","files":["furniture/cinema_seats.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[240],"size":[2.67,0.9,0.46]},
+  "furniture/claw_crane": {"cat":"furniture","files":["furniture/claw_crane.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[100],"size":[0.92,1.88,0.92]},
+  "furniture/cloakroom": {"cat":"furniture","files":["furniture/cloakroom.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,1.85,0.79]},
+  "furniture/club_stage": {"cat":"furniture","files":["furniture/club_stage.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[156],"size":[4,2.33,2]},
+  "furniture/coffeetable": {"cat":"furniture","files":["furniture/coffeetable.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1,0.45,0.55]},
+  "furniture/coin_pusher": {"cat":"furniture","files":["furniture/coin_pusher.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[98],"size":[1.29,1.79,1.1]},
+  "furniture/cold_frame": {"cat":"furniture","files":["furniture/cold_frame.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,0.46,0.48]},
+  "furniture/cold_room_door": {"cat":"furniture","files":["furniture/cold_room_door.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[48],"size":[1.13,2.08,0.19]},
+  "furniture/compost_bin": {"cat":"furniture","files":["furniture/compost_bin.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[0.94,0.87,0.94]},
+  "furniture/computer_row": {"cat":"furniture","files":["furniture/computer_row.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[134],"size":[2.4,1.17,0.7]},
+  "furniture/concession": {"cat":"furniture","files":["furniture/concession.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[2.08,1.66,0.63]},
+  "furniture/console_kiosk": {"cat":"furniture","files":["furniture/console_kiosk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[64],"size":[0.8,1.6,0.6]},
+  "furniture/control_desk": {"cat":"furniture","files":["furniture/control_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[64],"size":[2.4,1.11,0.9]},
+  "furniture/conveyor": {"cat":"furniture","files":["furniture/conveyor.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[2.85,0.72,0.73]},
+  "furniture/cooker_steel": {"cat":"furniture","files":["furniture/cooker_steel.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[736],"size":[1.2,0.8,0.8]},
+  "furniture/cooler": {"cat":"furniture","files":["furniture/cooler.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.28,1.2,0.28],"hold":"needs the big blue water bottle upside down on a white stand"},
+  "furniture/copier": {"cat":"furniture","files":["furniture/copier.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[96],"size":[0.92,1.03,0.65],"hold":"a grey box with a screen: needs the lid, paper trays and control panel of a photocopier"},
+  "furniture/costume_rail": {"cat":"furniture","files":["furniture/costume_rail.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[80],"size":[1.69,1.44,0.07]},
+  "furniture/cot": {"cat":"furniture","files":["furniture/cot.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.63,0.57,1.22],"hold":"reads as a bed: should be a cot with bars"},
+  "furniture/council_table": {"cat":"furniture","files":["furniture/council_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[4,0.8,3]},
+  "furniture/counter": {"cat":"furniture","files":["furniture/counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[324],"size":[2.6,1,0.8]},
+  "furniture/counter_glass": {"cat":"furniture","files":["furniture/counter_glass.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.4,0.87,0.8]},
+  "furniture/counter_old": {"cat":"furniture","files":["furniture/counter_old.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.6,0.95,0.8]},
+  "furniture/crate": {"cat":"furniture","files":["furniture/crate.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[0.85,0.68,0.85],"hold":"a dark grey box: a crate is wooden slats"},
+  "furniture/crate_2": {"cat":"furniture","files":["furniture/crate_2.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[0.85,0.68,0.85],"hold":"a dark grey box: should be a stack of cardboard boxes"},
+  "furniture/crucible_furnace": {"cat":"furniture","files":["furniture/crucible_furnace.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[110],"size":[1.47,1.69,1.45]},
+  "furniture/curtain_screen": {"cat":"furniture","files":["furniture/curtain_screen.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[98],"size":[1.96,2.06,0.03]},
+  "furniture/dancefloor": {"cat":"furniture","files":["furniture/dancefloor.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[2,0.05,2]},
+  "furniture/dbed": {"cat":"furniture","files":["furniture/dbed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.42,0.54,1.89]},
+  "furniture/deckchair": {"cat":"furniture","files":["furniture/deckchair.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.55,0.89,0.8]},
+  "furniture/decks": {"cat":"furniture","files":["furniture/decks.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[250],"size":[2.2,1.09,0.9]},
+  "furniture/departure_board": {"cat":"furniture","files":["furniture/departure_board.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[2.35,2.74,0.18]},
+  "furniture/desk": {"cat":"furniture","files":["furniture/desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.6,0.68,0.8],"hold":"a sideboard with no knee space: a desk needs a kneehole, and papers and a lamp on top"},
+  "furniture/desk_double": {"cat":"furniture","files":["furniture/desk_double.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.2,0.66,0.6]},
+  "furniture/desk_pupil": {"cat":"furniture","files":["furniture/desk_pupil.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.7,0.68,0.6]},
+  "furniture/dolls_house": {"cat":"furniture","files":["furniture/dolls_house.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.72,0.93,0.4]},
+  "furniture/dominoes_table": {"cat":"furniture","files":["furniture/dominoes_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.8,0.75,0.8]},
+  "furniture/dough_mixer": {"cat":"furniture","files":["furniture/dough_mixer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[64],"size":[0.64,1.3,0.71]},
+  "furniture/drafting": {"cat":"furniture","files":["furniture/drafting.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.28,1.11,0.79],"hold":"a grey box: should be an angled drawing board on a stand"},
+  "furniture/dresser": {"cat":"furniture","files":["furniture/dresser.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.04,1.4,0.5]},
+  "furniture/dresser_welsh": {"cat":"furniture","files":["furniture/dresser_welsh.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.33,2,0.5]},
+  "furniture/drip_stand": {"cat":"furniture","files":["furniture/drip_stand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.34,1.77,0.34]},
+  "furniture/dryer_stack": {"cat":"furniture","files":["furniture/dryer_stack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[368],"size":[0.76,1.8,0.8]},
+  "furniture/drying_rack": {"cat":"furniture","files":["furniture/drying_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[564],"size":[1.8,1.8,0.5]},
+  "furniture/engine_hoist": {"cat":"furniture","files":["furniture/engine_hoist.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[196],"size":[0.84,1.6,1.54]},
+  "furniture/exam_couch": {"cat":"furniture","files":["furniture/exam_couch.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.56,0.69,1.49]},
+  "furniture/exercise_bike": {"cat":"furniture","files":["furniture/exercise_bike.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[916],"size":[0.4,0.5,1]},
+  "furniture/filing": {"cat":"furniture","files":["furniture/filing.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.47,1.3,0.6]},
+  "furniture/fire_pole": {"cat":"furniture","files":["furniture/fire_pole.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[80],"size":[0.56,2.56,0.07]},
+  "furniture/firepit": {"cat":"furniture","files":["furniture/firepit.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[362],"size":[1.02,0.78,1],"hold":"the one it replaces reads better: needs the fire itself (glow)"},
+  "furniture/fish_tank": {"cat":"furniture","files":["furniture/fish_tank.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[54],"size":[0.96,1.3,0.36]},
+  "furniture/flipchart": {"cat":"furniture","files":["furniture/flipchart.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[86],"size":[0.69,1.76,0.36]},
+  "furniture/flower_bed": {"cat":"furniture","files":["furniture/flower_bed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.9,0.39,0.99]},
+  "furniture/folding_table": {"cat":"furniture","files":["furniture/folding_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.8,0.9,0.7]},
+  "furniture/font": {"cat":"furniture","files":["furniture/font.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.64,0.93,0.63]},
+  "furniture/form_stand": {"cat":"furniture","files":["furniture/form_stand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.48,1.3,0.27]},
+  "furniture/fountain": {"cat":"furniture","files":["furniture/fountain.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[224],"size":[2.76,1.96,2.69]},
+  "furniture/fridge": {"cat":"furniture","files":["furniture/fridge.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[86],"size":[1.75,1.98,0.69]},
+  "furniture/fridgefreezer": {"cat":"furniture","files":["furniture/fridgefreezer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[0.58,1.78,0.65],"hold":"hard to read: should be a tall white fridge-freezer"},
+  "furniture/fruitmachine": {"cat":"furniture","files":["furniture/fruitmachine.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[208],"size":[0.69,1.69,0.56],"hold":"a cabinet with a screen: needs the reels, lights and loud colours of a fruit machine"},
+  "furniture/fryer": {"cat":"furniture","files":["furniture/fryer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[294],"size":[2.4,1.38,0.9]},
+  "furniture/fuse_board": {"cat":"furniture","files":["furniture/fuse_board.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[86],"size":[1.57,1.96,0.18]},
+  "furniture/games_shelf": {"cat":"furniture","files":["furniture/games_shelf.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[374],"size":[1.2,1.6,0.4]},
+  "furniture/garage_counter": {"cat":"furniture","files":["furniture/garage_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2,0.95,0.7]},
+  "furniture/gasfire": {"cat":"furniture","files":["furniture/gasfire.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[54],"size":[0.8,0.65,0.28],"hold":"a grey box: should be a gas fire with a surround and glowing bars"},
+  "furniture/gate_hut": {"cat":"furniture","files":["furniture/gate_hut.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[48],"size":[1.87,2.37,1.72]},
+  "furniture/gate_line": {"cat":"furniture","files":["furniture/gate_line.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[38],"size":[2.23,1,0.86]},
+  "furniture/generator": {"cat":"furniture","files":["furniture/generator.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[2.02,1.88,1.44],"hold":"a grey box: needs the engine, fuel tank and exhaust"},
+  "furniture/glass_furnace": {"cat":"furniture","files":["furniture/glass_furnace.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[110],"size":[1.84,2.07,1.45]},
+  "furniture/glass_shelf": {"cat":"furniture","files":["furniture/glass_shelf.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2,1.8,0.4]},
+  "furniture/globe": {"cat":"furniture","files":["furniture/globe.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[228],"size":[0.4,0.98,0.4],"hold":"a faceted teal ball on a pole: needs land and sea colours and a desk stand"},
+  "furniture/gondola": {"cat":"furniture","files":["furniture/gondola.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[660],"size":[2.4,1.5,0.9],"hold":"reads as a bookcase: needs groceries in bright packets and tins"},
+  "furniture/gp_desk": {"cat":"furniture","files":["furniture/gp_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.4,0.95,0.7]},
+  "furniture/gramophone": {"cat":"furniture","files":["furniture/gramophone.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,1.11,0.4],"hold":"a grey box: needs the horn"},
+  "furniture/grandfather_clock": {"cat":"furniture","files":["furniture/grandfather_clock.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[352],"size":[0.5,2.08,0.3]},
+  "furniture/griddle": {"cat":"furniture","files":["furniture/griddle.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[736],"size":[1.2,0.85,0.7]},
+  "furniture/grindstone": {"cat":"furniture","files":["furniture/grindstone.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[0.74,0.94,0.55]},
+  "furniture/gun_rack": {"cat":"furniture","files":["furniture/gun_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[588],"size":[1.8,2,0.51]},
+  "furniture/gutting_table": {"cat":"furniture","files":["furniture/gutting_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2,0.9,0.8]},
+  "furniture/hall_stage": {"cat":"furniture","files":["furniture/hall_stage.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[156],"size":[4,2.42,2.5]},
+  "furniture/hand_dryer": {"cat":"furniture","files":["furniture/hand_dryer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.24,0.28,0.16]},
+  "furniture/harmonium": {"cat":"furniture","files":["furniture/harmonium.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,1.02,0.4]},
+  "furniture/hay": {"cat":"furniture","files":["furniture/hay.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,0.93,0.94],"hold":"a grey box: should be bales of hay"},
+  "furniture/haycart": {"cat":"furniture","files":["furniture/haycart.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[388],"size":[1.29,1.42,1.97],"hold":"the cart is empty: it's a hay cart, so it needs its load of hay"},
+  "furniture/hbed": {"cat":"furniture","files":["furniture/hbed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[160],"size":[0.98,0.59,1.89],"hold":"reads as a home bed: needs the white hospital bed with rails"},
+  "furniture/headstone": {"cat":"furniture","files":["furniture/headstone.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,0.93,0.16]},
+  "furniture/headstone_2": {"cat":"furniture","files":["furniture/headstone_2.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,0.93,0.16]},
+  "furniture/headstone_3": {"cat":"furniture","files":["furniture/headstone_3.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,0.93,0.16]},
+  "furniture/headstone_4": {"cat":"furniture","files":["furniture/headstone_4.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,0.93,0.16]},
+  "furniture/headstone_5": {"cat":"furniture","files":["furniture/headstone_5.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,0.93,0.16]},
+  "furniture/heart_monitor": {"cat":"furniture","files":["furniture/heart_monitor.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.46,1.22,0.47]},
+  "furniture/hearth": {"cat":"furniture","files":["furniture/hearth.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[362],"size":[1.53,1.37,0.66],"hold":"a pot on a tripod with no fireplace: needs the stone fireplace"},
+  "furniture/hifi": {"cat":"furniture","files":["furniture/hifi.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,0.93,0.32],"hold":"a grey box: should be a stacked hi-fi with speakers"},
+  "furniture/homepc": {"cat":"furniture","files":["furniture/homepc.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[136],"size":[1.2,1.17,0.6],"hold":"a cabinet with a screen: needs a desk with a beige 1990s PC on it"},
+  "furniture/hood_dryer": {"cat":"furniture","files":["furniture/hood_dryer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[324],"size":[0.64,1.5,0.74]},
+  "furniture/hose_rack": {"cat":"furniture","files":["furniture/hose_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[372],"size":[1.2,1.4,0.5]},
+  "furniture/host_lectern": {"cat":"furniture","files":["furniture/host_lectern.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.5,1.03,0.4]},
+  "furniture/hotel_desk": {"cat":"furniture","files":["furniture/hotel_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.8,0.95,0.9]},
+  "furniture/ice_cream_freezer": {"cat":"furniture","files":["furniture/ice_cream_freezer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[72],"size":[1.14,0.9,0.6]},
+  "furniture/info_screen": {"cat":"furniture","files":["furniture/info_screen.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[1.18,2.35,0.18]},
+  "furniture/interview_table": {"cat":"furniture","files":["furniture/interview_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.2,0.75,0.8]},
+  "furniture/ironing": {"cat":"furniture","files":["furniture/ironing.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,0.83,0.28],"hold":"a grey box: should be an ironing board"},
+  "furniture/jukebox": {"cat":"furniture","files":["furniture/jukebox.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.83,1.41,0.47],"hold":"a cabinet with a screen: needs the rounded top, coloured lights and record display"},
+  "furniture/jumble_table": {"cat":"furniture","files":["furniture/jumble_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.8,1,0.75]},
+  "furniture/keyrack": {"cat":"furniture","files":["furniture/keyrack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[204],"size":[1.2,1.2,0.1],"hold":"shelves of jars: should be a board of hooks with keys and fobs"},
+  "furniture/kiln": {"cat":"furniture","files":["furniture/kiln.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[110],"size":[2.3,2.35,2.26]},
+  "furniture/kit_rack": {"cat":"furniture","files":["furniture/kit_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2,2,0.5]},
+  "furniture/kitchen": {"cat":"furniture","files":["furniture/kitchen.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[444],"size":[2.6,2.01,0.57]},
+  "furniture/kitchen_steel": {"cat":"furniture","files":["furniture/kitchen_steel.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[444],"size":[1.8,0.84,0.67]},
+  "furniture/kitchenette": {"cat":"furniture","files":["furniture/kitchenette.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[444],"size":[1.6,1.67,0.57]},
+  "furniture/kitchenlow": {"cat":"furniture","files":["furniture/kitchenlow.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[444],"size":[2.6,0.88,0.57]},
+  "furniture/lab_bench": {"cat":"furniture","files":["furniture/lab_bench.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.21,0.86,0.65]},
+  "furniture/lamp": {"cat":"furniture","files":["furniture/lamp.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[0.35,1.41,0.35],"hold":"a hanging shade on a cord, standing on the floor: this is a standard lamp (a shade on a tall stand)"},
+  "furniture/lamp_post": {"cat":"furniture","files":["furniture/lamp_post.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[0.35,3.52,0.35]},
+  "furniture/lane": {"cat":"furniture","files":["furniture/lane.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[376],"size":[1.13,1.17,7.35],"hold":"needs the pins at the end (and a ball): the pins are what make it read as a bowling lane"},
+  "furniture/larder": {"cat":"furniture","files":["furniture/larder.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.72,1.66,0.4],"hold":"a grey box: should be a larder cupboard"},
+  "furniture/lectern": {"cat":"furniture","files":["furniture/lectern.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.5,1.03,0.5]},
+  "furniture/lectern_eagle": {"cat":"furniture","files":["furniture/lectern_eagle.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.6,1.26,0.6]},
+  "furniture/ledger": {"cat":"furniture","files":["furniture/ledger.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.28,1.11,0.63],"hold":"a grey box: should be a desk with a big ledger book on it"},
+  "furniture/library_desk": {"cat":"furniture","files":["furniture/library_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.8,0.95,0.9]},
+  "furniture/lifeguard_chair": {"cat":"furniture","files":["furniture/lifeguard_chair.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.74,1.98,0.64]},
+  "furniture/lift_car": {"cat":"furniture","files":["furniture/lift_car.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[168],"size":[3,2.6,3.01]},
+  "furniture/lift_doors": {"cat":"furniture","files":["furniture/lift_doors.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[74],"size":[2.2,2.4,0.23]},
+  "furniture/lift_panel": {"cat":"furniture","files":["furniture/lift_panel.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[122],"size":[0.4,1.4,0.2]},
+  "furniture/listening_post": {"cat":"furniture","files":["furniture/listening_post.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,1.39,0.4]},
+  "furniture/lobby_sculpture": {"cat":"furniture","files":["furniture/lobby_sculpture.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,2.22,0.94]},
+  "furniture/locker": {"cat":"furniture","files":["furniture/locker.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[228],"size":[0.87,1.88,0.5]},
+  "furniture/log_seat": {"cat":"furniture","files":["furniture/log_seat.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.28,0.42,0.4]},
+  "furniture/luggage_rack": {"cat":"furniture","files":["furniture/luggage_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[0.7,0.5,0.45]},
+  "furniture/luggage_trolley": {"cat":"furniture","files":["furniture/luggage_trolley.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[388],"size":[0.68,0.89,1.3]},
+  "furniture/mace_case": {"cat":"furniture","files":["furniture/mace_case.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,1.11,0.4]},
+  "furniture/machine": {"cat":"furniture","files":["furniture/machine.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[2.02,1.69,1.35],"hold":"a grey box: no better than the block it replaces"},
+  "furniture/machine_packer": {"cat":"furniture","files":["furniture/machine_packer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[2.02,1.69,1.35]},
+  "furniture/machine_press": {"cat":"furniture","files":["furniture/machine_press.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[2.02,1.69,1.35]},
+  "furniture/magrack": {"cat":"furniture","files":["furniture/magrack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[468],"size":[1.6,1.4,0.45],"hold":"reads as a bookcase: needs magazines and newspapers face-out"},
+  "furniture/mailboxes": {"cat":"furniture","files":["furniture/mailboxes.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[1.13,1.15,0.28]},
+  "furniture/mangle": {"cat":"furniture","files":["furniture/mangle.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.56,1.2,0.48],"hold":"a grey box: should be a mangle (two rollers and a handle)"},
+  "furniture/mantel": {"cat":"furniture","files":["furniture/mantel.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.12,1.11,0.28],"hold":"a grey box: should be a fireplace with a mantelpiece"},
+  "furniture/marver": {"cat":"furniture","files":["furniture/marver.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.28,0.83,0.63]},
+  "furniture/mason_bench": {"cat":"furniture","files":["furniture/mason_bench.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.47,0.86,0.58]},
+  "furniture/mayor_chair": {"cat":"furniture","files":["furniture/mayor_chair.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.74,1.58,0.64]},
+  "furniture/meatcase": {"cat":"furniture","files":["furniture/meatcase.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.92,1.11,0.71],"hold":"a grey box: needs the glass-fronted chilled counter with meat on display"},
+  "furniture/meeting_table": {"cat":"furniture","files":["furniture/meeting_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.4,0.75,1.2]},
+  "furniture/mess_table": {"cat":"furniture","files":["furniture/mess_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.8,0.75,0.9]},
+  "furniture/microfiche": {"cat":"furniture","files":["furniture/microfiche.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[64],"size":[0.41,1.12,0.41]},
+  "furniture/milking_stool": {"cat":"furniture","files":["furniture/milking_stool.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.37,0.4,0.32]},
+  "furniture/mincer": {"cat":"furniture","files":["furniture/mincer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.4,1.11,0.4]},
+  "furniture/minibar": {"cat":"furniture","files":["furniture/minibar.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1,0.72,0.5]},
+  "furniture/monitor_desk": {"cat":"furniture","files":["furniture/monitor_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[64],"size":[2.4,1.19,0.9]},
+  "furniture/mould_bench": {"cat":"furniture","files":["furniture/mould_bench.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.84,0.86,0.58]},
+  "furniture/multideck": {"cat":"furniture","files":["furniture/multideck.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[662],"size":[2.4,2,0.9]},
+  "furniture/nature_table": {"cat":"furniture","files":["furniture/nature_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.2,0.8,0.6]},
+  "furniture/net_rack": {"cat":"furniture","files":["furniture/net_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2,2,0.4]},
+  "furniture/news_counter": {"cat":"furniture","files":["furniture/news_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2,1.34,0.7]},
+  "furniture/nurses_station": {"cat":"furniture","files":["furniture/nurses_station.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.4,0.95,0.9]},
+  "furniture/office_partition": {"cat":"furniture","files":["furniture/office_partition.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.28,1.3,0.06]},
+  "furniture/offy_counter": {"cat":"furniture","files":["furniture/offy_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2,1.34,0.7]},
+  "furniture/ohp": {"cat":"furniture","files":["furniture/ohp.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,1.11,0.48]},
+  "furniture/oil_drums": {"cat":"furniture","files":["furniture/oil_drums.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[1.1,0.85,0.55]},
+  "furniture/organ": {"cat":"furniture","files":["furniture/organ.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[2,3.24,1.18]},
+  "furniture/oven": {"cat":"furniture","files":["furniture/oven.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[786],"size":[1.6,1.6,1],"hold":"a home cooker: this one is the bakery's bread oven"},
+  "furniture/pallet_boxes": {"cat":"furniture","files":["furniture/pallet_boxes.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[1.13,1.24,0.94]},
+  "furniture/pallet_truck": {"cat":"furniture","files":["furniture/pallet_truck.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.56,1.15,1.5]},
+  "furniture/paper_poles": {"cat":"furniture","files":["furniture/paper_poles.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[80],"size":[0.94,1.12,0.04]},
+  "furniture/paper_stand": {"cat":"furniture","files":["furniture/paper_stand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.6,0.84,0.34]},
+  "furniture/parcel_scales": {"cat":"furniture","files":["furniture/parcel_scales.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[48],"size":[0.55,0.73,0.36]},
+  "furniture/park_bench": {"cat":"furniture","files":["furniture/park_bench.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.66,0.76,0.43]},
+  "furniture/pay_machine": {"cat":"furniture","files":["furniture/pay_machine.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[184],"size":[0.55,1.5,0.37]},
+  "furniture/pc_display": {"cat":"furniture","files":["furniture/pc_display.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[136],"size":[1.6,1.17,0.8]},
+  "furniture/pcdesk": {"cat":"furniture","files":["furniture/pcdesk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[136],"size":[1.6,1.17,0.8],"hold":"a cabinet with a screen in its front: needs a desk with a monitor, keyboard and tower on top"},
+  "furniture/pegs": {"cat":"furniture","files":["furniture/pegs.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,1.48,0.24],"hold":"a grey cabinet: should be coat pegs on a board, or a coat stand"},
+  "furniture/pegwall": {"cat":"furniture","files":["furniture/pegwall.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.68,1.85,0.32]},
+  "furniture/pew": {"cat":"furniture","files":["furniture/pew.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.76,0.95,0.43],"hold":"a bench with no back: a pew has a high back"},
+  "furniture/phone_box": {"cat":"furniture","files":["furniture/phone_box.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[1,2.5,1]},
+  "furniture/phone_wall": {"cat":"furniture","files":["furniture/phone_wall.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[54],"size":[1.68,1.85,0.24]},
+  "furniture/phonetable": {"cat":"furniture","files":["furniture/phonetable.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.5,0.75,0.4],"hold":"no phone: needs the phone and the directory"},
+  "furniture/piano": {"cat":"furniture","files":["furniture/piano.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[1.42,1.3,0.58]},
+  "furniture/pick_n_mix": {"cat":"furniture","files":["furniture/pick_n_mix.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,1.66,0.4]},
+  "furniture/pillar": {"cat":"furniture","files":["furniture/pillar.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[54],"size":[0.56,2.03,0.56],"hold":"a grey box: the one it replaces is a black pillar with neon bands"},
+  "furniture/pillar_box": {"cat":"furniture","files":["furniture/pillar_box.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[0.47,1.43,0.47]},
+  "furniture/pingpong": {"cat":"furniture","files":["furniture/pingpong.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[1.5,0.76,2.7]},
+  "furniture/plan_chest": {"cat":"furniture","files":["furniture/plan_chest.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[1.33,1,0.96]},
+  "furniture/plant": {"cat":"furniture","files":["furniture/plant.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[532],"size":[0.48,1.3,0.44]},
+  "furniture/plant_2": {"cat":"furniture","files":["furniture/plant_2.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[482],"size":[0.44,1.3,0.48]},
+  "furniture/plant_3": {"cat":"furniture","files":["furniture/plant_3.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[844],"size":[0.43,1.3,0.48]},
+  "furniture/planter": {"cat":"furniture","files":["furniture/planter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[264],"size":[1,0.7,0.89]},
+  "furniture/po_counter": {"cat":"furniture","files":["furniture/po_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.8,1.65,0.9]},
+  "furniture/podium": {"cat":"furniture","files":["furniture/podium.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.2,0.6,1.2]},
+  "furniture/police_desk": {"cat":"furniture","files":["furniture/police_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.6,1.5,0.9]},
+  "furniture/pool": {"cat":"furniture","files":["furniture/pool.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[112],"size":[5.82,0.3,3.88],"hold":"the water is murky green-grey: needs clear blue water and lane lines"},
+  "furniture/pool_table_pub": {"cat":"furniture","files":["furniture/pool_table_pub.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[116],"size":[1.18,0.78,1.18]},
+  "furniture/popcorn_stand": {"cat":"furniture","files":["furniture/popcorn_stand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[86],"size":[0.74,1.32,0.47]},
+  "furniture/postbox_inside": {"cat":"furniture","files":["furniture/postbox_inside.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[0.47,1.15,0.38]},
+  "furniture/potato_peeler": {"cat":"furniture","files":["furniture/potato_peeler.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[224],"size":[0.47,0.87,0.2]},
+  "furniture/pressure_tank": {"cat":"furniture","files":["furniture/pressure_tank.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[1.1,1.88,1.08]},
+  "furniture/prize_counter": {"cat":"furniture","files":["furniture/prize_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.6,1.81,0.8]},
+  "furniture/product_shelf": {"cat":"furniture","files":["furniture/product_shelf.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[372],"size":[1.2,1.8,0.3]},
+  "furniture/proving_cabinet": {"cat":"furniture","files":["furniture/proving_cabinet.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[276],"size":[0.8,1.9,0.8]},
+  "furniture/pug_mill": {"cat":"furniture","files":["furniture/pug_mill.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[0.92,1.32,1.44]},
+  "furniture/pulpit": {"cat":"furniture","files":["furniture/pulpit.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,1.85,0.94]},
+  "furniture/quench_trough": {"cat":"furniture","files":["furniture/quench_trough.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.12,0.55,0.4]},
+  "furniture/queue_rail": {"cat":"furniture","files":["furniture/queue_rail.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[80],"size":[1.88,0.8,0.02]},
+  "furniture/queue_rails": {"cat":"furniture","files":["furniture/queue_rails.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[80],"size":[2.82,0.8,0.11]},
+  "furniture/quiz_machine": {"cat":"furniture","files":["furniture/quiz_machine.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[184],"size":[0.64,1.6,0.55]},
+  "furniture/rack": {"cat":"furniture","files":["furniture/rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[564],"size":[1.8,2,0.4],"hold":"reads as a bookcase: should be steel racking with boxes and tools"},
+  "furniture/range": {"cat":"furniture","files":["furniture/range.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[736],"size":[1.3,1.07,0.7],"hold":"a modern cooker: should be a black cast-iron range"},
+  "furniture/reading_table": {"cat":"furniture","files":["furniture/reading_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.8,0.75,0.9]},
+  "furniture/reception": {"cat":"furniture","files":["furniture/reception.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[348],"size":[1.2,1.25,0.5],"hold":"1.2 m wide where it should be 2.8 m: the reception desk fills the front of the room"},
+  "furniture/reception_hatch": {"cat":"furniture","files":["furniture/reception_hatch.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[348],"size":[2,1.55,0.6]},
+  "furniture/record_bins": {"cat":"furniture","files":["furniture/record_bins.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[1.69,0.96,0.75]},
+  "furniture/record_counter": {"cat":"furniture","files":["furniture/record_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[62],"size":[2.4,1.03,0.8]},
+  "furniture/repair_stand": {"cat":"furniture","files":["furniture/repair_stand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[320],"size":[0.64,1.32,1.42]},
+  "furniture/riot_shields": {"cat":"furniture","files":["furniture/riot_shields.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.12,1.66,0.4]},
+  "furniture/rocking_horse": {"cat":"furniture","files":["furniture/rocking_horse.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,0.93,0.32]},
+  "furniture/roller": {"cat":"furniture","files":["furniture/roller.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[1.1,0.94,0.91]},
+  "furniture/rope": {"cat":"furniture","files":["furniture/rope.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.92,0.83,0.24],"hold":"a grey box: should be brass posts with a red rope between them"},
+  "furniture/rowing_machine": {"cat":"furniture","files":["furniture/rowing_machine.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[0.46,0.47,1.97]},
+  "furniture/rug": {"cat":"furniture","files":["furniture/rug.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,1.3,0.4],"hold":"a grey box: should be a flat rug"},
+  "furniture/safe": {"cat":"furniture","files":["furniture/safe.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[108],"size":[0.87,1.19,0.79],"hold":"reads as a wardrobe: needs a heavy steel safe with a dial and handle"},
+  "furniture/salad_counter": {"cat":"furniture","files":["furniture/salad_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.4,1.03,0.8]},
+  "furniture/sales_desk": {"cat":"furniture","files":["furniture/sales_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.4,0.95,0.7]},
+  "furniture/salon_desk": {"cat":"furniture","files":["furniture/salon_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.4,0.95,0.6]},
+  "furniture/salonchair": {"cat":"furniture","files":["furniture/salonchair.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[224],"size":[0.74,1.58,0.72],"hold":"a dining chair on castors: needs the padded barber chair and its mirror"},
+  "furniture/saw_bench": {"cat":"furniture","files":["furniture/saw_bench.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[156],"size":[1.84,0.95,0.58]},
+  "furniture/sawhorse": {"cat":"furniture","files":["furniture/sawhorse.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[1.29,0.85,0.55]},
+  "furniture/scales_doctor": {"cat":"furniture","files":["furniture/scales_doctor.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.4,1.76,0.48]},
+  "furniture/scarecrow": {"cat":"furniture","files":["furniture/scarecrow.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.64,1.66,0.32]},
+  "furniture/score_console": {"cat":"furniture","files":["furniture/score_console.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.6,1,0.5]},
+  "furniture/score_monitor": {"cat":"furniture","files":["furniture/score_monitor.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[1.1,2.44,0.37]},
+  "furniture/scoreboard": {"cat":"furniture","files":["furniture/scoreboard.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[86],"size":[2.94,2.45,0.3]},
+  "furniture/screen": {"cat":"furniture","files":["furniture/screen.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[146],"size":[4.8,3.69,0.15],"hold":"a sign with writing on it: should be the big blank cinema screen with curtains"},
+  "furniture/security_desk": {"cat":"furniture","files":["furniture/security_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[62],"size":[2.8,1.11,0.9]},
+  "furniture/security_gates": {"cat":"furniture","files":["furniture/security_gates.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[1.31,1.5,0.35]},
+  "furniture/server_rack": {"cat":"furniture","files":["furniture/server_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[230],"size":[0.6,2,1]},
+  "furniture/service_desk": {"cat":"furniture","files":["furniture/service_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.4,0.95,0.8]},
+  "furniture/serving_hatch": {"cat":"furniture","files":["furniture/serving_hatch.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,1.11,0.48]},
+  "furniture/settle": {"cat":"furniture","files":["furniture/settle.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.47,1.19,0.48]},
+  "furniture/shelf": {"cat":"furniture","files":["furniture/shelf.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2.1,2,0.5]},
+  "furniture/shelf_household": {"cat":"furniture","files":["furniture/shelf_household.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2.1,2,0.5]},
+  "furniture/shelf_kids": {"cat":"furniture","files":["furniture/shelf_kids.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[252],"size":[1.6,0.8,0.5]},
+  "furniture/shelfbooks": {"cat":"furniture","files":["furniture/shelfbooks.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2.1,2,0.5]},
+  "furniture/shoe_counter": {"cat":"furniture","files":["furniture/shoe_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.8,1.81,0.9]},
+  "furniture/shower": {"cat":"furniture","files":["furniture/shower.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.88,1.94,0.71]},
+  "furniture/sight_screen": {"cat":"furniture","files":["furniture/sight_screen.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[86],"size":[3.92,2.94,0.3]},
+  "furniture/sink_steel": {"cat":"furniture","files":["furniture/sink_steel.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[64],"size":[1.37,0.9,0.47]},
+  "furniture/site_board": {"cat":"furniture","files":["furniture/site_board.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[86],"size":[1.96,1.18,0.03]},
+  "furniture/slip_ledge": {"cat":"furniture","files":["furniture/slip_ledge.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,1.02,0.32]},
+  "furniture/smoking_rack": {"cat":"furniture","files":["furniture/smoking_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[324],"size":[1,1.8,0.8]},
+  "furniture/snookertable": {"cat":"furniture","files":["furniture/snookertable.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.8,0.85,3.4],"hold":"a plain brown table: needs the green baize, cushions and pockets"},
+  "furniture/soap_vending": {"cat":"furniture","files":["furniture/soap_vending.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[86],"size":[0.55,1.32,0.37]},
+  "furniture/sofa": {"cat":"furniture","files":["furniture/sofa.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[2.2,0.76,0.85]},
+  "furniture/sofa_leather": {"cat":"furniture","files":["furniture/sofa_leather.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[2.2,0.76,0.85]},
+  "furniture/sofabed": {"cat":"furniture","files":["furniture/sofabed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[1.4,0.72,1.88]},
+  "furniture/software_shelf": {"cat":"furniture","files":["furniture/software_shelf.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[614],"size":[2.1,2,0.4]},
+  "furniture/sorting_frame": {"cat":"furniture","files":["furniture/sorting_frame.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,1.66,0.4]},
+  "furniture/sorting_table": {"cat":"furniture","files":["furniture/sorting_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2,0.9,0.8]},
+  "furniture/speaker": {"cat":"furniture","files":["furniture/speaker.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[220],"size":[0.69,1.76,0.6]},
+  "furniture/spectator_chair": {"cat":"furniture","files":["furniture/spectator_chair.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.55,1.19,0.48]},
+  "furniture/spinning_wheel": {"cat":"furniture","files":["furniture/spinning_wheel.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[384],"size":[0.34,0.51,0.34]},
+  "furniture/spit": {"cat":"furniture","files":["furniture/spit.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[90],"size":[0.48,0.93,0.48],"hold":"a grey box: should be the turning cone of kebab meat in front of its heater"},
+  "furniture/stable_stall": {"cat":"furniture","files":["furniture/stable_stall.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[3,1.8,0.2]},
+  "furniture/staff_door": {"cat":"furniture","files":["furniture/staff_door.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[50],"size":[1.13,2.08,0.19]},
+  "furniture/statue": {"cat":"furniture","files":["furniture/statue.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.96,2.77,0.94]},
+  "furniture/stone_saw": {"cat":"furniture","files":["furniture/stone_saw.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[1.84,1.32,0.91]},
+  "furniture/stool": {"cat":"furniture","files":["furniture/stool.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[640],"size":[0.38,0.75,0.38]},
+  "furniture/stool_three": {"cat":"furniture","files":["furniture/stool_three.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.32,0.44,0.28]},
+  "furniture/stove": {"cat":"furniture","files":["furniture/stove.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[14],"size":[0.74,1.13,0.7],"hold":"a small box: should be a cast-iron stove with a flue pipe"},
+  "furniture/strawbed": {"cat":"furniture","files":["furniture/strawbed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[0.95,0.41,1.8],"hold":"reads as a modern bed: should be a straw mattress on planks"},
+  "furniture/stretcher": {"cat":"furniture","files":["furniture/stretcher.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.56,0.83,1.57]},
+  "furniture/sunbed": {"cat":"furniture","files":["furniture/sunbed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[134],"size":[0.95,0.6,2.07],"hold":"reads as a bed: needs the lid and the blue-purple glow of the tubes"},
+  "furniture/sweetjars": {"cat":"furniture","files":["furniture/sweetjars.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[468],"size":[1.6,1.8,0.4],"hold":"reads as a bookcase: needs rows of glass sweet jars"},
+  "furniture/swings": {"cat":"furniture","files":["furniture/swings.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.92,2.03,1.26]},
+  "furniture/table": {"cat":"furniture","files":["furniture/table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[228],"size":[0.9,0.75,0.9]},
+  "furniture/table_cafe": {"cat":"furniture","files":["furniture/table_cafe.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[0.7,0.73,0.7]},
+  "furniture/table_folding": {"cat":"furniture","files":["furniture/table_folding.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.8,0.75,0.75]},
+  "furniture/table_football": {"cat":"furniture","files":["furniture/table_football.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[140],"size":[0.8,0.9,1.4]},
+  "furniture/table_plank": {"cat":"furniture","files":["furniture/table_plank.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.4,0.75,0.8]},
+  "furniture/table_pub": {"cat":"furniture","files":["furniture/table_pub.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[116],"size":[0.69,0.73,0.69]},
+  "furniture/table_restaurant": {"cat":"furniture","files":["furniture/table_restaurant.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[0.9,0.75,0.9]},
+  "furniture/tan_booth": {"cat":"furniture","files":["furniture/tan_booth.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[78],"size":[0.8,1.94,0.8]},
+  "furniture/tan_desk": {"cat":"furniture","files":["furniture/tan_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.4,0.95,0.6]},
+  "furniture/tandoor": {"cat":"furniture","files":["furniture/tandoor.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[26],"size":[0.85,0.9,0.78]},
+  "furniture/tea_point": {"cat":"furniture","files":["furniture/tea_point.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[280],"size":[0.77,0.79,0.17]},
+  "furniture/teacher_desk": {"cat":"furniture","files":["furniture/teacher_desk.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.4,0.72,0.7]},
+  "furniture/terminal": {"cat":"furniture","files":["furniture/terminal.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[136],"size":[1.6,1.17,0.8],"hold":"a cabinet with a screen in its front: needs a desk with a computer on it"},
+  "furniture/ticket": {"cat":"furniture","files":["furniture/ticket.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.92,2.22,0.79],"hold":"a grey box: should be the ticket booth with its window"},
+  "furniture/ticket_booth": {"cat":"furniture","files":["furniture/ticket_booth.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[1.6,2.2,1.2]},
+  "furniture/ticket_machine": {"cat":"furniture","files":["furniture/ticket_machine.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[182],"size":[0.64,1.6,0.46]},
+  "furniture/till": {"cat":"furniture","files":["furniture/till.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[264],"size":[1.4,1.18,0.7]},
+  "furniture/till_brass": {"cat":"furniture","files":["furniture/till_brass.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[264],"size":[0.5,0.5,0.45]},
+  "furniture/time_clock": {"cat":"furniture","files":["furniture/time_clock.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[288],"size":[0.69,0.98,0.11]},
+  "furniture/tin_bath": {"cat":"furniture","files":["furniture/tin_bath.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.16,0.45,0.58]},
+  "furniture/toilet": {"cat":"furniture","files":["furniture/toilet.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[112],"size":[0.32,0.56,0.57],"hold":"hard to read: needs the bowl, seat and cistern shapes"},
+  "furniture/tomb": {"cat":"furniture","files":["furniture/tomb.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,0.83,0.79]},
+  "furniture/tombola": {"cat":"furniture","files":["furniture/tombola.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.48,0.93,0.4]},
+  "furniture/tool_chest": {"cat":"furniture","files":["furniture/tool_chest.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[24],"size":[0.86,1.1,0.49]},
+  "furniture/towel_rail": {"cat":"furniture","files":["furniture/towel_rail.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[80],"size":[0.56,0.8,0.02]},
+  "furniture/town_model": {"cat":"furniture","files":["furniture/town_model.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.28,0.93,0.94]},
+  "furniture/toy_cabinet": {"cat":"furniture","files":["furniture/toy_cabinet.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[324],"size":[1,1.5,0.5]},
+  "furniture/toyshelf": {"cat":"furniture","files":["furniture/toyshelf.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2.1,2,0.5],"hold":"reads as a bookcase: needs toys (boxes, teddies, balls) in bright colours"},
+  "furniture/train_table": {"cat":"furniture","files":["furniture/train_table.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[72],"size":[1.8,0.9,1]},
+  "furniture/transformer": {"cat":"furniture","files":["furniture/transformer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[1.47,1.69,1.08]},
+  "furniture/treadmill": {"cat":"furniture","files":["furniture/treadmill.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[192],"size":[0.74,1.32,1.61]},
+  "furniture/trolley": {"cat":"furniture","files":["furniture/trolley.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[196],"size":[0.68,1.6,1.2],"hold":"reads as a sack truck: the one it replaces is a brass luggage trolley with cases on it"},
+  "furniture/trolley_bay": {"cat":"furniture","files":["furniture/trolley_bay.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[196],"size":[0.84,0.89,1.92]},
+  "furniture/trophy_cabinet": {"cat":"furniture","files":["furniture/trophy_cabinet.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[372],"size":[1.2,1.8,0.4]},
+  "furniture/trouser_press": {"cat":"furniture","files":["furniture/trouser_press.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[180],"size":[0.37,1.03,0.1]},
+  "furniture/tuck_shop": {"cat":"furniture","files":["furniture/tuck_shop.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,1.11,0.48]},
+  "furniture/turnstile": {"cat":"furniture","files":["furniture/turnstile.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[164],"size":[0.92,0.94,0.28]},
+  "furniture/tv": {"cat":"furniture","files":["furniture/tv.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[0.92,1.22,0.47],"hold":"a cabinet with a screen: should be a 1990s TV set on a stand"},
+  "furniture/tv_wall": {"cat":"furniture","files":["furniture/tv_wall.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[56],"size":[1.92,2.03,0.4]},
+  "furniture/tvunit": {"cat":"furniture","files":["furniture/tvunit.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[88],"size":[1.1,1.13,0.47],"hold":"a cabinet with a screen: should be a TV on a low unit"},
+  "furniture/twin_beds": {"cat":"furniture","files":["furniture/twin_beds.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[2.28,0.57,1.98]},
+  "furniture/tyre_changer": {"cat":"furniture","files":["furniture/tyre_changer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[0.78,0.99,0.78]},
+  "furniture/tyres": {"cat":"furniture","files":["furniture/tyres.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[132],"size":[0.69,0.9,0.69],"hold":"reads as a barrel: should be a stack of tyres"},
+  "furniture/urinals": {"cat":"furniture","files":["furniture/urinals.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[100],"size":[1.6,0.84,0.4]},
+  "furniture/vault_door": {"cat":"furniture","files":["furniture/vault_door.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[48],"size":[1.87,2.17,0.53]},
+  "furniture/veg_bed": {"cat":"furniture","files":["furniture/veg_bed.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.9,0.51,0.99]},
+  "furniture/veg_bed_2": {"cat":"furniture","files":["furniture/veg_bed_2.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.9,0.51,0.99]},
+  "furniture/veg_bed_3": {"cat":"furniture","files":["furniture/veg_bed_3.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.9,0.51,0.99]},
+  "furniture/veg_stand": {"cat":"furniture","files":["furniture/veg_stand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[1.44,1.12,0.82]},
+  "furniture/vest_rack": {"cat":"furniture","files":["furniture/vest_rack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[614],"size":[2,1.8,0.5]},
+  "furniture/vhs": {"cat":"furniture","files":["furniture/vhs.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[614],"size":[2.1,2,0.45],"hold":"reads as a bookcase with a sign: needs video cases face-out"},
+  "furniture/vhs_new": {"cat":"furniture","files":["furniture/vhs_new.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[614],"size":[2.1,2,0.45]},
+  "furniture/video_counter": {"cat":"furniture","files":["furniture/video_counter.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[2.6,0.95,0.8]},
+  "furniture/waiting_fire": {"cat":"furniture","files":["furniture/waiting_fire.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[120],"size":[1.8,1.4,0.8]},
+  "furniture/wardrobe": {"cat":"furniture","files":["furniture/wardrobe.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[84],"size":[1.16,1.98,0.6]},
+  "furniture/washer": {"cat":"furniture","files":["furniture/washer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[196],"size":[0.57,0.81,0.6]},
+  "furniture/washer_big": {"cat":"furniture","files":["furniture/washer_big.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[196],"size":[0.76,1.14,0.8]},
+  "furniture/washstand": {"cat":"furniture","files":["furniture/washstand.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[60],"size":[0.36,0.75,0.31]},
+  "furniture/water_butt": {"cat":"furniture","files":["furniture/water_butt.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[0.48,0.93,0.48]},
+  "furniture/water_feature": {"cat":"furniture","files":["furniture/water_feature.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.6,2.03,0.32]},
+  "furniture/water_pump": {"cat":"furniture","files":["furniture/water_pump.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[156],"size":[1.32,1.49,1.09]},
+  "furniture/water_trough": {"cat":"furniture","files":["furniture/water_trough.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[52],"size":[1.28,0.55,0.48]},
+  "furniture/weights": {"cat":"furniture","files":["furniture/weights.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[144],"size":[1.23,0.81,0.38],"hold":"hard to read: needs a bench with a barbell and plates"},
+  "furniture/well": {"cat":"furniture","files":["furniture/well.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[148],"size":[1.2,2.03,1.18]},
+  "furniture/wheel_balancer": {"cat":"furniture","files":["furniture/wheel_balancer.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[288],"size":[0.47,0.68,0.47]},
+  "furniture/wheelchair": {"cat":"furniture","files":["furniture/wheelchair.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[312],"size":[0.6,0.94,0.8]},
+  "furniture/whiteboard": {"cat":"furniture","files":["furniture/whiteboard.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[74],"size":[2.26,0.95,0.04]},
+  "furniture/window_shelf": {"cat":"furniture","files":["furniture/window_shelf.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[348],"size":[2.4,1,0.4]},
+  "furniture/winerack": {"cat":"furniture","files":["furniture/winerack.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[612],"size":[2,2,0.5],"hold":"reads as a bookcase: needs bottles lying in a lattice"},
+  "furniture/yew": {"cat":"furniture","files":["furniture/yew.glb"],"dist":[0],"shareMats":false,"far":80,"tris":[264],"size":[1.25,2.19,1.11]},
+  "props/abacus": {"cat":"props","files":["props/abacus.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.64,0.93,0.24]},
+  "props/aisle_sign": {"cat":"props","files":["props/aisle_sign.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[1.18,0.39,0.03]},
+  "props/anchor": {"cat":"props","files":["props/anchor.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.64,0.93,0.32]},
+  "props/axe_rack": {"cat":"props","files":["props/axe_rack.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[204],"size":[1.2,1,0.1]},
+  "props/band_standee": {"cat":"props","files":["props/band_standee.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.72,1.67,0.2]},
+  "props/baskets": {"cat":"props","files":["props/baskets.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.42,0.59,0.33],"hold":"a yellow cabinet: should be a stack of red wire shopping baskets"},
+  "props/beach_poster": {"cat":"props","files":["props/beach_poster.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.98,0.69,0.02]},
+  "props/beer_mats": {"cat":"props","files":["props/beer_mats.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.32,0.18,0.32]},
+  "props/beer_pumps": {"cat":"props","files":["props/beer_pumps.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.48,0.49,0.2]},
+  "props/bin_office": {"cat":"props","files":["props/bin_office.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.28,0.35,0.28]},
+  "props/bin_pedal": {"cat":"props","files":["props/bin_pedal.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.28,0.45,0.28]},
+  "props/blowpipes": {"cat":"props","files":["props/blowpipes.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[84],"size":[0.77,0.82,0.05]},
+  "props/bollard": {"cat":"props","files":["props/bollard.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.16,0.83,0.16]},
+  "props/brass_lantern": {"cat":"props","files":["props/brass_lantern.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[54],"size":[0.24,0.55,0.24]},
+  "props/brewery_mirror": {"cat":"props","files":["props/brewery_mirror.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.88,1.18,0.03]},
+  "props/brick_pallets": {"cat":"props","files":["props/brick_pallets.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[1.13,0.96,0.94]},
+  "props/broom_display": {"cat":"props","files":["props/broom_display.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[228],"size":[0.6,1.6,0.6]},
+  "props/bucket": {"cat":"props","files":["props/bucket.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.24,0.32,0.24]},
+  "props/bunting": {"cat":"props","files":["props/bunting.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[80],"size":[3.76,0.32,0.02]},
+  "props/buoys_oars": {"cat":"props","files":["props/buoys_oars.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.96,0.93,0.48]},
+  "props/caged_light": {"cat":"props","files":["props/caged_light.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.13,0.18,0.13]},
+  "props/calendar": {"cat":"props","files":["props/calendar.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.29,0.49,0.02]},
+  "props/can_stack": {"cat":"props","files":["props/can_stack.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.75,0.96,0.56]},
+  "props/candle": {"cat":"props","files":["props/candle.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[56],"size":[0.03,0.2,0.03]},
+  "props/card_spinner": {"cat":"props","files":["props/card_spinner.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.48,1.57,0.48]},
+  "props/cashpoint": {"cat":"props","files":["props/cashpoint.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[54],"size":[0.56,0.93,0.32]},
+  "props/casting_moulds": {"cat":"props","files":["props/casting_moulds.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.96,0.37,0.63]},
+  "props/cctv": {"cat":"props","files":["props/cctv.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.14,0.19,0.33]},
+  "props/ceiling_fan": {"cat":"props","files":["props/ceiling_fan.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[132],"size":[0.96,0.37,0.94]},
+  "props/chalk_menu": {"cat":"props","files":["props/chalk_menu.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.59,0.88,0.03]},
+  "props/chandelier": {"cat":"props","files":["props/chandelier.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[54],"size":[0.96,0.93,0.95]},
+  "props/charts_board": {"cat":"props","files":["props/charts_board.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.78,1.37,0.03]},
+  "props/cig_gantry": {"cat":"props","files":["props/cig_gantry.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[204],"size":[1.2,1,0.25]},
+  "props/clay_heap": {"cat":"props","files":["props/clay_heap.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[1.12,0.55,0.94]},
+  "props/coat_stand": {"cat":"props","files":["props/coat_stand.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.34,1.67,0.34]},
+  "props/committee_board": {"cat":"props","files":["props/committee_board.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.78,1.08,0.03]},
+  "props/crisps_stand": {"cat":"props","files":["props/crisps_stand.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.36,1.3,0.27]},
+  "props/cue_rack": {"cat":"props","files":["props/cue_rack.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[372],"size":[1.2,1.4,0.1]},
+  "props/dabbers": {"cat":"props","files":["props/dabbers.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.48,0.14,0.24]},
+  "props/danger_signs": {"cat":"props","files":["props/danger_signs.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.39,0.29,0.02]},
+  "props/dartboard": {"cat":"props","files":["props/dartboard.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[134],"size":[0.59,0.69,0.06],"hold":"a framed panel: should be a round dartboard"},
+  "props/desk_lamp": {"cat":"props","files":["props/desk_lamp.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.2,0.48,0.4]},
+  "props/desk_phone": {"cat":"props","files":["props/desk_phone.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.25,0.1,0.2]},
+  "props/dump_bin": {"cat":"props","files":["props/dump_bin.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.85,0.77,0.56]},
+  "props/elephant_statue": {"cat":"props","files":["props/elephant_statue.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.48,0.55,0.24]},
+  "props/entryphone": {"cat":"props","files":["props/entryphone.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.2,0.37,0.07]},
+  "props/exit_sign": {"cat":"props","files":["props/exit_sign.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.39,0.2,0.03]},
+  "props/extractor_hood": {"cat":"props","files":["props/extractor_hood.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[84],"size":[1.47,0.56,0.91]},
+  "props/eye_chart": {"cat":"props","files":["props/eye_chart.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.39,0.59,0.02]},
+  "props/fax": {"cat":"props","files":["props/fax.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[84],"size":[0.37,0.19,0.33]},
+  "props/feed_sacks": {"cat":"props","files":["props/feed_sacks.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.94,0.59,0.56]},
+  "props/film_standee": {"cat":"props","files":["props/film_standee.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.6,1.67,0.27]},
+  "props/fire_bell": {"cat":"props","files":["props/fire_bell.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.32,0.37,0.16]},
+  "props/fire_extinguisher": {"cat":"props","files":["props/fire_extinguisher.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.16,0.55,0.16]},
+  "props/firewood": {"cat":"props","files":["props/firewood.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.4,0.46,0.32]},
+  "props/fish_boxes": {"cat":"props","files":["props/fish_boxes.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[1.13,0.59,0.75]},
+  "props/flag_stand": {"cat":"props","files":["props/flag_stand.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[84],"size":[0.49,2.16,0.3]},
+  "props/float_rack": {"cat":"props","files":["props/float_rack.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[180],"size":[1,1.2,0.4]},
+  "props/fog_machine": {"cat":"props","files":["props/fog_machine.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[180],"size":[0.46,0.28,0.29]},
+  "props/forage_bags": {"cat":"props","files":["props/forage_bags.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.8,0.74,0.16]},
+  "props/forage_baskets": {"cat":"props","files":["props/forage_baskets.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.94,0.49,0.56]},
+  "props/franking_machine": {"cat":"props","files":["props/franking_machine.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[180],"size":[0.46,0.28,0.37]},
+  "props/games_console": {"cat":"props","files":["props/games_console.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[62],"size":[0.5,0.1,0.4]},
+  "props/gas_heater": {"cat":"props","files":["props/gas_heater.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[54],"size":[0.36,0.65,0.28]},
+  "props/glass_crate": {"cat":"props","files":["props/glass_crate.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[1.5,1.33,0.75]},
+  "props/graffiti_board": {"cat":"props","files":["props/graffiti_board.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[1.96,1.18,0.03]},
+  "props/grain_sacks": {"cat":"props","files":["props/grain_sacks.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[1.13,0.68,0.56]},
+  "props/grave_flowers": {"cat":"props","files":["props/grave_flowers.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[264],"size":[0.33,0.27,0.22]},
+  "props/gym_mats": {"cat":"props","files":["props/gym_mats.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.8,0.28,1.57]},
+  "props/hard_hats": {"cat":"props","files":["props/hard_hats.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.96,1.48,0.24]},
+  "props/height_chart": {"cat":"props","files":["props/height_chart.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.98,2.06,0.02]},
+  "props/helmet_shelf": {"cat":"props","files":["props/helmet_shelf.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[180],"size":[1,1.2,0.3]},
+  "props/horse_brasses": {"cat":"props","files":["props/horse_brasses.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.16,0.93,0.05]},
+  "props/horseshoes": {"cat":"props","files":["props/horseshoes.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.64,0.55,0.05]},
+  "props/hymn_board": {"cat":"props","files":["props/hymn_board.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.49,0.98,0.03]},
+  "props/ingots": {"cat":"props","files":["props/ingots.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[48],"size":[0.91,0.26,0.43]},
+  "props/kettle_hook": {"cat":"props","files":["props/kettle_hook.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[224],"size":[0.47,0.79,0.2]},
+  "props/kites": {"cat":"props","files":["props/kites.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[1.2,0.74,0.48]},
+  "props/lantern": {"cat":"props","files":["props/lantern.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[54],"size":[0.2,0.37,0.2]},
+  "props/laundry_basket": {"cat":"props","files":["props/laundry_basket.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.47,0.59,0.38]},
+  "props/laundry_trolley": {"cat":"props","files":["props/laundry_trolley.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[196],"size":[0.61,0.8,0.5]},
+  "props/leaflet_rack": {"cat":"props","files":["props/leaflet_rack.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[108],"size":[0.5,0.7,0.1]},
+  "props/letter_menu": {"cat":"props","files":["props/letter_menu.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.78,0.59,0.03]},
+  "props/level_sign": {"cat":"props","files":["props/level_sign.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.59,0.59,0.02]},
+  "props/light_rig": {"cat":"props","files":["props/light_rig.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[84],"size":[0.77,0.44,0.35]},
+  "props/litter_bin": {"cat":"props","files":["props/litter_bin.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.47,0.87,0.47]},
+  "props/lobster_pots": {"cat":"props","files":["props/lobster_pots.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[280],"size":[0.87,0.79,0.27]},
+  "props/log_pile": {"cat":"props","files":["props/log_pile.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[1.6,0.93,0.79]},
+  "props/lottery_stand": {"cat":"props","files":["props/lottery_stand.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.3,1.21,0.27]},
+  "props/mail_sacks": {"cat":"props","files":["props/mail_sacks.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.94,0.59,0.75]},
+  "props/meat_rail": {"cat":"props","files":["props/meat_rail.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[80],"size":[1.88,0.64,0.03]},
+  "props/menu_backlit": {"cat":"props","files":["props/menu_backlit.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[1.96,0.78,0.05]},
+  "props/mic_stand": {"cat":"props","files":["props/mic_stand.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.27,1.49,0.27]},
+  "props/milk_churns": {"cat":"props","files":["props/milk_churns.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[280],"size":[0.62,0.56,0.14]},
+  "props/milkshake_mixer": {"cat":"props","files":["props/milkshake_mixer.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.16,0.46,0.2]},
+  "props/mirror": {"cat":"props","files":["props/mirror.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[1.37,0.88,0.03],"hold":"a panel with writing on it: should be a plain mirror"},
+  "props/mirrorball": {"cat":"props","files":["props/mirrorball.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[182],"size":[0.39,0.59,0.24],"hold":"a small box on the floor: should be a mirror ball that hangs from the ceiling"},
+  "props/net_curtain": {"cat":"props","files":["props/net_curtain.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.8,0.74,0.02]},
+  "props/notice_board": {"cat":"props","files":["props/notice_board.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[1.18,0.88,0.03]},
+  "props/oil_lamp": {"cat":"props","files":["props/oil_lamp.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.22,0.44,0.22]},
+  "props/open_sign": {"cat":"props","files":["props/open_sign.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.59,0.29,0.03]},
+  "props/oxygen": {"cat":"props","files":["props/oxygen.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.32,1.11,0.32]},
+  "props/paper_bags": {"cat":"props","files":["props/paper_bags.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.48,0.74,0.13]},
+  "props/party_stuff": {"cat":"props","files":["props/party_stuff.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.64,1.11,0.32]},
+  "props/payphone": {"cat":"props","files":["props/payphone.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.28,0.55,0.2]},
+  "props/pendant_light": {"cat":"props","files":["props/pendant_light.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.35,0.53,0.35]},
+  "props/phone_standee": {"cat":"props","files":["props/phone_standee.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.48,1.67,0.2]},
+  "props/pickled_eggs": {"cat":"props","files":["props/pickled_eggs.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.32,0.32,0.16]},
+  "props/picture": {"cat":"props","files":["props/picture.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.78,0.59,0.04]},
+  "props/picture_2": {"cat":"props","files":["props/picture_2.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.78,0.59,0.04]},
+  "props/picture_3": {"cat":"props","files":["props/picture_3.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.78,0.59,0.04]},
+  "props/picture_4": {"cat":"props","files":["props/picture_4.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.78,0.59,0.04]},
+  "props/picture_queen": {"cat":"props","files":["props/picture_queen.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.59,0.78,0.04]},
+  "props/pie_warmer": {"cat":"props","files":["props/pie_warmer.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[54],"size":[0.4,0.46,0.32]},
+  "props/pipe_run": {"cat":"props","files":["props/pipe_run.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[84],"size":[2.88,0.67,0.09]},
+  "props/pitchforks": {"cat":"props","files":["props/pitchforks.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.8,1.66,0.09]},
+  "props/pitta_warmer": {"cat":"props","files":["props/pitta_warmer.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.32,0.28,0.28]},
+  "props/plank_stack": {"cat":"props","files":["props/plank_stack.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[2.26,0.59,0.75]},
+  "props/plant_small": {"cat":"props","files":["props/plant_small.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[264],"size":[0.21,0.31,0.19]},
+  "props/plant_small_2": {"cat":"props","files":["props/plant_small_2.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[264],"size":[0.25,0.32,0.19]},
+  "props/poppadom_stand": {"cat":"props","files":["props/poppadom_stand.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.2,0.25,0.2]},
+  "props/poster": {"cat":"props","files":["props/poster.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.69,0.98,0.02],"hold":"placeholder 'POSTER' text: each needs its own printed design (band, film, health notice, holiday, missing cat, Neighbourhood Watch)"},
+  "props/poster_2": {"cat":"props","files":["props/poster_2.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.69,0.98,0.02],"hold":"placeholder 'POSTER' text: each needs its own printed design (band, film, health notice, holiday, missing cat, Neighbourhood Watch)"},
+  "props/poster_3": {"cat":"props","files":["props/poster_3.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.69,0.98,0.02],"hold":"placeholder 'POSTER' text: each needs its own printed design (band, film, health notice, holiday, missing cat, Neighbourhood Watch)"},
+  "props/poster_4": {"cat":"props","files":["props/poster_4.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.69,0.98,0.02],"hold":"placeholder 'POSTER' text: each needs its own printed design (band, film, health notice, holiday, missing cat, Neighbourhood Watch)"},
+  "props/poster_5": {"cat":"props","files":["props/poster_5.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.69,0.98,0.02],"hold":"placeholder 'POSTER' text: each needs its own printed design (band, film, health notice, holiday, missing cat, Neighbourhood Watch)"},
+  "props/poster_6": {"cat":"props","files":["props/poster_6.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.69,0.98,0.02],"hold":"placeholder 'POSTER' text: each needs its own printed design (band, film, health notice, holiday, missing cat, Neighbourhood Watch)"},
+  "props/poster_case": {"cat":"props","files":["props/poster_case.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[38],"size":[0.78,1.18,0.05]},
+  "props/pots_pans": {"cat":"props","files":["props/pots_pans.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[280],"size":[0.67,0.48,0.07]},
+  "props/printer": {"cat":"props","files":["props/printer.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.4,0.18,0.28]},
+  "props/prize_shelf": {"cat":"props","files":["props/prize_shelf.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[252],"size":[1.6,1.2,0.4]},
+  "props/projector_window": {"cat":"props","files":["props/projector_window.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[54],"size":[0.48,0.37,0.17]},
+  "props/racing_post": {"cat":"props","files":["props/racing_post.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.96,0.83,0.05]},
+  "props/radiator": {"cat":"props","files":["props/radiator.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.8,0.55,0.1],"hold":"a small grey box: should be a white panel radiator"},
+  "props/radio_set": {"cat":"props","files":["props/radio_set.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.4,0.28,0.32]},
+  "props/rag_rug": {"cat":"props","files":["props/rag_rug.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[1.28,0.02,1.26]},
+  "props/rolled_plans": {"cat":"props","files":["props/rolled_plans.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.32,0.83,0.32]},
+  "props/roller_trolley": {"cat":"props","files":["props/roller_trolley.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[196],"size":[0.38,0.8,0.4]},
+  "props/rubble": {"cat":"props","files":["props/rubble.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[1.32,0.49,0.94]},
+  "props/sack_pile": {"cat":"props","files":["props/sack_pile.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.94,0.59,0.75]},
+  "props/saddle_rack": {"cat":"props","files":["props/saddle_rack.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[372],"size":[1.2,1.4,0.4]},
+  "props/safety_board": {"cat":"props","files":["props/safety_board.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.98,0.78,0.03]},
+  "props/safety_signs": {"cat":"props","files":["props/safety_signs.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.59,0.39,0.02]},
+  "props/salt_vinegar": {"cat":"props","files":["props/salt_vinegar.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.64,0.28,0.2]},
+  "props/sand_sacks": {"cat":"props","files":["props/sand_sacks.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.94,0.59,0.56]},
+  "props/sauce_set": {"cat":"props","files":["props/sauce_set.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.2,0.18,0.13]},
+  "props/scaffold_pile": {"cat":"props","files":["props/scaffold_pile.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[2.4,0.55,0.63]},
+  "props/scales_butcher": {"cat":"props","files":["props/scales_butcher.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.4,0.46,0.32]},
+  "props/score_abacus": {"cat":"props","files":["props/score_abacus.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[84],"size":[0.74,0.38,0.08]},
+  "props/score_screen": {"cat":"props","files":["props/score_screen.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.98,0.69,0.06]},
+  "props/sledgehammers": {"cat":"props","files":["props/sledgehammers.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.8,1.11,0.09]},
+  "props/slip_bin": {"cat":"props","files":["props/slip_bin.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.38,0.59,0.38]},
+  "props/spirits_shelf": {"cat":"props","files":["props/spirits_shelf.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[252],"size":[1.6,1.2,0.3]},
+  "props/spotlights": {"cat":"props","files":["props/spotlights.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[84],"size":[0.31,0.18,0.11]},
+  "props/stair_rail": {"cat":"props","files":["props/stair_rail.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[80],"size":[1.88,0.8,0.02]},
+  "props/station_clock": {"cat":"props","files":["props/station_clock.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[288],"size":[0.52,0.52,0.14]},
+  "props/steel_girders": {"cat":"props","files":["props/steel_girders.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[2.4,0.55,0.63]},
+  "props/stone_blocks": {"cat":"props","files":["props/stone_blocks.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[1.41,0.77,0.94]},
+  "props/straw_pile": {"cat":"props","files":["props/straw_pile.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.96,0.18,0.79]},
+  "props/strip_light": {"cat":"props","files":["props/strip_light.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[26],"size":[1.46,0.08,0.18]},
+  "props/stumps": {"cat":"props","files":["props/stumps.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[80],"size":[0.23,0.6,0.02]},
+  "props/super_soakers": {"cat":"props","files":["props/super_soakers.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.96,0.93,0.13]},
+  "props/supply_crates": {"cat":"props","files":["props/supply_crates.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.94,0.96,0.94]},
+  "props/table_light": {"cat":"props","files":["props/table_light.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[62],"size":[1,0.4,2.4]},
+  "props/tankards": {"cat":"props","files":["props/tankards.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[280],"size":[0.65,0.24,0.05]},
+  "props/tea_tray": {"cat":"props","files":["props/tea_tray.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[112],"size":[0.16,0.2,0.1]},
+  "props/tea_urn": {"cat":"props","files":["props/tea_urn.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[112],"size":[0.17,0.48,0.12]},
+  "props/teddy_big": {"cat":"props","files":["props/teddy_big.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.64,1.11,0.48]},
+  "props/theodolite": {"cat":"props","files":["props/theodolite.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.48,1.48,0.48]},
+  "props/timber_stack": {"cat":"props","files":["props/timber_stack.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[2.26,0.77,0.94]},
+  "props/timetable": {"cat":"props","files":["props/timetable.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[62],"size":[0.8,1.1,0.05]},
+  "props/tongs_rack": {"cat":"props","files":["props/tongs_rack.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[180],"size":[1,1.2,0.1]},
+  "props/tool_board": {"cat":"props","files":["props/tool_board.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[1.18,0.98,0.06]},
+  "props/towel_shelf": {"cat":"props","files":["props/towel_shelf.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[324],"size":[1,1.4,0.35]},
+  "props/toy_box": {"cat":"props","files":["props/toy_box.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[0.56,0.4,0.38]},
+  "props/toys_floor": {"cat":"props","files":["props/toys_floor.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.64,0.14,0.48]},
+  "props/truncheons": {"cat":"props","files":["props/truncheons.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[52],"size":[0.64,0.55,0.09]},
+  "props/tunnel_pipes": {"cat":"props","files":["props/tunnel_pipes.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[84],"size":[2.88,0.8,0.08]},
+  "props/tv_bracket": {"cat":"props","files":["props/tv_bracket.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[134],"size":[0.55,0.5,0.5]},
+  "props/uv_tube": {"cat":"props","files":["props/uv_tube.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[26],"size":[1.16,0.08,0.09]},
+  "props/valve_wheels": {"cat":"props","files":["props/valve_wheels.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[180],"size":[1.92,0.8,0.15]},
+  "props/vase_flowers": {"cat":"props","files":["props/vase_flowers.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[264],"size":[0.17,0.4,0.15]},
+  "props/veg_crates": {"cat":"props","files":["props/veg_crates.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[24],"size":[1.13,0.87,0.75]},
+  "props/vending_drinks": {"cat":"props","files":["props/vending_drinks.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.83,1.69,0.74]},
+  "props/vending_snacks": {"cat":"props","files":["props/vending_snacks.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.83,1.69,0.74]},
+  "props/wall_clock": {"cat":"props","files":["props/wall_clock.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[432],"size":[0.35,0.35,0.06]},
+  "props/wall_map": {"cat":"props","files":["props/wall_map.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[1.18,0.88,0.03]},
+  "props/wanted_board": {"cat":"props","files":["props/wanted_board.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[1.18,0.88,0.03]},
+  "props/wet_floor_sign": {"cat":"props","files":["props/wet_floor_sign.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[86],"size":[0.29,0.59,0.15]},
+  "props/wheelbarrow": {"cat":"props","files":["props/wheelbarrow.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[156],"size":[0.6,0.64,1.5]},
+  "props/win95_standee": {"cat":"props","files":["props/win95_standee.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[60],"size":[0.48,1.67,0.2]},
+  "props/xray_box": {"cat":"props","files":["props/xray_box.glb"],"dist":[0],"shareMats":false,"far":70,"tris":[26],"size":[0.75,0.49,0.08]}
+}}

@@ -6,7 +6,7 @@ import { facadeMaterial, signTexture, roofMaterial, glassMaterial } from './Text
 import { ADS } from '../data/adverts.js';
 import { levelPlan, flightH, slabHoles, laneRect, upperFurniture, LANE_W } from '../world/Levels.js';
 import { makeFurniture, FURN } from './Furniture.js';
-import { models } from './ModelLib.js';
+import { models, wantFurniture, wantModel } from './ModelLib.js';
 import { wallPieces } from '../data/homes.js';
 import { mulberry32 } from '../util.js';
 import { Assets } from './Assets.js';
@@ -731,17 +731,24 @@ export function roomColliders(lay) {
  * animals or cars), or one of its variations (<type>_2, <type>_3...) chosen by where it stands, so a room of them isn't
  * all the same. Null: use the old one.
  */
-const MADE_FOLDERS = ['furniture', 'props', 'animals', 'cars'];
 // the shared 1990s pieces that would look wrong in a log hut: there, the rustic one when it's been made, else the old block model
 const LOG_HUT = { stool: 'stool_three', table: 'table_plank' };
+const MADE_AS = { clock: 'grandfather_clock' };   // made models named differently from the block piece they replace
+wantFurniture(...Object.keys(FURN).map((t) => MADE_AS[t] || t), ...Object.values(LOG_HUT)); wantModel('props/wall_clock');
 /** Which checked model stands in for a block model at this spot (null: none, keep the block): the variation is picked by position. */
 function madeName(t, b, x, z) {
   const L = models(); if (!L) return null; const def = b.def || {};
   if (def.wall === 'logs' && LOG_HUT[t]) t = LOG_HUT[t];
-  let v = []; for (const f of MADE_FOLDERS) { v = L.variants(f + '/' + t); if (v.length) break; } if (!v.length) return null;
+  const v = L.standIns(MADE_AS[t] || t); if (!v.length) return null;
   return v[Math.abs(Math.floor(x * 7.31 + z * 13.17 + (b.uid || 0) * 3.7)) % v.length];
 }
-function madeFurniture(t, b, x, z) { const n = madeName(t, b, x, z); return n ? models().copyStatic(n) : null; }
+function madeFurniture(t, b, x, z) {
+  const n = madeName(t, b, x, z), o = n && models().copyStatic(n); if (!o) return null;
+  const P = o.userData.parts, moving = Object.keys(P).filter((k) => /^move_/.test(k));
+  if (moving.length) { for (const k of moving) for (const m of P[k]) m.userData.keep = true; mergeByMaterial(o); o.userData.keep = true; }   // what moves stays apart; the rest is one draw call (the room merge leaves the whole thing alone)
+  if (P.move_hand_hour) models().animate(o, 'clock');   // a clock keeps the town's time
+  return o;
+}
 /** How much higher than the old block stool (seat 0.48 m up) a sim sits on the stool at a seat: a made bar stool is taller. */
 export function seatLift(s) {
   if (s.t !== 'stool' || !s.b) return 0; if (s.lift !== undefined) return s.lift; const L = models(); if (!L || !L.done) return 0;
