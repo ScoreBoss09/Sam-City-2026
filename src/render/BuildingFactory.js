@@ -6,6 +6,7 @@ import { facadeMaterial, signTexture, roofMaterial, glassMaterial } from './Text
 import { ADS } from '../data/adverts.js';
 import { levelPlan, flightH, slabHoles, laneRect, upperFurniture, LANE_W } from '../world/Levels.js';
 import { makeFurniture, FURN } from './Furniture.js';
+import { models } from './ModelLib.js';
 import { wallPieces } from '../data/homes.js';
 import { mulberry32 } from '../util.js';
 import { Assets } from './Assets.js';
@@ -752,6 +753,7 @@ export function buildInterior(b) {
  * layout hasn't lit the room itself.
  */
 const TALL = /shelf|case|wardrobe|rack|kitchen|fridge|backbar|bunk|locker|gondola|filing|cells|screen|dresser|toy|wine|meat|sweet|copier|poster|mirror|pegs|board|arcade|fruit|jukebox|bookcase|cabinet|stack|crate|safe/;
+const RC = new THREE.Raycaster(); RC.camera = new THREE.PerspectiveCamera();   // (sprites need a camera to be tested against)
 function dressWalls(b, g) {
   const def = b.def, lay = b.layout; if (!lay || def.park || def.special || def.special_ext || def.model) return;
   const W = def.w * UNIT, D = def.d * UNIT, T = WALL_T, floors = Math.max(1, def.floors || 1), f = FACADES[def.wall] || FACADES.tan; if (f.kind === 'curtain') return;
@@ -760,11 +762,30 @@ function dressWalls(b, g) {
   const frameC = [0x5a3a22, 0x2a2a2e, 0xb08a3a, 0xe8e2d2][b.uid % 4], art = [[0x6a9ac8, 0x6aa05a], [0xd8b070, 0x7a5a3a], [0x3a5a8a, 0xe8d8a8], [0xa84a3a, 0xe8c070], [0x2a6a5a, 0xd8e0c8]];
   const lvGroup = (k) => { if (!k) return g; let lg = g.userData.lv[k]; if (!lg) { lg = g.userData.lv[k] = new THREE.Group(); lg.userData.keep = true; g.add(lg); } return lg; };
   const blocked = (wx, wz) => lay.furniture.some((q) => TALL.test(q.t) && Math.hypot(q.x - wx, q.z - wz) < 1.0);
+  // how much further into the room the wall's real inside surface is than the usual line (shop fronts and modelled shells are thicker): a ray from the room to the wall
+  const wallDepth = (x, y, z, rotY) => {
+    if (!b.ext || !b.toWorld) return 0; const nx = Math.sin(rotY), nz = Math.cos(rotY), [ox, oz] = b.toWorld(x + nx * 1.2, z + nz * 1.2), [tx, tz] = b.toWorld(x, z);
+    b.ext.group.updateMatrixWorld(true); RC.set(new THREE.Vector3(ox, y, oz), new THREE.Vector3(tx - ox, 0, tz - oz).normalize()); RC.far = 1.5;
+    const h = RC.intersectObject(b.ext.group, true).find((q) => q.object.isMesh); return h ? Math.max(0, Math.min(0.3, 1.2 - h.distance)) : 0;
+  };
+  // the ceiling's height above a spot in the room (a ray straight up), or the storey height
+  const ceilingAt = (x, z) => {
+    if (!b.ext || !b.toWorld) return WALL_H; const [wx, wz] = b.toWorld(x, z); RC.set(new THREE.Vector3(wx, 2.0, wz), new THREE.Vector3(0, 1, 0)); RC.far = 4;
+    const h = RC.intersectObjects([b.ext.group, b.ext.roof].filter(Boolean), true).find((q) => q.object.isMesh); return h ? 2.0 + h.distance : WALL_H;
+  };
+  // a window at this distance along a wall? (the facade's window pattern repeats every 4 m; the same test the pictures use)
+  const windowAt = (u) => { const t = u % 4; return holes.some(([a, c]) => t > a - 0.3 && t < c + 0.3) || holes.some(([a, c]) => t + 4 > a - 0.3 && t + 4 < c + 0.3) || holes.some(([a, c]) => t - 4 > a - 0.3 && t - 4 < c + 0.3); };
+  // a wall clock centred at (x, y, z) on a wall, facing rotY: the made model (its hands on the town's time, kept out of the room's merge so they can move), else the old disc
+  const hangClock = (grp, x, y, z, rotY, alongX, size = 1) => {
+    const mc = models() && models().copy('props/wall_clock');
+    if (mc) { mc.scale.setScalar(size); mc.position.set(x, y - 0.175 * size, z); mc.rotation.y = rotY; mc.translateZ((0.006 + wallDepth(x, y, z, rotY)) / size * size); mc.userData.keep = true; grp.add(mc); models().animate(mc, 'clock'); return; }
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 16), stdMat(0xf4f0e6)); c.rotation.set(Math.PI / 2, 0, alongX ? 0 : Math.PI / 2); c.position.set(x, y, z); grp.add(c); const rim = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.02, 6, 16), stdMat(0x2a2a2e)); rim.position.copy(c.position); rim.rotation.y = rotY; grp.add(rim);
+  };
   const flat = (grp, w, h, col, x, y, z, rotY, o) => { const m = new THREE.Mesh(unit, stdMat(col, o)); m.scale.set(w, h, 0.04); m.position.set(x, y, z); m.rotation.y = rotY; grp.add(m); return m; };
   // [wall length, along-x?, inner face, facing into the room, front wall?]
   const walls = [[W, true, -D / 2 + T + 0.025, 0, false], [W, true, D / 2 - T - 0.025, Math.PI, true], [D, false, -W / 2 + T + 0.025, Math.PI / 2, false], [D, false, W / 2 - T - 0.025, -Math.PI / 2, false]];
   for (let k = 0; k < floors; k++) {
-    const grp = lvGroup(k), y0 = k * WALL_H, cy = y0 + 1.62; let clock = kind === 'home' ? rnd() < 0.6 : true, n = 0;
+    const grp = lvGroup(k), y0 = k * WALL_H, cy = y0 + 1.62; let clock = kind === 'home' ? rnd() < 0.6 : k === 0, n = 0;   // (one clock a building: on the ground floor)
     for (const [L, alongX, at, rotY, front] of walls) {
       if (front && k === 0 && (def.shopping || def.dining)) continue;   // the shop window
       for (let u = 0.9; u < L - 0.9; u += 0.5) {
@@ -772,7 +793,7 @@ function dressWalls(b, g) {
         const lx = alongX ? u - L / 2 : at, lz = alongX ? at : u - L / 2; if (front && k === 0 && Math.abs(lx - door) < dw / 2 + 0.6) continue;
         if (blocked(lx, lz) || rnd() < 0.35) { u += 0.5; continue; }
         const r0 = rnd(), at2 = (x) => [alongX ? x : at, alongX ? at : x];
-        if (clock && r0 < 0.25) { clock = false; const c = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 16), stdMat(0xf4f0e6)); c.rotation.set(Math.PI / 2, 0, alongX ? 0 : Math.PI / 2); c.position.set(lx, cy + 0.35, lz); grp.add(c); const rim = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.02, 6, 16), stdMat(0x2a2a2e)); rim.position.copy(c.position); rim.rotation.y = rotY; grp.add(rim); }
+        if (clock && (kind !== 'home' || r0 < 0.4)) { clock = false; hangClock(grp, lx, cy + 0.35, lz, rotY, alongX); }   // the first free spot on the wall gets the clock (a home, sometimes)
         else if (kind === 'home') { const [c1, c2] = art[Math.floor(rnd() * art.length)], w = 0.42 + rnd() * 0.25, h = 0.32 + rnd() * 0.15; flat(grp, w + 0.06, h + 0.06, frameC, lx, cy, lz, rotY); const p2 = flat(grp, w, h * 0.55, c1, lx, cy + h * 0.2, lz, rotY); p2.translateZ(0.01); const p3 = flat(grp, w, h * 0.45, c2, lx, cy - h * 0.25, lz, rotY); p3.translateZ(0.01); }
         else if (kind === 'shop') { const col = [0xd8342c, 0xf2c94c, 0x2a7ab0, 0x3a9a54][Math.floor(rnd() * 4)]; flat(grp, 0.5, 0.7, col, lx, cy, lz, rotY); const st = flat(grp, 0.38, 0.12, 0xffffff, lx, cy + 0.15, lz, rotY); st.translateZ(0.01); }
         else if (kind === 'works') { flat(grp, 0.45, 0.45, 0xf2c94c, lx, cy, lz, rotY); const st = flat(grp, 0.3, 0.06, 0x1a1a1a, lx, cy - 0.08, lz, rotY); st.translateZ(0.01); const tri = flat(grp, 0.16, 0.16, 0x1a1a1a, lx, cy + 0.08, lz, rotY); tri.translateZ(0.01); tri.rotateZ(Math.PI / 4); }
@@ -782,6 +803,15 @@ function dressWalls(b, g) {
       }
       // skirting board along this wall
       const sk = new THREE.Mesh(unit, stdMat(kind === 'home' ? 0xf0ece2 : 0x3a3a3e)); const len = L - 2 * T; sk.scale.set(alongX ? len : 0.03, 0.1, alongX ? 0.03 : len); sk.position.set(alongX ? 0 : at, y0 + (k ? 0.08 : 0.19), alongX ? at : 0); if (!(front && k === 0)) grp.add(sk);
+    }
+    // no free wall for the clock (windows, tall shelving): it goes over the front door, inside, where a shop or an office would have it
+    if (clock && kind !== 'home' && k === 0) {
+      clock = false; const zf = D / 2 - T - 0.025, room = ceilingAt(door, zf - 0.5) - 2.74 - 0.03;   // the gap between the top of the door and the ceiling
+      if (room >= 0.3) hangClock(grp, door, 2.74 + Math.min(room, 0.42) / 2, zf, Math.PI, true, Math.min(1, room / 0.35));
+      else {   // too low above the door (an upper floor): beside it, where the front has no window; a shop front is all glass, so a smaller clock over the door
+        const side = def.shopping || def.dining ? undefined : [1.6, -1.6, 2.4, -2.4].map((o) => door + o).find((x) => Math.abs(x) < W / 2 - T - 0.4 && !windowAt(x + W / 2));
+        if (side !== undefined) hangClock(grp, side, 2.2, zf, Math.PI, true); else if (room > 0.12) hangClock(grp, door, 2.74 + room / 2, zf, Math.PI, true, room / 0.35);
+      }
     }
     // a lampshade or two, where the layout doesn't light the room
     if (!(lay.lights && lay.lights.length) && k === 0) { const ceil = floors > 1 ? WALL_H : Math.min(def.floors * WALL_H, WALL_H * 1.7), nx = Math.max(1, Math.min(3, Math.round(W / 6))), nz = Math.max(1, Math.min(2, Math.round(D / 7)));
