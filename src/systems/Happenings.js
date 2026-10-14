@@ -5,7 +5,7 @@ import { stdMat } from '../render/BuildingFactory.js';
 import { makeCarMesh } from '../render/Vehicles.js';
 import { SHOP_GOODS } from '../data/shopgoods.js';
 
-const TILE = 8;
+const TILE = 8, BOX = new THREE.BoxGeometry(1, 1, 1);   // one shared box: props are scaled copies (nothing to free when they go)
 
 /**
  * Something is always going on: a random happening every couple of minutes (more often as the town grows).
@@ -77,7 +77,7 @@ export class Happenings {
   }
   icecream() {
     const g = this.game, p = this.street(); if (!p) return null; const route = this.roadFromLift(p); if (!route || route.length < 2) return null; g.flags.iceDay = g.clock.totalDays;
-    const van = new THREE.Group(); const b = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); m.castShadow = true; van.add(m); };
+    const van = new THREE.Group(); const b = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(BOX, stdMat(c)); m.scale.set(w, h, d); m.position.set(x, y, z); m.castShadow = true; van.add(m); };
     b(2, 2.2, 4.4, 0xf4f0e8, 0, 1.4, 0); b(2.02, 0.4, 4.42, 0xe86aa0, 0, 0.6, 0); b(0.3, 0.9, 0.3, 0xf2d9a0, 0, 2.9, 1.2); b(0.5, 0.5, 0.5, 0xffb0c8, 0, 3.4, 1.2); b(1.9, 0.9, 0.05, 0x9fd8f0, 0, 1.9, 2.21);
     b(0.05, 0.8, 1.6, 0x2a2a2a, 1.01, 1.7, -0.4);   // the serving hatch
     for (const [x, z] of [[-0.95, 1.4], [0.95, 1.4], [-0.95, -1.4], [0.95, -1.4]]) b(0.25, 0.6, 0.6, 0x111111, x, 0.3, z);
@@ -100,7 +100,7 @@ export class Happenings {
   pig() {
     const g = this.game, fb = g.buildings.list.find((b) => b.state === 'done' && ['farm', 'allotment', 'stables'].includes(b.id)); if (!fb) return null; g.flags.pigDay = g.clock.totalDays;
     const p = { x: fb.doorOut.x, z: fb.doorOut.z + 3 }, pig = new THREE.Group(), legs = [];   // it gets out of the farm, wherever Sam happens to be
-    const b = (w, h, d, x, y, z, c = 0xf2a8b0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); m.castShadow = true; pig.add(m); return m; };
+    const b = (w, h, d, x, y, z, c = 0xf2a8b0) => { const m = new THREE.Mesh(BOX, stdMat(c)); m.scale.set(w, h, d); m.position.set(x, y, z); m.castShadow = true; pig.add(m); return m; };
     b(0.6, 0.55, 1.0, 0, 0.6, 0); b(0.42, 0.4, 0.38, 0, 0.7, 0.62); b(0.2, 0.14, 0.08, 0, 0.66, 0.84, 0xe08898);
     for (const [x, z] of [[-0.2, 0.32], [0.2, 0.32], [-0.2, -0.32], [0.2, -0.32]]) { const l = b(0.14, 0.34, 0.14, x, 0.2, z); legs.push(l); }
     pig.position.set(p.x, 0, p.z); g.scene.add(pig); this.say(`🐖 A pig has escaped from the ${fb.def.name}! Catch it (E) for a reward.`); this.mark && this.mark(p, '🐖', 'Escaped pig', 150);
@@ -149,7 +149,7 @@ export class Happenings {
   }
   // a street party: trestle tables down the road, bunting, sausage rolls and trifle
   streetparty() {
-    const g = this.game, p = this.spot(25), grp = new THREE.Group(), b = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); grp.add(m); return m; };
+    const g = this.game, p = this.spot(25), grp = new THREE.Group(), b = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(BOX, stdMat(c)); m.scale.set(w, h, d); m.position.set(x, y, z); grp.add(m); return m; };
     g.flags.partyDay = true; setTimeout(() => { g.flags.partyDay = false; }, 600000);
     for (let i = -1; i <= 1; i++) { b(1.0, 0.06, 3.0, 0xf8f8f8, 0, 0.78, i * 3.4); for (const x of [-0.4, 0.4]) for (const z of [-1.3, 1.3]) b(0.06, 0.78, 0.06, 0x6a5040, x, 0.39, i * 3.4 + z); for (let k = 0; k < 6; k++) b(0.2, 0.1, 0.2, [0xd8342c, 0xf2c94c, 0xe07fa0, 0x8a5a2a][k % 4], (k % 2 ? 0.25 : -0.25), 0.86, i * 3.4 - 1.1 + k * 0.45); }
     for (const sx of [-2.2, 2.2]) b(0.08, 3.4, 0.08, 0x8a8a8a, sx, 1.7, -5.5); for (let k = 0; k < 18; k++) b(0.18, 0.22, 0.02, [0xd8342c, 0xffffff, 0x2a4aa8][k % 3], -2.1 + k * 0.25, 3.1 - Math.sin(k / 17 * Math.PI) * 0.5, -5.5);
@@ -166,7 +166,7 @@ export class Happenings {
     const g = this.game, site = ['plaza', 'park'].map((k) => g.buildings.list.find((b) => b.state === 'done' && b.def.park === k)).find(Boolean) || null;
     const p = site ? { x: site.cx, z: site.cz } : this.street(); if (!p) return null; const route = this.roadFromLift(site && site.doorOut ? site.doorOut : p); if (!route) return null;
     const rot = site ? site.rot * Math.PI / 2 : 0, cs = Math.cos(rot), sn = Math.sin(rot), at = (lx, lz) => ({ x: p.x + lx * cs + lz * sn, z: p.z - lx * sn + lz * cs });
-    const box = (grp, w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); grp.add(m); };
+    const box = (grp, w, h, d, c, x, y, z) => { const m = new THREE.Mesh(BOX, stdMat(c)); m.scale.set(w, h, d); m.position.set(x, y, z); grp.add(m); };
     const cars = [0, 1, 2, 3].map((i) => {
       const lx = (i - 1.5) * 3.2, slot = at(lx, -1.6), mesh = makeCarMesh(pick([0xc0392b, 0x2980b9, 0x7f8c8d, 0x27ae60, 0xecf0f1, 0x8e44ad])), stall = new THREE.Group();
       box(stall, 1.8, 0.05, 0.7, 0xe8e2d0, 0, 0.75, 0); for (const x of [-0.8, 0.8]) box(stall, 0.05, 0.75, 0.6, 0x8a8a8a, x, 0.37, 0);
@@ -203,7 +203,7 @@ export class Happenings {
   // the milk float, whining along before anyone's up, clinking
   milkfloat() {
     const g = this.game, w = g.world, p = this.spot(60), [sx, sz] = w.tileOf(p.x, p.z), dest = this.spot(60), [tx, tz] = w.tileOf(dest.x, dest.z), path = (w.findPath(sx, sz, tx, tz, true) || []).map(([x, z]) => ({ x: (x + 0.5) * 8 + 1.3, z: (z + 0.5) * 8 }));
-    if (path.length < 2) return null; const fl = new THREE.Group(), b = (wd, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(wd, h, d), stdMat(c)); m.position.set(x, y, z); fl.add(m); };
+    if (path.length < 2) return null; const fl = new THREE.Group(), b = (wd, h, d, c, x, y, z) => { const m = new THREE.Mesh(BOX, stdMat(c)); m.scale.set(wd, h, d); m.position.set(x, y, z); fl.add(m); };
     b(1.6, 0.5, 3.2, 0xf4f4f0, 0, 0.55, 0); b(1.6, 1.2, 1.0, 0xf4f4f0, 0, 1.3, 1.1); b(1.5, 0.5, 0.05, 0x9fd8f0, 0, 1.5, 1.61); b(1.7, 0.1, 2.0, 0x2a7a3a, 0, 2.0, -0.5); for (let k = 0; k < 8; k++) b(0.3, 0.3, 0.3, 0xf8f8f8, -0.45 + (k % 4) * 0.3, 0.95, -0.4 - Math.floor(k / 4) * 0.5);
     for (const [x, z] of [[-0.75, 1.0], [0.75, 1.0], [-0.75, -1.1], [0.75, -1.1]]) b(0.2, 0.44, 0.44, 0x111111, x, 0.22, z);
     let x = path[0].x, z = path[0].z, h = 0, t = 0; fl.position.set(x, 0, z); g.scene.add(fl); this.mark({ x, z }, '🥛', 'Milk float', 60, null);

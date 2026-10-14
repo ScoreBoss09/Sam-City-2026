@@ -29,7 +29,9 @@ export class Input {
   }
   /** Gamepad -> the same virtual keys / mouse the rest of the game already understands. mode: 'sim' | 'god' | 'menu'. */
   pollPad(dt, mode) {
-    const P = this.pad, list = this.padEnabled && navigator.getGamepads ? navigator.getGamepads() : [];
+    const P = this.pad, all = navigator.getGamepads ? navigator.getGamepads() : [], list = this.padEnabled ? all : [];
+    // controller input switched off (Options), but somebody's pressing buttons on one: they want it, so switch it back on and say so
+    if (!this.padEnabled) { let down = false; for (const q of all) if (q && q.connected) for (const bb of q.buttons) if (bb && bb.pressed) down = true; if (down && P.wasUp && this.onPadOff) { P.wasUp = false; this.onPadOff(); } else if (!down) P.wasUp = true; }
     // Prefer a proper game controller ("standard" layout). Other devices (wheels, joysticks, some headsets/keyboards) are ignored.
     // With more than one (Steam or DS4Windows can add a copy of the same pad), follow whichever was used last.
     let gp = null, cur0 = null, odd = null; P.cals = P.cals || new Map();

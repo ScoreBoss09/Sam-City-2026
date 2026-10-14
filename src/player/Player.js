@@ -152,6 +152,7 @@ export class Player {
     if (this.sedated > 0) { this.sedated -= rawDt; if (this.sedated <= 0) this.wakeFromSedation(); }
     if (this.down > 0) this.down -= rawDt;
  if (this.swingT > 0) this.swingT -= rawDt; if (this.swingT <= 0 && this.swingHit) this.swingHit = false;
+    if (!Number.isFinite(this.x) || !Number.isFinite(this.z) || !Number.isFinite(this.floorY || 0)) { const q = this.goodPos || (g.lift && g.lift.doorOut) || { x: 160, z: 160 }; this.x = q.x; this.z = q.z; this.floorY = 0; this.jumpT = 0; this.jumpY = 0; } else if (!this.ride) this.goodPos = { x: this.x, z: this.z };   // never lost in a glitch
     this.unstick();
     if (sim && !this.sleeping && this.sedated <= 0 && !(this.down > 0)) {
       this.yaw -= inp.mouse.dx * 0.0025; this.pitch = clamp(this.pitch - inp.mouse.dy * 0.0025, -1.3, 1.2);
@@ -250,7 +251,7 @@ export class Player {
   }
   /** If a wall or furniture has appeared around Sam (a building just finished), step out to the nearest free spot. */
   /** Is the straight line from Sam to (x, z) free of anything tall (walls, not furniture he could have hopped)? Stops 'unsticking' through a wall. */
-  clearTo(x, z) { const w = this.game.world, y = (this.floorY || 0) + 2.2, dx = x - this.x, dz = z - this.z, d = Math.hypot(dx, dz); for (let t = 0; t <= d; t += 0.1) if (w.collides(this.x + dx / d * t, this.z + dz / d * t, 0.05, true, y)) return false; return true; }
+  clearTo(x, z) { const w = this.game.world, y = (this.floorY || 0) + 2.2, dx = x - this.x, dz = z - this.z, d = Math.hypot(dx, dz); if (!(d < 1e4)) return false; for (let t = 0; t <= d; t += 0.1) if (w.collides(this.x + dx / d * t, this.z + dz / d * t, 0.05, true, y)) return false; return true; }
   unstick() {
     const w = this.game.world; if (this.game.mode !== 'sim' || this.sleeping || this.jumpT > 0 || this.ride || this.transit || this.platform || !w.collides(this.x, this.z, this.bodyR(), false, this.floorY || 0)) return;
     const fy = this.floorY || 0, r0 = this.bodyR(); for (let r = 0.1; r <= 1.3; r += 0.1) for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) { const x = this.x + Math.cos(a) * r, z = this.z + Math.sin(a) * r; if (!w.collides(x, z, r0, false, fy) && this.clearTo(x, z)) { this.x = x; this.z = z; return; } }   // the nearest free spot on this side of any wall first
@@ -512,10 +513,10 @@ export class Player {
     const speed = Math.max(1, g.clock.speed);
     if (t.kind === 'gather') {
       this.gatherT = (this.gatherT || 0) + value * t.time;
-      while (this.gatherT >= t.time) {
+      while (t.time > 0 && this.gatherT >= t.time) {
         this.gatherT -= t.time; if (!g.resources.take(t.node)) { this.gatherT = 0; break; }
         let got = this.invAdd(t.mat, t.per); const lucky = Math.random() < g.skills.luck(t.work) && this.invRoom() > 0 ? this.invAdd(t.mat, 1) : 0; got += lucky; g.skills.gain(t.work, 2); g.flags.gathered = (g.flags.gathered || 0) + got; Sfx.play('unit'); wg.pop(t.nk === 'fish' ? `+${got} food: ${['a mackerel', 'a fat cod', 'a herring', 'a little sole', 'a plaice', 'a sardine', 'an old boot... no, a crab', 'a whopping sea bass'][Math.floor(Math.random() * 8)]}!` : `+${got} ${MATERIALS[t.mat].name.toLowerCase()}${lucky ? ' (lucky!)' : ''}`, 'unit');
-        if (this.invRoom() <= 0) { g.ui.toast('Backpack full! Store it at the Stockyard, deliver it to a site, or drop it (R).'); this.gatherT = 0; break; }
+        if (this.invRoom() <= 0) { Sfx.play('deny'); this.gatherT = 0; break; }   // (the prompt along the bottom says it's full and what to do)
         if (t.node.kind === 'tree' && !t.node.alive) { const tn = t.node; setTimeout(() => { g.particles.burst(tn.x, 0.6, tn.z, 0x4a7a3a, 26, 2.2, 2.5); Sfx.noise(0.6, { freq: 160, vol: 0.7, type: 'lowpass' }); }, 900); wg.pop('TIMBER!', 'perfect'); this.lock = null; break; }
       }
       wg.setProgress(this.gatherT / t.time, `backpack ${this.invTotal()}/${BACKPACK}`);

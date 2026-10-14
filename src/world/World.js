@@ -18,7 +18,7 @@ export class World {
     this.buildings = new Map();
     this.colBuckets = new Map();      // tile index -> array of collider AABBs
     this.events = new Emitter();
-    this._g = new Float32Array(N); this._f = new Float32Array(N);
+    this._g = new Float64Array(N); this._f = new Float64Array(N);   // full precision: with Float32 a stored cost could round up, so the same route kept looking shorter and the search never ended (the freezes)
     this._came = new Int32Array(N); this._state = new Uint8Array(N);
     this.generate();
   }
@@ -204,6 +204,7 @@ export class World {
     return null;
   }
   findPath(sx, sz, ex, ez, roadOnly = false) {
+    if (!Number.isFinite(sx + sz + ex + ez)) return null;
     const ok = (x, z) => this.inBounds(x, z) && (roadOnly ? this.road[this.idx(x, z)] > 0 : this.walkable(x, z));
     if (!ok(sx, sz)) { const n = this.nearestWalkable(sx, sz, roadOnly); if (!n) return null; [sx, sz] = n; }
     if (!ok(ex, ez)) { const n = this.nearestWalkable(ex, ez, roadOnly); if (!n) return null; [ex, ez] = n; }
@@ -214,8 +215,8 @@ export class World {
     const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { let l = 2 * k + 1, r = l + 1, m = k; if (l < heap.length && f[heap[l]] < f[heap[m]]) m = l; if (r < heap.length && f[heap[r]] < f[heap[m]]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
     g[start] = 0; f[start] = Math.abs(sx - ex) + Math.abs(sz - ez); st[start] = 1; push(start);
     const D = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    while (heap.length) {
-      const cur = pop(); if (cur === goal) break;
+    let guard = N * 8; while (heap.length && guard-- > 0) {
+      const cur = pop(); if (st[cur] === 2) continue; if (cur === goal) break;   // (an old copy of a tile already done with)
       st[cur] = 2; const cx = cur % MAP, cz = (cur / MAP) | 0;
       for (const [dx, dz] of D) {
         const nx = cx + dx, nz = cz + dz; if (!ok(nx, nz)) continue;
@@ -227,7 +228,7 @@ export class World {
       }
     }
     if (came[goal] < 0 && goal !== start) return null;
-    const out = []; for (let i = goal; i !== -1; i = came[i]) { out.push([i % MAP, (i / MAP) | 0]); if (i === start) break; }
+    const out = []; for (let i = goal, n = 0; i !== -1 && n < N; i = came[i], n++) { out.push([i % MAP, (i / MAP) | 0]); if (i === start) break; }
     out.reverse();
     // drop collinear points
     const sm = [out[0]];

@@ -38,7 +38,7 @@ export class Markers {
     const g = this.game, cam = g.camera.position; if ((this.wt = (this.wt || 0) - 1) <= 0) { this.wt = 30; this.watch(); }
     for (const m of this.list) {
       const f = m.follow; if (f && !f.remove) { m.x = f.x; m.z = f.z; }
-      if (g.elapsed > m.until || (f && f.remove) || (m.alive && !m.alive())) { g.scene.remove(m.sp); m.dead = true; continue; }
+      if (g.elapsed > m.until || (f && f.remove) || (m.alive && !m.alive())) { g.scene.remove(m.sp); m.sp.material.dispose(); m.dead = true; continue; }
       const d = Math.hypot(cam.x - m.x, cam.z - m.z), s = Math.max(2.4, d * 0.045); m.sp.scale.set(s, s, 1); m.sp.position.set(m.x, 4 + s * 0.6 + Math.sin(g.elapsed * 3) * 0.3, m.z);
       m.sp.visible = d > 6;   // not right on top of you
     }

@@ -248,22 +248,24 @@ export class BuildingManager {
   doorRectHas(b, x, z, r) { const q = this.doorRect(b), cx = Math.max(q.minx, Math.min(x, q.maxx)), cz = Math.max(q.minz, Math.min(z, q.maxz)); return (x - cx) ** 2 + (z - cz) ** 2 < r * r; }
   /** Indoor route between two points inside a finished building that walks around the furniture (0.5 m grid A*, then smoothed). */
   navPath(b, x0, z0, x1, z1) {
+    if (this.game.tracing) this.game.trace('navPath ' + b.def.id);
     const n = this.navGrid(b); if (!n) return [{ x: x1, z: z1 }];
     const { W, H, ox, oz, C, free } = n, cell = (x, z) => [Math.max(0, Math.min(W - 1, Math.floor((x - ox) / C))), Math.max(0, Math.min(H - 1, Math.floor((z - oz) / C)))];
     const near = (cx, cz) => { if (free[cz * W + cx]) return [cx, cz]; for (let r = 1; r < 6; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) { const x = cx + dx, z = cz + dz; if (x >= 0 && z >= 0 && x < W && z < H && free[z * W + x]) return [x, z]; } return null; };
     const a = near(...cell(x0, z0)), g = near(...cell(x1, z1)); if (!a || !g) return [{ x: x1, z: z1 }];
     const ctr = (x, z) => ({ x: ox + (x + 0.5) * C, z: oz + (z + 0.5) * C });
-    const los = (p, q) => { const L = Math.hypot(q.x - p.x, q.z - p.z), st = Math.max(1, Math.ceil(L / (C * 0.4))); for (let i = 1; i < st; i++) { const t = i / st, [cx, cz] = cell(p.x + (q.x - p.x) * t, p.z + (q.z - p.z) * t); if (!free[cz * W + cx]) return false; } return true; };
+    const los = (p, q) => { const L = Math.hypot(q.x - p.x, q.z - p.z); if (!(L < 1e4)) return false; const st = Math.max(1, Math.ceil(L / (C * 0.4)));   // (a position gone wrong must never mean a loop that never ends)
+      for (let i = 1; i < st; i++) { const t = i / st, [cx, cz] = cell(p.x + (q.x - p.x) * t, p.z + (q.z - p.z) * t); if (!free[cz * W + cx]) return false; } return true; };
     if (los({ x: x0, z: z0 }, { x: x1, z: z1 })) return [{ x: x1, z: z1 }];
-    const N = W * H, gs = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), open = [a[1] * W + a[0]], goal = g[1] * W + g[0], closed = new Uint8Array(N); gs[open[0]] = 0;
+    const N = W * H, gs = new Float64Array(N).fill(1e9), from = new Int32Array(N).fill(-1), open = [a[1] * W + a[0]], goal = g[1] * W + g[0], closed = new Uint8Array(N); gs[open[0]] = 0;
     const h = (i) => Math.hypot(i % W - g[0], Math.floor(i / W) - g[1]);
-    while (open.length) {
+    let guard = N * 2; while (open.length && guard-- > 0) {
       let bi = 0; for (let i = 1; i < open.length; i++) if (gs[open[i]] + h(open[i]) < gs[open[bi]] + h(open[bi])) bi = i;
       const c = open.splice(bi, 1)[0]; if (c === goal) break; closed[c] = 1; const cx = c % W, cz = Math.floor(c / W);
       for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dz) continue; const x = cx + dx, z = cz + dz; if (x < 0 || z < 0 || x >= W || z >= H) continue; const i = z * W + x; if (!free[i] || closed[i]) continue; if (dx && dz && (!free[cz * W + x] || !free[z * W + cx])) continue; const ng = gs[c] + (dx && dz ? 1.414 : 1); if (ng < gs[i]) { gs[i] = ng; from[i] = c; if (!open.includes(i)) open.push(i); } }
     }
     if (from[goal] < 0 && goal !== open[0]) return [{ x: x1, z: z1 }];
-    const cells = []; for (let i = goal; i >= 0 && i !== a[1] * W + a[0]; i = from[i]) cells.unshift(ctr(i % W, Math.floor(i / W)));
+    const cells = []; for (let i = goal, n = 0; i >= 0 && i !== a[1] * W + a[0] && n < N; i = from[i], n++) cells.unshift(ctr(i % W, Math.floor(i / W)));
     cells.push({ x: x1, z: z1 }); const out = []; let cur = { x: x0, z: z0 }, k = 0;
     while (k < cells.length) { let j = cells.length - 1; while (j > k && !los(cur, cells[j])) j--; out.push(cells[j]); cur = cells[j]; k = j + 1; }
     return out;

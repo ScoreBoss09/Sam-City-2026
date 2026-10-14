@@ -65,7 +65,8 @@ export class Sim {
   // ---------- navigation ----------
   /** dest: {b, x, z, seat?, face?} -> walk (exit/enter buildings as needed). Returns false if no route. */
   goTo(dest) {
-    const w = this.game.world, wp = [];
+    const w = this.game.world, wp = []; if (this.game.tracing) this.game.trace(`goTo ${dest.b ? dest.b.def.id : ''} ${Math.round(dest.x)},${Math.round(dest.z)}`);
+    if (!Number.isFinite(dest.x) || !Number.isFinite(dest.z)) return false;   // nowhere real to go
     this.standUp(); if (this.comeDown) this.comeDown();
     let sx = this.x, sz = this.z;
     if (this.inside && this.inside !== dest.b) {
@@ -102,6 +103,7 @@ export class Sim {
   freeSeat(b, kinds) { return b && b.spots.seat ? b.spots.seat.filter((s) => !s.taken && (!kinds || kinds.includes(s.kind))) : []; }
 
   step(dt) {
+    if (!Number.isFinite(this.x) || !Number.isFinite(this.z)) { const b = this.home || this.game.lift, d = b && (b.doorOut || b.doorIn); this.x = d ? d.x : 160; this.z = d ? d.z : 160; this.path = []; this.phase = 0; this.inside = null; this.glide = null; }   // lost (a position that isn't a number): back to their door
     const prevX = this.x, prevZ = this.z; this.moved = false; this.turning = false;
     if (this.freezeT > 0) { this.freezeT -= dt; this.vel = 0; this.dist = 0; return; }
     if (this.down > 0) { this.cycling = false; if (!this.injured) this.down -= dt; this.vel = 0; this.dist = 0; if (this.down <= 0) { this.down = 0; this.recovering = true; } return; }
@@ -192,7 +194,7 @@ export class Sim {
     if (this.homeless && this.activity === 'leisure' && !this.chat && this.mesh.visible && !this.sitting && Math.random() < dt * 0.03) { g.social.say(this, pick(this.drunk > 0.4 ? ['WHAT? What are you looking at?', 'They took everything. Everything!', 'It\'s all a set, you know. All of it. Ha!'] : ['Spare some change?', 'Any spare change, love?', 'Big Issue! Big Issue!', 'Got 20p for a cup of tea?', 'Bless you. Have a nice day.']), 2.6); this.emote = { upper: 'wave', t: 1.4 }; }
     if (this.outfit && this.outfitUntil && g.clock.totalDays * 24 + h > this.outfitUntil && this.activity !== 'event') this.wear(null);
     if (this.down > 0) return;
-    const want = this.wantActivity(h);
+    const tr = g.tracing; if (tr) g.trace('choosing what to do'); const want = this.wantActivity(h); if (tr) g.trace('doing: ' + want);
     if (want !== this.activity) { if (this.chat) g.social.endChat(this); this.endActivity(); this.activity = want; this.phase = 0; this.timer = 0; this.hurry = want === 'work' && h > (this.role === 'builder' ? 7.2 : 8.2) && this.trait !== 'shy' && Math.random() < 0.6; }
     if (this.chat) return;
     // workers take a packed lunch where they stand
@@ -352,13 +354,13 @@ export class Sim {
   /** Tourists: browse the shop, sit by the fire, admire (and photograph) buildings, buy souvenirs, look for the famous Sam. */
   doVisit() {
     const g = this.game;
-    if (this.phase === 2 && this.visitDo) { const a = this.visitDo; this.visitDo = null; a(); }
+    if (this.phase === 2 && this.visitDo) { const a = this.visitDo; this.visitDo = null; g.trace('visit: at the spot'); a(); }
     if (this.phase === 0 || (this.phase === 2 && this.timer <= 0)) {
       if (this.visits === undefined) this.visits = 0;
       if (this.visits++ >= 5) { this.leaving = true; return; }
       const done = g.buildings.list.filter((b) => b.state === 'done' && !b.def.special), shops = g.buildings.shops(), seats = done.filter((b) => b.def.park && this.freeSeat(b).length), yard = g.depot;
       const opts = ['sight', 'sight']; if (shops.length) opts.push('shop', 'shop'); if (seats.length) opts.push('sit'); if (yard) opts.push('souvenir'); if (g.mode === 'sim' && Math.hypot(g.player.x - this.x, g.player.z - this.z) < 40 && !this.metSam) opts.push('sam', 'sam');
-      const c = pick(opts); let ok = false; this.timer = 12 + Math.random() * 14; const say = (t) => { if (this.mesh.visible) g.social.say(this, t, 2.6); };
+      const c = pick(opts); let ok = false; this.timer = 12 + Math.random() * 14; if (g.tracing) g.trace('visit: off to ' + c); const say = (t) => { if (this.mesh.visible) g.social.say(this, t, 2.6); };
       if (c === 'shop') { const b = pick(shops), sp = pick(b.spots.visit.length ? b.spots.visit : b.spots.idle); ok = this.goTo({ b, x: sp.x, z: sp.z, face: b.rot * Math.PI / 2 + Math.PI }); this.shopping = true; this.visitDo = () => { g.economy.earn(8 + Math.floor(Math.random() * 18), 'Visitors (tourism)'); this.bag = true; say(pick(['Lovely shop!', 'I\'ll take two.', 'Do you sell postcards?'])); }; }
       else if (c === 'sit') { const b = pick(seats), st = pick(this.freeSeat(b)); ok = this.goTo({ b, x: st.x, z: st.z, seat: st }); this.visitDo = () => say(pick(['Ahh, that is the life.', 'Smells like woodsmoke.', 'So peaceful here.'])); }
       else if (c === 'souvenir') { ok = this.goTo({ x: yard.doorOut.x + (Math.random() - 0.5) * 2, z: yard.doorOut.z + 1.5, face: yard.rot * Math.PI / 2 + Math.PI }); this.visitDo = () => { g.economy.earn(5 + Math.floor(Math.random() * 10), 'Visitors (tourism)'); this.emote = { upper: 'point', t: 1.6 }; say(pick(['Can I buy a little log as a souvenir?', 'Real hand-chopped timber!', 'How much for a crate of berries?'])); }; }
