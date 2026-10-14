@@ -837,7 +837,8 @@ export class Combat {
   }
   /** Every frame (sim or not): bots, grenades, ragdolls, blood, the damage vignette, respawning. */
   update(dt) {
-    const g = this.game, P = g.player; this.slow += ((this.wheel.open && !(g.net && g.net.role) ? 0.25 : 1) - this.slow) * Math.min(1, dt * 12); dt *= this.slow;   // the weapon wheel slows the fight to a crawl (playing alone)
+    const g = this.game, P = g.player; if (this.wheel.open && (g.ui.modalOpen || g.mode !== 'sim' || P.dead || !this.on)) { this.wheel.hide(); g.input.wheel = false; this.holdT = 0; }   // a menu (or death) closes the weapon wheel
+    this.slow += ((this.wheel.open && !(g.net && g.net.role) ? 0.25 : 1) - this.slow) * Math.min(1, dt * 12); dt *= this.slow;   // the weapon wheel slows the fight to a crawl (playing alone)
     for (let i = this.nades.length - 1; i >= 0; i--) { this.stepNade(this.nades[i], dt); if (this.nades[i].t <= 0) this.nades.splice(i, 1); }
     for (let i = this.rags.length - 1; i >= 0; i--) { const r = this.rags[i]; r.t -= dt; this.stepRag(r, dt); this.drawRag(r); if (r.t < 2) r.grp.position.y = -(2 - r.t) * 0.25; if (r.t <= 0) { this.dropRag(r); this.rags.splice(i, 1); } }
     for (let i = this.fx.length - 1; i >= 0; i--) if (this.stepFx(this.fx[i], dt)) this.fx.splice(i, 1);
