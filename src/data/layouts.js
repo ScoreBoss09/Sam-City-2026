@@ -122,7 +122,7 @@ const LAYOUTS = {
   cycleshop(def) {
     const l = empty(), W = def.w * UNIT, D = def.d * UNIT;
     for (let i = 0; i < 4; i++) l.furniture.push({ t: 'bike', x: -W / 2 + 0.8 + i * 0.75, z: -D / 2 + 1.3, r: 0 });
-    l.furniture.push({ t: 'workbench', x: W / 2 - 1.3, z: -D / 2 + 0.7, r: 0 }, { t: 'counter', x: W / 2 - 1.2, z: 1.3, r: 1 }, { t: 'tyres', x: -W / 2 + 0.6, z: 1.6, r: 0 }, { t: 'bike', x: 0.4, z: 0.6, r: 1 });
+    l.furniture.push({ t: 'workbench', x: W / 2 - 1.3, z: -D / 2 + 0.7, r: 0 }, { t: 'counter', x: W / 2 - 1.2, z: 1.3, r: 3 }, { t: 'tyres', x: -W / 2 + 0.6, z: 1.6, r: 0 }, { t: 'bike', x: 0.4, z: 0.6, r: 1 });
     l.work.push({ x: W / 2 - 1.3, z: -D / 2 + 1.6 }, { x: W / 2 - 2.4, z: 1.3 }); l.visit.push({ x: -1.0, z: -0.3 }, { x: 0, z: 1.8 }); l.idle.push({ x: -1.5, z: 2.4 }); return l;
   },
   garage(def) {

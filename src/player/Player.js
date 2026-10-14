@@ -7,6 +7,7 @@ import { ROLES, MATERIALS } from '../data/buildings.js';
 import { T } from '../world/World.js';
 import { createRig } from '../render/SimRig.js';
 import { Animator } from '../render/Animator.js';
+import { seatLift } from '../render/BuildingFactory.js';
 import { clamp, angleDiff, pick } from '../util.js';
 import { Sfx } from '../core/Sfx.js';
 import { SHOP_GOODS, GENERIC_GOODS } from '../data/shopgoods.js';
@@ -656,7 +657,7 @@ export class Player {
   syncMesh(dt) {
     const g = this.game, m = this.mesh, godView = g.mode === 'god'; this.rig.lod.visible = false;
     m.visible = !this.dead && !(g.mode === 'sim' && (!this.third || this.scoped() || (this.camD !== undefined && this.camD < 0.5)) && !this.sleeping);   // (the camera squeezed right up behind him indoors: he's not drawn)
-    m.position.set(this.x, (this.jumpY || 0) + (this.floorY || 0), this.z); m.rotation.y = this.heading;
+    m.position.set(this.x, (this.jumpY || 0) + (this.floorY || 0) + (this.seat ? seatLift(this.seat) : 0), this.z); m.rotation.y = this.heading;
     if (this.transit && !this.transit.cabin) m.visible = false;
     if (this.veh) { const lift = this.veh.userData.seat - 0.5; m.position.y += lift; this.veh.position.y = -lift; for (const [w, r] of this.veh.userData.wheels || []) w.rotation.x += (this.dist || 0) / r; }
     if (this.atkT > 0) this.atkT -= dt; if (this.atkCD > 0) this.atkCD -= dt; if (this.hitT > 0) this.hitT -= dt;

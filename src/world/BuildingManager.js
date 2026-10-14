@@ -128,11 +128,11 @@ export class BuildingManager {
     b.spots.work = L.work.map(tw); b.spots.idle = L.idle.map(tw); b.spots.visit = L.visit.map(tw); b.spots.pickup = L.pickup.map(tw); b.spots.terminal = L.terminals.map(tw);
     // seats (chairs, sofas, benches) so sims can sit
     b.spots.seat = []; const head = (r) => (b.rot + r) * Math.PI / 2;
-    const addSeat = (lx, lz, r, kind) => { const [x, z] = b.toWorld(lx, lz); b.spots.seat.push({ x, z, heading: head(r), kind, taken: null, b }); };
+    const addSeat = (lx, lz, r, kind, t) => { const [x, z] = b.toWorld(lx, lz); b.spots.seat.push({ x, z, heading: head(r), kind, taken: null, b, t, lx, lz }); };
     const layoutKind = L.seatKind || (['house', 'hut', 'shack', 'cabin', 'tavern', 'apartments', 'chippy'].includes(def.layout) ? 'dining' : (['clinic', 'townhall', 'police', 'hall', 'bookies', 'postoffice'].includes(def.layout) ? 'waiting' : 'desk'));
     for (const f of L.furniture) {
       const rr = (f.r || 0) * Math.PI / 2, c = Math.round(Math.cos(rr)), sn = Math.round(Math.sin(rr));
-      if (f.t === 'chair' || f.t === 'stool') addSeat(f.x, f.z, f.r || 0, f.t === 'stool' && (def.layout === 'tavern' || def.layout === 'chippy') ? 'dining' : layoutKind);
+      if (f.t === 'chair' || f.t === 'stool') addSeat(f.x, f.z, f.r || 0, f.t === 'stool' && (def.layout === 'tavern' || def.layout === 'chippy') ? 'dining' : layoutKind, f.t);
       else if (f.t === 'pew') for (const o of [-1, 0, 1]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'pew');
       else if (f.t === 'sofa') for (const o of [-0.55, 0.55]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'sofa');
       else if (f.t === 'bench') for (const o of [-0.5, 0.5]) addSeat(f.x + o * c, f.z - o * sn, f.r || 0, 'waiting');
@@ -173,7 +173,7 @@ export class BuildingManager {
     const def = b.def, ext = b.ext, odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h, lo: c.lo, top: c.top, navOnly: c.navOnly, cam: c.cam, furn: c.furn, vh: c.h ?? (c.lo !== undefined ? c.lo + 3.2 : ext.height) }; };   // vh: how high it really stands (bullet holes stop there)
     if (b.colliders && b.colliders.length) this.world.removeColliders(b);
     const st = ext.plan && ext.plan.stair, stairs = st ? st.lanes.map((ln) => { const r = laneRect(st, ln); return { cx: (r[0] + r[1]) / 2, cz: (r[2] + r[3]) / 2, sx: r[1] - r[0], sz: r[3] - r[2], navOnly: true }; }) : [];
-    b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout).map(conv), upperColliders(def).map(conv), roomColliders(b.layout).map(conv), stairs.map(conv));
+    b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout, b).map(conv), upperColliders(def, b).map(conv), roomColliders(b.layout).map(conv), stairs.map(conv));
     if (def.id === 'lift' || def.id === 'tunnel') b.colliders = ext.colliders.map(conv);
     this.world.addColliders(b); b.nav = undefined;
   }
@@ -196,7 +196,7 @@ export class BuildingManager {
     return ext;
   }
   /** Throw away every built interior (they're rebuilt as they come into view, one a frame): after the made models have loaded, so rooms built before then get them too. */
-  refreshInteriors() { for (const b of this.list) if (b.interior) { this.scene.remove(b.interior); disposeOwned(b.interior); b.interior = null; } }
+  refreshInteriors() { for (const b of this.list) { if (b.interior) { this.scene.remove(b.interior); disposeOwned(b.interior); b.interior = null; } if (b.state === 'done' && b.ext && b.layout) this.setColliders(b); } }   // (and the furniture's colliders fit the real models)
   /** Modernise a building: same footprint, colliders and people, new fittings for the new era. */
   restyle(b, era) {
     if (b.state !== 'done' || !b.ext || b.def.special || b.def.park) { b.era = era; return; }

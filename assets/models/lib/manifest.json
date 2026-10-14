@@ -270,6 +270,274 @@
     "warn": [],
     "bytesOut": 10868
    }
+  },
+  "furniture/chair": {
+   "cat": "furniture",
+   "files": [
+    "furniture/chair.glb"
+   ],
+   "dist": [
+    0
+   ],
+   "shareMats": false,
+   "far": 80,
+   "tris": [
+    324
+   ],
+   "size": [
+    0.44,
+    0.9,
+    0.46
+   ],
+   "report": {
+    "name": "chair",
+    "cat": "furniture",
+    "file": "assets/incoming/furniture/chair.glb",
+    "verdict": "OK",
+    "budget": 2000,
+    "before": {
+     "tris": 324,
+     "mats": 1,
+     "calls": 1,
+     "bytes": 40160,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "after": {
+     "tris": 324,
+     "mats": 1,
+     "calls": 1,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "lods": [],
+    "size": [
+     0.44,
+     0.9,
+     0.46
+    ],
+    "fitErr": 0,
+    "notes": [],
+    "warn": [],
+    "bytesOut": 21624
+   }
+  },
+  "furniture/counter": {
+   "cat": "furniture",
+   "files": [
+    "furniture/counter.glb"
+   ],
+   "dist": [
+    0
+   ],
+   "shareMats": false,
+   "far": 80,
+   "tris": [
+    324
+   ],
+   "size": [
+    2.6,
+    1,
+    0.8
+   ],
+   "report": {
+    "name": "counter",
+    "cat": "furniture",
+    "file": "assets/incoming/furniture/counter.glb",
+    "verdict": "OK",
+    "budget": 2000,
+    "before": {
+     "tris": 324,
+     "mats": 1,
+     "calls": 1,
+     "bytes": 40148,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "after": {
+     "tris": 324,
+     "mats": 1,
+     "calls": 1,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "lods": [],
+    "size": [
+     2.6,
+     1,
+     0.8
+    ],
+    "fitErr": 0,
+    "notes": [],
+    "warn": [],
+    "bytesOut": 21108
+   }
+  },
+  "furniture/stool": {
+   "cat": "furniture",
+   "files": [
+    "furniture/stool.glb"
+   ],
+   "dist": [
+    0
+   ],
+   "shareMats": false,
+   "far": 80,
+   "tris": [
+    640
+   ],
+   "size": [
+    0.38,
+    0.75,
+    0.38
+   ],
+   "report": {
+    "name": "stool",
+    "cat": "furniture",
+    "file": "assets/incoming/furniture/stool.glb",
+    "verdict": "OK",
+    "budget": 2000,
+    "before": {
+     "tris": 640,
+     "mats": 1,
+     "calls": 1,
+     "bytes": 62900,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "after": {
+     "tris": 640,
+     "mats": 1,
+     "calls": 1,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "lods": [],
+    "size": [
+     0.38,
+     0.75,
+     0.38
+    ],
+    "fitErr": 0,
+    "notes": [],
+    "warn": [],
+    "bytesOut": 24652
+   }
+  },
+  "furniture/table": {
+   "cat": "furniture",
+   "files": [
+    "furniture/table.glb"
+   ],
+   "dist": [
+    0
+   ],
+   "shareMats": false,
+   "far": 80,
+   "tris": [
+    228
+   ],
+   "size": [
+    0.9,
+    0.75,
+    0.9
+   ],
+   "report": {
+    "name": "table",
+    "cat": "furniture",
+    "file": "assets/incoming/furniture/table.glb",
+    "verdict": "OK",
+    "budget": 2000,
+    "before": {
+     "tris": 228,
+     "mats": 1,
+     "calls": 1,
+     "bytes": 33236,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "after": {
+     "tris": 228,
+     "mats": 1,
+     "calls": 1,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "lods": [],
+    "size": [
+     0.9,
+     0.75,
+     0.9
+    ],
+    "fitErr": 0,
+    "notes": [],
+    "warn": [],
+    "bytesOut": 20320
+   }
   }
  }
 }
