@@ -24,17 +24,19 @@ export class Funerals {
     const old = g.population.adults().filter((s) => s.age >= 76 && !s.leaving && !s.crook && !s.fight).sort((a, b) => b.age - a.age)[0];
     if (old && Math.random() < Math.min(0.25, (old.age - 75) * 0.02)) this.die(old);
   }
-  die(s) {
+  /** how: null (old age, in their sleep) or { cause: 'shot', where } (they lie where they fell until the undertakers come). */
+  die(s, how = null) {
     const g = this.game, age = Math.floor(s.age), c = g.clock, wd = c.weekday, toSun = (6 - wd + 7) % 7;
-    this.reg.deaths.unshift({ name: s.name, age, date: this.date() });
-    g.messages.push('St Sam\'s', `${s.name} passed away peacefully in their sleep, aged ${age}.`, 'warn');
+    this.reg.deaths.unshift({ name: s.name, age, date: this.date(), cause: how ? how.cause : null });
+    g.messages.push('St Sam\'s', how ? `${s.name} has been ${how.cause}${how.where ? ' near ' + how.where : ''}, aged ${age}.` : `${s.name} passed away peacefully in their sleep, aged ${age}.`, 'warn');
     if (s.partner) { s.partner.moodBoost -= 0.6; s.partner.partner = null; s.partner.widowed = true; }
     const mourners = [s.partner, ...g.population.residents().filter((o) => o !== s && ((s.rel.get(o.id) || 0) >= 15 || (o.parents || []).includes(s) || (s.parents || []).includes(o)))].filter(Boolean);
     for (const o of mourners) o.moodBoost -= 0.25;
     this.queue.push({ name: s.name, first: s.first, age, day: c.totalDays + (toSun >= 1 && toSun <= 4 ? toSun : 2), mourners: new Set(mourners) });
     g.mail.send('St Sam\'s Church', `Funeral of ${s.name}`, `Dear Sam,\n\nIt is with sadness that we announce the death of ${s.name}, aged ${age}.\n\nThe funeral will be held at the church at 11 o'clock, followed by a procession to the Lift. All are welcome.\n\nThe Vicar`);
     // they lie where they died (in bed, at home) until the undertakers come for them (systems/Rescue.js)
-    s.dead = true; s.injured = true; s.down = 1; s.endActivity(); if (s.home && s.home.state === 'done') { s.hidden = true; s.inside = s.home; } s.leaving = true;
+    s.dead = true; s.injured = true; s.down = 1; s.endActivity(); s.cycling = false; if (!how && s.home && s.home.state === 'done') { s.hidden = true; s.inside = s.home; } s.leaving = true;
+    if (how && g.markers) g.markers.add(s.x, s.z, '✝️', `${s.first} ${how.cause}`, 3600, s, () => !s.remove);   // until the undertakers have taken them away
   }
   update(dt) {
     const g = this.game, c = g.clock, church = g.buildings.church();

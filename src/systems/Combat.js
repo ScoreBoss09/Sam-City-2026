@@ -177,7 +177,17 @@ export class Combat {
   /** A hit landed (from whoever 'by' is): blood, then damage where the target lives. */
   applyHit(tg, dmg, head, dir, at, by) {
     const g = this.game, P = g.player;
-    if (tg.kind === 'sim') { if (tg.ref.knockDown) { tg.ref.knockDown(4); g.social.say(tg.ref, ['Argh!', 'Not in the face!', 'Police! Police!'][Math.floor(Math.random() * 3)], 2); } else if (g.net) g.net.shot(tg.ref, dmg); return; }
+    if (tg.kind === 'sim') {   // townsfolk: hurt, or killed (and then it's the undertakers, a funeral, and a line in the parish register)
+      const s = tg.ref; if (!s.knockDown) { if (g.net) g.net.shot(s, dmg); return; }
+      this.blood(at.x, at.y, at.z, dir, dmg > 60 || head); if (by === this.myKey()) { P.hitMark = 0.25; P.hitHead = head; Sfx.play('punch'); } if (s.dead) return;
+      s.hp = (s.hp ?? 100) - dmg * (head ? 2 : 1);
+      const F = g.celebrations && g.celebrations.funerals;
+      if (s.hp <= 0 && F && s.kind !== 'raider' && s.kind !== 'guest') {
+        const where = g.crime ? g.crime.where(s) : null; F.die(s, { cause: 'shot dead', where });
+        if (by === 'sam' && g.crime && !this.on) { if (s.crook) g.messages.push('Police', `Sam shot ${s.name}, one of the villains, dead${where ? ' by ' + where : ''}. There will be an inquiry.`, 'warn'); else { g.crime.wanted = 5; g.messages.push('Police', `Murder! Sam shot ${s.name} dead${where ? ' by ' + where : ''}.`, 'warn'); } }
+      } else { s.knockDown(2.5); g.social.say(s, ['Argh!', 'I\'ve been shot!', 'Police! Police!', 'My leg!'][Math.floor(Math.random() * 4)], 2); }
+      return;
+    }
     this.blood(at.x, at.y, at.z, dir, dmg > 60 || head); if (by === this.myKey()) { P.hitMark = 0.25; P.hitHead = head; Sfx.play('punch'); }
     if (tg.kind === 'bot') this.damageBot(tg.ref, dmg, by, dir, head);
     else if (tg.kind === 'sam') this.hurtPlayer(dmg, { x: at.x - dir.x * 5, z: at.z - dir.z * 5, by, dir: [dir.x, dir.y, dir.z] });
@@ -619,7 +629,7 @@ export class Combat {
     const rl = P.reloadT > 0 ? Math.sin(Math.min(1, 1 - P.reloadT / WEAPONS[P.gun].reload) * Math.PI) : 0, sw = P.swapT > 0 ? P.swapT / 0.35 : 0, ml = P.meleeT > 0 ? Math.sin((1 - P.meleeT / 0.35) * Math.PI) : 0, nd = P.nadeAim ? 1 : 0;
     const hx = launcher ? 0.14 : 0.11, hy = launcher ? -0.08 : -0.1;
     v.translateX(hx * (1 - ad) + Math.sin(ph) * 0.012 * bob - this.swx * 0.4 + (run ? -0.06 : 0));
-    v.translateY(hy * (1 - ad) - v.userData.sight * ad - Math.abs(Math.cos(ph)) * 0.012 * bob - rl * 0.12 - sw * 0.2 - nd * 0.25 + this.swy * 0.3 + (run ? -0.04 : 0) + (P.landT > 0 ? -0.03 : 0));
+    v.translateY(hy * (1 - ad) - (v.userData.sight + (launcher ? 0.03 : 0.017)) * ad - Math.abs(Math.cos(ph)) * 0.012 * bob - rl * 0.12 - sw * 0.2 - nd * 0.25 + this.swy * 0.3 + (run ? -0.04 : 0) + (P.landT > 0 ? -0.03 : 0));
     v.translateZ(-0.2 + ad * 0.03 + this.kick * 0.6 - ml * 0.12);
     v.rotateX(this.kick * 1.6 - rl * 0.35 - ml * 0.4); v.rotateY(this.swx * 0.8 + (run ? 0.7 : 0)); v.rotateZ(rl * 0.6 + (run ? 0.25 : 0) + this.swx * 0.6);
     if (P.flashT > 0) { P.flashT -= dt; v.userData.flash.visible = true; v.userData.flash.rotation.z = Math.random() * 3; } else v.userData.flash.visible = false;

@@ -304,7 +304,7 @@ export class BuildingManager {
       const dp = b.doorPos; if (b.doorHeld && Math.hypot(pl.x - dp.x, pl.z - dp.z) > 10) b.doorHeld = false;   // Sam wandered off: it swings shut
       if (b.doorUseT > 0) b.doorUseT -= dt;
       // closed unless Sam opened it (C), someone is walking through it right now, or Sam is standing in the doorway
-      const want = !!b.doorHeld || b.doorUseT > 0 || (sim && b.doorK > 0 && this.doorRectHas(b, pl.x, pl.z, 0.55));
+      const want = !!b.doorHeld || b.doorUseT > 0 || (sim && b.doorK > 0 && this.doorRectHas(b, pl.x, pl.z, 0.55)) || (sim && g.combat && g.combat.on && !pl.dead && Math.hypot(pl.x - dp.x, pl.z - dp.z) < 1.9);   // combat mode: doors swing open as Sam reaches them (C is crouch)
       const k = b.doorK || 0, nk = Math.max(0, Math.min(1, k + (want ? 4 : -2.2) * dt));
       if (nk !== k) { if (k === 0 && nk > 0 && sim && Math.hypot(pl.x - dp.x, pl.z - dp.z) < 14) Sfx.play('door'); b.doorK = nk; const e = nk * nk * (3 - 2 * nk); for (const d of D) d.pivot.rotation.y = d.open * e; }
     }

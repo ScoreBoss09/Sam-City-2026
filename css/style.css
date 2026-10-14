@@ -281,6 +281,9 @@ body.cutscene #app > *:not(#view):not(#intro):not(#fade) { visibility: hidden !i
 #xhair i:nth-child(1) { top: -18px; } #xhair i:nth-child(2) { top: 10px; } #xhair i:nth-child(3) { left: -18px; } #xhair i:nth-child(4) { left: 10px; }
 #xhair.aim i:nth-child(1) { transform: translateY(6px); } #xhair.aim i:nth-child(2) { transform: translateY(-6px); } #xhair.aim i:nth-child(3) { transform: translateX(6px); } #xhair.aim i:nth-child(4) { transform: translateX(-6px); }
 #xhair.hit i { background: #ff3030; }
+#xhair::after { content: ''; position: absolute; left: -2px; top: -2px; width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.9); box-shadow: 0 0 2px #000; }
+#xhair.aim::after { left: -3px; top: -3px; width: 6px; height: 6px; background: #ff2a2a; box-shadow: 0 0 4px rgba(255,40,40,.9), 0 0 1px #000; }   /* aiming: a red dot exactly where the shot goes */
+#xhair.aim i { opacity: .55; }
 /* combat mode HUD */
 #cbhud { position: absolute; right: 300px; bottom: 16px; z-index: 26; text-align: right; color: #fff; font: 600 13px monospace; text-shadow: 0 0 3px #000, 0 1px 2px #000; pointer-events: none; }
 #cbammo { font-size: 28px; } #cbammo b { font-size: 34px; } #cbammo b.low { color: #ff5a4a; }

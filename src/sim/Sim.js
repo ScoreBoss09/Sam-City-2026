@@ -104,7 +104,7 @@ export class Sim {
   step(dt) {
     const prevX = this.x, prevZ = this.z; this.moved = false; this.turning = false;
     if (this.freezeT > 0) { this.freezeT -= dt; this.vel = 0; this.dist = 0; return; }
-    if (this.down > 0) { if (!this.injured) this.down -= dt; this.vel = 0; this.dist = 0; if (this.down <= 0) { this.down = 0; this.recovering = true; } return; }
+    if (this.down > 0) { this.cycling = false; if (!this.injured) this.down -= dt; this.vel = 0; this.dist = 0; if (this.down <= 0) { this.down = 0; this.recovering = true; } return; }
     if (this.pose === 'sleep') { this.vel = 0; return; }
     if (this.glide && this.path.length && !this.sitting) this.glide = null;
     if (this.glide) { const k = Math.min(1, dt * 7); this.x += (this.glide.x - this.x) * k; this.z += (this.glide.z - this.z) * k; if (Math.hypot(this.glide.x - this.x, this.glide.z - this.z) < 0.02) this.glide = null; }

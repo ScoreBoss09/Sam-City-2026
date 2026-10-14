@@ -314,7 +314,7 @@ export class UI {
       setTimeout(() => { g.mail.markRead(); }, 0);
     }
     if (tab === 'register') {   // the parish register, in the vicar's best handwriting
-      const R = g.flags.register || { births: [], deaths: [] }, row = (a) => `<tr><td>${a.date}</td><td><b>${a.name}</b></td><td>${a.age !== undefined ? 'aged ' + a.age : a.parents ? 'to ' + a.parents : ''}</td></tr>`;
+      const R = g.flags.register || { births: [], deaths: [] }, row = (a) => `<tr><td>${a.date}</td><td><b>${a.name}</b></td><td>${a.age !== undefined ? 'aged ' + a.age + (a.cause ? ', ' + a.cause : '') : a.parents ? 'to ' + a.parents : ''}</td></tr>`;
       body = `<h3>Baptisms (births)</h3>${R.births.length ? `<table>${R.births.slice(0, 40).map(row).join('')}</table>` : '<div class="note">None yet.</div>'}<h3>Burials (deaths)</h3>${R.deaths.length ? `<table>${R.deaths.slice(0, 40).map(row).join('')}</table>` : '<div class="note">None yet, thank the Lord.</div>'}`;
     }
     if (tab === 'shop') {   // a shop or bar counter: buy from whoever is serving
