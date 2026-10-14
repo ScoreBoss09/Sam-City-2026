@@ -19,7 +19,7 @@ export class Input {
     });
     window.addEventListener('keyup', (e) => { const k = this.binds.translate(e.code); if (k === null) return; this.keys.delete(k); this.released.add(k); });
     window.addEventListener('blur', () => { this.keys.clear(); this.virt = new Set(); });
-    canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); this.mouse.x = (e.clientX - r.left) / r.width; this.mouse.y = (e.clientY - r.top) / r.height; if (this.locked) { this.mouse.dx += e.movementX; this.mouse.dy += e.movementY; } else if (this.drag) { this.mouse.dx += e.movementX; this.mouse.dy += e.movementY; } });
+    canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); this.mouse.x = (e.clientX - r.left) / r.width; this.mouse.y = (e.clientY - r.top) / r.height; if (this.locked) { const S = this.binds.sens; this.mouse.dx += e.movementX * S.mouse; this.mouse.dy += e.movementY * S.mouse * (S.invertMouse ? -1 : 1); } else if (this.drag) { this.mouse.dx += e.movementX; this.mouse.dy += e.movementY; } });
     canvas.addEventListener('mousedown', (e) => { if (e.button === 0) { this.mouse.left = true; this.mouse.down = true; } if (e.button === 2) this.mouse.right = true; if (e.button === 1) this.mouse.middle = true; this.drag = e.button !== 0; this.mouse.btn = e.button; e.preventDefault(); });
     window.addEventListener('mouseup', (e) => { if (e.button === 0) { this.mouse.left = false; this.mouse.up = true; } if (e.button === 2) this.mouse.right = false; if (e.button === 1) this.mouse.middle = false; this.drag = false; });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -66,10 +66,10 @@ export class Input {
         const st = 0.4; if (P.ly < -st) want.add('KeyW'); if (P.ly > st) want.add('KeyS'); if (P.lx < -st) want.add('KeyA'); if (P.lx > st) want.add('KeyD');
         if (cur[9]) want.add('Tab'); if (cur[8]) { P.selT = (P.selT || 0) + dt; if (P.selT >= 0.5 && !P.selFired) { P.selFired = true; this.pressed.add('PadSpeed'); } } else { if (P.selT > 0 && !P.selFired && mode !== 'menu') this.pressed.add('PadCycle'); P.selT = 0; P.selFired = false; }   // View/Select: tap cycles the game speed, hold for the menu
         if (mode === 'sim') {
-          this.mouse.dx += P.rx * 1000 * dt; this.mouse.dy += P.ry * 800 * dt;
+          const S = this.binds.sens; this.mouse.dx += P.rx * 1000 * dt * S.pad; this.mouse.dy += P.ry * 800 * dt * S.pad * (S.invertPad ? -1 : 1);   // (your stick sensitivity)
           if (this.combat || this.armed) {   // Call of Duty layout: L2 aim, R2 fire, ✕ jump, ○ crouch (hold: prone), □ reload / armoury, △ swap gun, R1 grenade, L1 or L3 sprint, R3 melee
             if (cur[0]) want.add('Space'); if (cur[1]) want.add('PadCrouch'); if (cur[2]) want.add(this.combat ? 'PadSquare' : 'KeyE'); if (cur[3]) want.add('PadSwap'); if (cur[4] || cur[10]) want.add('ShiftLeft'); if (cur[5]) want.add('PadNade');
-            if (cur[6]) want.add('PadAim'); if (cur[7]) want.add('PadFire'); if (cur[11]) want.add('PadMelee'); if (cur[12]) want.add('KeyV'); if (cur[13]) want.add('KeyI'); if (cur[14]) want.add('KeyJ'); if (cur[15]) want.add('KeyE');   // D-pad: up first/third person, right use
+            if (cur[6]) want.add('PadAim'); if (cur[7]) want.add('PadFire'); if (cur[11]) want.add('PadMelee'); if (this.wheel) { if (cur[14]) want.add('PadPrev'); if (cur[15]) want.add('PadNext'); } else { if (cur[12]) want.add('KeyV'); if (cur[13]) want.add('KeyI'); if (cur[14]) want.add('KeyJ'); if (cur[15]) want.add('KeyE'); }   // D-pad: up first/third person, right use (weapon wheel open: ← → between the guns in a slice)
           } else {
             if (cur[0]) want.add('KeyE'); if (cur[2]) want.add('KeyF'); if (cur[7]) want.add('KeyX'); if (cur[3]) want.add('KeyQ'); if (cur[1]) want.add('KeyG'); if (cur[5]) want.add('KeyV'); if (cur[4]) want.add('ShiftLeft'); if (cur[10]) want.add('KeyB'); if (cur[11]) want.add('KeyM'); if (cur[12]) want.add('KeyI'); if (cur[13]) want.add('KeyR'); if (cur[14]) want.add('KeyJ'); if (cur[6]) want.add('Space'); if (cur[15]) want.add('KeyC');
           }

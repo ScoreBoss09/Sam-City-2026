@@ -188,3 +188,20 @@ Status: [ ] to do, [~] partly done, [x] done (see notes).
 161. [x] Saves: twelve named slots in the browser's database (old saves carried over), rename, download, delete, import; saves itself every minute and a half when the browser is idle plus three rotating autosave backups; a small "Saved" shows.
 162. [x] Grenades: the explosion's light is made once and reused (a new light made every lit material rebuild its shader: the hitch when anyone threw one); the fireball and smoke are prepared when combat starts. The aiming arc comes from Sam's hand as a trail of beads to a red landing ring (the old thin line was seen end-on in first person).
 
+## Round 6.10 (owner's list: combat, undertakers, decals, transit, sensitivity, celebrities, indoor sales, grenade arc)
+163. [x] Guns fire from the barrel: in third person the gun in Sam's hand pointed at the sky (it was fixed to the hand the wrong way round); it now lies along the forearm and the arms follow the aim up and down. Every shot (Sam's in first and third person, the bots') leaves the muzzle and meets the crosshair's point; a corner the camera sees past but the gun can't takes the bullet.
+164. [x] Hitboxes from the skeleton as it stands, crouches or lies: head, body, arms and legs (not a thin post down the middle). Arms and legs take a little less damage; headshots more.
+165. [x] A ding on a headshot, a tick on a hit, a sound on a kill, and an X hitmarker (white, gold for the head, red for a kill).
+166. [x] Weapon wheel (hold Tab, or hold △; a tap of Tab is still the planning view, a tap of △ the next gun), like GTA V and Red Dead: eight slices (pistols, SMGs, rifles, shotguns, sniper rifles, heavy, grenades, fists), scroll or D-pad between the guns in a slice, the fight slows to a crawl while it's open. The armoury inside the police station gives you every gun; 1-9 and the scroll wheel change gun. The weapon panel shows the gun's picture, the others you carry, grenades and stance.
+167. [x] Bullet holes in walls, scuffs on the ground, scorch marks from grenades (and pocks round them), blood: all one pooled mark per kind (one draw call each, nothing made or freed mid-fight), fading away after a while. `game.decals.add(kind, point, normal, size)` for cutscenes too.
+168. [x] Bullets meet walls exactly: the shot walks the map tiles it crosses and tests each wall as a box with its height (fast: 0.004 ms a shot).
+169. [x] Knocked-down and dead townsfolk lie on the ground (they used the in-bed pose, 0.72 m up in the air), close to and far away.
+170. [x] Undertakers bring a black hand cart: they lift the body in, cover it with a sheet and wheel it away. Shoot one and he goes down; his mate walks round to the handles and carries on, and another pair comes down the Lift to wheel the hurt one back up.
+171. [x] Bots can't see (or shoot) Sam aboard the sky lift, a train or the monorail, or up on a platform; they lose him and search where they last saw him.
+172. [x] Sensitivity: mouse and right stick, each while aiming too, and invert up/down (Controls screen, with − and + for the controller).
+173. [x] Crouched and prone: much tighter spread, less recoil and sway, quicker to the sights. Bots stagger when hit and fire from their own guns; their misses hit the walls behind you.
+174. [x] Celebrities: buy a camera (a disposable at the newsagent, a Polaroid at the car boot sale) and meeting one is a posed photo, taken by the minder, which they sign; without one it's an autograph. All kept in the Journal's album (click a photo for full size); pictures are stored in the browser.
+175. [x] Buying happens indoors: bikes at the Cycle Shop's counter, tickets at the station ticket office, cars at the garage, guns at the armoury. By the door it says to go in.
+176. [x] Grenade arc: a dashed ribbon the same width on screen near and far, along the grenade's real flight (bounces included), fading at the end; the blast area shaded on the ground with a target where it goes off.
+177. [ ] Destructible buildings (beyond windows).
+178. [ ] The easy mod option.

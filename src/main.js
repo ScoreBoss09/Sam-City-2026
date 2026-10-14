@@ -76,7 +76,7 @@ $('btn-net-join').onclick = async () => { const st = $('net-status'), code = $('
 $('btn-options').onclick = () => showMenu('menu-options'); $('btn-options-back').onclick = () => showMenu('menu-main');
 { const C = new ControlsMenu(game), draw = () => { $('controls-body').innerHTML = C.html(); game.ui._pfScope = null; };   // change keys and buttons
   $('btn-controls').onclick = () => { draw(); showMenu('menu-controls'); }; $('btn-controls-back').onclick = () => { game.input.capture = null; game.input.padCapture = null; C.wait = null; showMenu('menu-options'); };
-  $('controls-body').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) C.click(b, draw); }); }
+  $('controls-body').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) C.click(b, draw); }); $('controls-body').addEventListener('input', (e) => C.input(e.target)); }
 // options: picture quality and volume, remembered between sessions
 { const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } };
   const setQ = (q) => { put('samcity-quality', q); game.lockQuality = q !== 'auto'; game.renderScale = q === 'high' ? 1 : q === 'low' ? 0.45 : (parseFloat(params.get('scale')) || 0.6); if (game.atmosphere && game.atmosphere.sun) game.atmosphere.sun.castShadow = q !== 'low'; game.resize(); for (const b of document.querySelectorAll('[data-q]')) b.classList.toggle('on', b.dataset.q === q); };

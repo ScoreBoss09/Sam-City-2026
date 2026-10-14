@@ -11,6 +11,7 @@ export class PauseMenu {
     this.game = game; this.open = false; this.page = 'main';
     const el = document.createElement('div'); el.id = 'pausemenu'; el.className = 'hidden'; $('app').appendChild(el); this.el = el;
     el.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.c) { (this.controls = this.controls || new ControlsMenu(this.game)).click(b, () => this.render()); return; } this.click(b); });
+    el.addEventListener('input', (e) => { if (e.target.dataset && e.target.dataset.s) (this.controls = this.controls || new ControlsMenu(this.game)).input(e.target); });   // (sensitivity sliders)
     // every session starts on the best picture (main.js); lower settings picked here last for the session
   }
   store(k, v) { try { localStorage.setItem('samcity-' + k, v); } catch (e) { /* no storage */ } }

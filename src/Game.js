@@ -9,9 +9,11 @@ import { Happenings } from './systems/Happenings.js';
 import { TILE, MAP } from './config.js';
 import { Watchdog } from './core/Watchdog.js';
 import { Glass } from './systems/Glass.js';
+import { Decals } from './systems/Decals.js';
+import { Photos } from './systems/Photos.js';
 // the town's systems: SIM_STEP run in every simulation round, SIM_FRAME once a frame (see Game.sys)
 const SIM_STEP = ['economy', 'logistics', 'population', 'resources', 'social', 'traffic', 'planner', 'raids', 'security', 'tech'];
-const SIM_FRAME = ['crime', 'hazards', 'happenings', 'transport', 'cars', 'rescue', 'carting', 'beerGarden', 'functionRoom', 'service', 'groundskeepers', 'lamps', 'markers', 'glass'];
+const SIM_FRAME = ['crime', 'hazards', 'happenings', 'transport', 'cars', 'rescue', 'carting', 'beerGarden', 'functionRoom', 'service', 'groundskeepers', 'lamps', 'markers', 'glass', 'decals', 'photos'];
 import { World } from './world/World.js';
 import { Terrain } from './render/Terrain.js';
 import { Atmosphere } from './render/Atmosphere.js';
@@ -80,7 +82,7 @@ export class Game {
   constructor(canvas, opts = {}) {
     this.canvas = canvas; this.flags = {}; this.mode = 'sim'; this.ending = false; this.fps = 60; this.glitch = 0; this.started = false; this.renderScale = opts.scale || 0.6;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-    this.watchdog = new Watchdog(this); this.glass = new Glass(this); Watchdog.watchContext(this, canvas);   // a freeze or a graphics-card reset always gets explained
+    this.watchdog = new Watchdog(this); this.glass = new Glass(this); this.decals = new Decals(this); this.photos = new Photos(this); Watchdog.watchContext(this, canvas);   // a freeze or a graphics-card reset always gets explained
     this.post = new Post(this.renderer, { enabled: opts.post !== false });
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.3, 600);
@@ -194,7 +196,7 @@ export class Game {
     if (ui.invOpen && (inp.hit('Escape') || inp.hit('KeyI'))) { ui.closeInventory(); inp.pressed.delete('KeyI'); }
     if (ui.journalOpen && (inp.hit('Escape') || inp.hit('KeyJ'))) { ui.closeJournal(); inp.pressed.delete('KeyJ'); }
     if (ui.dialogue && inp.padHit(1)) ui.closeDialogue();
-    if (!ui.modalOpen && !this.ending && !this.netVisitor && inp.hit('Tab')) this.setMode(this.mode === 'god' ? 'sim' : 'god');
+    if (!ui.modalOpen && !this.ending && !this.netVisitor && inp.hit('Tab') && !(this.combat.on && this.mode === 'sim' && !inp.padActive)) { this.setMode(this.mode === 'god' ? 'sim' : 'god'); inp.pressed.delete('Tab'); }   // (in combat a held Tab is the weapon wheel, so a tap switches on letting go: Combat.controls)
     if (inp.hit('KeyP') && !ui.modalOpen && !this.netVisitor) this.clock.speed = this.clock.speed ? 0 : 1;
     if ((inp.hit('PadCycle') || inp.hit('Period')) && !ui.modalOpen && !this.netVisitor && this.started) {   // one button cycles the speed
       const S = [1, 2, 4, 0], i = S.indexOf(this.clock.speed); this.clock.speed = S[(i + 1) % S.length]; if (this.clock.speed) ui.toast(`Speed ${this.clock.speed}x`, 1200);   // 1x > 2x > 4x > paused > 1x (paused says so in the PAUSED badge at the top)

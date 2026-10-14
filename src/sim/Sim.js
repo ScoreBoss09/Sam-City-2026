@@ -477,12 +477,13 @@ export class Sim {
     const g = this.game; let lower = 'stand', upper = 'idle', speaking = false;
     { const tp = this.trip && this.game.transport.pose(this); if (tp) return { lower: tp, upper: 'idle', speaking: false }; }
     if (this.pose === 'sleep') return { lower: 'lie', upper: 'sleep' };
-    if (this.down > 0) return { lower: 'lie', upper: 'sedated' };
+    if (this.down > 0) return { lower: 'lie', upper: 'sedated', lieH: this.inCart ? this.inCart.lieH : 0.15 };   // on the ground where they fell (or in the undertaker's cart), never at bed height in mid-air
     if (this.sitting) { lower = 'sit'; upper = SEAT_UPPER[this.sitting.kind] || 'idle'; if (upper === 'type' && this.role === 'engineer') upper = 'type'; if (this.sitting.kind === 'bench' && this.mood < 0) upper = 'phone'; }
     else if (this.moved || this.vel > 0.15) lower = 'walk';
     else if (this.working) lower = 'crouch';
     const gj = this.job && this.job.type === 'gather' ? this.job : null;
     if (this.working) { if (gj && gj.step === 1) { upper = gj.gd.upper; lower = ['harvest', 'dig'].includes(upper) ? 'crouch' : 'stand'; } else if (this.job && this.job.tool === 'dig') { upper = 'dig'; lower = 'crouch'; } else upper = this.job && this.job.tool === 'saw' ? 'saw' : this.job && this.job.tool === 'dig' ? 'dig' : 'hammer'; }
+    else if (this.pulling) upper = 'pull';   // hauling the undertaker's cart
     else if (this.carry && !this.sitting) upper = this.cart && this.cart.visible ? 'pull' : 'carry';
     else if (this.bag && lower === 'walk') upper = 'bag';
     else if (!this.sitting && this.activity === 'work' && !this.moved && this.role && this.phase === 2) upper = (this.workplace && this.workplace.def.workUpper) || ROLE_UPPER[this.role] || 'idle';
@@ -518,7 +519,7 @@ export class Sim {
     const far = d > (g.mode === 'god' ? 64 : 42);
     if (far !== this.lowDetail || init) { this.lowDetail = far; this.rig.lod.visible = far; for (const p of this.rig.parts) p.visible = !far; if (!far) this.rig.lids.visible = false; }
     if (far && this.veh) { m.remove(this.veh); this.veh = null; this.vehLv = -1; }
-    if (far) { this.rig.lod.position.y = this.moved ? Math.abs(Math.sin(this.game.clock.hour * 900)) * 0.04 : 0; if (this.pose === 'sleep') { this.rig.lod.rotation.x = -Math.PI / 2; this.rig.lod.position.set(0, 0.7, 0.9); } else { this.rig.lod.rotation.x = 0; this.rig.lod.position.z = 0; } this.working = false; return; }
+    if (far) { this.rig.lod.position.y = this.moved ? Math.abs(Math.sin(this.game.clock.hour * 900)) * 0.04 : 0; if (this.pose === 'sleep' || this.down > 0) { this.rig.lod.rotation.x = -Math.PI / 2; this.rig.lod.position.set(0, this.pose === 'sleep' ? 0.7 : this.inCart ? this.inCart.lieH : 0.15, 0.9); } else { this.rig.lod.rotation.x = 0; this.rig.lod.position.z = 0; } this.working = false; return; }
     if (this.fightAnimT > 0) { this.fightAnimT -= dt; if (this.fightAnimT <= 0) this.fightAnim = this.fight ? 'fight' : null; }
     if (this.panicT > 0) { this.panicT -= dt; if (this.panicT <= 0) this.panic = false; }
     if (this.emote) { this.emote.t -= dt; if (this.emote.t <= 0) this.emote = null; }

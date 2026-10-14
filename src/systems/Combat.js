@@ -3,6 +3,7 @@ import { createRig } from '../render/SimRig.js';
 import { Animator } from '../render/Animator.js';
 import { Sfx } from '../core/Sfx.js';
 import { TILE } from '../config.js';
+import { WeaponWheel, GUN_ORDER, gunIcon } from '../ui/WeaponWheel.js';
 
 /**
  * Combat mode: a Call of Duty style free-for-all you can switch on from the pause menu, alone (against bots) or when
@@ -26,20 +27,34 @@ export const WEAPONS = {
 };
 const PRIMARIES = ['ar', 'smg', 'shotgun', 'sniper', 'lmg'], SECONDARIES = ['pistol', 'magnum', 'mp', 'launcher'];
 export const WIN_KILLS = 20;
-const NADE_FUSE = 2.6, NADE_R = 7.5, MAX_RAGS = 14, MAX_DECALS = 60;
+const NADE_FUSE = 2.6, NADE_R = 7.5, MAX_RAGS = 14;
 const BOT_NAMES = ['Gaz', 'Big Dave', 'Wayne', 'Darren', 'Kev', 'Tel', 'Lee', 'Shaz', 'Dean', 'Tina', 'Ricky', 'Mad Pete'];
 const SHELL = [0x6a2ab0, 0x1a8a8a, 0xd8342c, 0x2a5ad8, 0xe07a10, 0x2a2a30, 0x3a9a40, 0xc02a80];   // shell suits
 /** Where the guns are: the police station. */
 export function armoury(g) { return g.buildings.list.find((b) => b.state === 'done' && /police/.test(b.def.id)) || null; }
 const STANCE_TOP = { stand: 1.8, crouch: 1.2, prone: 0.5 };
+/** Where the barrel ends on each held gun (third person: in the hand prop's own space). */
+const GUN_TIP = { rifle: [0, 0.05, 0.78], pistol: [0, 0.04, 0.24], tube: [0, 0.08, 0.66] };
+/** Damage by where a bullet lands. */
+const ZONE_DMG = { body: 1, limb: 0.7 };
+const UP = { x: 0, y: 1, z: 0 }, _v = new THREE.Vector3();
+/** Ray (o + d t, d unit) against a capsule A-B of radius r: the distance along the ray where it enters, or -1 for a miss. */
+function rayCapsule(o, d, ax, ay, az, bx, by, bz, r) {
+  const vx = bx - ax, vy = by - ay, vz = bz - az, wx = o.x - ax, wy = o.y - ay, wz = o.z - az;
+  const b = d.x * vx + d.y * vy + d.z * vz, c = vx * vx + vy * vy + vz * vz, dd = d.x * wx + d.y * wy + d.z * wz, e = vx * wx + vy * wy + vz * wz, den = c - b * b;
+  let s, t; if (c < 1e-9) { t = 0; s = -dd; } else if (den < 1e-9) { t = 0; s = -dd; } else { s = (b * e - c * dd) / den; t = (e - b * dd) / den; }   // (|d| = 1)
+  if (c >= 1e-9 && (t < 0 || t > 1)) { t = t < 0 ? 0 : 1; s = b * t - dd; }
+  const px = wx + d.x * s - vx * t, py = wy + d.y * s - vy * t, pz = wz + d.z * s - vz * t, q = px * px + py * py + pz * pz;
+  return q > r * r ? -1 : s - Math.sqrt(r * r - q);
+}
 
 export class Combat {
   constructor(game) {
-    this.game = game; this.on = false; this.bots = []; this.rags = []; this.decals = []; this.nades = []; this.score = new Map(); this.names = new Map(); this.botCount = 4; this.feed = []; this.fx = [];
-    this.decalGeo = new THREE.CircleGeometry(1, 10); this.decalGeo.rotateX(-Math.PI / 2);
+    this.game = game; this.on = false; this.bots = []; this.rags = []; this.nades = []; this.score = new Map(); this.names = new Map(); this.botCount = 4; this.feed = []; this.fx = [];
     this.nadeGeo = new THREE.SphereGeometry(0.09, 8, 6); this.nadeMat = new THREE.MeshStandardMaterial({ color: 0x3a4a2a, roughness: 0.7 });
-    this.unitBox = new THREE.BoxGeometry(1, 1, 1);
+    this.unitBox = new THREE.BoxGeometry(1, 1, 1); this.weapons = WEAPONS; this.wheel = new WeaponWheel(this); this.slow = 1;
   }
+  get wheelOpen() { return this.wheel.open; }
   get auth() { return !this.game.netVisitor; }
   myKey() { const g = this.game; return g.netVisitor ? 'v' + g.net.id : 'sam'; }
   nameOf(k) { if (this.names.has(k)) return this.names.get(k); const g = this.game; if (k === 'sam') return 'Sam'; if (k && k[0] === 'v' && g.net) { const v = g.net.visitors.get(+k.slice(1)); if (v) return v.name; } if (k && k[0] === 'b') { const b = this.bots.find((q) => q.key === k); if (b) return b.name; } return 'Someone'; }
@@ -53,14 +68,14 @@ export class Combat {
       this.score = new Map([[this.myKey(), 0]]); this.names = new Map(); if (g.net && g.net.role === 'host') for (const v of g.net.visitors.values()) this.score.set('v' + v.id, 0);
       if (g.raidNight && g.net && g.net.raid) { g.net.raid = null; g.net.send({ t: 'raid', on: false }); g.net.raidOn(false); }
       if (!this.boomLight) { this.boomLight = new THREE.PointLight(0xffa040, 0, 30, 2); g.scene.add(this.boomLight); }   // ready now, so the first bang doesn't stall
-      if (!this.warm) { this.warm = true; this.boom({ x: P.x, y: -60, z: P.z }, -60, 0.05, true); try { g.renderer.compile(g.scene, g.camera); } catch (e) { /* fine */ } }   // a silent bang deep underground: the fireball and smoke get drawn once now, not mid-fight
+      if (!this.warm) { this.warm = true; this.boom({ x: P.x, y: -60, z: P.z }, -60, 0.05, true); this.drawArc(P); try { g.renderer.compile(g.scene, g.camera); } catch (e) { /* fine */ } this.drawArc(null); }   // a silent bang deep underground: the fireball and smoke get drawn once now, not mid-fight
       this.loadout(P, null); this.hud(true); this.wasThird = P.third; P.third = false;   // Call of Duty is first person (V / D-pad up for over the shoulder)
       if (this.auth) this.setBots(g.net && g.net.role === 'host' && g.net.visitors.size ? Math.min(this.botCount, 2) : this.botCount);
-      const st = armoury(g); g.ui.toast(`⚔️ COMBAT MODE. Pistol and two grenades to start${st ? '; the police station has the big guns, ammo and grenades (E / □ there)' : ''}. First to ${WIN_KILLS} wins.`, 6000); Sfx.play('bell');
+      const st = armoury(g); g.ui.toast(`⚔️ COMBAT MODE. A rifle, a pistol and two grenades to start${st ? '; the armoury inside the police station has every gun (E / □ in there)' : ''}. Hold Tab (△ on a pad) for the weapon wheel. First to ${WIN_KILLS} wins.`, 6000); Sfx.play('bell');
       this.board();
     } else {
       this.setBots(0); for (const r of this.rags) this.dropRag(r); this.rags = []; for (const n of this.nades) g.scene.remove(n.mesh); this.nades = [];
-      this.leaveCover(P); if (this.wasThird !== undefined) P.third = this.wasThird; if (this.vm) this.vm.visible = false; this.drawArc(null);
+      this.leaveCover(P); if (this.wasThird !== undefined) P.third = this.wasThird; if (this.vm) this.vm.visible = false; this.drawArc(null); this.wheel.hide(); g.input.wheel = false; this.holdT = 0; P.nadeHand = false;
       P.gun = null; P.slots = null; P.stance = 'stand'; P.dead = false; P.down = 0; P.hp = 100; if (P.mesh) P.mesh.visible = true; this.hud(false);
       if (g.net && g.net.board) g.net.board(null); if (!remote && g.net && g.net.role === 'host') g.net.send({ t: 'score', table: null });
       g.ui.toast('Combat mode off. Back to normal life.', 3000);
@@ -68,21 +83,46 @@ export class Combat {
   }
   /** Fresh loadout: a primary and a secondary (the last ones you picked at the armoury; an assault rifle and a pistol to start) and two grenades. */
   loadout(P, primary, secondary) {
-    P.kit = [primary || (P.kit && P.kit[0]) || 'ar', secondary || (P.kit && P.kit[1]) || 'pistol']; P.slots = P.kit.slice(); P.ammo = {}; for (const k of P.slots) P.ammo[k] = { mag: WEAPONS[k].mag, res: WEAPONS[k].res };
-    P.nades = 2; P.cur = 0; P.gun = P.slots[0]; P.reloadT = 0; P.stance = 'stand'; P.nadeAim = false;
+    P.kit = [primary || (P.kit && P.kit[0]) || 'ar', secondary || (P.kit && P.kit[1]) || 'pistol']; P.slots = GUN_ORDER.filter((k) => P.kit.includes(k)); P.ammo = {}; for (const k of P.slots) P.ammo[k] = { mag: WEAPONS[k].mag, res: WEAPONS[k].res };
+    P.nades = 2; P.gun = P.kit[0]; P.cur = P.slots.indexOf(P.gun); P.reloadT = 0; P.stance = 'stand'; P.nadeAim = false; P.nadeHand = false;
   }
+  /** Take out a weapon you're carrying: a gun's key, 'nade' (a grenade in hand: fire throws it) or null (fists). */
+  equip(P, k) {
+    if (k === 'nade') { if (!(P.nades > 0)) return; if (P.nadeHand && !P.gun) return; P.nadeHand = true; P.gun = null; P.cur = -1; P.reloadT = 0; P.swapT = 0.3; Sfx.play('pickup'); return; }
+    if (k !== null && !P.slots.includes(k)) return; if (P.gun === k && !P.nadeHand) return;
+    P.nadeHand = false; P.gun = k; P.cur = k ? P.slots.indexOf(k) : -1; P.reloadT = 0; P.swapT = k ? 0.35 : 0.15; if (P.cover && !k) this.leaveCover(P); Sfx.play('pickup');
+    if (k) P.kit[WEAPONS[k].slot === 0 ? 0 : 1] = k;   // you come back after dying with the last rifle-type and pistol-type you used
+  }
+  /** Next / previous weapon you carry (the scroll wheel, a tap of △). */
+  cycle(P, dir) { const list = P.slots; if (!list.length) return; const i = P.gun ? list.indexOf(P.gun) : dir > 0 ? -1 : 0; this.equip(P, list[(i + dir + list.length) % list.length]); }
+  /** The armoury: every gun on the rack, full ammo, three grenades. */
+  stockUp(P) { P.slots = GUN_ORDER.slice(); for (const k of P.slots) P.ammo[k] = { mag: WEAPONS[k].mag, res: WEAPONS[k].res }; P.nades = Math.max(P.nades || 0, 3); if (!P.gun && !P.nadeHand) this.equip(P, P.kit[0]); P.cur = P.slots.indexOf(P.gun); Sfx.play('pickup'); Sfx.play('cash'); this.game.ui.toast('🔫 Stocked up: every gun, full ammo and three grenades. Hold Tab (or △) for the weapon wheel.', 3500); }
 
   // ---------------- the player's controls (called from Player.update in combat mode) ----------------
   controls(P, inp, dt) {
     const g = this.game; if (P.dead) return;
     const W = WEAPONS[P.gun];
     // the armoury: E (or □ on a pad) at the police station
-    const st = armoury(g), atArm = st && !P.mounted && (g.buildings.playerInside === st || (st.doorOut && Math.hypot(st.doorOut.x - P.x, st.doorOut.z - P.z) < 4.5));
-    if (atArm) {   // E / □ the next primary, R / △ the next secondary; ammo and grenades topped up either way
-      const np = PRIMARIES[(PRIMARIES.indexOf(P.slots[0]) + 1) % PRIMARIES.length], ns = SECONDARIES[(SECONDARIES.indexOf(P.slots[1]) + 1) % SECONDARIES.length];
-      g.ui.setPrompt(`Armoury: E / □ primary → ${WEAPONS[np].name} · R / △ secondary → ${WEAPONS[ns].name}`, -1, true);
-      const take = (i, k) => { P.slots[i] = k; P.kit = P.slots.slice(); P.ammo = {}; for (const q of P.slots) P.ammo[q] = { mag: WEAPONS[q].mag, res: WEAPONS[q].res }; P.nades = 3; P.cur = i; P.gun = k; P.reloadT = 0; P.swapT = 0.4; Sfx.play('pickup'); for (const key of ['KeyE', 'PadSquare', 'KeyR', 'PadSwap']) inp.pressed.delete(key); };
-      if (inp.hit('KeyE') || inp.hit('PadSquare')) take(0, np); else if (inp.hit('KeyR') || inp.hit('PadSwap')) take(1, ns);
+    // the weapon wheel: hold Tab (keyboard) or △; a quick tap of Tab is still the planning view, a tap of △ the next weapon
+    const tabHeld = inp.down('Tab') && !inp.padActive, triHeld = inp.down('PadSwap'), WH = this.wheel;
+    if ((tabHeld || triHeld) && !P.mounted && (this.holdT > 0 || inp.hit('Tab') || inp.hit('PadSwap'))) { if (!(this.holdT > 0)) this.holdSrc = triHeld ? 'pad' : 'key'; this.holdT = (this.holdT || 0) + dt; if (!WH.open && this.holdT > (this.holdSrc === 'pad' ? 0.24 : 0.14)) { WH.show(P); inp.wheel = true; Sfx.play('ui'); } }
+    else if (this.holdT > 0) {
+      if (WH.open) { const k = WH.chosen(P); WH.hide(); inp.wheel = false; if (k !== undefined) this.equip(P, k); }
+      else if (this.holdSrc === 'pad') this.cycle(P, 1); else if (!g.netVisitor && !g.ui.modalOpen) g.setMode('god');
+      this.holdT = 0;
+    }
+    if (WH.open) {
+      if (WH.aim(inp.mouse.dx, inp.mouse.dy, inp.padActive ? inp.pad.rx : 0, inp.padActive ? inp.pad.ry : 0)) Sfx.play('ui');
+      const sc = inp.mouse.wheel || (inp.hit('PadNext') || inp.hit('KeyE') ? 1 : 0) - (inp.hit('PadPrev') || inp.hit('KeyQ') ? 1 : 0); if (sc && WH.cycle(P, Math.sign(sc))) Sfx.play('ui');
+      for (const k of ['KeyE', 'KeyQ', 'KeyC', 'KeyZ', 'KeyR', 'KeyG', 'KeyF', 'PadSquare', 'PadMelee', 'PadNade']) inp.pressed.delete(k); inp.mouse.wheel = 0;
+      WH.draw(P); P.trigHeld = true; this.hudUpdate(P); return;   // (nothing else while choosing; letting go of fire afterwards is needed before it shoots)
+    }
+    // the armoury, inside the police station: everything on the racks, ammo and grenades
+    const st = armoury(g), atArm = st && !P.mounted && g.buildings.playerInside === st;
+    if (atArm) {
+      const full = GUN_ORDER.every((k) => P.slots.includes(k) && P.ammo[k] && P.ammo[k].res >= WEAPONS[k].res && P.ammo[k].mag >= WEAPONS[k].mag) && P.nades >= 3;
+      g.ui.setPrompt(full ? 'Armoury: you\'re carrying the lot, full up. Hold Tab / △ for the weapon wheel.' : 'Armoury: E / □ take every gun, and fill up on ammo and grenades', -1, true);
+      if (!full && (inp.hit('KeyE') || inp.hit('PadSquare'))) { this.stockUp(P); for (const key of ['KeyE', 'PadSquare']) inp.pressed.delete(key); }
     }
     // stance: C / ○ crouch (hold ○ to go prone), Z prone; sprinting into a crouch is a slide
     const sprint = (inp.down('ShiftLeft') || inp.down('ShiftRight')) && P.speed > 5.5;
@@ -100,9 +140,9 @@ export class Combat {
     if (sprint && P.cover) this.leaveCover(P);
     this.coverTick(P, dt);
     if (sprint && P.stance !== 'stand' && !(P.slideT > 0)) P.stance = 'stand';
-    // swap weapons: 1 / 2, the wheel, △
-    const swap = (i) => { if (!P.slots[i] || i === P.cur) return; P.cur = i; P.gun = P.slots[i]; P.reloadT = 0; P.swapT = 0.35; Sfx.play('pickup'); };
-    if (inp.hit('Digit1')) swap(0); if (inp.hit('Digit2')) swap(1); if (!atArm && (inp.hit('PadSwap') || inp.mouse.wheel)) swap(1 - P.cur);
+    // swap weapons: 1-9 (in wheel order), the scroll wheel (a tap of △ is handled with the wheel above)
+    for (let i = 0; i < 9; i++) if (inp.hit('Digit' + (i + 1)) && P.slots[i]) this.equip(P, P.slots[i]);
+    if (inp.mouse.wheel) this.cycle(P, Math.sign(inp.mouse.wheel));
     if (P.swapT > 0) P.swapT -= dt;
     // reload: R / □
     const am = P.gun && P.ammo[P.gun];
@@ -110,14 +150,15 @@ export class Combat {
     if (P.reloadT > 0) { P.reloadT -= dt; if (P.reloadT <= 0 && am) { const n = Math.min(W.mag - am.mag, am.res); am.mag += n; am.res -= n; } }
     // fire: left click / R2 (hold for automatics)
     const trig = (inp.locked && inp.mouse.left) || inp.down('PadFire');
+    if (!P.gun && !P.nadeHand && trig && !P.trigHeld && !P.mounted) this.melee(P);   // fists: fire punches
     if (P.gun && trig && !P.mounted && !(P.swapT > 0) && !(P.slideT > 0.3) && !P.nadeAim && !(P.meleeT > 0)) {
       if (W.auto || !P.trigHeld) { if (am && am.mag <= 0) { if (!P.trigHeld) { Sfx.tone && Sfx.tone(200, 0.04, { type: 'square', vol: 0.06 }); if (am.res > 0) this.startReload(P); } } else if (!(P.reloadT > 0)) this.fire(P); }
     }
     P.trigHeld = trig;
     // grenade: hold G / R1 to see where it'll land, let go to throw
-    const nadeKey = inp.down('KeyG') || inp.down('PadNade');
+    const nadeKey = inp.down('KeyG') || inp.down('PadNade') || (P.nadeHand && trig && !P.mounted);   // (a grenade in hand: fire throws it too)
     if (nadeKey && P.nades > 0 && !P.mounted && !(P.reloadT > 0)) { P.nadeAim = true; this.drawArc(P); }
-    else if (P.nadeAim) { P.nadeAim = false; this.drawArc(null); if (P.nades > 0) { P.nades--; this.throwNade(P); } }
+    else if (P.nadeAim) { P.nadeAim = false; this.drawArc(null); if (P.nades > 0) { P.nades--; this.throwNade(P); } if (P.nadeHand && !(P.nades > 0)) this.equip(P, P.kit[0]); }   // (last one gone: back to a gun)
     // melee: F / R3
     if ((inp.hit('KeyF') || inp.hit('PadMelee')) && !P.mounted) this.melee(P);
     if (P.meleeT > 0) P.meleeT -= dt;
@@ -127,7 +168,7 @@ export class Combat {
   }
   startReload(P) { const W = WEAPONS[P.gun]; P.reloadT = W.reload; Sfx.noise(0.08, { freq: 2000, vol: 0.12 }); Sfx.noise(0.08, { freq: 1500, vol: 0.12, delay: W.reload * 0.7 }); }
   /** The current spread (radians) for a shooter: hip or sights, moving, in the air, stance. */
-  spread(P, W) { const ads = P.aimK || 0; let s = W.hip * (1 - ads) + W.ads * ads; s += Math.min(1, (P.speed || 0) / 7) * (W.scope && ads > 0.5 ? 0.03 : 0.025); if (P.jumpT > 0) s += 0.05; if (P.stance === 'crouch') s *= 0.75; if (P.stance === 'prone') s *= 0.55; return s; }
+  spread(P, W) { const ads = P.aimK || 0, low = P.stance === 'prone' ? 0.38 : P.stance === 'crouch' ? 0.6 : 1; let s = W.hip * (1 - ads) + W.ads * ads; s += Math.min(1, (P.speed || 0) / 7) * (W.scope && ads > 0.5 ? 0.03 : 0.025) * (low < 1 ? 0.6 : 1); if (P.jumpT > 0) s += 0.05; return s * low; }   // crouched or lying down: a much steadier aim
 
   // ---------------- shooting ----------------
   /** Everyone and everything a bullet can hit, as vertical capsules. */
@@ -141,15 +182,94 @@ export class Combat {
   }
   /** March a ray until it meets a wall (or the floor): the distance it got. */
   rayWall(o, d, max, floor = -0.05) { const w = this.game.world; for (let t = 0.4; t < max; t += 0.45) { const y = o.y + d.y * t; if (y < floor || w.collides(o.x + d.x * t, o.z + d.z * t, 0.05, true, y)) return t; } return max; }
-  /** Closest capsule along a ray: { t, tg, head }. */
+  /**
+   * A bullet's flight against the walls, exactly: walks the map tiles the ray crosses and tests each wall box (with its
+   * height) as a box. { t, n, c }: how far it got, the face it hit (outward normal; null if it hit nothing) and the box.
+   * minT: anything nearer than this is ignored (the third-person camera sits behind Sam).
+   */
+  castRay(o, d, max, floor = -0.05, minT = 0.3) {
+    const w = this.game.world, T = TILE, res = this._ray || (this._ray = { t: 0, n: null, c: null, nv: { x: 0, y: 0, z: 0 } }); res.t = max; res.n = null; res.c = null;
+    if (d.y < -1e-6) { const tf = (floor - o.y) / d.y; if (tf >= minT && tf < res.t) { res.t = tf; res.n = UP; } }
+    let tx = Math.floor(o.x / T), tz = Math.floor(o.z / T); const sx = d.x > 0 ? 1 : -1, sz = d.z > 0 ? 1 : -1;
+    let mx = Math.abs(d.x) > 1e-9 ? ((sx > 0 ? (tx + 1) * T : tx * T) - o.x) / d.x : Infinity, mz = Math.abs(d.z) > 1e-9 ? ((sz > 0 ? (tz + 1) * T : tz * T) - o.z) / d.z : Infinity;
+    const ddx = Math.abs(d.x) > 1e-9 ? T / Math.abs(d.x) : Infinity, ddz = Math.abs(d.z) > 1e-9 ? T / Math.abs(d.z) : Infinity, seen = this._seen || (this._seen = new Set()); seen.clear();
+    let tc = 0;
+    for (let k = 0; k < 120 && tc < res.t; k++) {
+      if (!w.inBounds(tx, tz)) { if (tc < res.t) { res.t = Math.max(minT, tc); res.n = null; } break; }
+      const a = w.colBuckets.get(w.idx(tx, tz));
+      if (a) for (const c of a) {
+        if (c.navOnly || seen.has(c)) continue; seen.add(c);
+        let t0 = -Infinity, t1 = Infinity, ax = -1;
+        for (let i = 0; i < 3; i++) {   // the slabs: x, height, z
+          const oo = i === 0 ? o.x : i === 1 ? o.y : o.z, dv = i === 0 ? d.x : i === 1 ? d.y : d.z, mn = i === 0 ? c.minx : i === 1 ? (c.lo ?? -1e4) : c.minz, mxv = i === 0 ? c.maxx : i === 1 ? (c.h ?? 1e4) : c.maxz;
+          if (Math.abs(dv) < 1e-9) { if (oo < mn || oo > mxv) { t0 = Infinity; break; } continue; }
+          let u = (mn - oo) / dv, v = (mxv - oo) / dv; if (u > v) { const q = u; u = v; v = q; } if (u > t0) { t0 = u; ax = i; } if (v < t1) t1 = v; if (t0 > t1) break;
+        }
+        if (t0 > t1 || t1 < minT) continue; const th = Math.max(t0, minT);
+        if (th < res.t) { res.t = th; res.c = c; const nv = res.nv; nv.x = ax === 0 ? -sx : 0; nv.y = ax === 1 ? (d.y > 0 ? -1 : 1) : 0; nv.z = ax === 2 ? -sz : 0; res.n = t0 >= minT && ax >= 0 ? nv : null; }
+      }
+      if (mx < mz) { tc = mx; mx += ddx; tx += sx; } else { tc = mz; mz += ddz; tz += sz; }
+    }
+    return res;
+  }
+  /** Leave a bullet mark where a shot ended on a surface (not a door leaf that swings, not up in the air above a wall). */
+  bulletMark(e, ray) {
+    const g = this.game, n = ray.n, c = ray.c; if (!n || !g.decals) return;
+    if (c && (c.cam || (c.vh !== undefined && e.y > c.vh - 0.05))) return;
+    g.decals.add(n.y > 0.7 ? 'chip' : 'hole', e, n);
+  }
+  /** Closest body part along a ray: { t, tg, head, zone }. A wide first check (do they pass near this person at all?), then the body itself. */
   rayHit(o, d, max, list) {
-    let best = null; const hx = d.x, hz = d.z, hl = hx * hx + hz * hz || 1e-6;
+    let best = null; const hx = d.x, hz = d.z, hl = hx * hx + hz * hz || 1e-6, hs = Math.sqrt(hl);
     for (const tg of list) {
-      const t = ((tg.x - o.x) * hx + (tg.z - o.z) * hz) / hl; if (t < 0.3 || t > max || (best && t > best.t)) continue;
-      const px = o.x + hx * t - tg.x, pz = o.z + hz * t - tg.z; if (px * px + pz * pz > tg.r * tg.r) continue;
-      const y = o.y + d.y * t - tg.y; if (y < 0 || y > tg.top) continue; best = { t, tg, head: y > tg.top - 0.32 && tg.top > 1 };
+      const R = tg.top < 1 ? 1.3 : 0.85, t = ((tg.x - o.x) * hx + (tg.z - o.z) * hz) / hl, slack = R / Math.max(0.05, hs);
+      if (t < 0.3 - slack || t > max + slack) continue;
+      const px = o.x + hx * t - tg.x, pz = o.z + hz * t - tg.z; if (px * px + pz * pz > R * R) continue;
+      const h = this.bodyHit(o, d, max, tg); if (h && (!best || h.t < best.t)) best = h;
     }
     return best;
+  }
+  /** A ray against one person: their head, body, arms and legs as capsules taken from the skeleton as it stands (or lies) right now. */
+  bodyHit(o, d, max, tg) {
+    let best = null; const parts = this.bodyParts(tg);
+    for (let i = 0; i < parts.length; i += 8) { const t = rayCapsule(o, d, parts[i], parts[i + 1], parts[i + 2], parts[i + 3], parts[i + 4], parts[i + 5], parts[i + 6]); if (t >= 0 && t >= 0.3 && t <= max && (!best || t < best.t)) best = { t, tg, zone: parts[i + 7] === 2 ? 'head' : parts[i + 7] === 1 ? 'limb' : 'body' }; }
+    if (best) best.head = best.zone === 'head';
+    return best;
+  }
+  /** Capsules [ax, ay, az, bx, by, bz, radius, zone (0 body, 1 limb, 2 head)] for a target. */
+  bodyParts(tg) {
+    const out = this._parts || (this._parts = []); out.length = 0; const rig = tg.ref && tg.ref.rig;
+    const cap = (ax, ay, az, bx, by, bz, r, z) => out.push(ax, ay, az, bx, by, bz, r, z);
+    if (rig && rig.head && rig.armL && rig.legL) {
+      rig.root.updateMatrixWorld(true);
+      const P = (o, x = 0, y = 0, z = 0) => { _v.set(x, y, z); o.localToWorld(_v); return [_v.x, _v.y, _v.z]; };
+      const hd = P(rig.head, 0, 0.14, 0.02), nk = P(rig.neck), hp = P(rig.hips), sL = P(rig.armL.sh), sR = P(rig.armR.sh), eL = P(rig.armL.el), eR = P(rig.armR.el), wL = P(rig.armL.hand), wR = P(rig.armR.hand), tL = P(rig.legL.th), tR = P(rig.legR.th), kL = P(rig.legL.kn), kR = P(rig.legR.kn), aL = P(rig.legL.an), aR = P(rig.legR.an);
+      cap(...hd, ...hd, 0.165, 2);
+      cap(...hp, ...nk, 0.2, 0); cap(...sL, ...sR, 0.12, 0); cap(...tL, ...tR, 0.15, 0);
+      cap(...sL, ...eL, 0.085, 1); cap(...eL, ...wL, 0.075, 1); cap(...sR, ...eR, 0.085, 1); cap(...eR, ...wR, 0.075, 1);
+      cap(...tL, ...kL, 0.11, 1); cap(...kL, ...aL, 0.09, 1); cap(...tR, ...kR, 0.11, 1); cap(...kR, ...aR, 0.09, 1);
+      return out;
+    }
+    const x = tg.x, y = tg.y, z = tg.z, top = tg.top;   // no skeleton to hand: an upright body and a head
+    cap(x, y + 0.25, z, x, y + Math.max(0.3, top - 0.45), z, top < 1 ? 0.45 : 0.3, 0); cap(x, y + top - 0.15, z, x, y + top - 0.15, z, 0.17, 2);
+    return out;
+  }
+  /** Where the gun's barrel ends, in the world: the gun in your hands in first person, the one in Sam's hand in third. */
+  muzzle(P, f) {
+    const V = new THREE.Vector3(), v = this.vm, sc = P.scoped(), fp = !P.third || sc;
+    if (fp && !sc && v && v.visible && v.userData.muzzle) { v.updateMatrixWorld(true); return v.localToWorld(V.copy(v.userData.muzzle)); }
+    const [hx, hy, hz] = P.headPos(); if (fp) return V.set(hx + f.x * 0.7, hy - 0.1 + f.y * 0.7, hz + f.z * 0.7);   // (scoped: just under the eye)
+    const tip = this.gunTip(P.rig); if (tip) return tip;
+    const aimH = Math.atan2(f.x, f.z); return V.set(hx + Math.sin(aimH) * 0.55 - Math.cos(aimH) * 0.18, hy - 0.3, hz + Math.cos(aimH) * 0.55 + Math.sin(aimH) * 0.18);
+  }
+  /** The end of the barrel of the gun in a rig's right hand (null if it isn't holding one). */
+  gunTip(rig) { const pr = rig && rig.props && rig.props.handR, tip = pr && GUN_TIP[pr.name]; if (!tip || !pr.obj.parent) return null; rig.root.updateMatrixWorld(true); return pr.obj.localToWorld(new THREE.Vector3(tip[0], tip[1], tip[2])); }
+  /** The local player's shot landed: a hitmarker, and a ding for a headshot. */
+  feedback(head, killed) {
+    const P = this.game.player; P.hitMark = 0.3; P.hitHead = head; P.hitKill = killed;
+    if (head) Sfx.play('headshot'); else Sfx.play('hit'); if (killed) Sfx.play('kill');
+    let m = document.getElementById('hitmk'); if (!m) { document.getElementById('app').insertAdjacentHTML('beforeend', '<div id="hitmk"><i></i><i></i><i></i><i></i></div>'); m = document.getElementById('hitmk'); }
+    m.className = killed ? 'kill' : head ? 'head' : 'body'; void m.offsetWidth; m.classList.add('on');   // (restart the flash)
   }
   /** The player fires the gun in hand (along the crosshair). Raid night's prop pistol (gun === true) has no magazine. */
   fire(P) {
@@ -157,21 +277,29 @@ export class Combat {
     if (P.ammo && P.ammo[P.gun]) P.ammo[P.gun].mag--;
     const cam = g.camera, o = cam.position.clone(), f = new THREE.Vector3(); cam.getWorldDirection(f);
     const [hx, hy, hz] = P.headPos(), skip = P.third && !(W.scope && P.aimK > 0.5) ? Math.max(0, (hx - o.x) * f.x + (hy - o.y) * f.y + (hz - o.z) * f.z) : 0;
-    this.bangSound(W, 1); const kick = W.kick * (P.aimK > 0.5 ? 0.6 : 1) * (P.stance === 'prone' ? 0.5 : P.stance === 'crouch' ? 0.75 : 1); P.pitch = Math.min(1.2, P.pitch + kick); P.recoil = (P.recoil || 0) + kick * 0.7; P.yaw += (Math.random() - 0.5) * kick * 0.6; P.shake = Math.max(P.shake || 0, W.pellets > 1 || W.scope ? 0.6 : 0.2);
-    const aimH = Math.atan2(f.x, f.z), mz = [hx + Math.sin(aimH) * 0.55, hy - 0.3, hz + Math.cos(aimH) * 0.55]; g.particles.burst(mz[0], mz[1], mz[2], 0xffd060, 4, 0.5, 0.15, 0.06); P.flashT = 0.05; this.noise(P.x, P.z, W.rocket ? 90 : 55);
-    if (W.rocket) {   // a rocket: a real projectile that bursts on whatever it meets
-      const rp = new THREE.Vector3(hx + f.x * 0.9, hy - 0.15 + f.y * 0.9, hz + f.z * 0.9), rv = f.clone().multiplyScalar(42); this.addNade(rp, rv, this.myKey(), true, true);
+    const steady = P.stance === 'prone' ? 0.4 : P.stance === 'crouch' ? 0.62 : 1;   // down low, the gun barely climbs
+    this.bangSound(W, 1); const kick = W.kick * (P.aimK > 0.5 ? 0.6 : 1) * steady; P.pitch = Math.min(1.2, P.pitch + kick); P.recoil = (P.recoil || 0) + kick * 0.7; P.yaw += (Math.random() - 0.5) * kick * 0.6 * steady; P.shake = Math.max(P.shake || 0, (W.pellets > 1 || W.scope ? 0.6 : 0.2) * (0.5 + steady * 0.5));
+    // the shot leaves the end of the barrel (the gun in your hands, or the one in Sam's hand) and goes where the crosshair is
+    const M = this.muzzle(P, f), mz = [M.x, M.y, M.z]; g.particles.burst(mz[0], mz[1], mz[2], 0xffd060, 4, 0.5, 0.15, 0.06); P.flashT = 0.05; this.noise(P.x, P.z, W.rocket ? 90 : 55);
+    const floor = P.floorY || 0;
+    if (W.rocket) {   // a rocket: a real projectile from the tube, flying at whatever the crosshair is on
+      const aim = this.castRay(o, f, 200, floor, skip + 0.3), at = o.clone().addScaledVector(f, aim.t), rd = at.sub(M); const L = rd.length(); if (L > 1) rd.multiplyScalar(1 / L); else rd.copy(f);
+      const rp = M.clone().addScaledVector(rd, 0.25), rv = rd.multiplyScalar(42); this.addNade(rp, rv, this.myKey(), true, true);
       if (g.net && g.net.role) g.net.send({ t: 'nade', rocket: true, p: [rp.x, rp.y, rp.z].map((n) => Math.round(n * 100) / 100), v: [rv.x, rv.y, rv.z].map((n) => Math.round(n * 100) / 100), by: this.myKey() });
       return;
     }
-    const blind = P.cover && !P.aiming, list = this.targets(this.myKey()), sp = this.spread(P, W) * (blind ? 3.5 : 1) + (blind ? 0.04 : 0), fly = [], hits = new Map();
+    const blind = P.cover && !P.aiming, list = this.targets(this.myKey()), sp = this.spread(P, W) * (blind ? 3.5 : 1) + (blind ? 0.04 : 0), fly = [], hits = new Map(), md = new THREE.Vector3();
     if (blind && !P.cover.low) { const C = P.cover, sd = this.coverEnd(P, C.side) ? C.side : this.coverEnd(P, -C.side) ? -C.side : 0; if (sd) o.add(new THREE.Vector3(C.t[0] * sd * 0.9, 0, C.t[1] * sd * 0.9)); }   // blind fire round the corner
     for (let k = 0; k < W.pellets; k++) {
       const d = f.clone(); d.x += (Math.random() - 0.5) * sp * 2; d.y += (Math.random() - 0.5) * sp * 2; d.z += (Math.random() - 0.5) * sp * 2; d.normalize();
-      const wall = this.rayWall(o.clone().addScaledVector(d, skip), d, W.range, (P.floorY || 0) - 0.05) + skip, h = this.rayHit(o, d, wall, list), t = h ? h.t : wall;
-      const e = o.clone().addScaledVector(d, t); fly.push([e.x, e.y, e.z]);
-      if (h) { const cur = hits.get(h.tg) || { dmg: 0, head: false, d, e }; cur.dmg += W.dmg * (h.head ? (W.scope ? 2.5 : 1.8) : 1) * (t > W.range * 0.6 && W.pellets > 1 ? 0.5 : 1); cur.head = cur.head || h.head; hits.set(h.tg, cur); }
-      else if (!(t < W.range - 0.3 && g.glass && g.glass.hit(e, d, this.myKey()))) g.particles.burst(e.x, e.y, e.z, 0xd8d0c0, 3, 0.4, 0.3, 0.05);   // a window? it shatters
+      const ray = this.castRay(o, d, W.range, floor, skip + 0.3); const wall = ray.t; let h = this.rayHit(o, d, wall, list); const t = h ? h.t : wall, e = o.clone().addScaledVector(d, t);
+      let surf = !h && ray.n ? { n: { ...ray.n }, c: ray.c } : null;
+      // the barrel's own line to that point: a corner the camera sees past but the gun can't (over the shoulder) takes the bullet
+      md.subVectors(e, M); const L = md.length();
+      if (L > 0.6) { md.multiplyScalar(1 / L); const r2 = this.castRay(M, md, L - 0.2, floor, 0.05); if (r2.t < L - 0.35) { h = null; e.copy(M).addScaledVector(md, r2.t); surf = r2.n ? { n: { ...r2.n }, c: r2.c } : null; } }
+      fly.push([e.x, e.y, e.z]);
+      if (h) { const cur = hits.get(h.tg) || { dmg: 0, head: false, d, e }; cur.dmg += W.dmg * (h.head ? (W.scope ? 2.5 : 1.8) : ZONE_DMG[h.zone] || 1) * (t > W.range * 0.6 && W.pellets > 1 ? 0.5 : 1); cur.head = cur.head || h.head; hits.set(h.tg, cur); }
+      else if (!(surf && g.glass && g.glass.hit(e, d, this.myKey()))) { if (surf) { g.particles.burst(e.x + surf.n.x * 0.05, e.y + surf.n.y * 0.05, e.z + surf.n.z * 0.05, 0xd8d0c0, 3, 0.4, 0.3, 0.05); this.bulletMark(e, surf); } }   // a window shatters; anything else takes a hole
     }
     this.tracer(mz, fly); if (g.net && g.net.role) g.net.bang(mz, fly);
     for (const [tg, h] of hits) this.applyHit(tg, h.dmg, h.head, h.d, h.e, this.myKey());
@@ -181,19 +309,23 @@ export class Combat {
     const g = this.game, P = g.player;
     if (tg.kind === 'sim') {   // townsfolk: hurt, or killed (and then it's the undertakers, a funeral, and a line in the parish register)
       const s = tg.ref; if (!s.knockDown) { if (g.net) g.net.shot(s, dmg); return; }
-      this.blood(at.x, at.y, at.z, dir, dmg > 60 || head); if (by === this.myKey()) { P.hitMark = 0.25; P.hitHead = head; Sfx.play('punch'); } if (s.dead) return;
+      this.blood(at.x, at.y, at.z, dir, dmg > 60 || head); if (s.dead) { if (by === this.myKey()) this.feedback(head, false); return; }
       s.hp = (s.hp ?? 100) - dmg * (head ? 2 : 1);
-      const F = g.celebrations && g.celebrations.funerals;
-      if (s.hp <= 0 && F && s.kind !== 'raider' && s.kind !== 'guest') {
+      const F = g.celebrations && g.celebrations.funerals, killed = s.hp <= 0 && F && s.kind !== 'raider' && s.kind !== 'guest';
+      if (by === this.myKey()) this.feedback(head, !!killed);
+      if (killed) {
         const where = g.crime ? g.crime.where(s) : null; F.die(s, { cause: 'shot dead', where });
         if (by === 'sam' && g.crime && !this.on) { if (s.crook) g.messages.push('Police', `Sam shot ${s.name}, one of the villains, dead${where ? ' by ' + where : ''}. There will be an inquiry.`, 'warn'); else { g.crime.wanted = 5; g.messages.push('Police', `Murder! Sam shot ${s.name} dead${where ? ' by ' + where : ''}.`, 'warn'); } }
-      } else { s.knockDown(2.5); g.social.say(s, ['Argh!', 'I\'ve been shot!', 'Police! Police!', 'My leg!'][Math.floor(Math.random() * 4)], 2); }
+      } else if (s.hp <= 0 && s.kind === 'guest') {   // a visitor from up the Lift (an undertaker, say) badly hurt: down until someone takes them back up it
+        s.knockDown(3); s.injured = true; s.liftCase = true; if (g.rescue) g.rescue.dropped(s); g.social.say(s, ['Argh!', 'Man down!', 'I\'ve been hit!'][Math.floor(Math.random() * 3)], 2);
+      } else { s.knockDown(2.5); g.social.say(s, ['Argh!', 'I\'ve been shot!', 'Police! Police!', 'My leg!'][Math.floor(Math.random() * 4)], 2); if (s.rescue && g.rescue) g.rescue.dropped(s); }
       return;
     }
-    this.blood(at.x, at.y, at.z, dir, dmg > 60 || head); if (by === this.myKey()) { P.hitMark = 0.25; P.hitHead = head; Sfx.play('punch'); }
-    if (tg.kind === 'bot') this.damageBot(tg.ref, dmg, by, dir, head);
+    this.blood(at.x, at.y, at.z, dir, dmg > 60 || head); let killed = false;
+    if (tg.kind === 'bot') killed = this.damageBot(tg.ref, dmg, by, dir, head);
     else if (tg.kind === 'sam') this.hurtPlayer(dmg, { x: at.x - dir.x * 5, z: at.z - dir.z * 5, by, dir: [dir.x, dir.y, dir.z] });
     else if (tg.kind === 'puppet' && g.net) g.net.shot(tg.ref, dmg, { head, dir: [dir.x, dir.y, dir.z] });
+    if (by === this.myKey()) this.feedback(head, killed);
   }
   bangSound(W, vol) { Sfx.noise(W.pellets > 1 ? 0.25 : W.scope ? 0.35 : 0.11, { freq: W.scope ? 600 : W.pellets > 1 ? 450 : 1000, vol: 0.4 * vol, type: 'lowpass' }); if (W.scope) Sfx.noise(0.6, { freq: 300, vol: 0.12 * vol, type: 'lowpass', delay: 0.05 }); }
   tracer(from, to) {
@@ -223,7 +355,7 @@ export class Combat {
     if (P.hp <= 0) this.playerDies(from.by, from.dir);
   }
   playerDies(by, dir) {
-    const g = this.game, P = g.player; this.leaveCover(P); P.dead = true; P.hp = 0; P.down = 4.5; P.vx = P.vz = P.speed = 0; P.aiming = false; P.reloadT = 0;
+    const g = this.game, P = g.player; this.leaveCover(P); if (this.wheel.open) { this.wheel.hide(); g.input.wheel = false; } P.nadeAim = false; this.drawArc(null); P.dead = true; P.hp = 0; P.down = 4.5; P.vx = P.vz = P.speed = 0; P.aiming = false; P.reloadT = 0;
     const d = dir ? new THREE.Vector3(...dir) : new THREE.Vector3(Math.random() - 0.5, 0.2, Math.random() - 0.5);
     P.deathRag = this.ragdoll(P.rig, d.multiplyScalar(4)); P.mesh.visible = false; this.blood(P.x, (P.floorY || 0) + 1, P.z, d, true, true);
     g.ui.toast(by && by !== this.myKey() ? `💀 ${this.nameOf(by)} got you.` : '💀 You died.', 2500);
@@ -263,12 +395,10 @@ export class Combat {
   // ---------------- blood ----------------
   blood(x, y, z, dir, big, pool) {
     const g = this.game; g.particles.burst(x + (dir ? dir.x * 0.2 : 0), y, z + (dir ? dir.z * 0.2 : 0), 0x8a0a0a, big ? 14 : 7, big ? 1.4 : 0.8, 1.2, big ? 0.09 : 0.06);
-    const n = pool ? 1 : 1 + (Math.random() < 0.5 ? 1 : 0), gy = this.groundAt(x, y, z);
-    for (let i = 0; i < n; i++) {
-      const s = pool ? 0.2 : 0.18 + Math.random() * 0.3, m = new THREE.Mesh(this.decalGeo, new THREE.MeshBasicMaterial({ color: 0x5a0606, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-      const ox = (dir ? dir.x : 0) * (0.4 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.5, oz = (dir ? dir.z : 0) * (0.4 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.5;
-      m.position.set(x + (pool ? 0 : ox), gy + 0.03 + this.decals.length * 0.0004, z + (pool ? 0 : oz)); m.scale.setScalar(s); m.renderOrder = 2; g.scene.add(m);
-      this.decals.push({ m, t: 40, grow: pool ? 1.1 : 0 }); if (this.decals.length > MAX_DECALS) { const o = this.decals.shift(); g.scene.remove(o.m); o.m.material.dispose(); }
+    const n = pool ? 1 : 1 + (Math.random() < 0.5 ? 1 : 0), gy = this.groundAt(x, y, z); if (!g.decals) return;
+    for (let i = 0; i < n; i++) {   // splashes on the ground (pooled marks: no new mesh or material per hit)
+      const s = pool ? 1.6 : 0.35 + Math.random() * 0.5, ox = (dir ? dir.x : 0) * (0.4 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.5, oz = (dir ? dir.z : 0) * (0.4 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.5;
+      g.decals.add('blood', { x: x + (pool ? 0 : ox), y: gy, z: z + (pool ? 0 : oz) }, UP, s);
     }
   }
   groundAt(x, y, z) { const P = this.game.player; return Math.abs(P.x - x) < 6 && Math.abs(P.z - z) < 6 ? (P.floorY || 0) : (y > 3 ? Math.floor(y / 3.2) * 3.2 : 0); }
@@ -318,20 +448,47 @@ export class Combat {
     // from the throwing hand (to the right and below the eyes), so in first person the path is seen curving away, not end-on
     return { p: new THREE.Vector3(hx + Math.sin(aim) * 0.4 + rx * 0.3, hy - 0.3, hz + Math.cos(aim) * 0.4 + rz * 0.3), v: f.multiplyScalar(15).add(new THREE.Vector3((P.vx || 0) * 0.5, 4.5, (P.vz || 0) * 0.5)) };
   }
-  /** Holding the grenade: the dotted path it will take and a ring where it ends up. */
+  /**
+   * Holding the grenade: its flight drawn as a ribbon that always faces you and stays the same width on screen (a line
+   * vanished end-on in first person; beads looked spotty), with dashes running along it the way it'll go, bright where it
+   * leaves the hand and fading at the end; a shaded disc for the blast and a target where it goes off.
+   */
   drawArc(P) {
-    const g = this.game, N = 36;
-    if (!this.arc) {   // a string of glowing beads along the path (a thin line vanished end-on in first person), and a ring where it lands
-      this.arc = new THREE.InstancedMesh(new THREE.SphereGeometry(0.055, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.95, depthTest: false }), N); this.arc.frustumCulled = false; this.arc.renderOrder = 40;
-      this.ring = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.2, 40), new THREE.MeshBasicMaterial({ color: 0xff5040, transparent: true, opacity: 0.8, depthTest: false, side: THREE.DoubleSide })); this.ring.rotation.x = -Math.PI / 2; this.ring.renderOrder = 40; this.arcM = new THREE.Matrix4();
+    const g = this.game, N = 120;
+    if (!this.arc) {
+      const geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), along = new Float32Array(N * 2), side = new Float32Array(N * 2), idx = [];
+      for (let i = 0; i < N; i++) { side[i * 2] = -1; side[i * 2 + 1] = 1; if (i < N - 1) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('along', new THREE.BufferAttribute(along, 1).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('side', new THREE.BufferAttribute(side, 1)); geo.setIndex(idx);
+      const mat = new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, uniforms: { time: { value: 0 }, total: { value: 1 } },
+        vertexShader: 'attribute float along; attribute float side; varying float vA; varying float vS; void main(){ vA = along; vS = side; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform float time, total; varying float vA; varying float vS; void main(){ float dash = smoothstep(0.35, 0.45, fract(vA * 1.6 - time * 1.8)) * (1.0 - smoothstep(0.85, 0.95, fract(vA * 1.6 - time * 1.8))); float edge = 1.0 - smoothstep(0.45, 1.0, abs(vS)); float core = 1.0 - smoothstep(0.0, 0.5, abs(vS)); float fade = (1.0 - smoothstep(total * 0.8, total, vA)) * smoothstep(0.0, 0.6, vA); vec3 c = mix(vec3(1.0, 0.72, 0.18), vec3(1.0, 0.98, 0.8), max(dash, core * 0.6)); gl_FragColor = vec4(c, (0.42 + 0.58 * dash) * edge * fade); }' });
+      this.arc = new THREE.Mesh(geo, mat); this.arc.frustumCulled = false; this.arc.renderOrder = 41;
+      const grp = new THREE.Group(), flat = (geo, color, op, top) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthTest: !top, depthWrite: false, side: THREE.DoubleSide, fog: false, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 })); m.rotation.x = -Math.PI / 2; m.renderOrder = 40; grp.add(m); return m; };   // (the blast area lies on the ground, under people and walls; the target shows through anything)
+      this.mark = { grp, disc: flat(new THREE.CircleGeometry(1, 48), 0xff3020, 0.2), edge: flat(new THREE.RingGeometry(0.95, 1, 64), 0xff5a40, 0.9), dot: flat(new THREE.RingGeometry(0.16, 0.26, 24), 0xfff2a0, 0.95, true), pip: flat(new THREE.CircleGeometry(0.07, 12), 0xfff2a0, 0.95, true) };
+      this.arcPts = []; for (let i = 0; i < 260; i++) this.arcPts.push(new THREE.Vector3());
     }
-    if (!P) { g.scene.remove(this.arc); g.scene.remove(this.ring); return; }
-    if (!this.arc.parent) { g.scene.add(this.arc); g.scene.add(this.ring); }
-    const { p, v } = this.launch(P), n = { p, v, t: NADE_FUSE, floor: this.groundAt(p.x, p.y - 1.4, p.z), sim: true }, pts = [];
-    for (let k = 0; k < 240 && n.t > 0; k++) { pts.push(n.p.clone()); this.stepNade(n, 1 / 60); if (n.p.y <= n.floor + 0.1 && k > 10 && Math.abs(n.v.y) < 1.5) break; }   // until it has landed and settled
-    const ph = (performance.now() / 600) % 1;   // the beads drift along the path, so it reads as a throw
-    const cam = g.camera.position; for (let i = 0; i < N; i++) { const q = pts[Math.min(pts.length - 1, Math.floor(((i + ph) / N) * pts.length))], d = q.distanceTo(cam), sc = i < 3 || d < 1.2 ? 0 : Math.min(3, Math.max(0.35, d * 0.22)); this.arcM.makeScale(sc, sc, sc).setPosition(q.x, q.y, q.z); this.arc.setMatrixAt(i, this.arcM); }   // the same size on screen near and far
-    this.arc.instanceMatrix.needsUpdate = true; this.ring.position.set(n.p.x, n.floor + 0.05, n.p.z); this.ring.scale.setScalar(NADE_R / 2.2);
+    if (!P) { g.scene.remove(this.arc); g.scene.remove(this.mark.grp); return; }
+    if (!this.arc.parent) { g.scene.add(this.arc); g.scene.add(this.mark.grp); }
+    // fly it (the same physics as the real throw) until it goes off or settles
+    const { p, v } = this.launch(P), n = { p, v, t: NADE_FUSE, floor: this.groundAt(p.x, p.y - 1.4, p.z), sim: true }, pts = this.arcPts; let m = 0;
+    for (let k = 0; k < 240 && n.t > 0; k++) { if (m < pts.length) pts[m++].copy(n.p); this.stepNade(n, 1 / 60); if (n.p.y <= n.floor + 0.1 && k > 10 && Math.abs(n.v.y) < 1.5) break; }
+    if (m < pts.length) pts[m++].copy(n.p);
+    // resample to N points along its length, then widen each into a pair of vertices facing the camera
+    const len = [0]; for (let i = 1; i < m; i++) len.push(len[i - 1] + pts[i].distanceTo(pts[i - 1])); const total = len[m - 1] || 1;
+    const geo = this.arc.geometry, pa = geo.attributes.position.array, aa = geo.attributes.along.array, cam = g.camera.position, A = new THREE.Vector3(), T = new THREE.Vector3(), V = new THREE.Vector3(), S = new THREE.Vector3(), prev = new THREE.Vector3();
+    let j = 0;
+    for (let i = 0; i < N; i++) {
+      const L = (i / (N - 1)) * total; while (j < m - 2 && len[j + 1] < L) j++; const f = Math.min(1, Math.max(0, (L - len[j]) / ((len[j + 1] - len[j]) || 1)));
+      A.copy(pts[j]).lerp(pts[Math.min(m - 1, j + 1)], f);
+      if (i === 0) T.copy(pts[Math.min(m - 1, 1)]).sub(pts[0]); else T.copy(A).sub(prev); if (T.lengthSq() < 1e-8) T.set(0, 0, 1); prev.copy(A);
+      V.copy(cam).sub(A); const dist = V.length(), w = Math.max(0.012, dist * 0.0055); S.crossVectors(T, V).normalize().multiplyScalar(w);
+      pa[i * 6] = A.x - S.x; pa[i * 6 + 1] = A.y - S.y; pa[i * 6 + 2] = A.z - S.z; pa[i * 6 + 3] = A.x + S.x; pa[i * 6 + 4] = A.y + S.y; pa[i * 6 + 5] = A.z + S.z; aa[i * 2] = aa[i * 2 + 1] = L;
+    }
+    geo.attributes.position.needsUpdate = true; geo.attributes.along.needsUpdate = true;
+    const u = this.arc.material.uniforms; u.time.value = performance.now() / 1000; u.total.value = total;
+    // where it goes off: the blast radius shaded, its edge pulsing, a target in the middle
+    const k = this.mark, e = pts[m - 1], fy = n.floor + 0.06, pulse = 1 + Math.sin(performance.now() / 160) * 0.025;
+    k.grp.position.set(e.x, fy, e.z); k.disc.scale.setScalar(NADE_R); k.edge.scale.setScalar(NADE_R * pulse); k.dot.scale.setScalar(1 + Math.sin(performance.now() / 120) * 0.15);
   }
   throwNade(P) {
     const g = this.game, { p, v } = this.launch(P);
@@ -391,7 +548,8 @@ export class Combat {
   explode(n, k = 1) {
     const g = this.game, P = g.player, p = n.p, R = NADE_R * k; g.scene.remove(n.mesh); this.boom(p, n.floor, k); this.noise(p.x, p.z, 100);
     const dP = Math.hypot(P.x - p.x, P.z - p.z);
-    { const m = new THREE.Mesh(this.decalGeo, new THREE.MeshBasicMaterial({ color: 0x1a1612, transparent: true, opacity: 0.7, depthWrite: false })); m.position.set(p.x, n.floor + 0.025, p.z); m.scale.setScalar(2.4 * k); g.scene.add(m); this.decals.push({ m, t: 30 }); }
+    if (g.decals && p.y - n.floor < 2.2) g.decals.add('scorch', { x: p.x, y: n.floor, z: p.z }, UP, 2.7 * k);   // a blast mark on the ground (pooled: no new mesh per bang)
+    if (g.decals) for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + Math.random(), d = { x: Math.sin(a), y: -0.05, z: Math.cos(a) }, o = { x: p.x, y: p.y + 0.6, z: p.z }, r = this.castRay(o, d, 3.2 * k, n.floor - 1, 0.1); if (r.n && !r.n.y) this.bulletMark({ x: o.x + d.x * r.t, y: o.y + d.y * r.t, z: o.z + d.z * r.t }, r); }   // shrapnel pocks the walls close by
     for (const r of this.rags) for (const q of r.P) { const d = q.p.distanceTo(p); if (d < R) { const k = (1 - d / R) * 0.16; q.o.x -= (q.p.x - p.x) / (d || 1) * k; q.o.z -= (q.p.z - p.z) / (d || 1) * k; q.o.y -= k * 1.2; } }
     if (!n.live) return;   // someone else's grenade: they work out the damage
     const blocked = (x, z) => { const dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz); for (let t = 0.5; t < d; t += 0.5) if (g.world.collides(p.x + dx / d * t, p.z + dz / d * t, 0.05, true, p.y + 0.5)) return true; return false; };
@@ -422,7 +580,8 @@ export class Combat {
   /** Who a bot could fight: the player, visitors, the other bots. */
   foes(b) {
     const g = this.game, P = g.player, out = [];
-    if (!P.dead && !g.netVisitor && g.mode === 'sim') out.push({ key: 'sam', x: P.x, z: P.z, y: P.floorY || 0, top: STANCE_TOP[P.stance || 'stand'], kind: 'sam', ref: P, moving: P.speed > 1 });
+    // Sam aboard the skylift, a train or the monorail is out of the fight: inside a moving cabin they can't see him (and can't hurt him)
+    if (!P.dead && !g.netVisitor && g.mode === 'sim' && !P.transit && !P.platform) out.push({ key: 'sam', x: P.x, z: P.z, y: P.floorY || 0, top: STANCE_TOP[P.stance || 'stand'], kind: 'sam', ref: P, moving: P.speed > 1 });
     if (g.net && g.net.role === 'host') for (const v of g.net.visitors.values()) if (v.a !== 4 && v.a !== 6 && v.x !== undefined) out.push({ key: 'v' + v.id, x: v.x, z: v.z, y: v.y || 0, top: (v.f & 8) ? 0.5 : (v.f & 4) ? 1.2 : 1.8, kind: 'visitor', ref: v, moving: v.a === 1 || v.a === 2 });
     for (const o of this.bots) if (o !== b && o.alive) out.push({ key: o.key, x: o.x, z: o.z, y: o.y, top: STANCE_TOP[o.stance], kind: 'bot', ref: o, moving: Math.hypot(o.vx || 0, o.vz || 0) > 1 });
     return out;
@@ -463,7 +622,9 @@ export class Combat {
       if (!b.target && b.stance !== 'stand') b.stance = 'stand';
       if (b.target && b.nades > 0 && b.dist > 9 && b.dist < 22 && Math.random() < 0.06) { b.nades--; const f = b.target, dx = f.x - b.x + (Math.random() - 0.5) * 4, dz = f.z - b.z + (Math.random() - 0.5) * 4, d = Math.hypot(dx, dz), tt = d / 13; this.addNade(new THREE.Vector3(b.x, b.y + 1.6, b.z), new THREE.Vector3(dx / tt, 20 * tt / 2 - 0.3, dz / tt), b.key, true); }
     }
+    if (b.target && b.target.kind === 'sam' && (g.player.transit || g.player.platform || g.player.dead)) { b.target = null; b.thinkT = Math.min(b.thinkT, 0.3); }   // he's gone aboard: they lose him (and look where they last saw him)
     if (b.target) { b.target.x = b.target.ref.x; b.target.z = b.target.ref.z; b.aimT = (b.aimT || 0) + dt; b.lastFoe = { x: b.target.x, z: b.target.z }; }
+    if (b.stagT > 0) b.stagT -= dt;
     if (b.last && Math.hypot(b.last.x - b.x, b.last.z - b.z) < 3) { b.last = null; b.h += Math.PI * (Math.random() < 0.5 ? 0.6 : -0.6); }   // got there: look about
     // move
     let mx = 0, mz = 0, sp = 0;
@@ -486,13 +647,20 @@ export class Combat {
     } else { b.vx = b.vz = 0; }
     // shoot
     b.cd -= dt; if (b.react > 0) b.react -= dt;
-    if (b.target && b.react <= 0 && b.cd <= 0 && b.dist < W.range && !(b.inCover && !b.peeking)) {
+    if (b.target && b.react <= 0 && b.cd <= 0 && b.dist < W.range && !(b.inCover && !b.peeking) && !(b.stagT > 0)) {
       if (b.mag <= 0) { b.mag = W.mag; b.cd = W.reload; }
       else {
         b.mag--; b.cd = W.cd * (W.auto ? 1.4 : 1.6) + (W.auto && ++b.burst % 5 === 0 ? 0.5 + Math.random() * 0.6 : 0);
         const f = b.target, d = b.dist, cov = f.kind === 'sam' && g.player.cover ? (g.player.cover.exposed ? 0.75 : 0.06) : 1, hitP = cov * Math.max(0.04, Math.min(0.6, W.bot + 0.1 - d / (W.range * 1.2) - (f.moving ? 0.15 : 0) - (f.top < 1.5 ? 0.1 : 0) - (f.top < 0.8 ? 0.12 : 0) + (b.stance !== 'stand' ? 0.06 : 0) - Math.max(0, 0.25 - (b.aimT || 0) * 0.12)));   // first shots go wide; they settle in
-        const o = [b.x + Math.sin(b.h) * 0.5, b.y + (b.stance === 'prone' ? 0.35 : b.stance === 'crouch' ? 0.95 : 1.35), b.z + Math.cos(b.h) * 0.5], fly = [], dmg = { v: 0 };
-        for (let k = 0; k < W.pellets; k++) { const hit = Math.random() < hitP, ex = f.x + (hit ? (Math.random() - 0.5) * 0.3 : (Math.random() - 0.5) * 3), ey = f.y + (hit ? f.top * (0.45 + Math.random() * 0.45) : Math.random() * 2.5), ez = f.z + (hit ? (Math.random() - 0.5) * 0.3 : (Math.random() - 0.5) * 3); fly.push([ex, ey, ez]); if (hit) dmg.v += W.dmg * 0.75 * (W.pellets > 1 && d > W.range * 0.6 ? 0.5 : 1); }
+        const tip = this.gunTip(b.rig), o = tip ? [tip.x, tip.y, tip.z] : [b.x + Math.sin(b.h) * 0.5, b.y + (b.stance === 'prone' ? 0.35 : b.stance === 'crouch' ? 0.95 : 1.35), b.z + Math.cos(b.h) * 0.5], fly = [], dmg = { v: 0 }, O = { x: o[0], y: o[1], z: o[2] };   // from the end of the barrel
+        for (let k = 0; k < W.pellets; k++) {
+          const hit = Math.random() < hitP; let ex = f.x + (hit ? (Math.random() - 0.5) * 0.3 : (Math.random() - 0.5) * 3), ey = f.y + (hit ? f.top * (0.45 + Math.random() * 0.45) : Math.random() * 2.5), ez = f.z + (hit ? (Math.random() - 0.5) * 0.3 : (Math.random() - 0.5) * 3);
+          if (!hit) {   // a miss flies on past them into whatever's behind: a hole in the wall (or the road) there
+            const dx = ex - O.x, dy = ey - O.y, dz = ez - O.z, L = Math.hypot(dx, dy, dz) || 1, dv = { x: dx / L, y: dy / L, z: dz / L }, r = this.castRay(O, dv, Math.min(W.range, L + 25), (f.y || 0), 0.2);
+            ex = O.x + dv.x * r.t; ey = O.y + dv.y * r.t; ez = O.z + dv.z * r.t; if (r.n && Math.hypot(ex - g.player.x, ez - g.player.z) < 60) { const e = { x: ex, y: ey, z: ez }; if (!(g.glass && g.glass.hit(e, dv, b.key))) this.bulletMark(e, r); }
+          }
+          fly.push([ex, ey, ez]); if (hit) dmg.v += W.dmg * 0.75 * (W.pellets > 1 && d > W.range * 0.6 ? 0.5 : 1);
+        }
         this.tracer(o, fly); this.noise(b.x, b.z, 50); const dP = Math.hypot(g.player.x - b.x, g.player.z - b.z); if (dP < 120) this.bangSound(W, Math.max(0.08, 1 - dP / 120)); if (g.net && g.net.role === 'host') g.net.send({ t: 'bang', f: o.map((n) => Math.round(n * 100) / 100), e: fly.map((q) => q.map((n) => Math.round(n * 100) / 100)), by: b.key });
         if (dmg.v > 0) {
           const dir = new THREE.Vector3(f.x - b.x, 0.1, f.z - b.z).normalize(), at = new THREE.Vector3(f.x, f.y + f.top * 0.7, f.z);
@@ -508,11 +676,11 @@ export class Combat {
     b.anim.update(dt, { lower: b.stance === 'prone' ? 'prone' : moved ? 'walk' : 'stand', upper: b.target || b.stance === 'prone' ? 'aim' : 'idle', dist: moved, speed: spd, run: spd > 3.2, step: 0.38 + 0.21 * spd, fwd, side, crouch: b.stance === 'crouch' ? 1 : 0, gunProp: 'rifle', lookYaw: 0, lookPitch: 0 });
   }
   damageBot(b, dmg, by, dir, head) {
-    if (!b.alive) return; b.hp -= dmg; b.react = Math.min(b.react, 0.15);
+    if (!b.alive) return false; b.hp -= dmg; b.react = Math.min(b.react, 0.15); b.stagT = 0.22; if (dir) { b.x += dir.x * 0.08; b.z += dir.z * 0.08; }   // a hit knocks them back a touch and spoils their aim for a moment
     if (by && by !== b.key && !b.target) { const f = this.foes(b).find((q) => q.key === by); if (f) { b.h = Math.atan2(f.x - b.x, f.z - b.z) + (Math.random() - 0.5) * 0.8; b.last = { x: f.x + (Math.random() - 0.5) * 8, z: f.z + (Math.random() - 0.5) * 8 }; b.thinkT = 0.15; } }   // shot: spin round towards where it came from
-    if (b.hp > 0) return;
+    if (b.hp > 0) return false;
     b.alive = false; b.respawnT = 5 + Math.random() * 3; b.rig.root.visible = false; b.rag = this.ragdoll(b.rig, (dir ? dir.clone() : new THREE.Vector3(0, 0.2, 1)).multiplyScalar(head ? 5 : 3.5)); this.blood(b.x, 0.5, b.z, dir, true, true);
-    this.kill(by, b.key);
+    this.kill(by, b.key); return true;
   }
   /** A visitor's shot at a bot (host side). */
   botHit(key, dmg, by, dir, head) { const b = this.bots.find((q) => q.key === key); if (b) { this.blood(b.x, b.y + 1.2, b.z, dir ? new THREE.Vector3(...dir) : null, head); this.damageBot(b, dmg, by, dir ? new THREE.Vector3(...dir) : null, head); } }
@@ -623,7 +791,7 @@ export class Combat {
     }
     const flash = new THREE.Mesh(this.fxSphere || (this.fxSphere = new THREE.SphereGeometry(1, 14, 10)), new THREE.MeshBasicMaterial({ color: 0xffd060, transparent: true, opacity: 0.9, depthWrite: false })); flash.scale.set(0.05, 0.05, 0.12); flash.position.set(0, 0.015, muzzle - 0.05); flash.visible = false; g.add(flash);
     g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; o.frustumCulled = false; } });
-    g.scale.setScalar(0.62); g.userData = { key, flash, sight: sight * 0.62, rocket: key === 'launcher' }; return g;
+    g.scale.setScalar(0.62); g.userData = { key, flash, sight: sight * 0.62, rocket: key === 'launcher', muzzle: new THREE.Vector3(0, 0.015, muzzle - 0.04) }; return g;
   }
   /** Each frame in first person (from Player.placeCamera): put the gun in front of the camera with a bit of life. cam null hides it. */
   viewModel(P, cam, dt = 1 / 60) {
@@ -653,19 +821,27 @@ export class Combat {
     for (const id of ['cbhud', 'killfeed', 'dmgvig', 'hurtdir']) document.getElementById(id).classList.toggle('hidden', !on);
     if (!on) document.getElementById('scope').classList.add('hidden');
   }
+  /** The weapon panel: the gun in your hands (its picture, name, magazine and spare), the others you carry, grenades, stance. Only redrawn when something changes. */
   hudUpdate(P) {
-    const W = WEAPONS[P.gun], am = P.gun && P.ammo && P.ammo[P.gun];
-    const gun = document.getElementById('cbgun'); if (!gun) return; gun.textContent = W ? W.name + (P.reloadT > 0 ? ' · reloading' : '') : '';
-    document.getElementById('cbammo').innerHTML = am ? `<b class="${am.mag <= W.mag * 0.25 ? 'low' : ''}">${am.mag}</b> / ${am.res}` : '';
-    document.getElementById('cbnades').textContent = '● '.repeat(P.nades || 0) + (P.stance && P.stance !== 'stand' ? '  ' + (P.stance === 'prone' ? 'PRONE' : 'CROUCH') : '');
+    const W = WEAPONS[P.gun], am = P.gun && P.ammo && P.ammo[P.gun], gun = document.getElementById('cbgun'); if (!gun) return;
+    const cur = P.nadeHand ? 'nade' : P.gun || 'fist', key = [cur, P.reloadT > 0, (P.slots || []).join(), P.nades, P.stance, this.game.input.padActive].join('|');
+    if (key !== this._hudKey) {
+      this._hudKey = key; const pad = this.game.input.padActive;
+      gun.innerHTML = `<div class="cbnow">${gunIcon(cur)}<span>${cur === 'fist' ? 'Fists' : cur === 'nade' ? 'Frag grenade' : W.name}${P.reloadT > 0 ? ' · <i>reloading</i>' : ''}</span></div>`
+        + `<div class="cbrest">${(P.slots || []).map((k, i) => `<span class="${k === P.gun ? 'on' : ''}" title="${WEAPONS[k].name}"><sup>${i + 1}</sup>${gunIcon(k)}</span>`).join('')}</div>`
+        + `<div class="cbkey">${pad ? 'Hold △' : 'Hold Tab'}: weapon wheel · ${pad ? '△' : 'scroll / 1-9'}: next</div>`;
+      document.getElementById('cbnades').innerHTML = `<span class="nd">${gunIcon('nade')}×${P.nades || 0}</span>` + (P.stance && P.stance !== 'stand' ? `<span class="st">${P.stance === 'prone' ? 'PRONE · steady aim' : 'CROUCHED · steadier aim'}</span>` : '');
+    }
+    const at = am ? `${am.mag}/${am.res}/${am.mag <= W.mag * 0.25}` : cur;
+    if (at !== this._ammoKey) { this._ammoKey = at; document.getElementById('cbammo').innerHTML = am ? `<b class="${am.mag <= W.mag * 0.25 ? 'low' : ''}">${am.mag}</b> / ${am.res}` : cur === 'nade' ? `<b>${P.nades}</b>` : ''; }
   }
   /** Every frame (sim or not): bots, grenades, ragdolls, blood, the damage vignette, respawning. */
   update(dt) {
-    const g = this.game, P = g.player;
+    const g = this.game, P = g.player; if (this.wheel.open && (g.ui.modalOpen || g.mode !== 'sim' || P.dead || !this.on)) { this.wheel.hide(); g.input.wheel = false; this.holdT = 0; }   // a menu (or death) closes the weapon wheel
+    this.slow += ((this.wheel.open && !(g.net && g.net.role) ? 0.25 : 1) - this.slow) * Math.min(1, dt * 12); dt *= this.slow;   // the weapon wheel slows the fight to a crawl (playing alone)
     for (let i = this.nades.length - 1; i >= 0; i--) { this.stepNade(this.nades[i], dt); if (this.nades[i].t <= 0) this.nades.splice(i, 1); }
     for (let i = this.rags.length - 1; i >= 0; i--) { const r = this.rags[i]; r.t -= dt; this.stepRag(r, dt); this.drawRag(r); if (r.t < 2) r.grp.position.y = -(2 - r.t) * 0.25; if (r.t <= 0) { this.dropRag(r); this.rags.splice(i, 1); } }
     for (let i = this.fx.length - 1; i >= 0; i--) if (this.stepFx(this.fx[i], dt)) this.fx.splice(i, 1);
-    for (let i = this.decals.length - 1; i >= 0; i--) { const d = this.decals[i]; d.t -= dt; if (d.grow && d.m.scale.x < d.grow) d.m.scale.multiplyScalar(1 + dt * 0.5); if (d.t < 5) d.m.material.opacity = 0.85 * d.t / 5; if (d.t <= 0) { g.scene.remove(d.m); d.m.material.dispose(); this.decals.splice(i, 1); } }
     if (!this.on) return;
     if (this.auth) for (const b of this.bots) this.updateBot(b, dt);
     if (P.dead && !(P.down > 0)) this.respawnPlayer();

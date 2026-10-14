@@ -170,7 +170,7 @@ export class BuildingManager {
   }
   /** Walls, furniture (upstairs furniture only blocks up there) and, for the sims' route finder only, the stairs. */
   setColliders(b) {
-    const def = b.def, ext = b.ext, odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h, lo: c.lo, top: c.top, navOnly: c.navOnly, cam: c.cam, furn: c.furn }; };
+    const def = b.def, ext = b.ext, odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h, lo: c.lo, top: c.top, navOnly: c.navOnly, cam: c.cam, furn: c.furn, vh: c.h ?? (c.lo !== undefined ? c.lo + 3.2 : ext.height) }; };   // vh: how high it really stands (bullet holes stop there)
     if (b.colliders && b.colliders.length) this.world.removeColliders(b);
     const st = ext.plan && ext.plan.stair, stairs = st ? st.lanes.map((ln) => { const r = laneRect(st, ln); return { cx: (r[0] + r[1]) / 2, cz: (r[2] + r[3]) / 2, sx: r[1] - r[0], sz: r[3] - r[2], navOnly: true }; }) : [];
     b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout).map(conv), upperColliders(def).map(conv), roomColliders(b.layout).map(conv), stairs.map(conv));
@@ -277,6 +277,16 @@ export class BuildingManager {
     return (b.nav = { W, H, ox, oz, C, free });
   }
   /** Which finished building contains world point (x,z)? Used for roof cut-away and sim visibility. */
+  /** Where you buy things in a building: the customer's side of its first counter (else the middle of the room). */
+  counterSpot(b) { const c = b.spots && b.spots.counters && b.spots.counters[0]; return c && c.cust ? c.cust : { x: b.cx, z: b.cz }; }
+  /**
+   * Buying happens indoors, at the counter: inside (on the ground floor) Sam gets the offer near it; outside by the
+   * door, a pointer to go in. offer: the interaction (kind 'act'); why: what the door says.
+   */
+  sale(b, P, consider, offer, why) {
+    if (this.playerInside === b && (P.floorY || 0) < 0.5) { const at = this.counterSpot(b), d = Math.hypot(at.x - P.x, at.z - P.z); if (d < 3.6) consider(offer, d - 0.6, undefined, undefined, [at.x, at.z]); return; }
+    if (!b.doorOut || this.playerInside) return; const d = Math.hypot(b.doorOut.x - P.x, b.doorOut.z - P.z); if (d < 4.2) consider({ kind: 'info', text: why }, d + 0.6);
+  }
   buildingAtPoint(x, z) {
     const b = this.world.buildingAt(Math.floor(x / TILE), Math.floor(z / TILE)); return b && b.state === 'done' && !b.def.park ? b : null;
   }

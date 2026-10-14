@@ -74,6 +74,7 @@ export class Animator {
       const pd = o.motor ? 0 : ph * 0.8; T[I.HY] = -0.32; T[I.TLX] = -1.2 + Math.sin(pd) * 0.45; T[I.TRX] = -1.2 - Math.sin(pd) * 0.45; T[I.KL] = 1.3 + Math.cos(pd) * 0.4; T[I.KR] = 1.3 - Math.cos(pd) * 0.4;
       T[I.SPX] = o.motor ? 0.25 : 0.18; T[I.TLZ] = -0.08; T[I.TRZ] = 0.08;
     } else if (low === 'lie') {
+      this.lieH = o.lieH ?? 0.72;   // how high the back is: a bed (0.72), the ground (0.15), a cart...
       T[I.LIE] = 1; T[I.KL] = T[I.KR] = 0.12; T[I.SPX] = Math.sin(t * 1.4) * 0.018; T[I.TLZ] = -0.06; T[I.TRZ] = 0.06; T[I.SLZ] = -0.12; T[I.SRZ] = 0.12; T[I.HDX] = 0;
     } else if (low === 'jump') {
       T[I.TLX] = -0.7; T[I.TRX] = -0.5; T[I.KL] = 1.3; T[I.KR] = 1.0; T[I.AL] = T[I.AR] = 0.4; T[I.SPX] = 0.08; T[I.HY] = 0;
@@ -119,10 +120,12 @@ export class Animator {
       case 'bag': T[I.SRX] = -0.1; T[I.ERR] = -0.5; props.handR = 'bag'; if (this.lower === 'walk') { T[I.SRX] = -0.15; } break;
       case 'broom': { const sw = Math.sin(ut * 2.2); T[I.SRX] = -0.8; T[I.ERR] = -0.7; T[I.SLX] = -0.9 + sw * 0.2; T[I.ELL] = -0.8; T[I.SPX] += 0.1; T[I.SPY] = sw * 0.25; props.handR = 'broom'; break; }
       case 'guard': T[I.SLX] = 0.35; T[I.SRX] = 0.35; T[I.ELL] = -0.5; T[I.ERR] = -0.5; T[I.SLZ] = 0.35; T[I.SRZ] = -0.35; T[I.SPX] -= 0.05; T[I.HDY] = Math.sin(t * 0.4) * 0.5; break;
-      case 'aim': T[I.SRX] = -1.5; T[I.ERR] = -0.05; T[I.SLX] = -1.3; T[I.ELL] = -0.9; T[I.SLZ] = 0.25; T[I.HDX] = -0.05; T[I.SPX] -= 0.04; props.handR = o.gunProp || 'pistol'; break;
+      case 'aim': { const ap = clamp(o.aimPitch || 0, -1.1, 1.1); T[I.SRX] = -1.5 - ap; T[I.SLX] = -1.3 - ap; } T[I.ERR] = -0.05;   // (the arms follow the aim up and down)
+        T[I.ELL] = -0.9; T[I.SLZ] = 0.25; T[I.HDX] = -0.05; T[I.SPX] -= 0.04; props.handR = o.gunProp || 'pistol'; break;
       case 'strike': { const p = clamp(ut / 0.6, 0, 1), up = p < 0.4 ? p / 0.4 : Math.max(0, 1 - (p - 0.4) / 0.18); T[I.SRX] = -0.9 - up * 2.0; T[I.ERR] = -0.5 - up * 0.6; T[I.SLX] = -0.5 - up * 0.6; T[I.ELL] = -0.9; T[I.SPX] += 0.3 * (1 - up) - 0.2 * up; T[I.HDX] = 0.12; T[I.TLX] = -0.3; T[I.TRX] = 0.2; props.handR = 'club'; break; }
       case 'panel': { const tap = Math.max(0, Math.sin(ut * 4)); T[I.SRX] = -1.2 - tap * 0.15; T[I.ERR] = -0.5; T[I.SLX] = -0.3; T[I.ELL] = -0.7; T[I.HDX] = 0.1; T[I.HDY] = Math.sin(ut * 0.6) * 0.3; break; }
       case 'lever': { const s = Math.sin(ut * 1.8); T[I.SLX] = -1.0 + s * 0.4; T[I.SRX] = -1.0 - s * 0.4; T[I.ELL] = -0.8; T[I.ERR] = -0.8; T[I.SPX] += 0.12 + s * 0.08; break; }
+      case 'lift': { const k = Math.min(1, ut / 0.5); T[I.SPX] += 0.8 * k; T[I.SRX] = T[I.SLX] = -1.0 * k; T[I.ELL] = T[I.ERR] = -0.35 * k; T[I.SLZ] = 0.15; T[I.SRZ] = -0.15; T[I.HDX] = 0.25 * k; T[I.KL] += 0.4 * k; T[I.KR] += 0.4 * k; T[I.TLX] -= 0.3 * k; T[I.TRX] -= 0.3 * k; break; }   // bending to lift something heavy off the ground
       case 'tidy': { const s = Math.sin(ut * 1.5); T[I.SRX] = -0.85; T[I.ERR] = -0.8 + s * 0.2; T[I.SRY] = s * 0.35; T[I.SLX] = -0.6; T[I.ELL] = -1.1; T[I.SPX] += 0.1; T[I.HDX] = 0.2; T[I.HDY] = s * 0.2; break; }
       case 'browse': { const s = Math.sin(ut * 0.9); T[I.SRX] = -1.0 + Math.max(0, s) * -0.7; T[I.ERR] = -0.5 - Math.max(0, s) * 0.5; T[I.SLX] = -0.2; T[I.ELL] = -0.6; T[I.HDX] = 0.1; T[I.HDY] = s * 0.35; T[I.SPX] += 0.06; break; }
       case 'wave': { const w = Math.sin(ut * 11); T[I.SRX] = -2.9; T[I.SRZ] = 0.25; T[I.ERR] = -0.5 + w * 0.5; T[I.WRR] = w * 0.3; T[I.SLX] = Math.sin(t * 0.9) * 0.025; T[I.ELL] = -0.12; T[I.SM] = 1; T[I.HDX] = -0.05; break; }
@@ -276,7 +279,7 @@ export class Animator {
 
   apply(o) {
     const c = this.cur, r = this.rig;
-    r.body.rotation.x = -c[I.LIE] * Math.PI / 2; r.body.position.set(0, c[I.LIE] > 0 ? c[I.LIE] * 0.72 : -c[I.LIE] * 0.16, c[I.LIE] * 0.9);   // LIE 1: on the back (a bed); -1: prone on the ground
+    r.body.rotation.x = -c[I.LIE] * Math.PI / 2; r.body.position.set(0, c[I.LIE] > 0 ? c[I.LIE] * (this.lieH ?? 0.72) : -c[I.LIE] * 0.16, c[I.LIE] * 0.9);   // LIE 1: on the back (in bed, on the ground, in a cart: lieH); -1: prone on the ground
     r.hips.position.set(0, HIP_H + c[I.HY], c[I.HZ]); r.hips.rotation.set(c[I.HP], c[I.HYAW], c[I.HR]);
     r.spine.rotation.set(c[I.SPX], c[I.SPY], c[I.SPZ]); r.neck.rotation.set(c[I.NKX], c[I.NKY], c[I.NKZ]); r.head.rotation.set(c[I.HDX], c[I.HDY], c[I.HDZ]);
     r.armL.sh.rotation.set(c[I.SLX], c[I.SLY], c[I.SLZ]); r.armL.el.rotation.x = c[I.ELL]; r.armL.wr.rotation.x = c[I.WLL];

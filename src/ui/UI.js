@@ -34,7 +34,7 @@ export class UI {
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; if (b.dataset.menu) { this.plan.show(); return; } const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'btn-perf') { this.togglePerf(); return; } game.clock.speed = +b.dataset.s; }); $('perf').addEventListener('click', (e) => this.perfClick(e));
-    $('query').addEventListener('click', (e) => this.queryClick(e)); $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); });
+    $('query').addEventListener('click', (e) => this.queryClick(e)); $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); const im = e.target.closest('.album img'); if (im) { const v = document.createElement('div'); v.id = 'photoview'; v.innerHTML = `<img src="${im.src}" alt="">`; v.onclick = () => v.remove(); $('app').appendChild(v); } });   // (a photo full size)
     game.messages.on('msg', (m) => { const c = game.clock; m.when = `${c.day} ${MONTHS[c.month]} · ${String(Math.floor(c.hour)).padStart(2, '0')}:${String(Math.floor((c.hour % 1) * 60)).padStart(2, '0')}`; this.addMessage(m); });   // (stamped for the town news page)
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
     $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
@@ -292,8 +292,10 @@ export class UI {
       <div class="jsec">Skills (practice makes perfect)</div><div class="jsk">${Object.entries(SKILLS).map(([k, d]) => `<div class="sk"><span class="ic">${d.icon}</span><b>${d.name}</b><em>Lv ${g.skills.level(k)} · ${g.skills.title(k)}</em><i><u style="width:${Math.round(g.skills.frac(k) * 100)}%"></u></i></div>`).join('')}</div>
       <div class="jsec">Friends (${friends.length})${acq ? ` · ${acq} acquaintances` : ''}</div><div class="jfr">${friends.length ? friends.join(', ') : 'Nobody yet. Talk to people, do them favours.'}</div>
       ${(() => { const A = f.asks || {}, rows = Object.entries(A).filter(([, L]) => L.length).sort((a, b) => b[1].length - a[1].length); return `<div class="jsec">What people have asked for (${rows.length})</div><div class="jfr">${rows.length ? rows.map(([id, L]) => `<b>${(BUILDINGS[id] || { name: id }).name}</b> ×${L.length} <small>(${L.map((i) => (P.sims.find((s) => s.id === i) || {}).first).filter(Boolean).slice(0, 4).join(', ')})</small>`).join(' · ') : 'Nobody\'s asked for anything yet. Talk to people.'}</div>`; })()}
+      <div class="jsec">Album: photos and autographs (${g.photos.album.length})</div>${g.photos.html()}
       <div class="jsec">Curios found: ${cur.found.size} / ${CURIOS.length}</div><div class="cus">${items}</div>
       <div class="hint">${this.game.input.padActive ? 'D-pad ← opens this · ○ closes' : 'J opens this · Esc to close'}</div>`;
+    g.photos.fill($('journal'));
   }
 
   // ---------- backpack ----------
