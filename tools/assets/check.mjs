@@ -113,7 +113,13 @@ async function shrinkTextures(doc, cap, notes) {
   const big = doc.getRoot().listTextures().filter((t) => { const s = t.getSize(); return s && Math.max(s[0], s[1]) > cap; });
   if (!big.length) return; await doc.transform(textureCompress({ encoder: sharp, resize: [cap, cap] })); notes.push(`${big.length} texture(s) shrunk to fit ${cap}px`);
 }
-async function write(doc, file) { const d = quiet(cloneDocument(doc)); await d.transform(meshopt({ encoder: MeshoptEncoder, level: 'medium' })); fs.mkdirSync(path.dirname(file), { recursive: true }); await io.write(file, d); return fs.statSync(file).size; }
+/**
+ * Moving parts keep their pivot: compression re-centres each mesh and moves its node to make up for it, which would put
+ * a clock hand's (or a wheel's) turning point somewhere else. So the named part becomes an empty pivot node (exactly
+ * where the artist put it) with the mesh on a child; compression only ever touches the child.
+ */
+function pivotParts(d) { for (const n of d.getRoot().listNodes()) { if (!KEEP_SEPARATE.test(n.getName()) || !n.getMesh()) continue; const child = d.createNode('').setMesh(n.getMesh()); n.setMesh(null); n.addChild(child); } }
+async function write(doc, file) { const d = quiet(cloneDocument(doc)); pivotParts(d); await d.transform(meshopt({ encoder: MeshoptEncoder, level: 'medium' })); fs.mkdirSync(path.dirname(file), { recursive: true }); await io.write(file, d); return fs.statSync(file).size; }
 
 const kb = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'), n = (x) => x.toLocaleString('en-GB'), m = (x) => (x >= 10 ? x.toFixed(0) : x.toFixed(2));
 function categoryOf(file) { const rel = path.relative(IN, file).split(path.sep); const c = (rel.length > 1 ? rel[0] : 'props').toLowerCase(); return BUDGETS[c] ? c : ALIASES[c] || null; }
@@ -146,15 +152,18 @@ for (const file of files) {
   if (after.calls > B.mats + 2) warn.push(`${after.calls} draw calls for one copy`);
   if (after.skinned) notes.push('rigged (skinned): left whole, not joined');
   const lods = [];
-  if (B.lod && after.tris >= 300) for (let i = 0; i < 2; i++) { /* (a model this small doesn't need cheaper copies) */ const r = await fit(lod0, Math.max(12, Math.round(after.tris * LOD_RATIO[i])), LOD_ERR[i]); lods.push({ doc: r.doc, tris: measure(r.doc).tris }); }
+  // distance versions: not for small models (under 1,000 triangles a cheaper copy saves next to nothing: it's the draw call that costs). They carry
+  // no textures of their own: the game lends them the full version's materials (one copy of each texture, not three)
+  if (B.lod && after.tris >= 1000) for (let i = 0; i < 2; i++) { const r = await fit(lod0, Math.max(12, Math.round(after.tris * LOD_RATIO[i])), LOD_ERR[i]); for (const t of r.doc.getRoot().listTextures()) t.dispose(); lods.push({ doc: r.doc, tris: measure(r.doc).tris }); }
   const verdict = badScale ? 'FIX THE SCALE' : over ? (KEEP ? 'OVER (kept as is: --keep)' : 'OVER: needs work in Blender') : warn.length ? 'OK, with warnings' : tidied.tris > B.tris ? 'OK (cut to budget)' : 'OK';
   if (over && !KEEP) warn.push(`couldn't get under ${n(B.tris)} without spoiling the shape: simplify it in Blender (Decimate modifier) or split it into parts`);
   const res = { name, cat, file: rel, verdict, budget: B.tris, before: { tris: before.tris, mats: before.mats, calls: before.calls, bytes: before.bytes, tex: before.tex }, after: { tris: after.tris, mats: after.mats, calls: after.calls, tex: after.tex }, lods: lods.map((l) => l.tris), size: after.size.map((v) => +v.toFixed(2)), fitErr, notes, warn };
   if (!REPORT_ONLY) {
     const dir = path.join(OUT, cat), files = [name + '.glb', ...lods.map((_, i) => `${name}.lod${i + 1}.glb`)];
+    for (let i = lods.length + 1; i <= 2; i++) fs.rmSync(path.join(dir, `${name}.lod${i}.glb`), { force: true });   // (distance versions from an earlier, bigger version of the model)
     let bytes = await write(lod0, path.join(dir, files[0])); for (let i = 0; i < lods.length; i++) bytes += await write(lods[i].doc, path.join(dir, files[i + 1]));
     res.bytesOut = bytes;
-    manifest.assets[cat + '/' + name] = { cat, files: files.map((f) => cat + '/' + f), dist: [0, ...(B.lod || []).slice(0, lods.length)], far: B.far, tris: [after.tris, ...lods.map((l) => l.tris)], size: res.size, report: res };
+    manifest.assets[cat + '/' + name] = { cat, files: files.map((f) => cat + '/' + f), dist: [0, ...(B.lod || []).slice(0, lods.length)], shareMats: lods.length > 0, far: B.far, tris: [after.tris, ...lods.map((l) => l.tris)], size: res.size, report: res };
   }
   results.push(res);
 }

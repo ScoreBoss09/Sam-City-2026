@@ -14,7 +14,7 @@ import { Photos } from './systems/Photos.js';
 import { ModelLib } from './render/ModelLib.js';
 // the town's systems: SIM_STEP run in every simulation round, SIM_FRAME once a frame (see Game.sys)
 const SIM_STEP = ['economy', 'logistics', 'population', 'resources', 'social', 'traffic', 'planner', 'raids', 'security', 'tech'];
-const SIM_FRAME = ['crime', 'hazards', 'happenings', 'transport', 'cars', 'rescue', 'carting', 'beerGarden', 'functionRoom', 'service', 'groundskeepers', 'lamps', 'markers', 'glass', 'decals', 'photos'];
+const SIM_FRAME = ['crime', 'hazards', 'happenings', 'transport', 'cars', 'rescue', 'carting', 'beerGarden', 'functionRoom', 'service', 'groundskeepers', 'lamps', 'markers', 'glass', 'decals', 'photos', 'models'];
 import { World } from './world/World.js';
 import { Terrain } from './render/Terrain.js';
 import { Atmosphere } from './render/Atmosphere.js';

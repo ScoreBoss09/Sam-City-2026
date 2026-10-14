@@ -195,6 +195,8 @@ export class BuildingManager {
     if (ext.glass && ext.glass.length) { b.glassMat = ext.glass[0].material.clone(); for (const m of ext.glass) m.material = b.glassMat; b.litK = 0; }   // its own lights
     return ext;
   }
+  /** Throw away every built interior (they're rebuilt as they come into view, one a frame): after the made models have loaded, so rooms built before then get them too. */
+  refreshInteriors() { for (const b of this.list) if (b.interior) { this.scene.remove(b.interior); disposeOwned(b.interior); b.interior = null; } }
   /** Modernise a building: same footprint, colliders and people, new fittings for the new era. */
   restyle(b, era) {
     if (b.state !== 'done' || !b.ext || b.def.special || b.def.park) { b.era = era; return; }

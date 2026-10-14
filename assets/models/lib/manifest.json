@@ -1,4 +1,74 @@
 {
- "note": "Written by tools/assets/check.mjs: models the game can load (src/render/ModelLib.js).",
- "assets": {}
+ "note": "Written by tools/assets/check.mjs: models the game can load (src/render/Assets.js).",
+ "assets": {
+  "props/wall_clock": {
+   "cat": "props",
+   "files": [
+    "props/wall_clock.glb"
+   ],
+   "dist": [
+    0
+   ],
+   "shareMats": false,
+   "far": 70,
+   "tris": [
+    432
+   ],
+   "size": [
+    0.35,
+    0.35,
+    0.06
+   ],
+   "report": {
+    "name": "wall_clock",
+    "cat": "props",
+    "file": "assets/incoming/props/wall_clock.glb",
+    "verdict": "OK",
+    "budget": 500,
+    "before": {
+     "tris": 432,
+     "mats": 1,
+     "calls": 3,
+     "bytes": 48196,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "after": {
+     "tris": 432,
+     "mats": 1,
+     "calls": 3,
+     "tex": [
+      {
+       "name": "texture",
+       "size": [
+        512,
+        512
+       ],
+       "type": "image/png"
+      }
+     ]
+    },
+    "lods": [],
+    "size": [
+     0.35,
+     0.35,
+     0.06
+    ],
+    "fitErr": 0,
+    "notes": [
+     "kept separate so the game can move them: move_hand_hour, move_hand_min"
+    ],
+    "warn": [],
+    "bytesOut": 21820
+   }
+  }
+ }
 }

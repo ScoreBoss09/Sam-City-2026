@@ -28,7 +28,7 @@ The town is set in **1990s Britain**. It starts as a timber village and grows th
 
 These are used in the most buildings, so they change the look of the whole town fastest:
 
-1. `props/wall_clock` (in over 60 buildings)
+1. `props/wall_clock` (done) and `furniture/grandfather_clock` (in 67 buildings)
 2. `furniture/plant` ×3
 3. `props/picture` ×4
 4. `props/strip_light` and `props/pendant_light`
@@ -47,7 +47,8 @@ After that, the hero item of each building (★), then the rest.
 ## 1. Shared kit (used in many buildings)
 
 ### Walls, ceilings and lights
-- ★ `props/wall_clock` — round office clock, white face, black frame · 0.35 × 0.06 × 0.35 · fits 0.5 × 0.3 · replaces `clock` · hands as `move_hand_hour`, `move_hand_min`
+- ★ `props/wall_clock` — round office clock, white face, black frame · 0.35 × 0.06 × 0.35 · the clock the game hangs on a wall (over the door, mostly) in nearly every shop, pub, office and civic building · hands as `move_hand_hour`, `move_hand_min`, pivots on the dial centre, pointing at twelve when not turned. **Done** (the first production model: in the game, keeping the town's time)
+- ★ `furniture/grandfather_clock` — longcase (grandfather) clock: wooden case, brass face, pendulum behind a glass door · 0.5 × 0.3 × 1.9 · fits 0.5 × 0.3 · replaces `clock` (in 67 buildings' layouts) · hands `move_hand_hour`, `move_hand_min`, pendulum `move_pendulum`
 - ★ `props/picture` ×4 — framed pictures: a landscape, a seaside print, a horse, a football team photo · 0.8 × 0.05 × 0.6 · fits 0.8 × 0.08 · replaces `picture`
 - `props/picture_queen` — the Queen's official portrait in a gilt frame (civic buildings) · 0.6 × 0.05 × 0.8
 - `props/poster` ×6 — wall posters (band, film, health notice, holiday advert, missing cat, Neighbourhood Watch) · 0.7 × 0.02 × 1.0 · fits 1.0 × 0.1 · replaces `poster`
@@ -690,7 +691,7 @@ After that, the hero item of each building (★), then the rest.
 - ★ `furniture/trolley` — brass luggage trolley with suitcases · 0.8 × 1.2 × 1.8 · fits 0.8 × 1.2 · replaces `trolley` · `wheel_*`
 - ★ `props/chandelier` — crystal chandelier (glow) · 1.2 × 1.2 × 1.0
 - `furniture/sofa_leather` (shared), `furniture/plant` palm variant (shared)
-- `furniture/grandfather_clock` — grandfather clock · 0.5 × 0.3 × 2.1 · pendulum `move_pendulum`
+- `furniture/grandfather_clock` (shared kit)
 - `furniture/brochure_stand` — stand of tourist leaflets · 0.5 × 0.4 × 1.5
 - Hotel rooms upstairs: `furniture/twin_beds` — two single beds with a headboard · 2.4 × 2.1 × 1.0; `furniture/trouser_press` · 0.4 × 0.1 × 1.1; `props/tea_tray` — kettle, cups and biscuits · 0.4 × 0.3 × 0.25; `furniture/minibar` — little fridge under the TV unit · 1.0 × 0.5 × 0.8; `furniture/luggage_rack` · 0.7 × 0.45 × 0.5
 
