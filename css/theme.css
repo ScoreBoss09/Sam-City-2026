@@ -264,7 +264,7 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash) { visibility:
 #errbar b { font-size: 20px; } #errbar span { flex: 1; }
 #errbar button { flex: none; background: rgba(255, 255, 255, .14); color: #fff; border: 1px solid rgba(255, 255, 255, .35); border-radius: 9px; padding: 8px 14px; font: 700 14px var(--ui-font); cursor: pointer; }
 /* paused (the clock is stopped): a badge you can't miss */
-#pausedpill { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 12px; padding: 10px 22px; border-radius: 999px;
+#pausedpill { position: fixed; left: 50%; top: 26%; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 12px; padding: 10px 22px; border-radius: 999px;
   background: rgba(8, 12, 20, .88); border: 1px solid var(--accent); color: #fff; font: 700 18px var(--ui-head); letter-spacing: .18em; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); pointer-events: none; }
 #pausedpill > b { color: var(--accent); letter-spacing: 0; } #pausedpill span { display: inline-flex; align-items: center; gap: 8px; font: 600 14px var(--ui-font); letter-spacing: 0; color: var(--muted); }
 

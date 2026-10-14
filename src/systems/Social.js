@@ -6,11 +6,12 @@ const CHAT_LINES = ['Nice weather.', 'Did you hear?', 'No way!', 'Really?', 'Lov
   'Have you seen the new cabin?', 'My knees, honestly.', 'Same again tomorrow.', 'Blimey.', 'She never!', 'Fancy that.', 'Proper job.', 'Not bad, you?', 'Put the kettle on.', 'Mind you...', 'I said to him, I said...',
   'Shocking.', 'Smashing!', 'Champion.', 'Bit nippy.', 'Did you get any berries?', 'Lovely bit of timber, that.', 'The Lift was late again.', 'Where\'s Sam off to?', 'Quiz night?', 'Ta-ra then!', 'Sorry, sorry.', 'Who\'s got the biscuits?'];
 const GREET = { cheerful: ['Morning, Sam!', 'Alright, Sam?', 'Lovely day!', 'Hiya, Sam!', 'Ey up, Sam!', 'There\'s our Sam!', 'Cooee!'], grumpy: ['Hmph.', 'Sam.', 'Oh. It\'s you.', 'What now?', 'Mm.', 'Don\'t track mud in.'], shy: ['Oh, um, hi', 'Hello...', 'Morning...', '*waves*', 'Oh! Sam.'], busy: ['Sam! Can\'t stop!', 'Hiya, bye!', 'Cheers, Sam!', 'Late, late, late!', 'Morning! Gotta dash!'] };
-const texCache = {};
+const texCache = new Map(), TEX_MAX = 160;   // the most recent bubbles and name tags; older pictures are freed (every drunken slur used to be kept forever)
 /** A speech bubble (or name tag) picture. Long lines wrap onto up to four lines, and the type only gets smaller when it must,
  *  so nothing is squashed; the texture remembers its size in world units (userData.w / .h) for the sprite. */
 function bubbleTexture(text, kind) {
-  const k = text + kind; if (texCache[k]) return texCache[k];
+  const k = text + kind, hit = texCache.get(k); if (hit) { texCache.delete(k); texCache.set(k, hit); return hit; }
+  if (texCache.size >= TEX_MAX) { const [old, t] = texCache.entries().next().value; texCache.delete(old); t.dispose(); }
   const c = document.createElement('canvas'), x = c.getContext('2d'), maxW = 300, PX = 3 / 192; let size = 22, lines = [text];
   const F = (sz) => `600 ${sz}px Barlow, 'Segoe UI', sans-serif`, wrap = (sz) => { x.font = F(sz); const out = []; let cur = ''; for (const w of text.split(' ')) { const t = cur ? cur + ' ' + w : w; if (x.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t; } if (cur) out.push(cur); return out; };
   if (kind !== 'name') for (size = 22; size >= 12; size -= 2) { lines = wrap(size); if (lines.length <= (size > 16 ? 3 : 4) && lines.every((l) => x.measureText(l).width <= maxW)) break; }
@@ -19,7 +20,7 @@ function bubbleTexture(text, kind) {
   x.fillStyle = kind === 'name' ? 'rgba(10,15,25,.82)' : '#fffdf6'; x.strokeStyle = 'rgba(20,26,38,.85)'; x.lineWidth = 2.5;
   const bx = (c.width - bw) / 2, by = 4, mid = c.width / 2; x.beginPath(); x.roundRect(bx, by, bw, bh, kind === 'name' ? bh / 2 : 14); x.fill(); if (kind !== 'name') { x.stroke(); x.beginPath(); x.moveTo(mid - 6, by + bh); x.lineTo(mid + 2, by + bh + tail); x.lineTo(mid + 8, by + bh); x.closePath(); x.fillStyle = '#fffdf4'; x.fill(); }
   x.fillStyle = kind === 'name' ? '#fff' : '#1a2230'; x.textAlign = 'center'; x.textBaseline = 'middle'; lines.forEach((l, i) => x.fillText(l, mid, by + 7 + lh * (i + 0.5)));
-  const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.colorSpace = THREE.SRGBColorSpace; t.userData = { w: c.width * PX, h: c.height * PX }; return (texCache[k] = t);
+  const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.colorSpace = THREE.SRGBColorSpace; t.userData = { w: c.width * PX, h: c.height * PX }; texCache.set(k, t); return t;
 }
 /** Up close a bubble keeps the size it has from 6 m away (so it never fills the screen), and right in your face it's hidden. */
 function closeK(p, cam) { const d = Math.hypot(p.x - cam.x, p.y - cam.y, p.z - cam.z); return d < 1.3 ? 0 : Math.min(1, d / 6); }
@@ -130,7 +131,7 @@ export class Social {
       // name tags near Sam
       const near = g.mode === 'sim' && s.mesh.visible && Math.hypot(p.x - s.x, p.z - s.z) < 5.5 && !s.bubble && !s.sleeping;
       if (near && !s.tag) { s.tag = makeSprite(s.name, 'name'); s.tag.scale.set(s.tag.userData.size.w * 0.8, s.tag.userData.size.h * 0.8, 1); g.scene.add(s.tag); }
-      if (s.tag) { if (near) { s.tag.position.set(s.x, 2.4 + (s.sitting ? -0.35 : 0), s.z); const k = 0.8 * closeK(s.tag.position, cam), z = s.tag.userData.size; s.tag.visible = k > 0; s.tag.scale.set(z.w * k, z.h * k, 1); } if (!near || s.remove) { g.scene.remove(s.tag); s.tag = null; } }
+      if (s.tag) { if (near) { s.tag.position.set(s.x, 2.4 + (s.sitting ? -0.35 : 0), s.z); const k = 0.8 * closeK(s.tag.position, cam), z = s.tag.userData.size; s.tag.visible = k > 0; s.tag.scale.set(z.w * k, z.h * k, 1); } if (!near || s.remove) { g.scene.remove(s.tag); s.tag.material.dispose(); s.tag = null; } }
     }
   }
 }

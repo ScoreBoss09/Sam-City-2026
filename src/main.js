@@ -17,6 +17,7 @@ Mods.start(game);
 game.run();
 for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => Sfx.resume());
 game.input.onActivity = () => Sfx.resume();
+game.input.onUnknownPad = (id) => game.ui.toast(`A controller was found (${id.replace(/\s*\(.*$/, '').slice(0, 40)}) but the browser doesn't know its button layout. Plug it in by USB, or use Chrome or Edge.`, 6000);
 const soundOpt = document.getElementById('opt-sound'); try { if (localStorage.getItem('samcity-sound') === '0') soundOpt.checked = false; } catch (e) { /* no storage */ }
 soundOpt.onchange = () => { Sfx.enabled = soundOpt.checked; try { localStorage.setItem('samcity-sound', soundOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } }; Sfx.enabled = soundOpt.checked;
 const padOpt = document.getElementById('opt-pad'); try { if (localStorage.getItem('samcity-pad') === '0' || params.has('nopad')) padOpt.checked = false; } catch (e) { /* no storage */ }
@@ -66,7 +67,7 @@ $('btn-options').onclick = () => showMenu('menu-options'); $('btn-options-back')
 { const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } };
   const setQ = (q) => { put('samcity-quality', q); game.lockQuality = q !== 'auto'; game.renderScale = q === 'high' ? 1 : q === 'low' ? 0.45 : (parseFloat(params.get('scale')) || 0.6); if (game.atmosphere && game.atmosphere.sun) game.atmosphere.sun.castShadow = q !== 'low'; game.resize(); for (const b of document.querySelectorAll('[data-q]')) b.classList.toggle('on', b.dataset.q === q); };
   let lost = 0; try { lost = +localStorage.getItem('samcity-ctxlost') || 0; localStorage.removeItem('samcity-ctxlost'); } catch (e) { /* no storage */ }
-  for (const b of document.querySelectorAll('[data-q]')) b.onclick = () => setQ(b.dataset.q); setQ(Date.now() - lost < 3600e3 ? 'auto' : 'high');   // the best picture, unless the graphics card was reset last time (then Auto, which steps down when it's slow)   // always start on the best picture (it can be lowered in Options or the pause menu for this session)
+  for (const b of document.querySelectorAll('[data-q]')) b.onclick = () => setQ(b.dataset.q); setQ(Date.now() - lost < 3600e3 ? 'auto' : 'high');   // the best picture, unless the graphics card was reset last time (then Auto, which steps down when it's slow)
   let vol = +get('samcity-volume', 7); const setV = (v) => { vol = Math.max(0, Math.min(10, v)); put('samcity-volume', vol); Sfx.setVolume(vol * 0.05); $('vol').textContent = vol; };
   $('vol-down').onclick = () => setV(vol - 1); $('vol-up').onclick = () => setV(vol + 1); setV(vol);
   // tick boxes become buttons too, so a controller can change them

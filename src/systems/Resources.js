@@ -20,11 +20,28 @@ export class Resources {
   // ---------- moving a bush or a rock out of the way (the Move tool in the planning view) ----------
   movable(n) { return n && n.mesh && (n.kind === 'berry' || n.kind === 'rock') && n.seedId !== undefined; }
   nodeAt(tx, tz) { return this.nodes.find((n) => n.tx === tx && n.tz === tz && this.movable(n)) || null; }
-  canReplant(tx, tz) { const w = this.world, i = w.idx(tx, tz); return w.isLand(tx, tz) && !w.occ[i] && !w.road[i] && !w.res[i] && !this.game.roadPlans.get(tx, tz) && !this.moves.some((m) => m.tx === tx && m.tz === tz); }
+  canReplant(tx, tz) { return this.clearFor(tx, tz) && !this.moves.some((m) => m.tx === tx && m.tz === tz); }
+  /** Is the ground still clear for a replant (nothing built, paved or planned there since)? */
+  clearFor(tx, tz) { const w = this.world, i = w.idx(tx, tz); return w.isLand(tx, tz) && !w.occ[i] && !w.road[i] && !w.res[i] && !w.block[i] && !this.game.roadPlans.get(tx, tz); }
   requestMove(n, tx, tz) {
     const g = this.game; if (this.moves.some((m) => m.n === n)) { g.ui.toast('That one is already being moved.'); return false; }
     if (!this.canReplant(tx, tz)) { g.ui.toast('It can\'t go there: pick clear ground.'); return false; }
-    this.moves.push({ n, tx, tz, sim: null, t: 0 }); g.ui.toast(`A villager will dig up the ${n.kind === 'berry' ? 'berry bush' : 'rock'} and move it.`, 2600); return true;
+    const [sx, sz] = [n.tx, n.tz]; if (!this.world.findPath(sx, sz, tx, tz)) { g.ui.toast('There\'s no way to carry it over there.'); return false; }
+    this.moves.push({ n, tx, tz, sim: null, t: 0, fails: 0, tried: [] }); g.ui.toast(`A villager will dig up the ${this.label(n)} and move it.`, 2600); return true;
+  }
+  /** The spot was taken: the nearest clear tile next to it will do (true), or there isn't one. */
+  retarget(m) { if (this.clearFor(m.tx, m.tz)) return true; for (let r = 1; r <= 2; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) { const x = m.tx + dx, z = m.tz + dz; if (Math.max(Math.abs(dx), Math.abs(dz)) === r && this.world.inBounds(x, z) && this.canReplant(x, z)) { m.tx = x; m.tz = z; return true; } } return false; }
+  label(n) { return n.kind === 'berry' ? 'berry bush' : 'rock'; }
+  /** Give up on a move for good, and say why (the bush stays, or goes back, where it was). */
+  cancelMove(m, why) {
+    const s = m.sim; if (s && s.moveJob === m) this.drop(m, s); if (m.n.mesh && !m.n.mesh.visible) { m.n.mesh.visible = true; this.batchDirty = true; }
+    this.moves = this.moves.filter((q) => q !== m); this.game.messages.push('Planning Office', why, 'warn');
+  }
+  /** One go at it didn't work out: put it back, let someone else try in a while, and stop after a few goes. */
+  failMove(m, s) {
+    if (m.n.mesh && !m.n.mesh.visible) { m.n.mesh.visible = true; this.batchDirty = true; }
+    this.drop(m, s); m.fails = (m.fails || 0) + 1; (m.tried = m.tried || []).push(s.id); m.waitT = this.game.elapsed + 12;
+    if (m.fails >= 3) this.cancelMove(m, `Nobody could get the ${this.label(m.n)} over to where you wanted it, so it's staying put.`);
   }
   /** Put a node on another tile (the world's blocking and the ground painting follow it). */
   moveNode(n, tx, tz) {
@@ -37,11 +54,12 @@ export class Resources {
   /** Hand waiting jobs to someone free (off work, awake, outdoors or at home). */
   assignMoves(dt) {
     this.moveAcc = (this.moveAcc || 0) - dt; if (this.moveAcc > 0) return; this.moveAcc = 2;
-    for (const m of this.moves) {
-      if (m.sim && (m.sim.remove || m.sim.moveJob !== m)) m.sim = null; if (m.sim) continue; m.t += 2;
-      const free = this.game.population.sims.filter((s) => s.kind === 'resident' && s.age >= 14 && s.age < 70 && !s.moveJob && s.pose !== 'sleep' && !(s.down > 0) && !s.fight && ['leisure', 'home', 'visit', 'work'].includes(s.activity) && (s.activity !== 'work' || s.role === 'forager' || s.role === 'builder' || s.role === 'farmer'));
-      free.sort((a, b) => Math.hypot(a.x - m.n.x, a.z - m.n.z) - Math.hypot(b.x - m.n.x, b.z - m.n.z));
-      const s = free[0]; if (s) { s.moveJob = m; m.sim = s; m.phase = 0; } else if (m.t > 30 && !m.warned) { m.warned = true; this.game.ui.toast('Nobody is free to move it yet: someone will when they knock off work.', 2600); }
+    for (const m of this.moves.slice()) {
+      if (!(m.sim && m.phase >= 3) && !this.retarget(m)) { this.cancelMove(m, `The spot you picked for the ${this.label(m.n)} has been built on or dug up, so it's staying where it is.`); continue; }
+      if (m.sim && (m.sim.remove || m.sim.moveJob !== m)) m.sim = null; if (m.sim) continue; m.t += 2; if (m.waitT && this.game.elapsed < m.waitT) continue;
+      const tried = m.tried || [], free = this.game.population.sims.filter((s) => s.kind === 'resident' && s.age >= 14 && s.age < 70 && !s.moveJob && s.pose !== 'sleep' && !(s.down > 0) && !s.fight && !s.dead && ['leisure', 'home', 'visit', 'work'].includes(s.activity) && (s.activity !== 'work' || s.role === 'forager' || s.role === 'builder' || s.role === 'farmer'));
+      free.sort((a, b) => (tried.includes(a.id) - tried.includes(b.id)) || Math.hypot(a.x - m.n.x, a.z - m.n.z) - Math.hypot(b.x - m.n.x, b.z - m.n.z));
+      const s = free[0]; if (s) { s.moveJob = m; m.sim = s; m.phase = 0; m.tt = 0; } else if (m.t > 30 && !m.warned) { m.warned = true; this.game.ui.toast('Nobody is free to move it yet: someone will when they knock off work.', 2600); }
     }
   }
   /** The mover: walk there, dig it up, carry it over, plant it. (called from Sim.think) */
@@ -49,11 +67,12 @@ export class Resources {
     const m = s.moveJob, g = this.game; if (!m || !this.moves.includes(m)) { s.moveJob = null; s.bag = false; return; }
     m.tt = (m.tt || 0) + dt;
     s.hurry = true;
-    if (m.phase === 0) { const sp = this.standPoint(m.n, s) || { x: m.n.x + 1.4, z: m.n.z + 1.0 }; if (!s.goTo({ x: sp.x, z: sp.z })) { this.drop(m, s); return; } m.phase = 1; }
+    if ((m.phase === 1 || m.phase === 3) && m.tt > 120) { this.failMove(m, s); return; }   // never got there (stuck behind something): let someone else have a go
+    if (m.phase === 0) { const sp = this.standPoint(m.n, s) || { x: m.n.x + 1.4, z: m.n.z + 1.0 }; if (!s.goTo({ x: sp.x, z: sp.z })) { this.failMove(m, s); return; } m.phase = 1; m.tt = 0; }
     else if (m.phase === 1 && !s.path.length) { m.phase = 2; m.tt = 0; s.faceGoal = Math.atan2(m.n.x - s.x, m.n.z - s.z); g.social.say(s, 'Right, out you come...', 2); }
-    else if (m.phase === 2) { s.digging = true; if (m.tt > 3) { s.digging = false; m.n.mesh.visible = false; this.batchDirty = true; s.bag = true; const tx = (m.tx + 0.5) * TILE + 1.4, tz = (m.tz + 0.5) * TILE + 1.0; if (!s.goTo({ x: tx, z: tz })) { m.n.mesh.visible = true; this.drop(m, s); return; } m.phase = 3; } }
+    else if (m.phase === 2) { s.digging = true; if (m.tt > 3) { s.digging = false; if (!this.retarget(m)) { this.cancelMove(m, `The spot you picked for the ${this.label(m.n)} has been built on, so it's staying where it is.`); return; } m.n.mesh.visible = false; this.batchDirty = true; s.bag = true; const tx = (m.tx + 0.5) * TILE + 1.4, tz = (m.tz + 0.5) * TILE + 1.0; if (!s.goTo({ x: tx, z: tz })) { this.failMove(m, s); return; } m.phase = 3; m.tt = 0; } }
     else if (m.phase === 3 && !s.path.length) { m.phase = 4; m.tt = 0; s.faceGoal = Math.atan2((m.tx + 0.5) * TILE - s.x, (m.tz + 0.5) * TILE - s.z); }
-    else if (m.phase === 4) { s.digging = true; if (m.tt > 2) { s.digging = false; s.bag = false; s.hurry = false; this.moveNode(m.n, m.tx, m.tz); this.moves = this.moves.filter((q) => q !== m); s.moveJob = null; g.messages.push('Planning Office', `${s.first} moved the ${m.n.kind === 'berry' ? 'berry bush' : 'rock'}.`, 'good'); } }
+    else if (m.phase === 4) { s.digging = true; if (m.tt > 2) { s.digging = false; s.bag = false; s.hurry = false; s.moveJob = null; if (!this.retarget(m)) { m.sim = null; this.cancelMove(m, `The spot you picked for the ${this.label(m.n)} was built on before it got there, so ${s.first} put it back.`); return; } this.moveNode(m.n, m.tx, m.tz); this.moves = this.moves.filter((q) => q !== m); g.messages.push('Planning Office', `${s.first} moved the ${this.label(m.n)}.`, 'good'); } }
   }
   drop(m, s) { s.hurry = false; s.moveJob = null; s.bag = false; s.digging = false; m.sim = null; }
   /** A hit lands on a bush / rock: it shudders. */

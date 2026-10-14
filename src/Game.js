@@ -119,8 +119,8 @@ export class Game {
       const n = this.autopilot.note; this.autopilot.on = false; this.autopilot.stop();
       if (this.player.sleeping) { this.clock.sleepBoost = 8; this.ui.fade(0.55, 'Zzz...'); } else if (n && this.started) this.ui.toast('Sam was ' + n + '.', 2600);
     }
-    if (mode === 'god' && this.player) { if (this.player.transit && this.transport) this.transport.endRide(); if (this.player.mounted) this.player.mount(false); }
-    if (mode === 'god' && this.player && (this.player.floorY || 0) > 0.3) { const b = this.buildings.buildingAtPoint(this.player.x, this.player.z); if (b && b.doorOut) this.player.teleport(b.doorOut.x, b.doorOut.z); else this.player.floorY = 0; }   // the autopilot only walks on the ground
+    if (mode === 'god' && this.player) { if (this.player.platform && this.transport) this.transport.samDown(); if (this.player.mounted) this.player.mount(false); }   // (a train ride carries on: Sam gets off at the next station)
+    if (mode === 'god' && this.player && !this.player.transit && (this.player.floorY || 0) > 0.3) { const b = this.buildings.buildingAtPoint(this.player.x, this.player.z); if (b && b.doorOut) this.player.teleport(b.doorOut.x, b.doorOut.z); else this.player.floorY = 0; }   // the autopilot only walks on the ground
     this.mode = mode; if (mode === 'sim') this.flags.sawSim = true; this.camera.fov = mode === 'god' ? 38 : 72; this.camera.near = mode === 'god' ? 1.5 : 0.3; this.camera.far = mode === 'god' ? 1400 : 600; this.camera.updateProjectionMatrix();   // planning view: the whole sea, without the depth fighting
     this.ui.setMode(mode); if (mode === 'god') { this.ui.setPrompt(null); this.god.setTool('pan'); }
   }
@@ -190,7 +190,7 @@ export class Game {
     if (!ui.modalOpen && !this.ending && !this.netVisitor && inp.hit('Tab')) this.setMode(this.mode === 'god' ? 'sim' : 'god');
     if (inp.hit('KeyP') && !ui.modalOpen && !this.netVisitor) this.clock.speed = this.clock.speed ? 0 : 1;
     if ((inp.hit('PadCycle') || inp.hit('Period')) && !ui.modalOpen && !this.netVisitor && this.started) {   // one button cycles the speed
-      const S = [1, 2, 4], i = S.indexOf(this.clock.speed); this.clock.speed = S[(i + 1) % S.length]; ui.toast(`Speed ${this.clock.speed}x`, 1200);   // 1x > 2x > 4x > 1x (a tap while paused carries on at 1x); pausing is P, the II button or the pause menu, never by accident
+      const S = [1, 2, 4, 0], i = S.indexOf(this.clock.speed); this.clock.speed = S[(i + 1) % S.length]; if (this.clock.speed) ui.toast(`Speed ${this.clock.speed}x`, 1200);   // 1x > 2x > 4x > paused > 1x (paused says so in the PAUSED badge at the top)
     }
     if (!ui.modalOpen && this.mode === 'god') { if (inp.hit('Digit0')) this.clock.speed = 0; }
     this.saveT = (this.saveT || 0) + dt; if (this.saveT > 45) { this.saveT = 0; this.save(); }

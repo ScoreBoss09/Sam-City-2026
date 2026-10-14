@@ -235,6 +235,8 @@ export class Player {
       if (inp.hit('KeyR') && !cb) this.drop();
       if (inp.hit('KeyI')) g.ui.openInventory(); if (inp.hit('KeyJ')) g.ui.openJournal();
       if (!lift && !this.dead) this.interact(rawDt);
+    } else if (this.transit && this.transit.cabin && g.transport) {   // planning view on a train: Sam rides on and gets off at the next station
+      g.workgame.stop(); this.ring.visible = false; const T = g.transport, R = this.transit; T.cabin(this, 0, 0, rawDt); const n = T.stopHere(R.L, R.car); if (n < 0) R.from = -1; else if (n !== R.from) T.samOff(true);
     } else { this.game.workgame.stop(); this.ring.visible = false; if (g.autopilot) g.autopilot.update(dt); }   // planning view: Sam gets on with life by himself
     // needs (game seconds)
     if (g.started && !this.sleeping) {

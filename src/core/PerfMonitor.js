@@ -10,13 +10,13 @@ export class PerfMonitor {
     this.game = game; this.N = 1800; this.frames = new Float32Array(this.N); this.js = new Float32Array(this.N); this.n = 0; this.i = 0;
     this.sec = {}; this.secFrames = 0; this.events = []; this.worst = []; this.t0 = 0; this.started = performance.now();
   }
-  begin() { this.t0 = this.last = performance.now(); const w = this.game.watchdog; if (w) w.beat('start of a frame'); }
+  begin() { this.t0 = this.last = performance.now(); this.prevCur = this.cur; this.cur = {}; const w = this.game.watchdog; if (w) w.beat('start of a frame'); }
   /** Time since the previous lap goes to this section. */
-  lap(name) { const now = performance.now(); this.sec[name] = (this.sec[name] || 0) + (now - this.last); this.last = now; const w = this.game.watchdog; if (w) w.beat(name); }
+  lap(name) { const now = performance.now(); this.sec[name] = (this.sec[name] || 0) + (now - this.last); if (this.cur) this.cur[name] = (this.cur[name] || 0) + (now - this.last); this.last = now; const w = this.game.watchdog; if (w) w.beat(name); }
   frame(rawSec, jsMs) {
     const ms = rawSec * 1000; if (ms > 1000 || document.hidden) return;   // tab was in the background
     this.frames[this.i] = ms; this.js[this.i] = jsMs; this.i = (this.i + 1) % this.N; this.n = Math.min(this.N, this.n + 1); this.secFrames++;
-    if (ms > 50) { const g = this.game; this.worst.push({ ms: Math.round(ms), js: Math.round(jsMs), at: g.clock ? `day ${g.clock.totalDays} ${g.clock.hhmm}` : '', mode: g.mode, pop: g.population ? g.population.count() : 0 }); this.worst.sort((a, b) => b.ms - a.ms); this.worst.length = Math.min(this.worst.length, 8); }
+    if (ms > 50) { const g = this.game; const top = Object.entries((jsMs > ms * 0.4 ? this.cur : this.prevCur) || {}).filter(([, v]) => v > 8).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k, v]) => `${k} ${Math.round(v)}`).join(', '); this.worst.push({ ms: Math.round(ms), js: Math.round(jsMs), top, at: g.clock ? `day ${g.clock.totalDays} ${g.clock.hhmm}` : '', mode: g.mode, pop: g.population ? g.population.count() : 0 }); this.worst.sort((a, b) => b.ms - a.ms); this.worst.length = Math.min(this.worst.length, 8); }
   }
   note(text) { const g = this.game; this.events.push(`${new Date().toLocaleTimeString()} (day ${g.clock ? g.clock.totalDays : 0}) ${text}`); if (this.events.length > 12) this.events.shift(); }
   stats() {
@@ -41,7 +41,7 @@ export class PerfMonitor {
       `Slow frames (>33 ms): ${s.slow} · stutters (>100 ms): ${s.jank} · game code per frame: median ${f(s.js50)} ms, 95% ${f(s.js95)} ms`,
       `Where the time goes: ${secs.map(([k, v]) => `${k} ${f(100 * v / tot, 0)}%`).join(', ')}`,
       `Town simulation cut short to keep up: ${this.simShort || 0} frames`,
-      `Worst frames: ${this.worst.length ? this.worst.map((w) => `${w.ms}ms (code ${w.js}ms, ${w.mode}, pop ${w.pop}, ${w.at})`).join('; ') : 'none over 50 ms'}`,
+      `Worst frames: ${this.worst.length ? this.worst.map((w) => `${w.ms}ms (code ${w.js}ms${w.top ? ': ' + w.top : ''}, ${w.mode}, pop ${w.pop}, ${w.at})`).join('; ') : 'none over 50 ms'}`,
       '',
       '-- Drawing --',
       `Draw calls ${info.render.calls} · triangles ${info.render.triangles} · geometries ${info.memory.geometries} · textures ${info.memory.textures} · shader programs ${(info.programs || []).length}`,

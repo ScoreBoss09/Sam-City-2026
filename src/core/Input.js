@@ -4,14 +4,17 @@ export class Input {
     this.keys = new Set(); this.pressed = new Set(); this.released = new Set(); this.mouse = { x: 0, y: 0, dx: 0, dy: 0, left: false, right: false, middle: false, wheel: 0, down: false, up: false };
     this.canvas = canvas; this.locked = false; this.blocked = false;
     this.padActive = false; this.padEnabled = true; this.virt = new Set(); this.pad = { connected: false, lx: 0, ly: 0, rx: 0, ry: 0, prev: [], down: [], hitB: [], mode: 'menu', zoomAcc: 0 };
-    window.addEventListener('mousemove', () => { this.padActive = false; }); window.addEventListener('keydown', () => { this.padActive = false; });
+    // the mouse or keyboard takes over from the controller only when really used: Chrome sends 'mousemove' with no movement
+    // whenever the page changes under a still cursor, which used to drop the controller (and its held buttons) every few frames
+    window.addEventListener('mousemove', (e) => { const m = Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0); if (!m || !this.padActive) return; const t = performance.now(); if (t - (this._mvT || 0) > 300) this._mv = 0; this._mvT = t; this._mv = (this._mv || 0) + m; if (this._mv > 30 && t - (this.pad.lastT || 0) > 500) this.padActive = false; });
+    window.addEventListener('keydown', (e) => { if (!e.repeat && performance.now() - (this.pad.lastT || 0) > 300) this.padActive = false; });
     window.addEventListener('keydown', (e) => {
       if (e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
       const k = e.code; if (!this.keys.has(k)) this.pressed.add(k); this.keys.add(k);
       if (['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => { this.keys.delete(e.code); this.released.add(e.code); });
-    window.addEventListener('blur', () => this.keys.clear());
+    window.addEventListener('blur', () => { this.keys.clear(); this.virt = new Set(); });
     canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); this.mouse.x = (e.clientX - r.left) / r.width; this.mouse.y = (e.clientY - r.top) / r.height; if (this.locked) { this.mouse.dx += e.movementX; this.mouse.dy += e.movementY; } else if (this.drag) { this.mouse.dx += e.movementX; this.mouse.dy += e.movementY; } });
     canvas.addEventListener('mousedown', (e) => { if (e.button === 0) { this.mouse.left = true; this.mouse.down = true; } if (e.button === 2) this.mouse.right = true; if (e.button === 1) this.mouse.middle = true; this.drag = e.button !== 0; this.mouse.btn = e.button; e.preventDefault(); });
     window.addEventListener('mouseup', (e) => { if (e.button === 0) { this.mouse.left = false; this.mouse.up = true; } if (e.button === 2) this.mouse.right = false; if (e.button === 1) this.mouse.middle = false; this.drag = false; });
@@ -28,17 +31,25 @@ export class Input {
   pollPad(dt, mode) {
     const P = this.pad, list = this.padEnabled && navigator.getGamepads ? navigator.getGamepads() : [];
     // Prefer a proper game controller ("standard" layout). Other devices (wheels, joysticks, some headsets/keyboards) are ignored.
-    let gp = null; for (const p of list) if (p && p.connected && p.mapping === 'standard') { gp = p; break; }
+    // With more than one (Steam or DS4Windows can add a copy of the same pad), follow whichever was used last.
+    let gp = null, cur0 = null, odd = null; P.cals = P.cals || new Map();
+    for (const p of list) { if (!p || !p.connected) continue; if (p.mapping === 'standard') { const k = p.id + '#' + p.index; if (!P.cals.has(k)) P.cals.set(k, { n: 0, first: p.axes.slice(), steady: p.axes.map(() => true), base: p.axes.map(() => 0), stuck: p.buttons.map((b) => !!(b && (b.pressed || b.value > 0.5))) }); if (k === P.baseId) cur0 = p; if (!gp || p.timestamp > gp.timestamp) gp = p; } else odd = odd || p; }
+    if (cur0 && gp !== cur0 && gp.timestamp - cur0.timestamp < 250) gp = cur0;   // stay on the pad in use (two copies of one pad mustn't flicker)
+    if (!gp && odd && !P.oddSaid && this.onUnknownPad) { P.oddSaid = true; this.onUnknownPad(odd.id); }
     const want = new Set(); P.connected = !!gp; P.mode = mode;
     if (gp) {
-      // Calibrate: remember each axis's resting value and any button that is already held when the pad is first seen,
-      // so a stick or trigger that never returns to centre cannot spin the camera or cycle menus forever.
-      if (!P.base || P.baseId !== gp.id + gp.index) { P.baseId = gp.id + gp.index; P.base = gp.axes.map((v) => (Math.abs(v) > 0.3 ? v : 0)); P.stuck = gp.buttons.map((b) => !!(b && (b.pressed || b.value > 0.5))); P.prev = []; }
+      // Calibrate each pad separately: a button already held when it's first seen is ignored until let go, and an axis that sits
+      // perfectly still away from the centre for the first second and a half (a broken or odd device) is treated as its centre.
+      // A thumb resting on a stick wobbles, so it's never mistaken for a stuck axis (which would leave the camera drifting).
+      const key = gp.id + '#' + gp.index, C = P.cals.get(key);
+      if (C.n < 90) { C.n++; for (let i = 0; i < gp.axes.length; i++) if (Math.abs((gp.axes[i] || 0) - (C.first[i] || 0)) > 0.03) C.steady[i] = false; if (C.n === 90) C.base = C.first.map((v, i) => (C.steady[i] && Math.abs(v) > 0.3 ? v : 0)); }
+      if (P.baseId !== key) { P.baseId = key; P.prev = []; }
+      P.base = C.base; P.stuck = C.stuck;
       const dz = (v) => (Math.abs(v) < 0.25 ? 0 : (v - Math.sign(v) * 0.25) / 0.75), ax = (i) => dz((gp.axes[i] || 0) - (P.base[i] || 0));
       const bt = (i) => { const b = gp.buttons[i], on = !!(b && (b.pressed || b.value > 0.5)); if (P.stuck[i]) { if (!on) P.stuck[i] = false; return false; } return on; };
       const cur = []; for (let i = 0; i < 17; i++) cur.push(bt(i)); P.hitB = cur.map((v, i) => v && !P.prev[i]); P.relB = cur.map((v, i) => !v && !!P.prev[i]); P.prev = cur; P.down = cur;
       P.lx = ax(0); P.ly = ax(1); P.rx = ax(2); P.ry = ax(3);
-      if (cur.some(Boolean) || Math.hypot(P.lx, P.ly) > 0.4 || Math.hypot(P.rx, P.ry) > 0.4) { this.padActive = true; if (cur.some(Boolean) && this.onActivity) this.onActivity(); }
+      if (cur.some(Boolean) || Math.hypot(P.lx, P.ly) > 0.4 || Math.hypot(P.rx, P.ry) > 0.4) { this.padActive = true; P.lastT = performance.now(); if (cur.some(Boolean) && this.onActivity) this.onActivity(); }
       if (this.padActive) {
         const st = 0.4; if (P.ly < -st) want.add('KeyW'); if (P.ly > st) want.add('KeyS'); if (P.lx < -st) want.add('KeyA'); if (P.lx > st) want.add('KeyD');
         if (cur[9]) want.add('Tab'); if (cur[8]) { P.selT = (P.selT || 0) + dt; if (P.selT >= 0.5 && !P.selFired) { P.selFired = true; this.pressed.add('PadSpeed'); } } else { if (P.selT > 0 && !P.selFired && mode !== 'menu') this.pressed.add('PadCycle'); P.selT = 0; P.selFired = false; }   // View/Select: tap cycles the game speed, hold for the menu
@@ -60,7 +71,7 @@ export class Input {
           if (cur[10]) want.add('ShiftLeft');
         } else { if (cur[0]) want.add('KeyE'); if (cur[1]) want.add('Escape'); if (cur[12] && false) want.add('KeyI'); }
       }
-    } else { P.lx = P.ly = P.rx = P.ry = 0; P.turn = P.zoom = 0; P.hitB = []; P.relB = []; P.down = []; P.base = null; if (this.padActive && !gp) this.padActive = false; }
+    } else { P.lx = P.ly = P.rx = P.ry = 0; P.turn = P.zoom = 0; P.hitB = []; P.relB = []; P.down = []; if (!list.some((q) => q && q.connected)) P.cals = null; P.baseId = null; if (this.padActive && !gp) this.padActive = false; }
     for (const k of want) if (!this.virt.has(k)) { if (!this.keys.has(k)) this.pressed.add(k); this.keys.add(k); }
     for (const k of this.virt) if (!want.has(k)) { this.keys.delete(k); this.released.add(k); }
     this.virt = want;

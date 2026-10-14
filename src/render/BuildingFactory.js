@@ -193,7 +193,7 @@ export function colorize(root) {
   root.updateMatrixWorld(true);
   root.traverse((o) => {
     if (!o.isMesh || o.isInstancedMesh) return; for (let q = o; q && q !== root; q = q.parent) if (q.userData && q.userData.keep) return;
-    const m = o.material; if (Array.isArray(m) || !m.isMeshStandardMaterial || m.map || m.transparent || m.vertexColors || m.flatShading || m.side !== THREE.FrontSide || (m.emissive && m.emissive.getHex() !== 0)) return;
+    const m = o.material; if (Array.isArray(m) || !m.isMeshStandardMaterial || m.map || m.alphaMap || m.alphaTest > 0 || m.transparent || m.vertexColors || m.flatShading || m.side !== THREE.FrontSide || (m.emissive && m.emissive.getHex() !== 0)) return;
     const r = 0.85, mt = 0.05, k = 'vc';   // one shared material for every plain colour (the tiny shine differences aren't worth a draw call each)
     const g = o.geometry.clone(), n = g.attributes.position.count, col = new Float32Array(n * 3); for (let i = 0; i < n; i++) { col[i * 3] = m.color.r; col[i * 3 + 1] = m.color.g; col[i * 3 + 2] = m.color.b; }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.userData.own = true; o.geometry = g;
@@ -223,7 +223,8 @@ function buildExterior0(def, uid = 1, era = 2) {
   ALIGN = { W, D, H, mask: mat.userData.mask };
   // how much room the plot leaves round the walls: eaves, paving and the like stay inside it (no poking into next door)
   const mx = (Math.ceil(W / TILE - 1e-6) * TILE - W) / 2, mz = (Math.ceil(D / TILE - 1e-6) * TILE - D) / 2;
-  box(g, W + 2 * Math.min(0.35, Math.max(0, mx - 0.02)), 0.3, D + 2 * Math.min(0.35, Math.max(0, mz - 0.02)), 0x9a9b9c, 0, -0.2, 0);   // pavement slab
+  const lip = (m) => (m - 0.02 >= 0.06 ? Math.min(0.35, m - 0.02) : -0.06);   // a kerb that clearly sticks out, or none (tucked inside the walls): never flush, which flickered along the foot of the walls
+  box(g, W + 2 * lip(mx), 0.3, D + 2 * lip(mz), 0x9a9b9c, 0, -0.2, 0);   // pavement slab
   const homey = ['house', 'apartments'].includes(def.layout), paper = HOME_PAPER[uid % HOME_PAPER.length];
   const look = INTERIOR[def.layout] || (homey ? ['floor_wood', 0xa6825a, paper[0], paper[1]] : ['floor_wood', 0xa6825a, 'int_stucco', 0xc9bfa0]);
   const floor = new THREE.Mesh(unit, texMat(look[0], look[1], W / 4, D / 4)); floor.scale.set(W - 0.1, 0.12, D - 0.1); floor.position.y = 0.08; floor.receiveShadow = true; g.add(floor);   // interior floor
@@ -231,8 +232,23 @@ function buildExterior0(def, uid = 1, era = 2) {
   addWall(g, cols, mat, -W / 2 + T / 2, 0, T, D - 2 * T, H);                      // left
   addWall(g, cols, mat, W / 2 - T / 2, 0, T, D - 2 * T, H);                       // right
   const fz = D / 2 - T / 2, l0 = -W / 2, l1 = door - dw / 2, r0 = door + dw / 2, r1 = W / 2;
-  addWall(g, cols, mat, (l0 + l1) / 2, fz, l1 - l0, T, H);
-  addWall(g, cols, mat, (r0 + r1) / 2, fz, r1 - r0, T, H);
+  // shops, cafés and pubs: a real shopfront either side of the door, a long display window right through the wall
+  // (stallriser below, fascia above, painted pilasters at the ends), so you see the shop from the street and the street from the shop
+  const shopFront = (def.shopping || def.dining) && !def.special && W >= 4, GF = Math.min(H, WALL_H), WB = 0.55, WT = 2.15;
+  const fronts = [[l0, l1, l0 + 0.35, l1 - 0.25], [r0, r1, r0 + 0.25, r1 - 0.35]].map(([s0, s1, a, b]) => ({ s0, s1, a, b, open: shopFront && b - a >= 0.9 && GF >= WT + 0.3 }));
+  const frameC = { 0: 0x3a2a1a, 1: 0x2a3a2a, 2: 0x1a2a4a }[era] ?? 0x2a2a2e;
+  for (const f of fronts) {
+    if (!f.open) { addWall(g, cols, mat, (f.s0 + f.s1) / 2, fz, f.s1 - f.s0, T, H); continue; }
+    cols.push({ cx: (f.s0 + f.s1) / 2, cz: fz, sx: f.s1 - f.s0, sz: T, h: H + 0.5 });   // still a wall to walk into
+    const w = f.b - f.a, cx = (f.a + f.b) / 2;
+    box(g, f.a - f.s0, GF, T, frameC, (f.s0 + f.a) / 2, 0, fz); box(g, f.s1 - f.b, GF, T, frameC, (f.b + f.s1) / 2, 0, fz);   // pilasters
+    box(g, w, WB, T + 0.04, frameC, cx, 0, fz); box(g, w, GF - WT, T + 0.02, frameC, cx, WT, fz);                              // stallriser, fascia
+    if (H > GF + 0.05) addWall(g, [], mat, (f.s0 + f.s1) / 2, fz, f.s1 - f.s0, T, H - GF, GF);                                   // the floors above, with their own windows
+    const pane = new THREE.Mesh(new THREE.PlaneGeometry(w, WT - WB), glassMaterial()); pane.position.set(cx, (WB + WT) / 2, fz); g.add(pane);
+    const n = era < 2 ? Math.max(2, Math.round(w / 0.45)) : Math.max(1, Math.round(w / 1.6)); for (let i = 1; i < n; i++) box(g, 0.05, WT - WB, 0.08, frameC, f.a + i * w / n, WB, fz);   // glazing bars
+    if (era < 2) box(g, w, 0.05, 0.08, frameC, cx, 1.4, fz);
+    box(g, w, 0.04, T + 0.12, 0xe8e2d2, cx, WB, fz);   // sill
+  }
   if (H > 2.6) addWall(g, [], mat, door, fz, dw, T, H - 2.6, 2.6);               // lintel
   box(g, 0.12, 2.6, 0.5, 0x2a2d33, door - dw / 2, 0, fz); box(g, 0.12, 2.6, 0.5, 0x2a2d33, door + dw / 2, 0, fz); box(g, dw, 0.12, 0.5, 0x2a2d33, door, 2.55, fz);
   // ceiling (stays when the roof is cut away)
@@ -243,7 +259,8 @@ function buildExterior0(def, uid = 1, era = 2) {
   lining(g, W - 2 * T, lh, 0, -D / 2 + T + 0.02, 0, lm);
   lining(g, D - 2 * T, lh, -ix, 0, Math.PI / 2, lm); lining(g, D - 2 * T, lh, ix, 0, -Math.PI / 2, lm);
   const fl0 = l1 - (-W / 2 + T), fr0 = (W / 2 - T) - r0;
-  if (fl0 > 0.1) lining(g, fl0, lh, (-W / 2 + T + l1) / 2, iz, Math.PI, lm); if (fr0 > 0.1) lining(g, fr0, lh, (r0 + W / 2 - T) / 2, iz, Math.PI, lm);
+  if (fl0 > 0.1 && !fronts[0].open) lining(g, fl0, lh, (-W / 2 + T + l1) / 2, iz, Math.PI, lm); if (fr0 > 0.1 && !fronts[1].open) lining(g, fr0, lh, (r0 + W / 2 - T) / 2, iz, Math.PI, lm);
+  for (const f of fronts) if (f.open && lh > GF - 0.2) { const y0 = GF - 0.06, h3 = lh + 0.14 - y0; if (h3 > 0.1) lining(g, f.s1 - f.s0 - (f.s0 === l0 ? T : 0) - (f.s1 === r1 ? T : 0), h3, (Math.max(f.s0, -W / 2 + T) + Math.min(f.s1, W / 2 - T)) / 2, iz, Math.PI, lm, y0); }   // (tall rooms: wallpaper above the fascia)
   if (plan) for (let k = 1; k < plan.n; k++) { const y0 = k * WALL_H + 0.02, h2 = WALL_H - 0.26; lining(g, W - 2 * T, h2, 0, -D / 2 + T + 0.02, 0, lm, y0); lining(g, D - 2 * T, h2, -ix, 0, Math.PI / 2, lm, y0); lining(g, D - 2 * T, h2, ix, 0, -Math.PI / 2, lm, y0); lining(g, W - 2 * T, h2, 0, iz, Math.PI, lm, y0); }
   if (ceilH - 2.72 > 0.1) { const lh2 = ceilH - 2.72, lt = new THREE.Mesh(new THREE.PlaneGeometry(dw + 0.02, lh2), lm); lt.position.set(door, 2.62 + lh2 / 2, iz); lt.rotation.y = Math.PI; g.add(lt); }   // inside of the lintel
   // 3D window sills on the front (matching the painted windows), flower boxes on homes, a few 90s satellite dishes
@@ -252,7 +269,7 @@ function buildExterior0(def, uid = 1, era = 2) {
       const wwp = f.kind === 'logs' ? 16 : n === 1 ? 44 : (f.kind === 'tudor' ? 14 : 18), ww = wwp / 16, xs = (n === 2 ? (f.kind === 'tudor' ? [9, 41] : [7, 39]) : [Math.round((64 - wwp) / 2)]).map((x) => x / 16 + ww / 2);
       const homey2 = def.cat === 'res' && !rustic0(def), flowers = [0xd93a6a, 0xf1c40f, 0xe8e8f0, 0xb03ad9, 0xff7a2a], fz2 = D / 2 + 0.02, floors = Math.max(1, def.floors || 1);
       for (const [s0, s1] of [[l0, l1], [r0, r1]]) for (let fl = 0; fl < floors; fl++) for (let k = 0; k * 4 < W; k++) for (const xc of xs) {
-        const cx2 = -W / 2 + k * 4 + xc; if (cx2 - ww / 2 < s0 + 0.05 || cx2 + ww / 2 > s1 - 0.05) continue; const y0 = fl * WALL_H + 0.84;
+        const cx2 = -W / 2 + k * 4 + xc; if (cx2 - ww / 2 < s0 + 0.05 || cx2 + ww / 2 > s1 - 0.05) continue; if (fl === 0 && fronts.some((f) => f.open && f.s0 === s0)) continue; const y0 = fl * WALL_H + 0.84;
         box(g, ww + 0.25, 0.08, 0.22, 0xe8e2d2, cx2, y0 - 0.06, fz2 + 0.08);
         if (homey2 && fl === 0 && rnd() < 0.8) { box(g, ww * 0.85, 0.22, 0.26, 0x6a4a2a, cx2, y0 + 0.02, fz2 + 0.15); for (let i = 0; i < 5; i++) box(g, 0.13, 0.13, 0.13, flowers[(uid + i + k) % flowers.length], cx2 - ww * 0.34 + i * ww * 0.17, y0 + 0.24, fz2 + 0.15 + (i % 2 ? 0.05 : -0.05)); box(g, ww * 0.8, 0.08, 0.2, 0x3a7a3a, cx2, y0 + 0.22, fz2 + 0.15); }
       }
@@ -288,18 +305,10 @@ function buildExterior0(def, uid = 1, era = 2) {
   if (!def.shopping && !def.dining) { const lamp = era >= 1 ? box(g, 0.22, 0.3, 0.22, 0xfff0b0, door + dw / 2 + 0.45, 2.3, D / 2 + 0.12, { emissive: 0xffd080, emissiveIntensity: 0.9 }) : box(g, 0.16, 0.24, 0.16, 0xffb050, door + dw / 2 + 0.45, 2.3, D / 2 + 0.12, { emissive: 0xff9a30, emissiveIntensity: 0.6 }); lamp.castShadow = false; }
   // a proper shopfront either side of the door: stallriser, a big display window (small panes in the older ages)
   // with goods on show behind the glass, and a painted frame
-  if ((def.shopping || def.dining) && !def.special && W >= 4) {
-    const frame = { 0: 0x3a2a1a, 1: 0x2a3a2a, 2: 0x1a2a4a }[era] ?? 0x2a2a2e, z = D / 2 + 0.04;
-    for (const [a, b] of [[-W / 2 + 0.35, door - dw / 2 - 0.25], [door + dw / 2 + 0.25, W / 2 - 0.35]]) {
-      const w = b - a; if (w < 0.9) continue; const cx = (a + b) / 2;
-      box(g, w, 0.55, 0.14, frame, cx, 0, z); box(g, w, 0.08, 0.16, frame, cx, 2.15, z);
-      const pane = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.1, 1.55), glassMaterial()); pane.position.set(cx, 1.35, z + 0.03); g.add(pane);
-      const n = era < 2 ? Math.max(2, Math.round(w / 0.45)) : Math.max(1, Math.round(w / 1.6)); for (let i = 1; i < n; i++) box(g, 0.05, 1.55, 0.06, frame, a + i * w / n, 0.57, z + 0.02);
-      if (era < 2) box(g, w, 0.05, 0.06, frame, cx, 1.35, z + 0.02);
-      box(g, w - 0.2, 0.06, 0.5, 0xd8d0c0, cx, 0.6, z - 0.32);   // the display shelf
-      const C = [0xd8342c, 0xf2c94c, 0x2a7ab0, 0x3a9a54, 0xe07fa0, 0xf28a2a, 0xe8e2d0];
-      for (let i = 0; i < Math.floor(w / 0.5); i++) box(g, 0.28, 0.2 + ((i * 7 + uid) % 3) * 0.12, 0.22, C[(i + uid) % C.length], a + 0.35 + i * 0.5, 0.66, z - 0.3);
-    }
+  for (const f of fronts) if (f.open) {   // goods on show just inside the window
+    const w = f.b - f.a, cx = (f.a + f.b) / 2, z = D / 2 - T - 0.22, C = [0xd8342c, 0xf2c94c, 0x2a7ab0, 0x3a9a54, 0xe07fa0, 0xf28a2a, 0xe8e2d0];
+    box(g, w - 0.1, 0.06, 0.36, 0xd8d0c0, cx, WB - 0.02, z);
+    for (let i = 0; i < Math.floor(w / 0.5); i++) box(g, 0.28, 0.2 + ((i * 7 + uid) % 3) * 0.12, 0.22, C[(i + uid) % C.length], f.a + 0.35 + i * 0.5, WB + 0.04, z);
   }
   // striped shop awning over the door
   if (def.shopping || def.dining) {
