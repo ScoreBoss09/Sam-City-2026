@@ -6,20 +6,20 @@ import { Sfx } from '../core/Sfx.js';
 
 /** Little things to find while exploring. A few of them are a bit odd for a sleepy English island. */
 export const CURIOS = [
-  { id: 'coin', icon: '🪙', name: 'Old penny', desc: 'A 1967 penny, worn smooth. Somebody\'s lucky charm once.' },
-  { id: 'teacup', icon: '☕', name: 'Chipped teacup', desc: 'Bone china with roses on. Still smells faintly of Earl Grey.' },
-  { id: 'medal', icon: '🎖️', name: 'Bowls club medal', desc: '"Runner-up, Ladies\' Pairs". Engraved on the back: "Sam City Green".' },
-  { id: 'marble', icon: '🔮', name: 'Glass marble', desc: 'A blue swirl marble. The kind children lose in a drain.' },
-  { id: 'spoon', icon: '🥄', name: 'Souvenir spoon', desc: 'A tiny spoon that says "A Present From Margate".' },
-  { id: 'toy', icon: '🧸', name: 'Knitted bear', desc: 'Missing an eye. Lovingly mended at least three times.' },
-  { id: 'key', icon: '🗝️', name: 'Rusty key', desc: 'Fits nothing on the island. Not yet, anyway.' },
-  { id: 'shell', icon: '🐚', name: 'Spiral shell', desc: 'Hold it to your ear: the sea. Or maybe a faint hum.' },
-  { id: 'gnome', icon: '🧙', name: 'Garden gnome', desc: 'He has a fishing rod and a look of mild disapproval.' },
-  { id: 'badge', icon: '📛', name: 'Name badge', desc: '"CREW - Lighting". The clip is broken. Odd.' },
-  { id: 'bulb', icon: '💡', name: 'Big glass bulb', desc: 'Far too large for any lamp in town. Still warm.' },
-  { id: 'ticket', icon: '🎟️', name: 'Ticket stub', desc: '"Studio Four, Row B, Seat 12". Smudged date.' },
-  { id: 'reel', icon: '🎞️', name: 'Film canister', desc: 'Labelled "SAM - Week 31 - Dailies". Empty.' },
-  { id: 'remote', icon: '📟', name: 'Strange remote', desc: 'Three buttons: SUN, RAIN, CUE. None of them do anything. Probably.' },
+  { id: 'coin', icon: '🪙', name: 'Old penny', desc: 'A 1967 penny, worn smooth. Somebody\'s lucky charm once. The Queen is facing the wrong way.' },
+  { id: 'teacup', icon: '☕', name: 'Chipped teacup', desc: 'Bone china with roses on. The same pattern as the cups at the café, and the vicarage, and in your own kitchen.' },
+  { id: 'medal', icon: '🎖️', name: 'Bowls club medal', desc: '"Runner-up, Ladies\' Pairs". Everyone at the bowls club remembers the medal. Nobody remembers the match.' },
+  { id: 'marble', icon: '🔮', name: 'Glass marble', desc: 'A blue swirl marble, the kind children lose down a drain. Held up to the light, the swirl looks painted on.' },
+  { id: 'spoon', icon: '🥄', name: 'Souvenir spoon', desc: 'A tiny spoon that says "A Present From Margate". You ask around. Nobody can remember going.' },
+  { id: 'toy', icon: '🧸', name: 'Knitted bear', desc: 'Missing an eye. Mended at least three times, each time with exactly the same thread.' },
+  { id: 'key', icon: '🗝️', name: 'Rusty key', desc: 'It fits nothing on the island. The tag says 4, and a letter that has been carefully scratched off.' },
+  { id: 'shell', icon: '🐚', name: 'Spiral shell', desc: 'Hold it to your ear: the sea. Under the sea, a low hum that doesn\'t change however you turn it.' },
+  { id: 'gnome', icon: '🧙', name: 'Garden gnome', desc: 'He has a fishing rod and a look of mild disapproval. There\'s a small, very neat hole in his hat.' },
+  { id: 'badge', icon: '📛', name: 'Clip-on badge', desc: 'Blank where the name should be. On the back, in marker pen: "B. RIG". The clip is broken.' },
+  { id: 'bulb', icon: '💡', name: 'Glass disc', desc: 'Thick ribbed glass the size of a dinner plate, like a lighthouse lens. There is no lighthouse.' },
+  { id: 'ticket', icon: '🎟️', name: 'Ticket stub', desc: 'Half a ticket: "Row B, Seat 12" and the end of a word, "...DIO". The rest has been torn away.' },
+  { id: 'reel', icon: '🎞️', name: 'Flat tin', desc: 'Round, flat and empty, the kind a reel of film comes in. On the lid, in biro: "31 - keep".' },
+  { id: 'remote', icon: '📟', name: 'Grey box', desc: 'Three worn buttons and no labels. The weather changed while you were holding it. Probably nothing.' },
 ];
 
 export class Curios {

@@ -169,7 +169,7 @@ export class Combat {
       const wall = this.rayWall(o.clone().addScaledVector(d, skip), d, W.range, (P.floorY || 0) - 0.05) + skip, h = this.rayHit(o, d, wall, list), t = h ? h.t : wall;
       const e = o.clone().addScaledVector(d, t); fly.push([e.x, e.y, e.z]);
       if (h) { const cur = hits.get(h.tg) || { dmg: 0, head: false, d, e }; cur.dmg += W.dmg * (h.head ? (W.scope ? 2.5 : 1.8) : 1) * (t > W.range * 0.6 && W.pellets > 1 ? 0.5 : 1); cur.head = cur.head || h.head; hits.set(h.tg, cur); }
-      else g.particles.burst(e.x, e.y, e.z, 0xd8d0c0, 3, 0.4, 0.3, 0.05);
+      else if (!(t < W.range - 0.3 && g.glass && g.glass.hit(e, d, this.myKey()))) g.particles.burst(e.x, e.y, e.z, 0xd8d0c0, 3, 0.4, 0.3, 0.05);   // a window? it shatters
     }
     this.tracer(mz, fly); if (g.net && g.net.role) g.net.bang(mz, fly);
     for (const [tg, h] of hits) this.applyHit(tg, h.dmg, h.head, h.d, h.e, this.myKey());
@@ -355,7 +355,7 @@ export class Combat {
   }
   /** A proper bang: a fireball, a flash of light, a shockwave across the ground, smoke, dirt and debris, and a boom you feel. */
   boom(p, floor, k = 1) {
-    const g = this.game, P = g.player, R = NADE_R * k;
+    const g = this.game, P = g.player, R = NADE_R * k; if (g.glass) g.glass.blast(p, 9 * k);
     const fire = new THREE.Mesh(this.fxSphere || (this.fxSphere = new THREE.SphereGeometry(1, 14, 10)), new THREE.MeshBasicMaterial({ color: 0xffc040, transparent: true, opacity: 1, depthWrite: false })); fire.position.set(p.x, p.y + 0.4, p.z); g.scene.add(fire);
     const core = new THREE.Mesh(this.fxSphere, new THREE.MeshBasicMaterial({ color: 0xfff4c0, transparent: true, opacity: 1, depthWrite: false })); core.position.copy(fire.position); g.scene.add(core);
     const ring = new THREE.Mesh(this.fxRing || (this.fxRing = new THREE.RingGeometry(0.8, 1, 32)), new THREE.MeshBasicMaterial({ color: 0xfff0d0, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(p.x, floor + 0.08, p.z); g.scene.add(ring);
