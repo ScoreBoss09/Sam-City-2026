@@ -25,7 +25,7 @@ The full list of models needed to give every building a proper inside (with name
 
 ## How to hand models over
 
-1. Export from Blender as **glTF Binary (.glb)**: 1 unit = 1 metre, +Y up (the default), the model's front facing **+Z** (the way it drives or walks).
+1. Export from Blender as **glTF Binary (.glb)**: 1 unit = 1 metre, +Y up (the default), the model's front facing **+Z** (the way it drives or walks). **Metallic 0** unless it really is bare metal: the game has no reflections for metal to show, so a metallic surface comes out almost black. (glTF counts a material as metal if the file doesn't say, so an exporter that leaves it out makes everything metal. The check turns it off and says so.)
 2. Put it in `assets/incoming/<folder>/`, for example `assets/incoming/bikes/bmx.glb`. Or just send the files and say what each one is.
 3. Run the check (or ask Claude to):
 
@@ -45,6 +45,7 @@ The full list of models needed to give every building a proper inside (with name
 - **Cuts to the budget** if it's over, keeping the shape (it reports how much it changed, as a percentage of the model's size). If it can't get under without damage, it says so and you'll need to simplify it in Blender.
 - **Makes two distance versions** at about 40% and 12% of the triangles. The game switches to them at a distance (15 m and 40 m for bikes) and stops drawing the model altogether beyond its range (140 m for bikes).
 - **Compresses** everything. The test bike went from 718 KB to 52 KB for all three versions together.
+- **Shares textures:** each texture is named after its contents, so one palette image used by 600 models is loaded once, and models whose materials come out the same share one material (one draw call for a whole room of them). So keep using the same palette image across models; a printed texture of a model's own (a poster, a screen) is one more draw call in every room it's in.
 
 ## Verdicts
 
@@ -77,5 +78,7 @@ game.models.turn(bike, 'wheel_front', distance / 0.34); // spin a part kept sepa
 Every copy shares its geometry and materials with all the others, and switches between its distance versions by itself.
 
 **Furniture swaps in by itself.** A model named after one of the game's furniture pieces (the entries in [INTERIOR_ASSETS.md](INTERIOR_ASSETS.md) that say "replaces `x`") takes that piece's place in every room as soon as it has passed the check: `furniture/plant.glb` replaced the old block plant in about 170 buildings. Its variations (`plant_2`, `plant_3`) are mixed in by position. Copies of the same model in a building are merged into one draw call. What blocks Sam and the townsfolk is fitted to the model's own footprint, and a stool's seat height is read from the model (townsfolk sit up on a bar stool), so a piece can be smaller or taller than the block it replaces.
+
+**Holding a model back.** A model can pass the check and still look worse in a room than the block it would replace. `assets/incoming/review.json` lists those under `"hold"`, each with what it needs (`"furniture/bar": "a plain counter: needs the beer pumps"`); rooms keep their old piece until its line comes out of the list (then run the check again). The check's report lists them. To see every model in the game anyway, open it with `?allmodels` on the address.
 
 Everything else needs hooking up to whatever uses it, and that is done per kind of model: entries that say "in place of `x` here" (only in certain buildings), the wall clock, the bikes townsfolk ride, and so on.

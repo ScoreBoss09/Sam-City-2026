@@ -18,8 +18,11 @@
  *           --report  only measure and report; write nothing
  *           --in DIR / --out DIR   other folders (for testing)
  * Parts named with "wheel", "door", "keep_" or "move_" are kept separate, so the game can spin or open them.
+ * Models listed in assets/incoming/review.json under "hold" (name: reason) pass the check but aren't swapped into the
+ * game's rooms until they're taken off the list (see docs/ASSETS.md).
  */
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NodeIO, Logger } from '@gltf-transform/core';
@@ -85,10 +88,26 @@ function collapseGroups(doc, notes) {
   }
   return groups;
 }
+/**
+ * Metal left on by mistake: the game has no reflections for metal to show, so a fully metallic surface comes out almost
+ * black. glTF counts a material as metal unless the file says otherwise (metallicFactor is 1 when it's left out), so an
+ * export that leaves it out is all metal. Turned off here, with the grey tint glTF metal puts on a texture (real metal
+ * reads fine as a grey colour). Returns how many materials it changed.
+ */
+function matte(doc) {
+  let n = 0;
+  for (const m of doc.getRoot().listMaterials()) {
+    if (m.getMetallicFactor() <= 0.5 || m.getMetallicRoughnessTexture()) continue;
+    m.setMetallicFactor(0); n++;
+    const f = m.getBaseColorFactor(); if (m.getBaseColorTexture() && Math.abs(f[0] - f[1]) < 0.01 && Math.abs(f[1] - f[2]) < 0.01 && f[0] < 0.99) m.setBaseColorFactor([1, 1, 1, f[3]]);
+  }
+  return n;
+}
 /** Tidy: drop duplicates, join parts that share a material, merge plain colours onto one palette, origin at the bottom middle. */
 async function tidy(doc, cat, notes) {
   const root = doc.getRoot(), simple = !root.listSkins().length && !root.listAnimations().length;
   await doc.transform(dedup(), prune(), weld());
+  const metal = matte(doc); if (metal) notes.push(`metal turned off on ${metal} material${metal > 1 ? 's' : ''}: it would show almost black in the game. Set Metallic to 0 in the export (glTF counts a material as metal if it's left out)`);
   if (cat !== 'guns') { await doc.transform(center({ pivot: 'below' })); }
   const plain = root.listMaterials().filter((m) => !m.getBaseColorTexture() && !m.getNormalTexture() && !m.getEmissiveTexture()).length;
   if (plain >= 2) { await doc.transform(palette({ min: 2 })); notes.push(`${plain} plain-colour materials merged onto one palette texture`); }
@@ -119,20 +138,26 @@ async function shrinkTextures(doc, cap, notes) {
  * where the artist put it) with the mesh on a child; compression only ever touches the child.
  */
 function pivotParts(d) { for (const n of d.getRoot().listNodes()) { if (!KEEP_SEPARATE.test(n.getName()) || !n.getMesh()) continue; const child = d.createNode('').setMesh(n.getMesh()); n.setMesh(null); n.addChild(child); } }
-async function write(doc, file) { const d = quiet(cloneDocument(doc)); pivotParts(d); await d.transform(meshopt({ encoder: MeshoptEncoder, level: 'medium' })); fs.mkdirSync(path.dirname(file), { recursive: true }); await io.write(file, d); return fs.statSync(file).size; }
+/** Each texture is named after its contents, so the game loads a texture shared by many models (one palette) only once. */
+function nameTextures(d) { for (const t of d.getRoot().listTextures()) { const img = t.getImage(); if (img) t.setName('tex_' + crypto.createHash('sha1').update(img).digest('hex').slice(0, 12)); } }
+async function write(doc, file) { const d = quiet(cloneDocument(doc)); pivotParts(d); nameTextures(d); await d.transform(meshopt({ encoder: MeshoptEncoder, level: 'medium' })); fs.mkdirSync(path.dirname(file), { recursive: true }); await io.write(file, d); return fs.statSync(file).size; }
 
 const kb = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'), n = (x) => x.toLocaleString('en-GB'), m = (x) => (x >= 10 ? x.toFixed(0) : x.toFixed(2));
 function categoryOf(file) { const rel = path.relative(IN, file).split(path.sep); const c = (rel.length > 1 ? rel[0] : 'props').toLowerCase(); return BUDGETS[c] ? c : ALIASES[c] || null; }
 function list(dir) { if (!fs.existsSync(dir)) return []; return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? list(path.join(dir, e.name)) : /\.(glb|gltf)$/i.test(e.name) ? [path.join(dir, e.name)] : [])); }
 
 const manifestFile = path.join(OUT, 'manifest.json'), manifest = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : { assets: {} };
+// the full reports live in their own file (the game only needs the manifest); older manifests kept them inside
+const reportsFile = path.join(OUT, 'reports.json'), reports = fs.existsSync(reportsFile) ? JSON.parse(fs.readFileSync(reportsFile, 'utf8')) : {};
+for (const [k, v] of Object.entries(manifest.assets)) if (v.report) { reports[k] ||= v.report; delete v.report; }
+const reviewFile = path.join(IN, 'review.json'), HOLD = fs.existsSync(reviewFile) ? JSON.parse(fs.readFileSync(reviewFile, 'utf8')).hold || {} : {};
 const files = list(IN), results = [];
 if (!files.length) { console.log(`Nothing to check: put .glb files in ${path.relative(ROOT, IN) || IN}/<category>/ (categories: ${Object.keys(BUDGETS).join(', ')}).`); process.exit(0); }
 for (const file of files) {
   const cat = categoryOf(file), name = path.basename(file).replace(/\.(glb|gltf)$/i, ''), B = BUDGETS[cat], rel = path.relative(ROOT, file);
   if (!B) { results.push({ name, cat: '?', verdict: 'SKIPPED', notes: [`unknown category folder "${path.relative(IN, file).split(path.sep)[0]}": use one of ${Object.keys(BUDGETS).join(', ')}`] }); continue; }
   const out0 = path.join(OUT, cat, name + '.glb');
-  if (!FORCE && !REPORT_ONLY && fs.existsSync(out0) && fs.statSync(out0).mtimeMs >= fs.statSync(file).mtimeMs && manifest.assets[cat + '/' + name]) { results.push({ ...manifest.assets[cat + '/' + name].report, unchanged: true }); continue; }
+  if (!FORCE && !REPORT_ONLY && fs.existsSync(out0) && fs.statSync(out0).mtimeMs >= fs.statSync(file).mtimeMs && manifest.assets[cat + '/' + name] && reports[cat + '/' + name]) { results.push({ ...reports[cat + '/' + name], unchanged: true }); continue; }
   const notes = [], warn = [];
   let doc; try { doc = quiet(await io.read(file)); } catch (e) { results.push({ name, cat, verdict: 'BROKEN', notes: [`couldn't read it: ${e.message}`] }); continue; }
   const before = measure(doc, fs.statSync(file).size);
@@ -163,21 +188,35 @@ for (const file of files) {
     for (let i = lods.length + 1; i <= 2; i++) fs.rmSync(path.join(dir, `${name}.lod${i}.glb`), { force: true });   // (distance versions from an earlier, bigger version of the model)
     let bytes = await write(lod0, path.join(dir, files[0])); for (let i = 0; i < lods.length; i++) bytes += await write(lods[i].doc, path.join(dir, files[i + 1]));
     res.bytesOut = bytes;
-    manifest.assets[cat + '/' + name] = { cat, files: files.map((f) => cat + '/' + f), dist: [0, ...(B.lod || []).slice(0, lods.length)], shareMats: lods.length > 0, far: B.far, tris: [after.tris, ...lods.map((l) => l.tris)], size: res.size, report: res };
+    manifest.assets[cat + '/' + name] = { cat, files: files.map((f) => cat + '/' + f), dist: [0, ...(B.lod || []).slice(0, lods.length)], shareMats: lods.length > 0, far: B.far, tris: [after.tris, ...lods.map((l) => l.tris)], size: res.size }; reports[cat + '/' + name] = res;
   }
   results.push(res);
 }
 
+// models held back from the game's rooms (assets/incoming/review.json)
+for (const [k, v] of Object.entries(manifest.assets)) { if (HOLD[k]) v.hold = HOLD[k]; else delete v.hold; }
+for (const r of results) { const k = r.cat + '/' + r.name; r.hold = HOLD[k] || null; }
+
 // ---------- the report ----------
 const ok = results.filter((r) => /^OK/.test(r.verdict)).length, bad = results.filter((r) => /^(OVER|BROKEN|SKIPPED|FIX)/.test(r.verdict));
 let md = `# Asset check\n\n${results.length} model(s): ${ok} fine, ${bad.length} need attention.${REPORT_ONLY ? ' (Report only: nothing was written.)' : ''}\n\n`;
+const metalled = results.filter((r) => (r.notes || []).some((x) => x.startsWith('metal turned off'))).length;
+if (metalled) md += `**Fixed by the check:** metal turned off in ${metalled} model(s). It was left on (glTF counts a material as metal unless the file says otherwise), which shows almost black in the game. Worth fixing in the export: set Metallic to 0.\n\n`;
+const held = results.filter((r) => r.hold);
+if (held.length) md += `**Held back from the game** (assets/incoming/review.json): ${held.length} model(s); each says why under its name below. They pass the check, but rooms keep their old furniture until they come off the list.\n\n`;
 md += '| Model | Category | Triangles (before → after, budget) | Distance versions | Materials | Draw calls | File size | Verdict |\n|---|---|---|---|---|---|---|---|\n';
 for (const r of results) {
   if (!r.before) { md += `| ${r.name} | ${r.cat} | | | | | | ${r.verdict} |\n`; continue; }
-  md += `| ${r.name}${r.unchanged ? ' (unchanged)' : ''} | ${r.cat} | ${n(r.before.tris)} → **${n(r.after.tris)}** (${n(r.budget)}) | ${r.lods.length ? r.lods.map(n).join(' / ') : 'none'} | ${r.before.mats} → ${r.after.mats} | ${r.before.calls} → ${r.after.calls} | ${kb(r.before.bytes)} → ${r.bytesOut ? kb(r.bytesOut) + ' (all versions)' : '-'} | ${r.verdict} |\n`;
+  md += `| ${r.name}${r.unchanged ? ' (unchanged)' : ''} | ${r.cat} | ${n(r.before.tris)} → **${n(r.after.tris)}** (${n(r.budget)}) | ${r.lods.length ? r.lods.map(n).join(' / ') : 'none'} | ${r.before.mats} → ${r.after.mats} | ${r.before.calls} → ${r.after.calls} | ${kb(r.before.bytes)} → ${r.bytesOut ? kb(r.bytesOut) + ' (all versions)' : '-'} | ${r.verdict}${r.hold ? ' · held back' : ''} |\n`;
 }
-for (const r of results) { if (!(r.notes || []).length && !(r.warn || []).length) continue; md += `\n### ${r.name}\n`; if (r.size) md += `- Size: ${r.size.map(m).join(' × ')} m (width × height × depth)\n`; for (const w of r.warn || []) md += `- ⚠️ ${w}\n`; for (const x of r.notes || []) md += `- ${x}\n`; }
+for (const r of results) { if (!(r.notes || []).length && !(r.warn || []).length && !r.hold) continue; md += `\n### ${r.name}\n`; if (r.hold) md += `- **Held back:** ${r.hold}\n`; if (r.size) md += `- Size: ${r.size.map(m).join(' × ')} m (width × height × depth)\n`; for (const w of r.warn || []) md += `- ⚠️ ${w}\n`; for (const x of r.notes || []) md += `- ${x}\n`; }
 md += `\n## Budgets\n\n| Category (folder) | Triangles | Materials | Biggest texture | Distance versions at |\n|---|---|---|---|---|\n${Object.entries(BUDGETS).map(([k, b]) => `| ${b.label} (\`${k}\`) | ${n(b.tris)} | ${b.mats} | ${b.tex} px | ${b.lod ? b.lod.join(' m, ') + ' m' : 'always close'} |`).join('\n')}\n`;
-if (!REPORT_ONLY) { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(manifestFile, JSON.stringify({ note: 'Written by tools/assets/check.mjs: models the game can load (src/render/Assets.js).', assets: Object.fromEntries(Object.entries(manifest.assets).map(([k, v]) => { const { report, ...rest } = v; return [k, { ...rest, report }]; })) }, null, 1)); fs.writeFileSync(path.join(OUT, 'REPORT.md'), md); }
+if (!REPORT_ONLY) {
+  fs.mkdirSync(OUT, { recursive: true }); const keys = Object.keys(manifest.assets).sort();
+  // one model per line: small to load, and a re-check only changes the lines of the models that changed
+  fs.writeFileSync(manifestFile, `{"note": "Written by tools/assets/check.mjs: the models the game can load (src/render/ModelLib.js). Reports are in reports.json.",\n "assets": {\n${keys.map((k) => `  ${JSON.stringify(k)}: ${JSON.stringify(manifest.assets[k])}`).join(',\n')}\n}}\n`);
+  fs.writeFileSync(reportsFile, `{\n${keys.filter((k) => reports[k]).map((k) => `${JSON.stringify(k)}: ${JSON.stringify(reports[k])}`).join(',\n')}\n}\n`);
+  fs.writeFileSync(path.join(OUT, 'REPORT.md'), md);
+}
 console.log(md.replace(/\*\*/g, ''));
 process.exitCode = bad.length ? 1 : 0;
