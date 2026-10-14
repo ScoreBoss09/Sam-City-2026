@@ -13,10 +13,15 @@ Triangles are for the closest version. The checker makes the cheaper distance ve
 | `props` | cups, signs, bins, small clutter | 500 | 2 | 512 px |
 | `furniture` | chairs, tables, beds, shop fittings | 2,000 | 3 | 1024 px |
 | `people` | characters | 3,000 | 3 | 1024 px |
+| `animals` | horses, dogs | 3,000 | 3 | 1024 px |
 | `bikes` | bicycles, motorbikes | 4,000 | 3 | 1024 px |
 | `cars` | cars, vans, buses | 8,000 | 4 | 1024 px |
 | `buildings` | whole building shells | 20,000 | 6 | 2048 px |
 | `guns` | first-person guns (only ever one on screen) | 10,000 | 4 | 2048 px |
+
+## What to make
+
+The full list of models needed to give every building a proper inside (with names, sizes and which existing pieces each one replaces) is in **[INTERIOR_ASSETS.md](INTERIOR_ASSETS.md)**.
 
 ## How to hand models over
 
