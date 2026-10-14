@@ -126,6 +126,10 @@ Roads tool → **Street lamps**: £15 a lamp on any road or path. Point at the c
 ## Sam's own life while you plan
 In the planning view Sam carries on by himself: he sleeps at night, eats when hungry, fetches materials and builds the top job on the Work queue, digs paths, chops timber or picks berries when stocks are low, works shifts, chats with people and sits on benches. The clock box says what he's doing, and when you press TAB you take over wherever he is. During the opening tutorial he leaves the work to you.
 
+## Controls and saves
+
+Every main key and controller button can be changed in Options → Controls (or the pause menu). Game speed on the keyboard: P pause, + faster, − slower. There are twelve named save slots; the game saves itself every minute and a half and keeps three autosave backups.
+
 ## Windows, guns and the parish register
 
 Shots that land where a window is shatter it (grenades blow out the windows round them); the glazier mends them a day later. Aiming puts a red dot exactly where the shot goes. Anyone shot dead stays where they fell until the undertakers come up the Lift for them, then there's a funeral, and the death is written in the parish register at the church.

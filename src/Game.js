@@ -96,6 +96,7 @@ export class Game {
     beam.position.y = 20; this.beacon.add(cone, beam); this.beacon.userData.cone = cone; this.beacon.visible = false; this.scene.add(this.beacon);
     this.setupCity(); this.resize(); window.addEventListener('resize', () => this.resize());
     this.input.allowLock = () => this.mode === 'sim' && this.started && !this.ui.modalOpen && !this.ending;
+    this.input.onLockLost = () => { if (this.started && !this.ending && this.ui.pause && !this.ui.pause.open) this.ui.pause.show(); };   // Esc frees the mouse: that's the pause menu, as in most games
     canvas.addEventListener('click', () => { if (this.mode === 'sim' && !this.ui.modalOpen && this.started && !this.ending) this.input.lock(); });
     this.setMode('god'); this.last = performance.now(); this.frames = 0;
   }
@@ -139,7 +140,7 @@ export class Game {
   save() { return SaveGame.save(this); }
   /** A new game opens on the wake-up scene instead of instructions. */
   playIntro() { this.introScene.start(); }
-  loadSave() { const d = SaveGame.load(); if (!d) return false; try { SaveGame.restore(this, d); this.ui.toast('Game loaded', 2000); return true; } catch (e) { console.error('load failed', e); return false; } }
+  loadSave(from) { const d = SaveGame.load(from); if (!d) return false; try { SaveGame.restore(this, d); this.ui.toast('Game loaded', 2000); return true; } catch (e) { console.error('load failed', e); return false; } }
   escape() {
     if (this.ending) return; this.ending = true; this.ui.fade(1, ''); this.input.unlock(); this.messages.push('Sam (thought)', 'The gate is open. Keep walking.', 'story');
     setTimeout(() => { this.ui.fade(0); this.ui.showEnding(); }, 2500);
@@ -179,6 +180,8 @@ export class Game {
     if (!this.started) { this.titleFlight(dt); this.render(dt); inp.endFrame(); return; }
     // the mouse may only be captured while walking around as Sam (a late capture after switching views would hide the cursor in planning)
     if (inp.locked && (this.mode !== 'sim' || ui.modalOpen || this.ending)) inp.unlock();
+    // ...and taken back when Sam's walking about again (after the planning view, a form, the post, the pause menu), if it was captured before
+    else if (inp.wantLock && !inp.locked && !inp.padActive && inp.allowLock() && document.hasFocus() && performance.now() - (this._lockTry || 0) > 1000) { this._lockTry = performance.now(); inp.lock(); }
     // modal / toggles
     const wasModal = ui.modalOpen;
     if (ui.pause.open && inp.hit('Escape')) { ui.pause.hide(); inp.pressed.delete('Escape'); }
@@ -197,7 +200,14 @@ export class Game {
       const S = [1, 2, 4, 0], i = S.indexOf(this.clock.speed); this.clock.speed = S[(i + 1) % S.length]; if (this.clock.speed) ui.toast(`Speed ${this.clock.speed}x`, 1200);   // 1x > 2x > 4x > paused > 1x (paused says so in the PAUSED badge at the top)
     }
     if (!ui.modalOpen && this.mode === 'god') { if (inp.hit('Digit0')) this.clock.speed = 0; }
-    this.saveT = (this.saveT || 0) + dt; if (this.saveT > 45) { this.saveT = 0; this.save(); }
+    if (!ui.modalOpen && !this.netVisitor && this.started) {   // + and - : faster and slower (1x, 2x, 4x; slower than 1x is paused)
+      const S = [0, 1, 2, 4], i = Math.max(0, S.indexOf(this.clock.speed)), up = inp.hit('Equal') || inp.hit('NumpadAdd'), down = inp.hit('Minus') || inp.hit('NumpadSubtract');
+      if (up || down) { this.clock.speed = S[Math.max(0, Math.min(S.length - 1, i + (up ? 1 : -1)))]; if (this.clock.speed) ui.toast(`Speed ${this.clock.speed}x`, 1200); }
+    }
+    // saving by itself: this game's slot every minute and a half, and a backup in the next autosave every five minutes,
+    // done when the browser has a moment to spare (a save is a few milliseconds; the database write happens off to one side)
+    this.saveT = (this.saveT || 0) + dt; this.autoT = (this.autoT || 0) + dt;
+    if (this.saveT > 90 && !this.savePending) { this.saveT = 0; this.savePending = true; const later = window.requestIdleCallback || ((f) => setTimeout(f, 50)); later(() => { this.savePending = false; const auto = this.autoT > 300; if (auto) this.autoT = 0; if (this.save()) { if (auto) SaveGame.autosave(this); this.ui.saved && this.ui.saved(); } }, { timeout: 3000 }); }
 
     const gdt = this.clock.tick(dt) * (ui.modalOpen && this.mode === 'sim' ? 1 : 1);
     const steps = Math.min(40, Math.max(1, Math.ceil(gdt / 0.1))), sdt = gdt / steps;

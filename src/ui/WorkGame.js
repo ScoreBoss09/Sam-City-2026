@@ -19,7 +19,7 @@ export class WorkGame {
   start(kind, key) {
     if (this.active && this.key === key) { this.idle = 0; return; }
     const k = KINDS[kind] || KINDS.chop; this.kind = kind; this.k = k; const keep = kind === this.lastKind && performance.now() - (this.lastPress || 0) < 3000 ? this.combo : 0; this.key = key; this.active = true; this.pos = 0; this.dir = 1; this.combo = keep; this.idle = 0; this.newZone(); $('wg-combo').textContent = keep > 1 ? `🔥 CHAIN x${keep}` : ''; this.el.dataset.heat = Math.min(4, keep); this.lastKind = kind;
-    $('wg-title').textContent = `${k.title} · Lv ${this.game.skills.level(kind)}`; this.el.classList.remove('hidden'); this.el.classList.toggle('fishing', kind === 'fish'); if (kind === 'fish') this.cast(); this.render();
+    { const S = this.game.skills, lv = S.level(kind), b = S.bonus(kind); $('wg-title').textContent = `${k.title} · Lv ${lv}${lv > 1 ? ` · ${b.toFixed(2).replace(/0$/, '')}x speed` : ''}`; } this.el.classList.remove('hidden'); this.el.classList.toggle('fishing', kind === 'fish'); if (kind === 'fish') this.cast(); this.render();
   }
   /** Fishing: wait for the float to bob, then strike while it is under. */
   cast() { this.fishState = 'wait'; this.fishT = 1.5 + Math.random() * 3; $('wg-bob').textContent = '~ ~ ~  o  ~ ~ ~'; }

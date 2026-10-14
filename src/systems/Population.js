@@ -84,7 +84,7 @@ export class Population {
     let role = null, vacancy = null;
     if (vac.length) { vacancy = vac.find((v) => v.role === 'builder' && builderSites) || pick(vac); role = vacancy.role; }
     const s = this.makeResident({ role, age: role ? 20 + Math.floor(Math.random() * 38) : null });
-    this.assignHome(s); this.assignJob(s, vacancy);
+    this.assignJob(s, vacancy); this.assignHome(s);   // the job first, then a bed near it
     if (!g.demoMode && this.count() <= 16) g.messages.push('Lift', `${s.name} arrived in Sam City${role ? ' as a ' + ROLES[role].name.toLowerCase() : ''}.`);
     if (!g.demoMode && Math.random() < 0.4) { const notes = [`Thank you for the bed. It is small but it is mine. I shall work hard.`, `Arrived safe. The Lift was quicker than they said. Is it always this quiet at night?`, `My mother said I would never live in a town with a proper Stockyard. Well!`, `Lovely to be here. Where does the post go after you read it? Just curious.`, `I brought my own kettle. Do pop round.`]; g.mail.send(s.name, 'A note from a newcomer', `Dear Sam,\n\n${notes[Math.floor(Math.random() * notes.length)]}\n\n${s.first}`); }
     return s;
@@ -93,8 +93,9 @@ export class Population {
   arriveCouple(withKid) {
     const g = this.game, sur = pick(SURNAMES), a = this.makeResident({ gender: 'm', age: 22 + Math.floor(Math.random() * 30), surname: sur }), b = this.makeResident({ gender: 'f', age: 22 + Math.floor(Math.random() * 28), surname: sur });
     a.partner = b; b.partner = a; a.single = b.single = false; a.coupleDay = b.coupleDay = g.clock.totalDays; a.orient = b.orient = 'h';
-    this.assignHome(a); if (b.home !== a.home || !b.home) { if (a.home && a.home.residents.length < a.home.def.beds - (a.home.reservedForPlayer ? 1 : 0)) this.rehome(b, a.home); else this.assignHome(b); }
     const vac = this.vacancies(); if (vac.length) this.assignJob(a, vac[0]); const vac2 = this.vacancies(); if (vac2.length) this.assignJob(b, pick(vac2));
+    const roomy = (h) => h && h.residents.length + (withKid ? 3 : 2) <= h.def.beds - (h.reservedForPlayer ? 1 : 0);   // a home with room for them all, near the first job
+    { const free = this.game.buildings.list.filter((h) => h.state === 'done' && h.def.beds && roomy(h)), w = a.workplace || b.workplace; const h = free.length ? (w ? free.reduce((p, c) => (Math.hypot(c.cx - w.cx, c.cz - w.cz) < Math.hypot(p.cx - w.cx, p.cz - w.cz) ? c : p)) : free[0]) : null; if (h) { this.rehome(a, h); this.rehome(b, h); } else { this.assignHome(a, w); if (a.home && a.home.residents.length < a.home.def.beds - (a.home.reservedForPlayer ? 1 : 0)) this.rehome(b, a.home); else this.assignHome(b, w); } }
     let kid = null; if (withKid && this.freeBedsIn(a.home) > 0) { kid = this.makeResident({ age: 5 + Math.floor(Math.random() * 7), surname: sur }); kid.parents = [a, b]; if (a.home) this.rehome(kid, a.home); }
     if (!g.demoMode) g.messages.push('Lift', `${a.name} and ${b.name} arrived together${kid ? ' with their child ' + kid.first : ''}.`);
     return a;
@@ -108,7 +109,7 @@ export class Population {
   }
   moveIn(a, b) { if (a.home === b.home) return; if (this.freeBedsIn(b.home) > 0) this.rehome(a, b.home); else if (this.freeBedsIn(a.home) > 0) this.rehome(b, a.home); }
   dailyTick() {
-    const g = this.game, today = g.clock.totalDays;
+    const g = this.game, today = g.clock.totalDays; this.moveCloser();
     for (const s of this.residents()) { for (const [id, v] of s.rel) { const nv = v * 0.97; if (nv < 1) s.rel.delete(id); else s.rel.set(id, nv); } }
     // babies
     for (const a of this.adults()) {
@@ -145,12 +146,21 @@ export class Population {
     const L = s.baseLook || s.look; s.baseLook = null; s.outfit = null; s.look = { ...L, shirt: 0x5a5448, shirt2: 0x3e3a32, pants: 0x3a3832, shoes: 0x2a2018, longSleeve: true, accessory: null, tie: false }; s.rebuildMesh();
     g.messages.push('Town', `${s.name} has been out of work for over a week, couldn't pay the rent, and is sleeping rough.`, 'warn'); if (g.markers) g.markers.add(s.x, s.z, '🛌', s.first + ' sleeping rough', 90, s, () => s.homeless && !s.remove);
   }
-  assignHome(s) {
-    for (const b of this.game.buildings.list) {
-      if (b.state !== 'done' || !b.def.beds || b.residents.length >= b.def.beds - (b.reservedForPlayer ? 1 : 0)) continue;
-      b.residents.push(s); s.home = b; const sp = b.spots.bed.find((x) => !x.taken); if (sp) sp.taken = s; return true;
+  /** A free bed, as close to their work as can be (anywhere, if they haven't a job yet). */
+  assignHome(s, near = s.workplace) {
+    const free = this.game.buildings.list.filter((b) => b.state === 'done' && b.def.beds && b.residents.length < b.def.beds - (b.reservedForPlayer ? 1 : 0)); if (!free.length) return false;
+    const b = near ? free.reduce((a, c) => (Math.hypot(c.cx - near.cx, c.cz - near.cz) < Math.hypot(a.cx - near.cx, a.cz - near.cz) ? c : a)) : free[0];
+    b.residents.push(s); s.home = b; const sp = b.spots.bed.find((x) => !x.taken); if (sp) sp.taken = s; return true;
+  }
+  /** Now and then somebody with a long walk to work moves to a free bed much nearer it (on their own: not families). */
+  moveCloser() {
+    const g = this.game, B = g.buildings;
+    for (const s of this.residents()) {
+      const w = s.workplace, h = s.home; if (!w || !h || s.kind !== 'resident' || s.partner || h.residents.some((o) => o !== s && (o.parents || []).includes(s)) || s.leaving) continue;
+      const d = Math.hypot(h.cx - w.cx, h.cz - w.cz); if (d < 60) continue;
+      const better = B.list.filter((b) => b !== h && b.state === 'done' && b.def.beds && b.def.cat === 'res' && b.residents.length < b.def.beds - (b.reservedForPlayer ? 1 : 0) && Math.hypot(b.cx - w.cx, b.cz - w.cz) < d * 0.5).sort((a, c) => Math.hypot(a.cx - w.cx, a.cz - w.cz) - Math.hypot(c.cx - w.cx, c.cz - w.cz))[0];
+      if (better) { this.rehome(s, better); g.messages.push('Town', `${s.name} has moved into the ${better.def.name} to be nearer work at the ${w.def.name}.`, 'quiet'); return; }   // one at a time
     }
-    return false;
   }
   assignJob(s, v) {
     if (!this.canWork(s)) return false;

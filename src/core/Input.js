@@ -1,19 +1,23 @@
+import { Bindings } from './Bindings.js';
+
 /** Keyboard / mouse state. In Unity: wrap the Input System actions with the same surface. */
 export class Input {
   constructor(canvas) {
     this.keys = new Set(); this.pressed = new Set(); this.released = new Set(); this.mouse = { x: 0, y: 0, dx: 0, dy: 0, left: false, right: false, middle: false, wheel: 0, down: false, up: false };
-    this.canvas = canvas; this.locked = false; this.blocked = false;
+    this.canvas = canvas; this.locked = false; this.blocked = false; this.binds = new Bindings(); this.capture = null; this.padCapture = null;
     this.padActive = false; this.padEnabled = true; this.virt = new Set(); this.pad = { connected: false, lx: 0, ly: 0, rx: 0, ry: 0, prev: [], down: [], hitB: [], mode: 'menu', zoomAcc: 0 };
     // the mouse or keyboard takes over from the controller only when really used: Chrome sends 'mousemove' with no movement
     // whenever the page changes under a still cursor, which used to drop the controller (and its held buttons) every few frames
     window.addEventListener('mousemove', (e) => { const m = Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0); if (!m || !this.padActive) return; const t = performance.now(); if (t - (this._mvT || 0) > 300) this._mv = 0; this._mvT = t; this._mv = (this._mv || 0) + m; if (this._mv > 30 && t - (this.pad.lastT || 0) > 500) this.padActive = false; });
     window.addEventListener('keydown', (e) => { if (!e.repeat && performance.now() - (this.pad.lastT || 0) > 300) this.padActive = false; });
     window.addEventListener('keydown', (e) => {
+      if (this.capture) { e.preventDefault(); e.stopPropagation(); const f = this.capture; this.capture = null; f(e.code); return; }   // the Controls menu waiting for "press a key"
       if (e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
-      const k = e.code; if (!this.keys.has(k)) this.pressed.add(k); this.keys.add(k);
-      if (['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) e.preventDefault();
+      if (['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+      const k = this.binds.translate(e.code); if (k === null) return; if (k === 'Tab' || k === 'Space') e.preventDefault();   // (your key for this action -> the key the game reads)
+      if (!this.keys.has(k)) this.pressed.add(k); this.keys.add(k);
     });
-    window.addEventListener('keyup', (e) => { this.keys.delete(e.code); this.released.add(e.code); });
+    window.addEventListener('keyup', (e) => { const k = this.binds.translate(e.code); if (k === null) return; this.keys.delete(k); this.released.add(k); });
     window.addEventListener('blur', () => { this.keys.clear(); this.virt = new Set(); });
     canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); this.mouse.x = (e.clientX - r.left) / r.width; this.mouse.y = (e.clientY - r.top) / r.height; if (this.locked) { this.mouse.dx += e.movementX; this.mouse.dy += e.movementY; } else if (this.drag) { this.mouse.dx += e.movementX; this.mouse.dy += e.movementY; } });
     canvas.addEventListener('mousedown', (e) => { if (e.button === 0) { this.mouse.left = true; this.mouse.down = true; } if (e.button === 2) this.mouse.right = true; if (e.button === 1) this.mouse.middle = true; this.drag = e.button !== 0; this.mouse.btn = e.button; e.preventDefault(); });
@@ -21,7 +25,12 @@ export class Input {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('wheel', (e) => { this.mouse.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
     document.addEventListener('mousemove', (e) => { if (document.pointerLockElement === canvas) { /* handled above */ } });
-    document.addEventListener('pointerlockchange', () => { this.locked = document.pointerLockElement === canvas; this.overCanvas = true; if (this.locked && this.allowLock && !this.allowLock()) this.unlock(); });
+    document.addEventListener('pointerlockchange', () => {
+      this.locked = document.pointerLockElement === canvas; this.overCanvas = true; if (this.locked && this.allowLock && !this.allowLock()) this.unlock();
+      // lost while walking about and we didn't let go of it: the player pressed Esc (or switched window) to free the mouse
+      if (!this.locked && !this._ourUnlock && this.allowLock && this.allowLock()) { this.wantLock = false; if (this.onLockLost) this.onLockLost(); }
+      this._ourUnlock = false;
+    });
     // is the cursor over the 3D view (not a HUD panel)? Re-checked on every move, so it can never get stuck
     this.overCanvas = true; window.addEventListener('mousemove', (e) => { this.overCanvas = e.target === canvas; }, true);
     canvas.addEventListener('mousedown', () => { this.overCanvas = true; }, true);
@@ -49,7 +58,8 @@ export class Input {
       P.base = C.base; P.stuck = C.stuck;
       const dz = (v) => (Math.abs(v) < 0.25 ? 0 : (v - Math.sign(v) * 0.25) / 0.75), ax = (i) => dz((gp.axes[i] || 0) - (P.base[i] || 0));
       const bt = (i) => { const b = gp.buttons[i], on = !!(b && (b.pressed || b.value > 0.5)); if (P.stuck[i]) { if (!on) P.stuck[i] = false; return false; } return on; };
-      const cur = []; for (let i = 0; i < 17; i++) cur.push(bt(i)); P.hitB = cur.map((v, i) => v && !P.prev[i]); P.relB = cur.map((v, i) => !v && !!P.prev[i]); P.prev = cur; P.down = cur;
+      if (this.padCapture) { P.hitB = []; P.relB = []; const raw = gp.buttons.map((b) => !!(b && (b.pressed || b.value > 0.5))), was = P.rawPrev || []; P.rawPrev = raw; const i = raw.findIndex((v, k) => v && !was[k] && k < 17); if (i >= 0) { const f = this.padCapture; this.padCapture = null; P.prev = raw.slice(); f(i); } return; }   // the Controls menu waiting for "press a button"
+      P.rawPrev = null; const map = this.binds.pad, cur = []; for (let i = 0; i < 17; i++) cur.push(bt(map[i] ?? i));   // (your button for each of the game's buttons) P.hitB = cur.map((v, i) => v && !P.prev[i]); P.relB = cur.map((v, i) => !v && !!P.prev[i]); P.prev = cur; P.down = cur;
       P.lx = ax(0); P.ly = ax(1); P.rx = ax(2); P.ry = ax(3);
       if (cur.some(Boolean) || Math.hypot(P.lx, P.ly) > 0.4 || Math.hypot(P.rx, P.ry) > 0.4) { this.padActive = true; P.lastT = performance.now(); if (cur.some(Boolean) && this.onActivity) this.onActivity(); }
       if (this.padActive) {
@@ -81,7 +91,8 @@ export class Input {
   padHit(i) { return !!(this.pad.hitB && this.pad.hitB[i]); }
   down(k) { return this.keys.has(k); }
   hit(k) { return this.pressed.has(k); }
-  lock() { try { const p = this.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* headless */ } }
-  unlock() { if (document.pointerLockElement) document.exitPointerLock(); }
+  lock() { this.wantLock = true; try { const p = this.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* headless */ } }
+  /** Let go of the mouse for a menu or the planning view (it's taken back afterwards: wantLock stays). */
+  unlock() { if (document.pointerLockElement) { this._ourUnlock = true; document.exitPointerLock(); } }
   endFrame() { this.pressed.clear(); this.released.clear(); this.mouse.dx = this.mouse.dy = 0; this.mouse.wheel = 0; this.mouse.down = this.mouse.up = false; }
 }

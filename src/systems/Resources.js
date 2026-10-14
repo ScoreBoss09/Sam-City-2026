@@ -18,7 +18,7 @@ export class Resources {
     this.world.events.on('building:added', (b) => { this.batchDirty = true; for (const n of this.nodes) if (n.mesh && n.tx >= b.x0 - 1 && n.tx < b.x0 + b.w + 1 && n.tz >= b.z0 - 1 && n.tz < b.z0 + b.d + 1 && (b.def.special || (n.tx >= b.x0 && n.tx < b.x0 + b.w && n.tz >= b.z0 && n.tz < b.z0 + b.d))) { n.amount = 0; n.max = n.max || 1; this.group.remove(n.mesh); n.mesh = null; n.gone = true; n.regen = 0; } });
   }
   // ---------- moving a bush or a rock out of the way (the Move tool in the planning view) ----------
-  movable(n) { return n && n.mesh && (n.kind === 'berry' || n.kind === 'rock') && n.seedId !== undefined; }
+  movable(n) { return n && n.mesh && ['berry', 'rock', 'ore', 'clay'].includes(n.kind) && n.seedId !== undefined; }
   nodeAt(tx, tz) { return this.nodes.find((n) => n.tx === tx && n.tz === tz && this.movable(n)) || null; }
   canReplant(tx, tz) { return this.clearFor(tx, tz) && !this.moves.some((m) => m.tx === tx && m.tz === tz); }
   /** Is the ground still clear for a replant (nothing built, paved or planned there since)? */
@@ -31,7 +31,7 @@ export class Resources {
   }
   /** The spot was taken: the nearest clear tile next to it will do (true), or there isn't one. */
   retarget(m) { if (this.clearFor(m.tx, m.tz)) return true; for (let r = 1; r <= 2; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) { const x = m.tx + dx, z = m.tz + dz; if (Math.max(Math.abs(dx), Math.abs(dz)) === r && this.world.inBounds(x, z) && this.canReplant(x, z)) { m.tx = x; m.tz = z; return true; } } return false; }
-  label(n) { return n.kind === 'berry' ? 'berry bush' : 'rock'; }
+  label(n) { return { berry: 'berry bush', rock: 'rock', ore: 'iron ore', clay: 'clay pit' }[n.kind] || 'rock'; }
   /** Give up on a move for good, and say why (the bush stays, or goes back, where it was). */
   cancelMove(m, why) {
     const s = m.sim; if (s && s.moveJob === m) this.drop(m, s); if (m.n.mesh && !m.n.mesh.visible) { m.n.mesh.visible = true; this.batchDirty = true; }
@@ -45,8 +45,8 @@ export class Resources {
   }
   /** Put a node on another tile (the world's blocking and the ground painting follow it). */
   moveNode(n, tx, tz) {
-    const w = this.world, o = w.idx(n.tx, n.tz), i = w.idx(tx, tz), id = w.res[o]; w.res[o] = 0; if (n.kind === 'rock') w.block[o] = 0;
-    const ox = n.tx, oz = n.tz; n.tx = tx; n.tz = tz; n.x = (tx + 0.5) * TILE; n.z = (tz + 0.5) * TILE; w.res[i] = id || n.seedId + 1; if (n.kind === 'rock') w.block[i] = 1;
+    const w = this.world, o = w.idx(n.tx, n.tz), i = w.idx(tx, tz), id = w.res[o]; w.res[o] = 0; if (n.kind === 'rock' || n.kind === 'ore') w.block[o] = 0;
+    const ox = n.tx, oz = n.tz; n.tx = tx; n.tz = tz; n.x = (tx + 0.5) * TILE; n.z = (tz + 0.5) * TILE; w.res[i] = id || n.seedId + 1; if (n.kind === 'rock' || n.kind === 'ore') w.block[i] = 1;
     if (w.nodeSeeds[n.seedId]) { w.nodeSeeds[n.seedId].tx = tx; w.nodeSeeds[n.seedId].tz = tz; } this.moved[n.seedId] = [tx, tz];
     if (n.mesh) { n.mesh.position.set(n.x, 0, n.z); n.mesh.visible = true; } this.batchDirty = true;
     if (this.terrain && this.terrain.paintAround) { this.terrain.paintAround(ox, oz); this.terrain.paintAround(tx, tz); this.terrain.tex.needsUpdate = true; }

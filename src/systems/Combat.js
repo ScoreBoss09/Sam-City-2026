@@ -52,6 +52,8 @@ export class Combat {
     if (on) {
       this.score = new Map([[this.myKey(), 0]]); this.names = new Map(); if (g.net && g.net.role === 'host') for (const v of g.net.visitors.values()) this.score.set('v' + v.id, 0);
       if (g.raidNight && g.net && g.net.raid) { g.net.raid = null; g.net.send({ t: 'raid', on: false }); g.net.raidOn(false); }
+      if (!this.boomLight) { this.boomLight = new THREE.PointLight(0xffa040, 0, 30, 2); g.scene.add(this.boomLight); }   // ready now, so the first bang doesn't stall
+      if (!this.warm) { this.warm = true; this.boom({ x: P.x, y: -60, z: P.z }, -60, 0.05, true); try { g.renderer.compile(g.scene, g.camera); } catch (e) { /* fine */ } }   // a silent bang deep underground: the fireball and smoke get drawn once now, not mid-fight
       this.loadout(P, null); this.hud(true); this.wasThird = P.third; P.third = false;   // Call of Duty is first person (V / D-pad up for over the shoulder)
       if (this.auth) this.setBots(g.net && g.net.role === 'host' && g.net.visitors.size ? Math.min(this.botCount, 2) : this.botCount);
       const st = armoury(g); g.ui.toast(`⚔️ COMBAT MODE. Pistol and two grenades to start${st ? '; the police station has the big guns, ammo and grenades (E / □ there)' : ''}. First to ${WIN_KILLS} wins.`, 6000); Sfx.play('bell');
@@ -312,18 +314,24 @@ export class Combat {
   // ---------------- grenades ----------------
   /** Where a grenade leaves the hand and how fast. */
   launch(P) {
-    const cam = this.game.camera, f = new THREE.Vector3(); cam.getWorldDirection(f); const [hx, hy, hz] = P.headPos(), aim = Math.atan2(f.x, f.z);
-    return { p: new THREE.Vector3(hx + Math.sin(aim) * 0.4, hy - 0.1, hz + Math.cos(aim) * 0.4), v: f.multiplyScalar(15).add(new THREE.Vector3((P.vx || 0) * 0.5, 4.5, (P.vz || 0) * 0.5)) };
+    const cam = this.game.camera, f = new THREE.Vector3(); cam.getWorldDirection(f); const [hx, hy, hz] = P.headPos(), aim = Math.atan2(f.x, f.z), rx = -Math.cos(aim), rz = Math.sin(aim);
+    // from the throwing hand (to the right and below the eyes), so in first person the path is seen curving away, not end-on
+    return { p: new THREE.Vector3(hx + Math.sin(aim) * 0.4 + rx * 0.3, hy - 0.3, hz + Math.cos(aim) * 0.4 + rz * 0.3), v: f.multiplyScalar(15).add(new THREE.Vector3((P.vx || 0) * 0.5, 4.5, (P.vz || 0) * 0.5)) };
   }
   /** Holding the grenade: the dotted path it will take and a ring where it ends up. */
   drawArc(P) {
-    const g = this.game;
-    if (!this.arc) { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3 * 120), 3)); this.arc = new THREE.Line(geo, new THREE.LineDashedMaterial({ color: 0xfff2a0, dashSize: 0.25, gapSize: 0.18, transparent: true, opacity: 0.9, depthTest: false })); this.arc.frustumCulled = false; this.arc.renderOrder = 10; this.ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 24), new THREE.MeshBasicMaterial({ color: 0xff5030, transparent: true, opacity: 0.85, depthTest: false, side: THREE.DoubleSide })); this.ring.rotation.x = -Math.PI / 2; this.ring.renderOrder = 10; }
+    const g = this.game, N = 36;
+    if (!this.arc) {   // a string of glowing beads along the path (a thin line vanished end-on in first person), and a ring where it lands
+      this.arc = new THREE.InstancedMesh(new THREE.SphereGeometry(0.055, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.95, depthTest: false }), N); this.arc.frustumCulled = false; this.arc.renderOrder = 40;
+      this.ring = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.2, 40), new THREE.MeshBasicMaterial({ color: 0xff5040, transparent: true, opacity: 0.8, depthTest: false, side: THREE.DoubleSide })); this.ring.rotation.x = -Math.PI / 2; this.ring.renderOrder = 40; this.arcM = new THREE.Matrix4();
+    }
     if (!P) { g.scene.remove(this.arc); g.scene.remove(this.ring); return; }
     if (!this.arc.parent) { g.scene.add(this.arc); g.scene.add(this.ring); }
-    const { p, v } = this.launch(P), n = { p, v, t: NADE_FUSE, floor: this.groundAt(p.x, p.y - 1.4, p.z), sim: true }, a = this.arc.geometry.attributes.position; let k = 0;
-    for (; k < 120 && n.t > 0; k++) { a.setXYZ(k, n.p.x, n.p.y, n.p.z); for (let s2 = 0; s2 < 2; s2++) this.stepNade(n, 1 / 60); }
-    a.needsUpdate = true; this.arc.geometry.setDrawRange(0, k); this.arc.computeLineDistances(); this.ring.position.set(n.p.x, n.floor + 0.05, n.p.z); this.ring.scale.setScalar(NADE_R / 2.2);
+    const { p, v } = this.launch(P), n = { p, v, t: NADE_FUSE, floor: this.groundAt(p.x, p.y - 1.4, p.z), sim: true }, pts = [];
+    for (let k = 0; k < 240 && n.t > 0; k++) { pts.push(n.p.clone()); this.stepNade(n, 1 / 60); if (n.p.y <= n.floor + 0.1 && k > 10 && Math.abs(n.v.y) < 1.5) break; }   // until it has landed and settled
+    const ph = (performance.now() / 600) % 1;   // the beads drift along the path, so it reads as a throw
+    const cam = g.camera.position; for (let i = 0; i < N; i++) { const q = pts[Math.min(pts.length - 1, Math.floor(((i + ph) / N) * pts.length))], d = q.distanceTo(cam), sc = i < 3 || d < 1.2 ? 0 : Math.min(3, Math.max(0.35, d * 0.22)); this.arcM.makeScale(sc, sc, sc).setPosition(q.x, q.y, q.z); this.arc.setMatrixAt(i, this.arcM); }   // the same size on screen near and far
+    this.arc.instanceMatrix.needsUpdate = true; this.ring.position.set(n.p.x, n.floor + 0.05, n.p.z); this.ring.scale.setScalar(NADE_R / 2.2);
   }
   throwNade(P) {
     const g = this.game, { p, v } = this.launch(P);
@@ -354,14 +362,17 @@ export class Combat {
     if (n.t <= 0) this.explode(n);
   }
   /** A proper bang: a fireball, a flash of light, a shockwave across the ground, smoke, dirt and debris, and a boom you feel. */
-  boom(p, floor, k = 1) {
-    const g = this.game, P = g.player, R = NADE_R * k; if (g.glass) g.glass.blast(p, 9 * k);
+  boom(p, floor, k = 1, quiet = false) {
+    const g = this.game, P = g.player, R = NADE_R * k; if (g.glass && !quiet) g.glass.blast(p, 9 * k);
     const fire = new THREE.Mesh(this.fxSphere || (this.fxSphere = new THREE.SphereGeometry(1, 14, 10)), new THREE.MeshBasicMaterial({ color: 0xffc040, transparent: true, opacity: 1, depthWrite: false })); fire.position.set(p.x, p.y + 0.4, p.z); g.scene.add(fire);
     const core = new THREE.Mesh(this.fxSphere, new THREE.MeshBasicMaterial({ color: 0xfff4c0, transparent: true, opacity: 1, depthWrite: false })); core.position.copy(fire.position); g.scene.add(core);
     const ring = new THREE.Mesh(this.fxRing || (this.fxRing = new THREE.RingGeometry(0.8, 1, 32)), new THREE.MeshBasicMaterial({ color: 0xfff0d0, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(p.x, floor + 0.08, p.z); g.scene.add(ring);
-    const light = new THREE.PointLight(0xffa040, 90 * k, 30 * k, 2); light.position.set(p.x, p.y + 1.5, p.z); g.scene.add(light);
+    // one light, made once and kept in the scene: adding a new light for each bang made every lit material rebuild its shader (the hitch when anyone threw a grenade)
+    if (!this.boomLight) { this.boomLight = new THREE.PointLight(0xffa040, 0, 30, 2); g.scene.add(this.boomLight); }
+    const light = this.boomLight; light.position.set(p.x, p.y + 1.5, p.z); light.distance = 30 * k; light.intensity = 90 * k; light.userData.owner = this.fx.length + ':' + performance.now();
     const smoke = []; for (let i = 0; i < 9; i++) { const m = new THREE.Mesh(this.fxSphere, new THREE.MeshLambertMaterial({ color: 0x4a4644, transparent: true, opacity: 0.75, depthWrite: false })); m.position.set(p.x + (Math.random() - 0.5) * 2 * k, p.y + 0.5, p.z + (Math.random() - 0.5) * 2 * k); m.userData.v = new THREE.Vector3((Math.random() - 0.5) * 2, 2 + Math.random() * 2.5, (Math.random() - 0.5) * 2); m.scale.setScalar(0.6 * k); g.scene.add(m); smoke.push(m); }
-    this.fx.push({ t: 0, dur: 3.2, k, fire, core, ring, light, smoke, R });
+    this.fx.push({ t: 0, dur: 3.2, k, fire, core, ring, light, lightOwner: light.userData.owner, smoke, R });
+    if (quiet) { light.intensity = 0; return; }   // (the practice bang at the start of combat: materials only)
     g.particles.burst(p.x, p.y + 0.3, p.z, 0xffa020, 40, 4 * k, 6, 0.25); g.particles.burst(p.x, p.y + 0.3, p.z, 0xff5010, 25, 3 * k, 4, 0.2); g.particles.burst(p.x, p.y, p.z, 0x5a4a30, 30, 3.5 * k, 8, 0.12); g.particles.burst(p.x, p.y, p.z, 0x222222, 16, 2.5 * k, 9, 0.08);
     const dP = Math.hypot(P.x - p.x, P.z - p.z), near = Math.max(0, 1 - dP / 80);
     Sfx.noise(1.6, { freq: 90, q: 0.7, vol: 0.25 + 0.6 * near, type: 'lowpass' }); Sfx.noise(0.5, { freq: 250, vol: 0.2 + 0.4 * near, type: 'lowpass' }); Sfx.noise(0.2, { freq: 2500, vol: 0.15 * near }); Sfx.noise(2.5, { freq: 60, vol: 0.2 * near, type: 'lowpass', delay: 0.15 });
@@ -372,9 +383,9 @@ export class Combat {
     const s = Math.min(1, u / 0.18), sc = f.R * 0.55 * (0.3 + 0.7 * s); f.fire.scale.setScalar(sc); f.fire.material.opacity = Math.max(0, 1 - u / 0.55); f.fire.material.color.setHSL(0.09 - Math.min(0.08, u * 0.15), 1, Math.max(0.2, 0.6 - u * 0.6));
     f.core.scale.setScalar(sc * 0.55); f.core.material.opacity = Math.max(0, 1 - u / 0.2);
     f.ring.scale.setScalar(0.5 + f.R * 2 * Math.min(1, u / 0.35)); f.ring.material.opacity = Math.max(0, 0.7 * (1 - u / 0.4));
-    f.light.intensity = Math.max(0, 90 * f.k * (1 - u / 0.3));
+    if (f.light.userData.owner === f.lightOwner) f.light.intensity = Math.max(0, 90 * f.k * (1 - u / 0.3));   // (a later bang may have taken the light)
     for (const m of f.smoke) { m.position.addScaledVector(m.userData.v, dt); m.userData.v.multiplyScalar(1 - dt * 0.8); m.scale.multiplyScalar(1 + dt * 0.7); m.material.opacity = Math.max(0, 0.75 * (1 - u / f.dur)); }
-    if (u >= f.dur) { for (const m of [f.fire, f.core, f.ring, f.light, ...f.smoke]) { g.scene.remove(m); if (m.material) m.material.dispose(); } return true; }
+    if (u >= f.dur) { for (const m of [f.fire, f.core, f.ring, ...f.smoke]) { g.scene.remove(m); if (m.material) m.material.dispose(); } if (f.light.userData.owner === f.lightOwner) f.light.intensity = 0; return true; }   // (the light stays, dark, for next time)
     return false;
   }
   explode(n, k = 1) {
