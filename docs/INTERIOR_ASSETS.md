@@ -32,8 +32,8 @@ These are used in the most buildings, so they change the look of the whole town 
 2. `furniture/plant` ×3 (done)
 3. `props/picture` ×4
 4. `props/strip_light` and `props/pendant_light`
-5. `furniture/counter` and `furniture/till`
-6. `furniture/chair`, `furniture/table`, `furniture/stool`
+5. `furniture/counter` (done) and `furniture/till`
+6. `furniture/chair`, `furniture/table`, `furniture/stool` (all done)
 7. `furniture/shelf` and `furniture/shelfbooks`
 8. `furniture/reception`
 9. `furniture/bench`, `furniture/locker`, `props/notice_board`
@@ -78,11 +78,11 @@ After that, the hero item of each building (★), then the rest.
 - `props/vase_flowers` — vase of flowers · 0.2 × 0.2 × 0.45
 
 ### Seating
-- ★ `furniture/chair` — wooden dining chair · 0.45 × 0.5 × 0.9 · fits 0.5 × 0.5 · replaces `chair`
+- ★ `furniture/chair` — wooden dining chair · 0.45 × 0.5 × 0.9 · fits 0.5 × 0.5 · replaces `chair`. **Done** (batch 003: around the tables and desks of 24 kinds of building, homes, pubs, schools, offices and halls among them)
 - `furniture/chair_stacking` — grey plastic stacking chair on steel legs · 0.45 × 0.5 × 0.8
 - `furniture/chair_office` — swivel chair on castors · 0.6 × 0.6 × 1.0
 - `furniture/chair_velvet` — padded restaurant chair, red velvet · 0.5 × 0.55 × 0.95
-- ★ `furniture/stool` — bar stool, chrome with a red vinyl seat · 0.4 × 0.4 × 0.75 · fits 0.45 × 0.45 · replaces `stool`
+- ★ `furniture/stool` — bar stool, chrome with a red vinyl seat · 0.4 × 0.4 × 0.75 · fits 0.45 × 0.45 · replaces `stool`. **Done** (batch 003: at the bars, chippies, kebab shop and bookies; townsfolk sit up on it at its full height. Log buildings keep their old stool until `stool_three` is made)
 - ★ `furniture/bench` — wooden slatted bench · 2.0 × 0.6 × 0.45 · fits 2.0 × 0.6 · replaces `bench`
 - `furniture/bench_waiting` — four joined plastic waiting seats on a steel beam · 2.0 × 0.6 × 0.8
 - ★ `furniture/sofa` — three-seater · 2.2 × 0.9 × 0.85 · fits 2.2 × 0.95 · replaces `sofa`. Make `sofa` (floral, homes) and `sofa_leather` (hotel, salon, office)
@@ -90,7 +90,7 @@ After that, the hero item of each building (★), then the rest.
 - `furniture/beanbag` — big beanbag (youth club, kids' rooms, library) · 0.8 × 0.8 × 0.6
 
 ### Tables and desks
-- ★ `furniture/table` — square dining or pub table · 0.9 × 0.9 × 0.75 · fits 1.4 × 1.4 (chairs are placed around it) · replaces `table`
+- ★ `furniture/table` — square dining or pub table · 0.9 × 0.9 × 0.75 · fits 1.4 × 1.4 (chairs are placed around it) · replaces `table`. **Done** (batch 003: in 17 kinds of building. Log huts keep their old table until `table_plank` is made)
 - `furniture/table_cafe` — small formica café table on a pedestal · 0.7 × 0.7 × 0.75
 - `furniture/table_restaurant` — table with a white cloth, cutlery and folded napkins · 0.9 × 0.9 × 0.75
 - `furniture/table_folding` — trestle table (halls, jumble sales) · 1.8 × 0.75 × 0.75
@@ -111,7 +111,7 @@ After that, the hero item of each building (★), then the rest.
 - `props/sack_pile` — pile of sacks (flour, grain, potatoes, sand) · 1.0 × 0.8 × 0.6
 
 ### Shop fittings
-- ★ `furniture/counter` — shop counter with a laminate top · 2.6 × 0.8 × 1.0 · fits 2.6 × 0.8 · replaces `counter`
+- ★ `furniture/counter` — shop counter with a laminate top · 2.6 × 0.8 × 1.0 · fits 2.6 × 0.8 · replaces `counter`. **Done** (batch 003: in 16 kinds of shop and café, front to the customers)
 - `furniture/counter_glass` — glass-fronted display counter (jewellery, cakes, phones) · 2.4 × 0.8 × 1.0
 - ★ `furniture/till` — counter section with a 1990s electronic cash register, card machine and carrier bags · 1.4 × 0.7 × 1.3 · fits 1.4 × 0.7 · replaces `till` · cash drawer `move_drawer`
 - ★ `furniture/gondola` — double-sided island shelving with groceries · 2.4 × 0.9 × 1.5 · fits 2.4 × 0.9 · replaces `gondola`
@@ -172,8 +172,8 @@ After that, the hero item of each building (★), then the rest.
 - ★ `furniture/strawbed` — straw mattress on a plank frame with a wool blanket · 1.0 × 1.9 × 0.45 · fits 1.1 × 2.0 · replaces `strawbed`
 - ★ `furniture/firepit` — central fire pit ringed with stones, pot on a tripod (glow embers) · 1.2 × 1.2 × 0.9 · fits 1.2 × 1.2 · replaces `firepit`
 - ★ `furniture/hearth` — stone fireplace with a cooking pot on a crane (glow) · 1.8 × 0.8 × 1.6 · fits 1.8 × 0.8 · replaces `hearth`
-- `furniture/table_plank` — rough plank table · 1.4 × 0.8 × 0.75
-- `furniture/stool_three` — three-legged stool · 0.35 × 0.35 × 0.45
+- `furniture/table_plank` — rough plank table · 1.4 × 0.8 × 0.75 · fits 1.4 × 1.4 · takes the place of `table` in log buildings (the 1990s pub table looks wrong there)
+- `furniture/stool_three` — three-legged stool · 0.35 × 0.35 × 0.45 · fits 0.45 × 0.45 · takes the place of `stool` in log buildings (huts, cabins, the forager's, fisher's and lumber camp's sheds)
 - `furniture/spinning_wheel` — spinning wheel · 0.8 × 0.5 × 0.9 · wheel `wheel_spin`
 - `furniture/washstand` — jug and bowl on a wooden stand · 0.6 × 0.45 × 0.8
 - `furniture/dresser_welsh` — Welsh dresser with plates · 1.4 × 0.5 × 2.0

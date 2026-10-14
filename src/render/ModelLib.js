@@ -26,8 +26,8 @@ export class ModelLib {
   }
   async init() {
     try { const r = await fetch(BASE + 'manifest.json', { cache: 'no-cache' }); if (r.ok) this.list = (await r.json()).assets || {}; } catch (e) { /* no checked models yet */ }
-    const all = Object.keys(this.list).map((name) => this.load(name));   // all small: fetched in the background at the start
-    if (all.length) Promise.all(all).then(() => { const B = this.game.buildings; if (B && B.refreshInteriors) B.refreshInteriors(); });   // rooms already built with the old block models are rebuilt with the real ones
+    const all = Object.keys(this.list).map((name) => this.load(name)); if (!all.length) this.done = true;   // all small: fetched in the background at the start
+    if (all.length) Promise.all(all).then(() => { this.done = true; const B = this.game.buildings; if (B && B.refreshInteriors) B.refreshInteriors(); });   // rooms already built with the old block models are rebuilt with the real ones
     return this;
   }
   /** The loaded versions of a model and its variations (name, name_1, name_2, name_3...), in order: [] if none are ready. */

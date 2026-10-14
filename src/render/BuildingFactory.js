@@ -732,9 +732,20 @@ export function roomColliders(lay) {
  * all the same. Null: use the old one.
  */
 const MADE_FOLDERS = ['furniture', 'props', 'animals', 'cars'];
-function madeFurniture(t, b, x, z) {
-  const L = models(); if (!L) return null; let v = []; for (const f of MADE_FOLDERS) { v = L.variants(f + '/' + t); if (v.length) break; } if (!v.length) return null;
-  return L.copyStatic(v[Math.abs(Math.floor(x * 7.31 + z * 13.17 + (b.uid || 0) * 3.7)) % v.length]);
+// the shared 1990s pieces that would look wrong in a log hut: there, the rustic one when it's been made, else the old block model
+const LOG_HUT = { stool: 'stool_three', table: 'table_plank' };
+/** Which checked model stands in for a block model at this spot (null: none, keep the block): the variation is picked by position. */
+function madeName(t, b, x, z) {
+  const L = models(); if (!L) return null; const def = b.def || {};
+  if (def.wall === 'logs' && LOG_HUT[t]) t = LOG_HUT[t];
+  let v = []; for (const f of MADE_FOLDERS) { v = L.variants(f + '/' + t); if (v.length) break; } if (!v.length) return null;
+  return v[Math.abs(Math.floor(x * 7.31 + z * 13.17 + (b.uid || 0) * 3.7)) % v.length];
+}
+function madeFurniture(t, b, x, z) { const n = madeName(t, b, x, z); return n ? models().copyStatic(n) : null; }
+/** How much higher than the old block stool (seat 0.48 m up) a sim sits on the stool at a seat: a made bar stool is taller. */
+export function seatLift(s) {
+  if (s.t !== 'stool' || !s.b) return 0; if (s.lift !== undefined) return s.lift; const L = models(); if (!L || !L.done) return 0;
+  const n = madeName('stool', s.b, s.lx, s.lz), size = n && L.list[n].size; return (s.lift = size ? Math.max(0, size[1] - 0.48) : 0);
 }
 export function buildInterior(b) {
   const g = new THREE.Group(), lay = b.layout;
@@ -830,14 +841,23 @@ function dressWalls(b, g) {
   }
 }
 /** Colliders for the furniture upstairs: they only block at their own storey (lo..h). */
-export function upperColliders(def) { return upperFurniture(def).filter((f) => f.solid).map((f) => ({ cx: f.x, cz: f.z, sx: f.sx * 0.92, sz: f.sz * 0.92, lo: f.k * WALL_H - 0.3, h: f.k * WALL_H + 2.3, furn: true })); }
+export function upperColliders(def, b) {
+  const L = b && models();
+  return upperFurniture(def).filter((f) => f.solid).map((f) => {
+    let sx = f.sx, sz = f.sz; const n = L && madeName(eraT(f.t, b.era ?? 2), b, f.x, f.z + f.k), size = n && L.list[n].size;
+    if (size) { const odd = (f.r || 0) % 2; sx = Math.min(sx, (odd ? size[2] : size[0]) + 0.1); sz = Math.min(sz, (odd ? size[0] : size[2]) + 0.1); }   // (as downstairs)
+    return { cx: f.x, cz: f.z, sx: sx * 0.92, sz: sz * 0.92, lo: f.k * WALL_H - 0.3, h: f.k * WALL_H + 2.3, furn: true };
+  });
+}
 
 const TOPS = { bed: 0.55, dbed: 0.55, bunk: 0, cot: 0, table: 0.78, sofa: 0.8, armchair: 0.8, coffeetable: 0.45, desk: 0.78, kitchen: 0.95, bath: 0.6, dresser: 0.85, bedside: 0.6, tvunit: 0.6, phonetable: 0.75, homepc: 0.78, chest: 0.6, crate: 0.7, bench: 0.5, pooltable: 0.85, snookertable: 0.85 };
-export function furnitureColliders(lay) {
-  const out = [];
+export function furnitureColliders(lay, b) {
+  const out = [], L = b && models();
   for (const f of lay.furniture) {
     const d = FURN[f.t]; if (!d || !d.solid) continue;
-    let [sx, sz] = d.s; if ((f.r || 0) % 2) [sx, sz] = [sz, sx];
+    let [sx, sz] = d.s; const n = L && madeName(eraT(f.t, b.era ?? 2), b, f.x, f.z), size = n && L.list[n].size;
+    if (size) { sx = Math.min(sx, size[0] + 0.1); sz = Math.min(sz, size[2] + 0.1); }   // a made model smaller than the block (the table) blocks only what it covers
+    if ((f.r || 0) % 2) [sx, sz] = [sz, sx];
     const top = d.h || TOPS[f.t];   // low pieces can be jumped onto and stood on
     out.push({ cx: f.x, cz: f.z, sx: sx * 0.92, sz: sz * 0.92, h: top || 2.5, top, furn: true });
   }

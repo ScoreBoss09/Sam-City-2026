@@ -12,6 +12,7 @@ import { character } from '../data/character.js';
 import { ALERT_LINES, DOWN_LINES } from '../data/story.js';
 import { upperFurniture, levelPlan } from '../world/Levels.js';
 import { WALL_H } from '../config.js';
+import { seatLift } from '../render/BuildingFactory.js';
 
 let nextId = 1;
 const g_say = (s) => s.game.social && s.mesh.visible;
@@ -510,7 +511,7 @@ export class Sim {
     const g = this.game, m = this.mesh, U = this.upstairs, hidden = this.hidden || (U && !(g.mode === 'sim' && g.buildings.playerInside === U.b && Math.abs((g.player.floorY || 0) - U.y) < WALL_H * 1.2)) || (this.pose === 'sleep' && this.bedSpot && this.bedSpot.upstairs) || (this.inside && !this.inside.def.open && !g.buildings.canSeeInto(this.inside));
     if (this.dog && !init) this.dog.update(dt);   // before anything returns early: a dog left un-updated would stand frozen in the street for ever
     m.visible = !hidden; if (hidden && !init) { this.working = false; return; }
-    m.position.set(this.x, this.rideY || 0, this.z); m.rotation.y = this.heading;
+    m.position.set(this.x, (this.rideY || 0) + (this.sitting ? seatLift(this.sitting) : 0), this.z); m.rotation.y = this.heading;   // (a bar stool sits them higher)
     const wpc = this.workplace && this.workplace.def.cart && (GATHER[this.role] || this.role === 'builder') && this.activity === 'work' ? this.workplace.def.cart : 0, useCart = !!(wpc && this.carry && !this.inside);
     if (useCart && (!this.cart || this.cart.userData.level !== wpc)) { if (this.cart) m.remove(this.cart); this.cart = makeCart(wpc); this.cart.position.z = wpc >= 2 ? -1.5 : -1.25; m.add(this.cart); }
     if (this.cart) { this.cart.visible = useCart; if (useCart) updateCart(this.cart, this.carry.mat, this.carry.qty, this.moved ? this.dist || 0 : 0); }
