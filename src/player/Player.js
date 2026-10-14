@@ -184,6 +184,7 @@ export class Player {
       if (this.platform) { g.transport.platformTick(); if (this.platform) this.interact(rawDt); this.syncMesh(rawDt); return; }   // on a station platform, waiting
       if (this.transit && this.transit.cabin) { g.transport.cabin(this, fx, fz, rawDt); this.interact(rawDt); if (!this.target) g.transport.cabinPrompt(this); this.syncMesh(rawDt); return; }   // aboard: walk about the carriage
       if (this.transit) { g.ui.setPrompt(`Riding the ${this.transit.L.K.name}...`, -1, true); this.syncMesh(rawDt); return; }
+      if (this.poseT > 0) { this.poseT -= rawDt; this.vx = this.vz = this.speed = 0; g.ui.setPrompt('Say cheese!', -1, true); this.syncMesh(rawDt); return; }   // posing for a photo
       if (this.onTop && !(this.jumpT > 0) && !this.falling && !this.game.world.topAt(this.x, this.z, 0.05, (this.floorY || 0) + 0.05)) { this.onTop = false; this.falling = { vy: 0, from: this.floorY || 0 }; }   // stepped off the bed/table: drop down
       if (this.falling) {   // off the roof: gravity, then a hard landing
         const f = this.falling; f.vy -= 24 * rawDt; this.floorY = (this.floorY || 0) + f.vy * rawDt;
@@ -392,7 +393,7 @@ export class Player {
       const p0 = g.roadPlans.at(px, pz); let rp = p0, rd = 0; if (!rp) { for (const q of g.roadPlans.plans.values()) { const d = Math.hypot(q.cx - px, q.cz - pz); if (d < 3.4 && (!rp || d < rd)) { rp = q; rd = d; } } }
       if (rp) consider(this.tools.has('shovel') ? { kind: 'road', plan: rp, work: 'dig', text: `Dig the ${rp.type === 2 ? 'paved road (uses 1 stone)' : 'path'}` } : { kind: 'info', text: 'You need the Shovel to dig paths. Pick it up from the Tool Rack.' }, rd + 0.3, undefined, undefined, [rp.cx, rp.cz]);
     }
-    { const v = g.celebrations.guests.v; if (v && v.s.mesh.visible) { const d = Math.hypot(v.s.x - px, v.s.z - pz); if (d < 2.6) consider({ kind: 'act', text: `Ask ${v.G.name} for a photo and an autograph`, act: () => g.celebrations.guests.meet() }, d - 1.5, undefined, undefined, [v.s.x, v.s.z]); } }
+    { const v = g.celebrations.guests.v; if (v && v.s.mesh.visible && !g.photos.shoot) { const d = Math.hypot(v.s.x - px, v.s.z - pz); if (d < 3.4) consider({ kind: 'act', text: v.met ? `Say hello to ${v.G.name} again` : g.photos.hasCamera ? `Ask ${v.G.name} for a photo (they'll sign it)` : `Ask ${v.G.name} for an autograph`, act: () => g.celebrations.guests.meet() }, d - 3, undefined, undefined, [v.s.x, v.s.z]); } }   // (ahead of the fans crowding round)
     for (const b of g.upgrades.orders.length ? B.concat(g.upgrades.orders) : B) {
       if (b.state === 'done') {
         if ((b.id === 'church' || b.id === 'chapel') && b.spots.seat.length) { const d = Math.hypot(b.doorIn.x - px, b.doorIn.z - pz); if (d < 2.6) consider({ kind: 'act', text: 'Read the parish register (births and deaths)', act: () => g.ui.openTerminal(b, 'register') }, d + 0.4); }
@@ -611,6 +612,7 @@ export class Player {
     if (fx.hunger) this.hunger = clamp((this.hunger || 0) + fx.hunger, 0, 100); if (fx.energy) this.energy = Math.min(100, (this.energy || 0) + fx.energy);
     if (fx.drunk) { const was = this.drunk || 0; this.drunk = clamp(was + fx.drunk, 0, 1); if (was < 0.45 && this.drunk >= 0.45) g.ui.toast('You\'re feeling rather merry.', 2000); else if (was < 0.75 && this.drunk >= 0.75) g.ui.toast('The room has started to go round. Maybe a water.', 2600); }
     if (fx.inv) this.invAdd(fx.inv[0], fx.inv[1]);
+    if (fx.camera) g.flags.camera = true;   // photos with the famous from now on
     if (fx.lotto) { const r = Math.random(), w = r < 0.01 ? 500 : r < 0.05 ? 50 : r < 0.18 ? 10 : 0; if (w) { g.economy.earn(w, 'Scratchcards'); Sfx.play('cash'); } g.ui.toast(w ? `Scratch, scratch... £${w}! It could be you, and it was.` : 'Scratch, scratch... nothing. Not even a free ticket.', 2600); }
     { const n = name.toLowerCase(); this.holding = /pint|lager|bitter|cider|stout|shandy|snakebite|ale\b|guinness|half/.test(n) ? 'pint' : /chips|cod|haddock|fish|kebab|saveloy|pie|curry|burger|sausage/.test(n) ? 'chips' : /tea|coffee|cuppa|hot choc/.test(n) ? 'cup' : /video|vhs|film/.test(n) ? 'video' : /popcorn/.test(n) ? 'popcorn' : /ticket/.test(n) ? 'ticket' : 'bag'; this.holdT = 45; }   // and Sam walks off with it
     Sfx.play('cash'); if (c.who && c.who.mesh && c.who.mesh.visible) g.social.say(c.who, pick(['Ta, love.', 'There you go, Sam.', 'Cheers, Sam.', 'Anything else?', 'Mind how you go.', 'Lovely.']), 2);
@@ -663,9 +665,9 @@ export class Player {
     const aim = Math.atan2(-Math.sin(this.yaw), -Math.cos(this.yaw)), ty = this.sleeping || this.sedated > 0 || this.down > 0 ? 0 : clamp(angleDiff(this.heading, aim), -1.1, 1.1), tp = -this.pitch * 0.8;
     const k = Math.min(1, dt * 8); this.lookYaw += (ty - this.lookYaw) * k; this.lookPitch += (tp - this.lookPitch) * k;
     let lower = 'stand', upper = 'idle'; const t = this.target, carrying = this.invTotal() > 0;
-    if (this.sleeping) { lower = 'lie'; upper = 'sleep'; }
+    this._lieH = undefined; if (this.sleeping) { lower = 'lie'; upper = 'sleep'; }
     else if (this.seat) { lower = 'sit'; const sb = this.seat.b; upper = sb && sb.def.park === 'camp' ? 'watch' : this.seat.kind === 'pew' ? 'pray' : sb && sb.def.dining && this.seat.kind === 'dining' ? 'drink' : this.seat.kind === 'sofa' ? 'watch' : 'idle'; if (this.emoteT > 0 && ['cheer', 'clap', 'think', 'facepalm', 'vsign', 'shrug'].includes(this.emoteName)) upper = this.emoteName; }
-    else if (this.sedated > 0 || this.down > 0) { lower = 'lie'; upper = 'sedated'; }
+    else if (this.sedated > 0 || this.down > 0) { lower = 'lie'; upper = 'sedated'; this._lieH = 0.15; }   // (flat on the ground, not at bed height)
     else {
       if (this.speed > 0.3 && this.moved) lower = 'walk';
       if (this.working && t && t.kind === 'gather') { upper = t.upper; lower = ['harvest', 'dig'].includes(upper) ? 'crouch' : 'stand'; }
@@ -687,7 +689,7 @@ export class Player {
     if (this.gun && !this.mounted && lower !== 'lie' && !this.seat && (this.aiming || g.elapsed - (this.lastShot || -9) < 1.5 || (g.combat.on && this.speed < 5.2 && !this.cover)) && !(this.atkT > 0)) upper = 'aim';
     if (g.combat.on && this.stance === 'prone' && !this.mounted && (lower === 'stand' || lower === 'walk')) lower = 'prone';
     const hs = Math.sin(this.heading), hc = Math.cos(this.heading), sp = Math.max(this.speed, 1e-3), fwd = this.mounted ? 1 : ((this.vx || 0) * hs + (this.vz || 0) * hc) / sp, side = this.mounted ? 0 : ((this.vx || 0) * hc - (this.vz || 0) * hs) / sp;
-    this.anim.update(dt, { lower, upper, motor: this.bike === 2, dist: this.dist, speed: this.speed, run: this.mounted ? this.speed > 5.6 : this.speed > 3.2, step: this.mounted ? 0 : 0.38 + 0.21 * this.speed, fwd, side, land: this.landT > 0 ? this.landT / 0.16 : 0, crouch: g.combat.on && (this.stance === 'crouch' || this.slideT > 0) ? 1 : 0, gunProp: WEAPONS[this.gun] ? (WEAPONS[this.gun].rocket ? 'tube' : WEAPONS[this.gun].slot === 0 ? 'rifle' : 'pistol') : 'pistol', aimPitch: upper === 'aim' ? this.aimPitch() : 0, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: 0.25, tired: this.energy < 25, crateColor: big ? MATERIALS[big].color : undefined, speaking: g.ui.dialogue ? false : undefined, prop: this.weapon && !this.sleeping && this.sedated <= 0 ? { handR: 'club' } : this.holding && !this.sleeping ? { handR: this.holding } : undefined });
+    this.anim.update(dt, { lower, upper, motor: this.bike === 2, dist: this.dist, speed: this.speed, run: this.mounted ? this.speed > 5.6 : this.speed > 3.2, step: this.mounted ? 0 : 0.38 + 0.21 * this.speed, fwd, side, land: this.landT > 0 ? this.landT / 0.16 : 0, crouch: g.combat.on && (this.stance === 'crouch' || this.slideT > 0) ? 1 : 0, gunProp: WEAPONS[this.gun] ? (WEAPONS[this.gun].rocket ? 'tube' : WEAPONS[this.gun].slot === 0 ? 'rifle' : 'pistol') : 'pistol', aimPitch: upper === 'aim' ? this.aimPitch() : 0, lieH: this._lieH, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: 0.25, tired: this.energy < 25, crateColor: big ? MATERIALS[big].color : undefined, speaking: g.ui.dialogue ? false : undefined, prop: this.weapon && !this.sleeping && this.sedated <= 0 ? { handR: 'club' } : this.holding && !this.sleeping ? { handR: this.holding } : undefined });
     if (this.holding && (this.holdT -= dt) <= 0) this.holding = null;
     { const xh = this.xhair || (this.xhair = document.getElementById('xhair')), on = !!this.gun && g.mode === 'sim' && !this.sleeping && !(this.down > 0) && !this.dead && !this.scoped() && !g.combat.wheelOpen; if (xh) { xh.style.display = on ? 'block' : 'none'; if (on) { this.hitMark = Math.max(0, (this.hitMark || 0) - dt); xh.className = (this.aiming ? 'aim' : '') + (this.hitMark > 0 ? (this.hitHead ? ' hit head' : ' hit') : ''); const W = WEAPONS[this.gun]; xh.style.transform = g.combat.on && W ? `scale(${Math.min(3, 0.55 + g.combat.spread(this, W) * 22).toFixed(2)})` : ''; } } }   // the gap shows the spread
     this.marker.visible = godView; this.marker.position.set(this.x, 5.2 + Math.sin(performance.now() / 300) * 0.4, this.z); this.marker.rotation.y += dt * 2;

@@ -27,7 +27,7 @@ export const WEAPONS = {
 };
 const PRIMARIES = ['ar', 'smg', 'shotgun', 'sniper', 'lmg'], SECONDARIES = ['pistol', 'magnum', 'mp', 'launcher'];
 export const WIN_KILLS = 20;
-const NADE_FUSE = 2.6, NADE_R = 7.5, MAX_RAGS = 14, MAX_DECALS = 60;
+const NADE_FUSE = 2.6, NADE_R = 7.5, MAX_RAGS = 14;
 const BOT_NAMES = ['Gaz', 'Big Dave', 'Wayne', 'Darren', 'Kev', 'Tel', 'Lee', 'Shaz', 'Dean', 'Tina', 'Ricky', 'Mad Pete'];
 const SHELL = [0x6a2ab0, 0x1a8a8a, 0xd8342c, 0x2a5ad8, 0xe07a10, 0x2a2a30, 0x3a9a40, 0xc02a80];   // shell suits
 /** Where the guns are: the police station. */
@@ -50,8 +50,7 @@ function rayCapsule(o, d, ax, ay, az, bx, by, bz, r) {
 
 export class Combat {
   constructor(game) {
-    this.game = game; this.on = false; this.bots = []; this.rags = []; this.decals = []; this.nades = []; this.score = new Map(); this.names = new Map(); this.botCount = 4; this.feed = []; this.fx = [];
-    this.decalGeo = new THREE.CircleGeometry(1, 10); this.decalGeo.rotateX(-Math.PI / 2);
+    this.game = game; this.on = false; this.bots = []; this.rags = []; this.nades = []; this.score = new Map(); this.names = new Map(); this.botCount = 4; this.feed = []; this.fx = [];
     this.nadeGeo = new THREE.SphereGeometry(0.09, 8, 6); this.nadeMat = new THREE.MeshStandardMaterial({ color: 0x3a4a2a, roughness: 0.7 });
     this.unitBox = new THREE.BoxGeometry(1, 1, 1); this.weapons = WEAPONS; this.wheel = new WeaponWheel(this); this.slow = 1;
   }
@@ -396,12 +395,10 @@ export class Combat {
   // ---------------- blood ----------------
   blood(x, y, z, dir, big, pool) {
     const g = this.game; g.particles.burst(x + (dir ? dir.x * 0.2 : 0), y, z + (dir ? dir.z * 0.2 : 0), 0x8a0a0a, big ? 14 : 7, big ? 1.4 : 0.8, 1.2, big ? 0.09 : 0.06);
-    const n = pool ? 1 : 1 + (Math.random() < 0.5 ? 1 : 0), gy = this.groundAt(x, y, z);
-    for (let i = 0; i < n; i++) {
-      const s = pool ? 0.2 : 0.18 + Math.random() * 0.3, m = new THREE.Mesh(this.decalGeo, new THREE.MeshBasicMaterial({ color: 0x5a0606, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-      const ox = (dir ? dir.x : 0) * (0.4 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.5, oz = (dir ? dir.z : 0) * (0.4 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.5;
-      m.position.set(x + (pool ? 0 : ox), gy + 0.03 + this.decals.length * 0.0004, z + (pool ? 0 : oz)); m.scale.setScalar(s); m.renderOrder = 2; g.scene.add(m);
-      this.decals.push({ m, t: 40, grow: pool ? 1.1 : 0 }); if (this.decals.length > MAX_DECALS) { const o = this.decals.shift(); g.scene.remove(o.m); o.m.material.dispose(); }
+    const n = pool ? 1 : 1 + (Math.random() < 0.5 ? 1 : 0), gy = this.groundAt(x, y, z); if (!g.decals) return;
+    for (let i = 0; i < n; i++) {   // splashes on the ground (pooled marks: no new mesh or material per hit)
+      const s = pool ? 1.6 : 0.35 + Math.random() * 0.5, ox = (dir ? dir.x : 0) * (0.4 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.5, oz = (dir ? dir.z : 0) * (0.4 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.5;
+      g.decals.add('blood', { x: x + (pool ? 0 : ox), y: gy, z: z + (pool ? 0 : oz) }, UP, s);
     }
   }
   groundAt(x, y, z) { const P = this.game.player; return Math.abs(P.x - x) < 6 && Math.abs(P.z - z) < 6 ? (P.floorY || 0) : (y > 3 ? Math.floor(y / 3.2) * 3.2 : 0); }
@@ -817,7 +814,6 @@ export class Combat {
     for (let i = this.nades.length - 1; i >= 0; i--) { this.stepNade(this.nades[i], dt); if (this.nades[i].t <= 0) this.nades.splice(i, 1); }
     for (let i = this.rags.length - 1; i >= 0; i--) { const r = this.rags[i]; r.t -= dt; this.stepRag(r, dt); this.drawRag(r); if (r.t < 2) r.grp.position.y = -(2 - r.t) * 0.25; if (r.t <= 0) { this.dropRag(r); this.rags.splice(i, 1); } }
     for (let i = this.fx.length - 1; i >= 0; i--) if (this.stepFx(this.fx[i], dt)) this.fx.splice(i, 1);
-    for (let i = this.decals.length - 1; i >= 0; i--) { const d = this.decals[i]; d.t -= dt; if (d.grow && d.m.scale.x < d.grow) d.m.scale.multiplyScalar(1 + dt * 0.5); if (d.t < 5) d.m.material.opacity = 0.85 * d.t / 5; if (d.t <= 0) { g.scene.remove(d.m); d.m.material.dispose(); this.decals.splice(i, 1); } }
     if (!this.on) return;
     if (this.auth) for (const b of this.bots) this.updateBot(b, dt);
     if (P.dead && !(P.down > 0)) this.respawnPlayer();

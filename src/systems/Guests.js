@@ -49,8 +49,8 @@ export class Guests {
   meet() {
     const g = this.game, v = this.v; if (!v) return; const s = v.s;
     if (v.met && !(v.hint && !v.told)) { g.social.say(s, 'Lovely to meet you again, Sam!', 2); return; }
-    v.met = true; g.particles.burst(s.x, 1.8, s.z, 0xffffff, 12, 0.6, 0.4, 0.06); g.flags.autographs = (g.flags.autographs || 0) + 1;
-    g.ui.toast(`📸 A photo with ${v.G.name}, and an autograph: "${v.G.sign}"`, 3500);
+    v.met = true; g.particles.burst(s.x, 1.8, s.z, 0xffffff, 12, 0.6, 0.4, 0.06); if (!g.photos.hasCamera) g.flags.autographs = (g.flags.autographs || 0) + 1;
+    g.photos.meet(v);   // a signed photo (with a camera) or an autograph, kept in the album
     if (v.hint && !v.told) { v.told = true; setTimeout(() => { if (!this.v) return; g.social.say(s, pick(['(whispering) Listen. None of this is real. Look for the door in the sky.', '(whispering) They pay me to be here. They pay EVERYONE to be here. Except you.', '(whispering) Two in the morning, the cameras change shifts. Remember that.']), 4.5); if (g.story && g.story.pages) g.story.pages.push(`${v.G.name} whispered something when the minder wasn't looking. Something about cameras.`); }, 2600); }
   }
   leave() {

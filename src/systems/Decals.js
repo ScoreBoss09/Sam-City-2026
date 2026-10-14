@@ -9,9 +9,10 @@ import * as THREE from 'three';
  *   game.decals.add('scorch', point, up, 2.6)        a blast mark on the ground
  */
 const KINDS = {
-  hole: { n: 320, size: 0.1, life: 480, tex: holeTex, jitter: 0.25 },
+  hole: { n: 320, size: 0.13, life: 480, tex: holeTex, jitter: 0.25 },
   chip: { n: 160, size: 0.16, life: 300, tex: chipTex, jitter: 0.3 },   // a bullet kicking up the ground: a scuffed pale mark
   scorch: { n: 32, size: 2.6, life: 600, tex: scorchTex, jitter: 0.15 },
+  blood: { n: 96, size: 0.4, life: 45, tex: bloodTex, jitter: 0.35 },   // (dries up and goes after a while)
 };
 const FADE = 12;
 
@@ -30,14 +31,22 @@ function chipTex() {
     const g = x.createRadialGradient(c, c, 0, c, c, c * 0.3); g.addColorStop(0, 'rgba(15,13,11,0.95)'); g.addColorStop(1, 'rgba(15,13,11,0)'); x.fillStyle = g; x.fillRect(0, 0, s, s);
   });
 }
+function bloodTex() {
+  return canvas(64, (x, s) => {
+    const c = s / 2; x.fillStyle = 'rgba(92,6,6,0.9)';
+    x.beginPath(); x.arc(c, c, c * 0.42, 0, Math.PI * 2); x.fill();
+    for (let i = 0; i < 9; i++) { const a = Math.random() * Math.PI * 2, r = c * (0.45 + Math.random() * 0.4), rr = 1.5 + Math.random() * 4.5; x.fillStyle = `rgba(${80 + Math.random() * 30},6,6,${0.6 + Math.random() * 0.3})`; x.beginPath(); x.arc(c + Math.cos(a) * r, c + Math.sin(a) * r, rr, 0, Math.PI * 2); x.fill(); }
+    const g = x.createRadialGradient(c, c, 0, c, c, c * 0.42); g.addColorStop(0, 'rgba(60,2,2,0.5)'); g.addColorStop(1, 'rgba(60,2,2,0)'); x.fillStyle = g; x.fillRect(0, 0, s, s);
+  });
+}
 function scorchTex() {
   return canvas(128, (x, s) => {
     const c = s / 2, g = x.createRadialGradient(c, c, 0, c, c, c);
     g.addColorStop(0, 'rgba(10,9,8,0.92)'); g.addColorStop(0.35, 'rgba(22,19,16,0.82)'); g.addColorStop(0.65, 'rgba(40,34,28,0.4)'); g.addColorStop(1, 'rgba(40,34,28,0)');
     x.fillStyle = g; x.fillRect(0, 0, s, s);
-    for (let i = 0; i < 26; i++) {   // streaks thrown out from the middle
-      const a = Math.random() * Math.PI * 2, r0 = c * (0.25 + Math.random() * 0.2), r1 = c * (0.6 + Math.random() * 0.38);
-      x.strokeStyle = `rgba(12,10,9,${0.25 + Math.random() * 0.35})`; x.lineWidth = 2 + Math.random() * 5; x.lineCap = 'round';
+    for (let i = 0; i < 34; i++) {   // soot thrown out from the middle
+      const a = Math.random() * Math.PI * 2, r0 = c * (0.2 + Math.random() * 0.2), r1 = c * (0.45 + Math.random() * 0.5);
+      x.strokeStyle = `rgba(12,10,9,${0.12 + Math.random() * 0.22})`; x.lineWidth = 3 + Math.random() * 9; x.lineCap = 'round';
       x.beginPath(); x.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0); x.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1); x.stroke();
     }
   });
