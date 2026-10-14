@@ -173,7 +173,7 @@ export function mergeByMaterial(root) {
         for (let i = 0; i < at.count; i++) {
           if (key === 'position') { v.fromBufferAttribute(at, i).applyMatrix4(mtx); arrays[key].push(v.x, v.y, v.z); }
           else if (key === 'normal') { v.fromBufferAttribute(at, i).applyMatrix3(nm).normalize(); arrays[key].push(v.x, v.y, v.z); }
-          else for (let c = 0; c < at.itemSize; c++) arrays[key].push(at.array[i * at.itemSize + c]);
+          else for (let c = 0; c < at.itemSize; c++) arrays[key].push(c === 0 ? at.getX(i) : c === 1 ? at.getY(i) : c === 2 ? at.getZ(i) : at.getW(i));   // (getX & co. unpack the compressed, interleaved attributes made models come with)
         }
       }
       if (bk.indexed) for (const i of g.index.array) idx.push(i + off); off += pos.count;
@@ -726,12 +726,22 @@ export function roomColliders(lay) {
   }
   return out;
 }
+/**
+ * A made model for this piece of furniture, if one has been through the asset check: <folder>/<type> (furniture, props,
+ * animals or cars), or one of its variations (<type>_2, <type>_3...) chosen by where it stands, so a room of them isn't
+ * all the same. Null: use the old one.
+ */
+const MADE_FOLDERS = ['furniture', 'props', 'animals', 'cars'];
+function madeFurniture(t, b, x, z) {
+  const L = models(); if (!L) return null; let v = []; for (const f of MADE_FOLDERS) { v = L.variants(f + '/' + t); if (v.length) break; } if (!v.length) return null;
+  return L.copyStatic(v[Math.abs(Math.floor(x * 7.31 + z * 13.17 + (b.uid || 0) * 3.7)) % v.length]);
+}
 export function buildInterior(b) {
   const g = new THREE.Group(), lay = b.layout;
   if (!lay) return g;
   for (const f of lay.furniture) {
     const era = b.era ?? 2, t = eraT(f.t, era);
-    const m = makeFurniture(t); m.position.set(f.x, 0.06, f.z); m.rotation.y = (f.r || 0) * Math.PI / 2; g.add(m);
+    const m = madeFurniture(t, b, f.x, f.z) || makeFurniture(t); m.position.set(f.x, 0.06, f.z); m.rotation.y = (f.r || 0) * Math.PI / 2; g.add(m);
   }
   colorize(g); mergeByMaterial(g);   // a whole room of furniture in a few draw calls
   // the storeys upstairs, one group each (hidden above the floor Sam is on)
@@ -739,7 +749,7 @@ export function buildInterior(b) {
   for (const f of upperFurniture(b.def)) {
     let lg = g.userData.lv[f.k]; if (!lg) { lg = g.userData.lv[f.k] = new THREE.Group(); lg.userData.keep = true; g.add(lg); }
     const era = b.era ?? 2, t = eraT(f.t, era);
-    const m = makeFurniture(t); m.position.set(f.x, f.k * WALL_H + 0.03, f.z); m.rotation.y = (f.r || 0) * Math.PI / 2; lg.add(m);
+    const m = madeFurniture(t, b, f.x, f.z + f.k) || makeFurniture(t); m.position.set(f.x, f.k * WALL_H + 0.03, f.z); m.rotation.y = (f.r || 0) * Math.PI / 2; lg.add(m);
   }
   dressWalls(b, g);
   if (lay.walls || lay.floors || lay.lights) { buildRooms(b, g); colorize(g); mergeByMaterial(g); }   // (the ground-floor rooms merge in too)

@@ -12,7 +12,7 @@ The town is set in **1990s Britain**. It starts as a timber village and grows th
 - **★** marks a hero item: the thing that makes the room read as what it is. Make these first.
 - **Size** is width × depth × height in metres, as it stands with its front facing you.
 - **fits W × D** means the model **replaces an existing block model** in the game, so its floor footprint has to fit inside W × D or it will block walkways. Height is up to you (a sensible real height is given).
-- **×3** means make three variations (`plant_1`, `plant_2`, `plant_3`), so a room isn't full of identical copies.
+- **×3** means make three variations, so a room isn't full of identical copies. The first has the plain name and the others are numbered: `plant`, `plant_2`, `plant_3`. The game mixes them in by itself.
 - **Moving parts:** name them as given (`door_left`, `move_reels`...). Anything with `door`, `wheel`, `move_` or `keep_` in its name stays a separate part the game can animate. Name the parent object and everything under it moves together.
 - **Glow:** screens, neon and lit signs. Give them an emission colour in Blender, and keep to **one glowing material per model** (each one is an extra draw call).
 
@@ -29,7 +29,7 @@ The town is set in **1990s Britain**. It starts as a timber village and grows th
 These are used in the most buildings, so they change the look of the whole town fastest:
 
 1. `props/wall_clock` (done) and `furniture/grandfather_clock` (in 67 buildings)
-2. `furniture/plant` ×3
+2. `furniture/plant` ×3 (done)
 3. `props/picture` ×4
 4. `props/strip_light` and `props/pendant_light`
 5. `furniture/counter` and `furniture/till`
@@ -73,7 +73,7 @@ After that, the hero item of each building (★), then the rest.
 - `furniture/pegs` — row of coat hooks with coats and bags · 2.0 × 0.3 × 1.6 · fits 2.0 × 0.4 · replaces `pegs`
 
 ### Plants
-- ★ `furniture/plant` ×3 — rubber plant in a pot, yucca, spider plant on a stand · 0.5 × 0.5 × 1.3 · fits 0.6 × 0.6 · replaces `plant`
+- ★ `furniture/plant` ×3 — rubber plant in a pot, yucca, spider plant on a stand · 0.5 × 0.5 × 1.3 · fits 0.6 × 0.6 · replaces `plant`. **Done** (batch 002: in about 170 buildings)
 - `props/plant_small` ×2 — pot plant for a windowsill or desk · 0.25 × 0.25 × 0.35
 - `props/vase_flowers` — vase of flowers · 0.2 × 0.2 × 0.45
 
