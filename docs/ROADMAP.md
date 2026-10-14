@@ -166,3 +166,13 @@ Status: [ ] to do, [~] partly done, [x] done (see notes).
 143. [ ] Destructible buildings (beyond windows).
 144. [ ] The easy mod option.
 
+## Round 6.8 (owner: freezes naming visitors, controller dead, railings, path pulsing)
+145. [x] THE freeze: the island-wide route search stored costs at reduced precision, so when a destination couldn't be reached (a pocket walled in by huts, lumber camps and the stockyard) the same route kept looking shorter and the search never ended. Full precision, finished tiles skipped, and a hard limit on every search and sight-line loop as a backstop. (Also the cause of the earlier 0.2 s "transplant" stalls.)
+146. [x] Anyone whose position stops being a real number (Sam after a glitch, or a townsperson) is put back somewhere sensible instead of breaking things.
+147. [x] Freeze detail: after a freeze among the townsfolk the next report names the step (choosing, route-finding, walking...), not just the person.
+148. [x] Controller: if controller input was switched off in Options (it's remembered), pressing a button on a pad switches it back on and says so; messages now show on the title screen too.
+149. [x] Stockyard railings can be vaulted with a running jump (and you don't get stuck in them).
+150. [x] Backpack full: one message, not two.
+151. [x] Planned path no longer pulses all over the island when one tile is being dug.
+152. [x] Small leaks: event props share one box shape; map pins free their pictures.
+

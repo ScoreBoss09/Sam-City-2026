@@ -17,6 +17,7 @@ Mods.start(game);
 game.run();
 for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => Sfx.resume());
 game.input.onActivity = () => Sfx.resume();
+game.input.onPadOff = () => { padOpt.checked = true; applyPad(); padLabel(); game.ui.toast('Controller input was switched off in Options. It\'s back on now.', 4000); };
 game.input.onUnknownPad = (id) => game.ui.toast(`A controller was found (${id.replace(/\s*\(.*$/, '').slice(0, 40)}) but the browser doesn't know its button layout. Plug it in by USB, or use Chrome or Edge.`, 6000);
 const soundOpt = document.getElementById('opt-sound'); try { if (localStorage.getItem('samcity-sound') === '0') soundOpt.checked = false; } catch (e) { /* no storage */ }
 soundOpt.onchange = () => { Sfx.enabled = soundOpt.checked; try { localStorage.setItem('samcity-sound', soundOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } }; Sfx.enabled = soundOpt.checked;

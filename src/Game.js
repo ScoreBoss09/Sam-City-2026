@@ -146,6 +146,9 @@ export class Game {
   }
 
   /** Run one town system: tell the watchdog which one (so a freeze names it) and note any call that takes over 250 ms. */
+  /** Freeze detail (only after a freeze among the townsfolk): say which step of whose update we're in, so a freeze names the function. */
+  get tracing() { return !!(this.watchdog && this.watchdog.detail); }
+  trace(label) { if (this.tracing) this.watchdog.beat((this._tr || '') + ' > ' + label); }
   sys(k, dt) {
     const o = this[k]; if (!o) return; this.watchdog.beat('town: ' + k); const t = performance.now(); o.update(dt); const d = performance.now() - t;
     if (d > 250) this.slowNote(k, d);

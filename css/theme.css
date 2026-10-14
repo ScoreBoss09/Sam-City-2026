@@ -146,7 +146,7 @@ html, body { font-family: var(--ui-font); -webkit-font-smoothing: antialiased; }
 body:not(.pad) .padonly, body.pad .kbonly { display: none !important; }
 
 /* ---------- the title screen ---------- */
-body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash) { visibility: hidden !important; }   /* the world shows behind the menu, the HUD doesn't */
+body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):not(#errbar) { visibility: hidden !important; }   /* the world shows behind the menu, the HUD doesn't */
 #title.screen { background: linear-gradient(90deg, rgba(5, 8, 14, .92) 0%, rgba(5, 8, 14, .72) 34%, rgba(5, 8, 14, .12) 70%, rgba(5, 8, 14, .3) 100%), linear-gradient(0deg, rgba(5, 8, 14, .55), rgba(5, 8, 14, 0) 35%) !important; justify-content: flex-start !important; text-align: left !important; }
 #title .box { max-width: none !important; width: min(560px, 90vw); margin-left: clamp(24px, 8vw, 140px); padding: 0 !important; }
 #title h1 { font: 700 clamp(64px, 9vw, 120px)/.9 var(--ui-head) !important; letter-spacing: .02em !important; color: #fff !important; text-shadow: 0 6px 30px rgba(0, 0, 0, .55) !important; margin: 0 !important; }

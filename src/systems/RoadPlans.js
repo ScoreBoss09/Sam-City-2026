@@ -30,13 +30,13 @@ export class RoadPlans {
     m.position.set(p.cx, 0, p.cz); p.mesh = m; p.tile = t; this.group.add(m); this.plans.set(this.key(x, z), p); return p;
   }
   cancel(x, z) { const p = this.get(x, z); if (!p) return false; this.drop(p); return true; }
-  drop(p) { this.group.remove(p.mesh); this.plans.delete(this.key(p.x, p.z)); if (p.reserved) p.reserved.roadPlan = null; }
+  drop(p) { this.group.remove(p.mesh); if (p.ownMat) p.tile.material.dispose(); this.plans.delete(this.key(p.x, p.z)); if (p.reserved) p.reserved.roadPlan = null; }
 
   /** Work done by a sim or Sam. Returns true when the tile became a road. */
   work(p, dt) {
     const g = this.game, w = g.world; if (this.plans.get(this.key(p.x, p.z)) !== p) return true;
     if (p.type === 2 && !p.paid) { if (g.economy.stock.stone < 1) return false; g.economy.stock.stone -= 1; p.paid = true; }
-    p.progress += dt / WORK[p.type]; p.tile.scale.y = 1 + p.progress * 2; p.tile.material.opacity = 0.55 + p.progress * 0.35;
+    p.progress += dt / WORK[p.type]; p.tile.scale.y = 1 + p.progress * 2; if (!p.ownMat) { p.ownMat = true; p.tile.material = p.tile.material.clone(); } p.tile.material.opacity = 0.55 + p.progress * 0.35;   // (its own material: changing the shared one made every planned tile on the island pulse)
     if (p.progress >= 1) { let felled = 0; for (const t of g.terrain.trees) if (t.alive && t.tx === p.x && t.tz === p.z) { g.terrain.removeTree(t); felled++; } if (felled && g.depot) g.economy.add('timber', felled); this.drop(p); w.addRoad(p.x, p.z, p.type); g.flags.pathsBuilt = (g.flags.pathsBuilt || 0) + 1; return true; }
     return false;
   }
@@ -48,5 +48,5 @@ export class RoadPlans {
   }
   clear() { for (const p of [...this.plans.values()]) this.drop(p); }
   serialize() { return this.list().map((p) => [p.x, p.z, p.type, +p.progress.toFixed(2), p.paid ? 1 : 0]); }
-  load(a) { this.clear(); for (const [x, z, t, pr, paid] of a || []) { const p = this.plan(x, z, t); if (p) { p.progress = pr; p.paid = !!paid; p.tile.scale.y = 1 + pr * 2; } } }
+  load(a) { this.clear(); for (const [x, z, t, pr, paid] of a || []) { const p = this.plan(x, z, t); if (p) { p.progress = pr; p.paid = !!paid; p.tile.scale.y = 1 + pr * 2; if (pr > 0) { p.ownMat = true; p.tile.material = p.tile.material.clone(); p.tile.material.opacity = 0.55 + pr * 0.35; } } } }
 }
