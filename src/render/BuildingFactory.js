@@ -378,7 +378,7 @@ function buildExterior0(def, uid = 1, era = 2) {
   { const sx = mx < 0.06 ? (W - 0.14) / W : 1, sz = mz < 0.06 ? (D - 0.14) / D : 1; if (sx !== 1 || sz !== 1) { g.scale.set(sx, 1, sz); roof.scale.set(sx, 1, sz); } }   // fills its plot exactly: pull the walls in a touch so they don't fight next door's
   ALIGN = null;
   const levels = plan ? buildLevels(def, plan, g, cols, roof) : null;
-  return { group: g, roof, colliders: cols, height: H, doors, plan, curtains, levels: levels && levels.groups, liftCab: levels && levels.cab, roofDoor: levels && levels.roofDoor, roofCols };
+  return { group: g, roof, colliders: cols, height: H, doors, plan, curtains, levels: levels && levels.groups, liftCab: levels && levels.cab, roofDoor: levels && levels.roofDoor, roofCols, shell: !!shell, shopWins: fronts.filter((f) => f.open).map((f) => [f.a, f.b]), door: [door - dw / 2, door + dw / 2] };
 }
 
 /** Floors, ceilings, staircases and the lift shaft of a building with storeys you can walk up to (see Levels.js). */
