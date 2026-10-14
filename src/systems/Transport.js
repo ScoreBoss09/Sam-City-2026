@@ -193,13 +193,15 @@ export class Transport {
     const g = this.game;
     if (P.platform) { consider({ kind: 'act', text: `Waiting for the ${P.platform.L.K.name}... (E to go back down the steps)`, act: () => this.samDown() }, 3); return; }
     if (P.transit && P.transit.cabin) { const R = P.transit, L = R.L, n = this.stopHere(L, R.car); if (n >= 0 && n !== R.from) consider({ kind: 'act', text: `Get off here: ${this.stopName(L.st[n])}`, act: () => this.samOff() }, 0); else if (n < 0) R.from = -1; return; }
-    for (const b of g.buildings.list) {
-      if (b.state !== 'done' || !b.doorOut) continue; const d = Math.hypot(b.doorOut.x - P.x, b.doorOut.z - P.z); if (d > 4.2) continue;
-      if (b.id === 'cycleshop') { const lv = b.def.vehicle || 0, price = BIKE_PRICE[lv]; if ((P.bike ?? -1) < lv) consider({ kind: 'act', text: `Buy a ${VEHICLE_NAMES[lv]} (£${price})  then B to ride`, act: () => this.buyBike(lv, price) }, d - 0.5, undefined, undefined, [b.doorOut.x, b.doorOut.z]); }
+    // bikes and tickets are sold inside, over the counter (BuildingManager.sale): by the door it just says to go in
+    const B = g.buildings;
+    for (const b of B.list) {
+      if (b.state !== 'done' || !b.doorOut) continue; if (B.playerInside !== b && Math.hypot(b.doorOut.x - P.x, b.doorOut.z - P.z) > 4.2) continue;
+      if (b.id === 'cycleshop') { const lv = b.def.vehicle || 0, price = BIKE_PRICE[lv]; if ((P.bike ?? -1) < lv) B.sale(b, P, consider, { kind: 'act', text: `Buy a ${VEHICLE_NAMES[lv]} (£${price})  then B to ride`, act: () => this.buyBike(lv, price) }, `The ${b.def.name}: go inside to buy a ${VEHICLE_NAMES[lv]} (£${price})`); }
       if (b.def.transit) {
-        const L = this.lines[b.def.transit]; if (!L) { consider({ kind: 'info', text: `Build another ${b.def.name} to open the line (lay the track with the Track tool)` }, d, undefined, undefined, [b.doorOut.x, b.doorOut.z]); continue; }
+        const L = this.lines[b.def.transit]; if (!L) { if (B.playerInside !== b) consider({ kind: 'info', text: `Build another ${b.def.name} to open the line (lay the track with the Track tool)` }, Math.hypot(b.doorOut.x - P.x, b.doorOut.z - P.z), undefined, undefined, [b.doorOut.x, b.doorOut.z]); continue; }
         const i = L.st.indexOf(b); if (i < 0) continue;
-        consider({ kind: 'act', text: `Buy a ticket (£${L.K.fare}) and wait on the platform for the ${L.K.name}`, act: () => this.samUp(L, i) }, d - 0.5, undefined, undefined, [b.doorOut.x, b.doorOut.z]);
+        B.sale(b, P, consider, { kind: 'act', text: `Buy a ticket (£${L.K.fare}) and go up to the platform for the ${L.K.name}`, act: () => this.samUp(L, i) }, `Tickets for the ${L.K.name} from the ticket office inside`);
       }
     }
   }

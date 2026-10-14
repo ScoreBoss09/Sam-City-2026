@@ -23,10 +23,10 @@ export class ControlsMenu {
         const waiting = this.wait === a.id, k = B.keyFor(a);
         body += row(a.label, `<button data-c="key" data-id="${a.id}" class="keycap${waiting ? ' waiting' : ''}${k !== a.code ? ' changed' : ''}">${waiting ? 'Press a key… (Esc: cancel)' : keyName(k)}</button>`);
       }
-      body += '<div class="bindnote">Mouse: look and aim · right button: aim · wheel: zoom · 1-8: emotes and planning tools · arrow keys: look</div>';
+      body += '<div class="bindnote">Mouse: look and aim · right button: aim · wheel: zoom · 1-8: emotes and planning tools · arrow keys: look. Combat: hold the Planning key for the weapon wheel, 1-9 or the wheel to change gun, G grenade, C crouch, Z prone.</div>';
     } else {
       for (const [slot, label] of PAD_ACTIONS) { const waiting = this.wait === 'pad' + slot, btn = B.pad[slot]; body += row(label, `<button data-c="pad" data-slot="${slot}" class="keycap${waiting ? ' waiting' : ''}${btn !== slot ? ' changed' : ''}">${waiting ? 'Press a button… (Esc: cancel)' : PAD_NAMES[btn]}</button>`); }
-      body += '<div class="bindnote">Sticks: left moves, right looks. In combat mode the triggers aim and fire.</div>';
+      body += '<div class="bindnote">Sticks: left moves, right looks. In combat mode the triggers aim and fire, hold △ for the weapon wheel (tap: next gun), R1 grenade.</div>';
     }
     return `<div class="ptabs"><button data-c="tab" data-t="keys" class="${this.tab === 'keys' ? 'on' : ''}">Keyboard</button><button data-c="tab" data-t="pad" class="${this.tab === 'pad' ? 'on' : ''}">Controller</button></div>
       <div class="binds">${body}</div><button data-c="reset">Reset keys, buttons and sensitivity</button>`;

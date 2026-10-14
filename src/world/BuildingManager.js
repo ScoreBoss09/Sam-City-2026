@@ -277,6 +277,16 @@ export class BuildingManager {
     return (b.nav = { W, H, ox, oz, C, free });
   }
   /** Which finished building contains world point (x,z)? Used for roof cut-away and sim visibility. */
+  /** Where you buy things in a building: the customer's side of its first counter (else the middle of the room). */
+  counterSpot(b) { const c = b.spots && b.spots.counters && b.spots.counters[0]; return c && c.cust ? c.cust : { x: b.cx, z: b.cz }; }
+  /**
+   * Buying happens indoors, at the counter: inside (on the ground floor) Sam gets the offer near it; outside by the
+   * door, a pointer to go in. offer: the interaction (kind 'act'); why: what the door says.
+   */
+  sale(b, P, consider, offer, why) {
+    if (this.playerInside === b && (P.floorY || 0) < 0.5) { const at = this.counterSpot(b), d = Math.hypot(at.x - P.x, at.z - P.z); if (d < 3.6) consider(offer, d - 0.6, undefined, undefined, [at.x, at.z]); return; }
+    if (!b.doorOut || this.playerInside) return; const d = Math.hypot(b.doorOut.x - P.x, b.doorOut.z - P.z); if (d < 4.2) consider({ kind: 'info', text: why }, d + 0.6);
+  }
   buildingAtPoint(x, z) {
     const b = this.world.buildingAt(Math.floor(x / TILE), Math.floor(z / TILE)); return b && b.state === 'done' && !b.def.park ? b : null;
   }

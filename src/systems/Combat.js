@@ -68,10 +68,10 @@ export class Combat {
       this.score = new Map([[this.myKey(), 0]]); this.names = new Map(); if (g.net && g.net.role === 'host') for (const v of g.net.visitors.values()) this.score.set('v' + v.id, 0);
       if (g.raidNight && g.net && g.net.raid) { g.net.raid = null; g.net.send({ t: 'raid', on: false }); g.net.raidOn(false); }
       if (!this.boomLight) { this.boomLight = new THREE.PointLight(0xffa040, 0, 30, 2); g.scene.add(this.boomLight); }   // ready now, so the first bang doesn't stall
-      if (!this.warm) { this.warm = true; this.boom({ x: P.x, y: -60, z: P.z }, -60, 0.05, true); try { g.renderer.compile(g.scene, g.camera); } catch (e) { /* fine */ } }   // a silent bang deep underground: the fireball and smoke get drawn once now, not mid-fight
+      if (!this.warm) { this.warm = true; this.boom({ x: P.x, y: -60, z: P.z }, -60, 0.05, true); this.drawArc(P); try { g.renderer.compile(g.scene, g.camera); } catch (e) { /* fine */ } this.drawArc(null); }   // a silent bang deep underground: the fireball and smoke get drawn once now, not mid-fight
       this.loadout(P, null); this.hud(true); this.wasThird = P.third; P.third = false;   // Call of Duty is first person (V / D-pad up for over the shoulder)
       if (this.auth) this.setBots(g.net && g.net.role === 'host' && g.net.visitors.size ? Math.min(this.botCount, 2) : this.botCount);
-      const st = armoury(g); g.ui.toast(`⚔️ COMBAT MODE. Pistol and two grenades to start${st ? '; the police station has the big guns, ammo and grenades (E / □ there)' : ''}. First to ${WIN_KILLS} wins.`, 6000); Sfx.play('bell');
+      const st = armoury(g); g.ui.toast(`⚔️ COMBAT MODE. A rifle, a pistol and two grenades to start${st ? '; the armoury inside the police station has every gun (E / □ in there)' : ''}. Hold Tab (△ on a pad) for the weapon wheel. First to ${WIN_KILLS} wins.`, 6000); Sfx.play('bell');
       this.board();
     } else {
       this.setBots(0); for (const r of this.rags) this.dropRag(r); this.rags = []; for (const n of this.nades) g.scene.remove(n.mesh); this.nades = [];
@@ -448,20 +448,47 @@ export class Combat {
     // from the throwing hand (to the right and below the eyes), so in first person the path is seen curving away, not end-on
     return { p: new THREE.Vector3(hx + Math.sin(aim) * 0.4 + rx * 0.3, hy - 0.3, hz + Math.cos(aim) * 0.4 + rz * 0.3), v: f.multiplyScalar(15).add(new THREE.Vector3((P.vx || 0) * 0.5, 4.5, (P.vz || 0) * 0.5)) };
   }
-  /** Holding the grenade: the dotted path it will take and a ring where it ends up. */
+  /**
+   * Holding the grenade: its flight drawn as a ribbon that always faces you and stays the same width on screen (a line
+   * vanished end-on in first person; beads looked spotty), with dashes running along it the way it'll go, bright where it
+   * leaves the hand and fading at the end; a shaded disc for the blast and a target where it goes off.
+   */
   drawArc(P) {
-    const g = this.game, N = 36;
-    if (!this.arc) {   // a string of glowing beads along the path (a thin line vanished end-on in first person), and a ring where it lands
-      this.arc = new THREE.InstancedMesh(new THREE.SphereGeometry(0.055, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.95, depthTest: false }), N); this.arc.frustumCulled = false; this.arc.renderOrder = 40;
-      this.ring = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.2, 40), new THREE.MeshBasicMaterial({ color: 0xff5040, transparent: true, opacity: 0.8, depthTest: false, side: THREE.DoubleSide })); this.ring.rotation.x = -Math.PI / 2; this.ring.renderOrder = 40; this.arcM = new THREE.Matrix4();
+    const g = this.game, N = 120;
+    if (!this.arc) {
+      const geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), along = new Float32Array(N * 2), side = new Float32Array(N * 2), idx = [];
+      for (let i = 0; i < N; i++) { side[i * 2] = -1; side[i * 2 + 1] = 1; if (i < N - 1) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('along', new THREE.BufferAttribute(along, 1).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('side', new THREE.BufferAttribute(side, 1)); geo.setIndex(idx);
+      const mat = new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, uniforms: { time: { value: 0 }, total: { value: 1 } },
+        vertexShader: 'attribute float along; attribute float side; varying float vA; varying float vS; void main(){ vA = along; vS = side; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform float time, total; varying float vA; varying float vS; void main(){ float dash = smoothstep(0.35, 0.45, fract(vA * 1.6 - time * 1.8)) * (1.0 - smoothstep(0.85, 0.95, fract(vA * 1.6 - time * 1.8))); float edge = 1.0 - smoothstep(0.45, 1.0, abs(vS)); float core = 1.0 - smoothstep(0.0, 0.5, abs(vS)); float fade = (1.0 - smoothstep(total * 0.8, total, vA)) * smoothstep(0.0, 0.6, vA); vec3 c = mix(vec3(1.0, 0.72, 0.18), vec3(1.0, 0.98, 0.8), max(dash, core * 0.6)); gl_FragColor = vec4(c, (0.42 + 0.58 * dash) * edge * fade); }' });
+      this.arc = new THREE.Mesh(geo, mat); this.arc.frustumCulled = false; this.arc.renderOrder = 41;
+      const grp = new THREE.Group(), flat = (geo, color, op, top) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthTest: !top, depthWrite: false, side: THREE.DoubleSide, fog: false, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 })); m.rotation.x = -Math.PI / 2; m.renderOrder = 40; grp.add(m); return m; };   // (the blast area lies on the ground, under people and walls; the target shows through anything)
+      this.mark = { grp, disc: flat(new THREE.CircleGeometry(1, 48), 0xff3020, 0.2), edge: flat(new THREE.RingGeometry(0.95, 1, 64), 0xff5a40, 0.9), dot: flat(new THREE.RingGeometry(0.16, 0.26, 24), 0xfff2a0, 0.95, true), pip: flat(new THREE.CircleGeometry(0.07, 12), 0xfff2a0, 0.95, true) };
+      this.arcPts = []; for (let i = 0; i < 260; i++) this.arcPts.push(new THREE.Vector3());
     }
-    if (!P) { g.scene.remove(this.arc); g.scene.remove(this.ring); return; }
-    if (!this.arc.parent) { g.scene.add(this.arc); g.scene.add(this.ring); }
-    const { p, v } = this.launch(P), n = { p, v, t: NADE_FUSE, floor: this.groundAt(p.x, p.y - 1.4, p.z), sim: true }, pts = [];
-    for (let k = 0; k < 240 && n.t > 0; k++) { pts.push(n.p.clone()); this.stepNade(n, 1 / 60); if (n.p.y <= n.floor + 0.1 && k > 10 && Math.abs(n.v.y) < 1.5) break; }   // until it has landed and settled
-    const ph = (performance.now() / 600) % 1;   // the beads drift along the path, so it reads as a throw
-    const cam = g.camera.position; for (let i = 0; i < N; i++) { const q = pts[Math.min(pts.length - 1, Math.floor(((i + ph) / N) * pts.length))], d = q.distanceTo(cam), sc = i < 3 || d < 1.2 ? 0 : Math.min(3, Math.max(0.35, d * 0.22)); this.arcM.makeScale(sc, sc, sc).setPosition(q.x, q.y, q.z); this.arc.setMatrixAt(i, this.arcM); }   // the same size on screen near and far
-    this.arc.instanceMatrix.needsUpdate = true; this.ring.position.set(n.p.x, n.floor + 0.05, n.p.z); this.ring.scale.setScalar(NADE_R / 2.2);
+    if (!P) { g.scene.remove(this.arc); g.scene.remove(this.mark.grp); return; }
+    if (!this.arc.parent) { g.scene.add(this.arc); g.scene.add(this.mark.grp); }
+    // fly it (the same physics as the real throw) until it goes off or settles
+    const { p, v } = this.launch(P), n = { p, v, t: NADE_FUSE, floor: this.groundAt(p.x, p.y - 1.4, p.z), sim: true }, pts = this.arcPts; let m = 0;
+    for (let k = 0; k < 240 && n.t > 0; k++) { if (m < pts.length) pts[m++].copy(n.p); this.stepNade(n, 1 / 60); if (n.p.y <= n.floor + 0.1 && k > 10 && Math.abs(n.v.y) < 1.5) break; }
+    if (m < pts.length) pts[m++].copy(n.p);
+    // resample to N points along its length, then widen each into a pair of vertices facing the camera
+    const len = [0]; for (let i = 1; i < m; i++) len.push(len[i - 1] + pts[i].distanceTo(pts[i - 1])); const total = len[m - 1] || 1;
+    const geo = this.arc.geometry, pa = geo.attributes.position.array, aa = geo.attributes.along.array, cam = g.camera.position, A = new THREE.Vector3(), T = new THREE.Vector3(), V = new THREE.Vector3(), S = new THREE.Vector3(), prev = new THREE.Vector3();
+    let j = 0;
+    for (let i = 0; i < N; i++) {
+      const L = (i / (N - 1)) * total; while (j < m - 2 && len[j + 1] < L) j++; const f = Math.min(1, Math.max(0, (L - len[j]) / ((len[j + 1] - len[j]) || 1)));
+      A.copy(pts[j]).lerp(pts[Math.min(m - 1, j + 1)], f);
+      if (i === 0) T.copy(pts[Math.min(m - 1, 1)]).sub(pts[0]); else T.copy(A).sub(prev); if (T.lengthSq() < 1e-8) T.set(0, 0, 1); prev.copy(A);
+      V.copy(cam).sub(A); const dist = V.length(), w = Math.max(0.012, dist * 0.0055); S.crossVectors(T, V).normalize().multiplyScalar(w);
+      pa[i * 6] = A.x - S.x; pa[i * 6 + 1] = A.y - S.y; pa[i * 6 + 2] = A.z - S.z; pa[i * 6 + 3] = A.x + S.x; pa[i * 6 + 4] = A.y + S.y; pa[i * 6 + 5] = A.z + S.z; aa[i * 2] = aa[i * 2 + 1] = L;
+    }
+    geo.attributes.position.needsUpdate = true; geo.attributes.along.needsUpdate = true;
+    const u = this.arc.material.uniforms; u.time.value = performance.now() / 1000; u.total.value = total;
+    // where it goes off: the blast radius shaded, its edge pulsing, a target in the middle
+    const k = this.mark, e = pts[m - 1], fy = n.floor + 0.06, pulse = 1 + Math.sin(performance.now() / 160) * 0.025;
+    k.grp.position.set(e.x, fy, e.z); k.disc.scale.setScalar(NADE_R); k.edge.scale.setScalar(NADE_R * pulse); k.dot.scale.setScalar(1 + Math.sin(performance.now() / 120) * 0.15);
   }
   throwNade(P) {
     const g = this.game, { p, v } = this.launch(P);
