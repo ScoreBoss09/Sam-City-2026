@@ -110,7 +110,7 @@ export class Sim {
     if (this.glide) { const k = Math.min(1, dt * 7); this.x += (this.glide.x - this.x) * k; this.z += (this.glide.z - this.z) * k; if (Math.hypot(this.glide.x - this.x, this.glide.z - this.z) < 0.02) this.glide = null; }
     if (this.faceGoal !== undefined && !this.path.length) { const d = angleDiff(this.heading, this.faceGoal); this.heading += Math.max(-9 * dt, Math.min(9 * dt, d)); if (Math.abs(d) < 0.03) this.faceGoal = undefined; else this.turning = true; }
     if (this.frozen || this.chat || this.sitting || !this.path.length) {
-      this.vel = Math.max(0, this.vel - 9 * dt); if (!this.frozen && !this.chat && !this.path.length && this.phase === 1) this.arrive(); this.dist = Math.hypot(this.x - prevX, this.z - prevZ); return;
+      this.cycling = false; this.vel = Math.max(0, this.vel - 9 * dt); if (!this.frozen && !this.chat && !this.path.length && this.phase === 1) this.arrive(); this.dist = Math.hypot(this.x - prevX, this.z - prevZ); return;
     }
     // jammed in a crowd (barely moved for a second while trying to walk)? slip through the others for a moment
     if (this.ghostT > 0) this.ghostT -= dt;
@@ -119,20 +119,20 @@ export class Sim {
     if (p.door && Math.hypot(this.x - p.door.doorPos.x, this.z - p.door.doorPos.z) < 2.6) p.door.doorUseT = 0.7;   // only open the door while actually going through it
     const want = Math.atan2(dx, dz), dh = angleDiff(this.heading, want), rate = 8;
     this.heading += Math.max(-rate * dt, Math.min(rate * dt, dh));
-    const rl = this.rideLevel(); this.riding = rl >= 0;
-    const hurry = this.hurry || this.panic ? 1.55 : 1, max = (this.riding ? VEHICLE_SPEED[rl] : 1) * (this.game.weather && this.game.weather.slow || 1) * (this.speedK || 1) * this.style.speed * hurry * (this.carry ? 0.8 : 1) * (this.kind === 'security' ? 1.4 : 1) * (this.kind === 'raider' ? 1.1 : 1) * (this.drunk > 0.4 ? 1.1 - this.drunk * 0.35 : 1);
+    const rl = this.rideLevel(); this.cycling = rl >= 0;   // (on a bike; 'riding' means carried: the Lift cage, a train, a car)
+    const hurry = this.hurry || this.panic ? 1.55 : 1, max = (this.cycling ? VEHICLE_SPEED[rl] : 1) * (this.game.weather && this.game.weather.slow || 1) * (this.speedK || 1) * this.style.speed * hurry * (this.carry ? 0.8 : 1) * (this.kind === 'security' ? 1.4 : 1) * (this.kind === 'raider' ? 1.1 : 1) * (this.drunk > 0.4 ? 1.1 - this.drunk * 0.35 : 1);
     let target = Math.abs(dh) > 1.1 ? 0.15 : max; if (this.path.length === 1) target = Math.min(target, Math.max(0.5, d * 1.6));
     this.vel += Math.max(-8 * dt, Math.min(5 * dt, target - this.vel));
     let move = this.vel * dt; if (Math.abs(dh) > 1.1) this.turning = true;
     if (d <= Math.max(move, exact ? 0.06 : 0.5)) {
       this.x = p.x; this.z = p.z; this.path.shift(); if (p.enter) this.inside = p.enter; if (p.exit) this.inside = null;
-    } else { this.x += Math.sin(this.heading) * move; this.z += Math.cos(this.heading) * move; if (this.drunk > 0.35 && !this.inside && !this.riding) { const w = Math.sin(this.game.elapsed * 2.1 + this.id) * (this.drunk - 0.25) * 1.4 * move; this.x += Math.cos(this.heading) * w; this.z -= Math.sin(this.heading) * w; } }
+    } else { this.x += Math.sin(this.heading) * move; this.z += Math.cos(this.heading) * move; if (this.drunk > 0.35 && !this.inside && !this.cycling) { const w = Math.sin(this.game.elapsed * 2.1 + this.id) * (this.drunk - 0.25) * 1.4 * move; this.x += Math.cos(this.heading) * w; this.z -= Math.sin(this.heading) * w; } }
     this.moved = true; this.dist = Math.hypot(this.x - prevX, this.z - prevZ);
     if (!this.path.length && this.phase === 1) { this.vel = 0; this.arrive(); }
   }
   /** Does this sim ride (penny-farthing, bicycle or motorbike) on this stretch? Only outdoors, on longer trips, if they own one. */
   rideLevel() {
-    const T = this.game.transport; if (!T || T.bikeLv < 0 || this.inside || this.path.length < 3 || this.carry || this.kind === 'raider' || this.kind === 'security' || this.crook || this.fight || this.down > 0 || this.age < 13 || this.age > 74) return -1;
+    const T = this.game.transport; if (!T || T.bikeLv < 0 || this.riding || this.inside || this.path.length < 3 || this.carry || this.kind === 'raider' || this.kind === 'security' || this.crook || this.fight || this.down > 0 || this.age < 13 || this.age > 74) return -1;
     return (this.id * 7) % 10 < 4 ? T.bikeLv : -1;
   }
   arrive() {
@@ -317,7 +317,7 @@ export class Sim {
       if (parks.length) opts.push('park', 'park', 'bench'); if (shops.length) opts.push('shop', 'shop'); if (this.home && this.home.state === 'done') opts.push('home', 'sofa'); opts.push('street', 'street');
       if (pubs.length && h >= 17) opts.push('pub', 'pub', 'pub');
       if (g.transport && Object.values(g.transport.lines).some((L) => L && L.kind !== 'sky') && this.kind !== 'visitor' && h >= 8 && h < 20) opts.push('train', 'train');   // a trip on the railway or monorail
-      const qk = this.quirk && this.quirk.leisure; if (qk && adult) opts.push(qk, qk, qk); this.busk = false; this.jogging = false; if (church && g.clock.isSunday && h >= 9 && h < 12) opts.push('church', 'church', 'church', 'church'); if (pubs.length && g.clock.isSunday && h >= 12 && h < 17) opts.push('pub', 'pub', 'pub'); if (band && h >= 16 && h < 21) opts.push('band', 'band');   // (and on Sundays: dinner at the pub, or the beer garden)
+      const qk = this.quirk && this.quirk.leisure, have = { park: parks.length, pub: pubs.length }; if (qk && adult && have[qk] !== 0) opts.push(qk, qk, qk);   // (an early bird with no park in town just goes for a walk) this.busk = false; this.jogging = false; if (church && g.clock.isSunday && h >= 9 && h < 12) opts.push('church', 'church', 'church', 'church'); if (pubs.length && g.clock.isSunday && h >= 12 && h < 17) opts.push('pub', 'pub', 'pub'); if (band && h >= 16 && h < 21) opts.push('band', 'band');   // (and on Sundays: dinner at the pub, or the beer garden)
       const c = pick(opts); let ok = false;
       if (this.partner && !this.partner.sleeping && this.partner.activity === 'leisure' && this.partner.dest && this.partner.inside === null && Math.random() < 0.55) { const d = this.partner.dest, ax = (Math.random() - 0.5) * 2.4, az = (Math.random() - 0.5) * 2.4; ok = this.goTo({ b: d.b, x: d.x + ax, z: d.z + az }); if (ok) { this.timer = 14 + Math.random() * 25; this.hurry = false; return; } }
       if (this.kind === 'child') this.hurry = Math.random() < 0.6;
@@ -325,13 +325,13 @@ export class Sim {
         const w = g.world, T = 8; for (let i = 0; i < 6 && !ok; i++) { const x = this.x + (Math.random() - 0.5) * (c === 'jog' ? 120 : 50), z = this.z + (Math.random() - 0.5) * (c === 'jog' ? 120 : 50), tx = Math.floor(x / T), tz = Math.floor(z / T); if (w.inBounds(tx, tz) && (w.road[w.idx(tx, tz)] || c === 'watch')) ok = this.goTo({ x: (tx + 0.5) * T, z: (tz + 0.5) * T }); }
         if (ok) { this.jogging = c === 'jog'; this.hurry = c === 'jog'; this.busk = c; this.timer = c === 'jog' ? 4 : 30 + Math.random() * 30; }
       }
-      else if (c === 'park') { const p = pick(parks), s = pick(p.spots.idle); ok = this.goTo({ b: p, x: s.x, z: s.z }); }
-      else if (c === 'bench') { const p = pick(parks), seats = this.freeSeat(p); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: p, x: s.x, z: s.z, seat: s }); } }
+      else if (c === 'park' && parks.length) { const p = pick(parks), s = pick(p.spots.idle); ok = this.goTo({ b: p, x: s.x, z: s.z }); }
+      else if (c === 'bench' && parks.length) { const p = pick(parks), seats = this.freeSeat(p); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: p, x: s.x, z: s.z, seat: s }); } }
       else if (c === 'shop') { const p = pick(shops), s = p && p.spots && pick(p.spots.visit || []); if (s) { ok = this.goTo({ b: p, x: s.x, z: s.z, face: p.rot * Math.PI / 2 + Math.PI }); this.shopping = true; } }
       else if (c === 'pub') { const p = pick(pubs), seats = this.freeSeat(p, ['dining']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: p, x: st.x, z: st.z, seat: st }); this.drinking = ok; } }
-      else if (c === 'church') { const seats = this.freeSeat(church, ['pew']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: church, x: st.x, z: st.z, seat: st }); if (ok && Math.random() < 0.7) this.wear('sunday', g.clock.totalDays * 24 + 15); } }
+      else if (c === 'church' && church) { const seats = this.freeSeat(church, ['pew']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: church, x: st.x, z: st.z, seat: st }); if (ok && Math.random() < 0.7) this.wear('sunday', g.clock.totalDays * 24 + 15); } }
       else if (c === 'train') { ok = g.transport.planTrip(this); if (ok) this.timer = 200; }
-      else if (c === 'band') { const a = Math.random() * 6.28, r = 3.6 + Math.random() * 2; ok = this.goTo({ x: band.cx + Math.cos(a) * r, z: band.cz + Math.sin(a) * r, face: Math.atan2(-Math.cos(a), -Math.sin(a)) }); if (ok) this.bandT = 1; }
+      else if (c === 'band' && band) { const a = Math.random() * 6.28, r = 3.6 + Math.random() * 2; ok = this.goTo({ x: band.cx + Math.cos(a) * r, z: band.cz + Math.sin(a) * r, face: Math.atan2(-Math.cos(a), -Math.sin(a)) }); if (ok) this.bandT = 1; }
       else if (c === 'sofa') { const seats = this.freeSeat(this.home, ['sofa']); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: this.home, x: s.x, z: s.z, seat: s }); } }
       else if (c === 'home') { const s = pick(this.home.spots.idle); ok = this.goTo({ b: this.home, x: s.x, z: s.z }); }
       else ok = this.wander();
@@ -500,7 +500,7 @@ export class Sim {
     if (this.digging && !this.moved) { upper = 'dig'; lower = 'crouch'; }
     if (this.busk && !this.moved && this.activity === 'leisure' && !this.chat) upper = this.busk === 'busk' ? 'airguitar' : this.busk === 'watch' ? 'lookaround' : upper;
     if (this.fightAnim) upper = this.fightAnim;
-    if (this.riding && this.moved) { lower = 'ride'; upper = 'handlebars'; }
+    if (this.cycling && this.moved) { lower = 'ride'; upper = 'handlebars'; }
     return { lower, upper, speaking, motor: this.vehLv === 2 };
   }
   sync(dt, init = false) {
@@ -539,7 +539,7 @@ export class Sim {
       prop: this.kind === 'raider' && this.down <= 0 ? { handR: this.weapon } : this.kind === 'security' && this.fireT > 0 ? { handR: 'pistol' } : this.bag && a.lower === 'walk' ? { handR: 'bag' } : this.holding ? { handR: this.holding } : (this.look.cane && !this.sitting && this.pose !== 'sleep' && (a.upper === 'idle') ? { handR: 'cane' } : undefined), lean: this.vel > 0.5 ? 0 : 0 });
     this.working = false;
     // the bike (if riding): the sim sits up on the saddle, the bike stays on the road
-    const vl = this.riding && !far ? this.game.transport.bikeLv : -1;
+    const vl = this.cycling && !this.riding && !far ? this.game.transport.bikeLv : -1;
     if (vl !== this.vehLv) { if (this.veh) { m.remove(this.veh); this.veh = null; } this.vehLv = vl; if (vl >= 0) { this.veh = makeRide(vl, [0x1a1a1a, 0xc0392b, 0x2a5ab0, 0x2a7a3a][this.id % 4]); m.add(this.veh); } }
     if (this.veh) { const lift = this.veh.userData.seat - 0.5; m.position.y = (this.rideY || 0) + lift; this.veh.position.y = -lift; for (const [w, r] of this.veh.userData.wheels || []) w.rotation.x += (this.dist || 0) / r; }
     const castNear = d < 24; if (castNear !== this.castOn) { this.castOn = castNear; for (const p of this.rig.parts) p.castShadow = castNear; }

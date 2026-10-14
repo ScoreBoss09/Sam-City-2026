@@ -219,7 +219,7 @@ export class Transport {
   samDown() { const g = this.game, P = g.player, R = P.platform; if (!R) return; P.platform = null; const b = R.L.st[R.i]; P.teleport(b.doorOut.x, b.doorOut.z); }
   /** The train is in: Sam steps aboard the middle carriage. */
   samBoard(L) { const P = this.game.player, c = Math.min(L.cars.length - 1, 1), car = L.cars[c]; P.platform = null; P.transit = { L, cabin: true, car, lx: 0, lz: 0, from: L.atStop }; this.game.ui.toast(`All aboard! Walk about if you like. E to get off when it stops.`, 3200); Sfx.play('door'); }
-  samOff() { const g = this.game, P = g.player, R = P.transit; if (!R) return; const L = R.L, n = this.stopHere(L, R.car), b = L.st[n >= 0 ? n : 0]; P.transit = null; P.floorY = 0; P.teleport(b.doorOut.x, b.doorOut.z); g.ui.toast(`${this.stopName(b)}. Mind the gap!`, 2200); Sfx.play('door'); }
+  samOff(quiet) { const g = this.game, P = g.player, R = P.transit; if (!R) return; const L = R.L, n = this.stopHere(L, R.car), b = L.st[n >= 0 ? n : 0]; P.transit = null; P.floorY = 0; P.teleport(b.doorOut.x, b.doorOut.z); if (!quiet) g.ui.toast(`${this.stopName(b)}. Mind the gap!`, 2200); Sfx.play('door'); }
   /** Sam inside a carriage: walk about the aisle (called from Player.update). */
   cabin(P, fx, fz, dt) {
     const g = this.game, R = P.transit, car = R.car, h = car.rotation.y, cs = Math.cos(h), sn = Math.sin(h), U = car.userData;
