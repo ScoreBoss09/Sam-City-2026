@@ -126,6 +126,10 @@ Roads tool → **Street lamps**: £15 a lamp on any road or path. Point at the c
 ## Sam's own life while you plan
 In the planning view Sam carries on by himself: he sleeps at night, eats when hungry, fetches materials and builds the top job on the Work queue, digs paths, chops timber or picks berries when stocks are low, works shifts, chats with people and sits on benches. The clock box says what he's doing, and when you press TAB you take over wherever he is. During the opening tutorial he leaves the work to you.
 
+## Windows, guns and the parish register
+
+Shots that land where a window is shatter it (grenades blow out the windows round them); the glazier mends them a day later. Aiming puts a red dot exactly where the shot goes. Anyone shot dead stays where they fell until the undertakers come up the Lift for them, then there's a funeral, and the death is written in the parish register at the church.
+
 ## Menus, maps and news
 Every screen shares one look: the title menu (with the island flying by behind it), the pause menu, the Planning menu, the terminals, the Postbox, the Stockyard, shops, the backpack and the journal. There are no instructions written into the menus; a bar along the bottom shows what the buttons do (key caps on keyboard, controller buttons on a pad). H still shows the full controls line, and the pause menu lists all the controls.
 
