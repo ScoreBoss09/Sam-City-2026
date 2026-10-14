@@ -299,3 +299,42 @@ body.cutscene #app > *:not(#view):not(#intro):not(#fade) { visibility: hidden !i
 .hidden#cbhud, .hidden#killfeed, .hidden#dmgvig, .hidden#hurtdir, .hidden#scope { display: none; }
 #flash { position: absolute; inset: 0; z-index: 27; pointer-events: none; opacity: 0; background: radial-gradient(circle, #fff8e0 0, #ffd080 60%, #ff9040 100%); }
 #cbcover { color: #ffd23f; font-size: 12px; margin-top: 2px; }
+
+/* hitmarker: a white X on a hit, gold (and a ding) for a headshot, red for a kill */
+#hitmk { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 27; pointer-events: none; opacity: 0; }
+#hitmk i { position: absolute; width: 3px; height: 10px; left: -1.5px; top: -5px; background: #fff; box-shadow: 0 0 2px #000; border-radius: 1px; }
+#hitmk i:nth-child(1) { transform: rotate(45deg) translateY(-11px); } #hitmk i:nth-child(2) { transform: rotate(135deg) translateY(-11px); }
+#hitmk i:nth-child(3) { transform: rotate(225deg) translateY(-11px); } #hitmk i:nth-child(4) { transform: rotate(315deg) translateY(-11px); }
+#hitmk.on { animation: hitmk .32s ease-out; } #hitmk.head i { background: #ffd23f; height: 12px; } #hitmk.kill i { background: #ff3a2a; height: 13px; width: 3.5px; }
+@keyframes hitmk { 0% { opacity: 1; transform: scale(1.35); } 60% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1); } }
+
+/* the weapon panel (bottom right in combat) */
+#cbgun .cbnow { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font: 700 14px var(--ui-font, sans-serif); letter-spacing: .02em; }
+#cbgun .cbnow .gicon { width: 92px; height: 37px; color: #fff; filter: drop-shadow(0 1px 2px #000); }
+#cbgun .cbnow i { color: #ffd23f; font-style: normal; }
+#cbgun .cbrest { display: flex; justify-content: flex-end; gap: 4px; margin: 3px 0 2px; }
+#cbgun .cbrest span { position: relative; opacity: .45; padding: 1px 3px; border-radius: 3px; background: rgba(0,0,0,.35); }
+#cbgun .cbrest span.on { opacity: 1; background: rgba(255,210,63,.25); outline: 1px solid rgba(255,210,63,.7); }
+#cbgun .cbrest .gicon { width: 36px; height: 15px; color: #fff; display: block; }
+#cbgun .cbrest sup { position: absolute; left: 2px; top: -1px; font-size: 8px; color: #ffd23f; }
+#cbgun .cbkey { font-size: 10px; opacity: .75; }
+#cbnades { display: flex; justify-content: flex-end; gap: 10px; align-items: center; }
+#cbnades .nd { display: inline-flex; align-items: center; gap: 2px; } #cbnades .nd .gicon { width: 34px; height: 14px; color: #b8e070; }
+#cbnades .st { color: #8fd0ff; font-size: 11px; letter-spacing: .08em; }
+/* the weapon wheel */
+#wwheel { position: absolute; inset: 0; z-index: 40; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgba(0,0,0,.25), rgba(0,0,0,.55) 70%); display: flex; align-items: center; justify-content: center; }
+#wwheel.hidden { display: none; }
+#wwheel .wsvg { width: min(78vh, 92vw); height: min(78vh, 92vw); overflow: visible; }
+#wwheel .wslice > path { fill: rgba(14,17,22,.78); stroke: rgba(255,255,255,.14); stroke-width: 1.5; transition: fill .08s; }
+#wwheel .wslice.on > path { fill: rgba(255,210,63,.88); stroke: #fff; stroke-width: 2.5; }
+#wwheel .wslice.none .wsl { opacity: .28; }
+#wwheel .wslice.cur > path { stroke: #ffd23f; stroke-width: 2.5; }
+#wwheel .wsl { width: 92px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font: 700 11px var(--ui-font, sans-serif); text-shadow: 0 1px 2px #000; }
+#wwheel .wslice.on .wsl { color: #14161a; text-shadow: none; }
+#wwheel .wsl .gicon { width: 78px; height: 31px; }
+#wwheel .wsl em { font-style: normal; font-size: 9px; opacity: .8; }
+#wwheel .wmid { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(26vh, 30vw); text-align: center; color: #fff; font: 600 12px var(--ui-font, sans-serif); text-shadow: 0 1px 3px #000; }
+#wwheel .wname { font: 800 17px var(--ui-head, sans-serif); letter-spacing: .04em; color: #ffd23f; margin-bottom: 4px; }
+#wwheel .wammo b { font-size: 20px; } #wwheel .wammo i { font-size: 11px; opacity: .85; }
+#wwheel .wvar { font-size: 10px; opacity: .8; margin-top: 4px; }
+#wwheel .whint { position: absolute; bottom: 7%; left: 0; right: 0; text-align: center; color: #fff; font: 600 12px var(--ui-font, sans-serif); text-shadow: 0 1px 3px #000; opacity: .85; }

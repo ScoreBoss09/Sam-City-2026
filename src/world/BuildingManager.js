@@ -170,7 +170,7 @@ export class BuildingManager {
   }
   /** Walls, furniture (upstairs furniture only blocks up there) and, for the sims' route finder only, the stairs. */
   setColliders(b) {
-    const def = b.def, ext = b.ext, odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h, lo: c.lo, top: c.top, navOnly: c.navOnly, cam: c.cam, furn: c.furn }; };
+    const def = b.def, ext = b.ext, odd = b.rot % 2 === 1, conv = (c) => { const [wx, wz] = b.toWorld(c.cx, c.cz); const sx = odd ? c.sz : c.sx, sz = odd ? c.sx : c.sz; return { minx: wx - sx / 2, maxx: wx + sx / 2, minz: wz - sz / 2, maxz: wz + sz / 2, h: c.h, lo: c.lo, top: c.top, navOnly: c.navOnly, cam: c.cam, furn: c.furn, vh: c.h ?? (c.lo !== undefined ? c.lo + 3.2 : ext.height) }; };   // vh: how high it really stands (bullet holes stop there)
     if (b.colliders && b.colliders.length) this.world.removeColliders(b);
     const st = ext.plan && ext.plan.stair, stairs = st ? st.lanes.map((ln) => { const r = laneRect(st, ln); return { cx: (r[0] + r[1]) / 2, cz: (r[2] + r[3]) / 2, sx: r[1] - r[0], sz: r[3] - r[2], navOnly: true }; }) : [];
     b.colliders = ext.colliders.map(conv).concat(furnitureColliders(b.layout).map(conv), upperColliders(def).map(conv), roomColliders(b.layout).map(conv), stairs.map(conv));

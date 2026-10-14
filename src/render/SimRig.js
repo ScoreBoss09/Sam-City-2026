@@ -209,7 +209,9 @@ export function setProp(rig, slot, name, color) {
   if (!name) return;
   const obj = PROPS[name](); if (name === 'crate' && color != null) obj.children[0].material = pm(color);
   const parent = slot === 'handR' ? rig.armR.hand : slot === 'handL' ? rig.armL.hand : rig.spine;
-  if (slot === 'chest') obj.position.set(0, 0.28, 0.33); parent.add(obj); rig.props[key] = { name, obj };
+  if (slot === 'chest') obj.position.set(0, 0.28, 0.33);
+  if (name === 'pistol' || name === 'rifle' || name === 'tube') obj.rotation.x = Math.PI / 2;   // a gun lies along the forearm (barrel out past the fingers), so a raised arm points it where you're aiming
+  parent.add(obj); rig.props[key] = { name, obj };
 }
 
 /** A free-standing copy of a held prop (used by the tool rack). */

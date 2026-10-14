@@ -155,15 +155,16 @@ export class Player {
     if (!Number.isFinite(this.x) || !Number.isFinite(this.z) || !Number.isFinite(this.floorY || 0)) { const q = this.goodPos || (g.lift && g.lift.doorOut) || { x: 160, z: 160 }; this.x = q.x; this.z = q.z; this.floorY = 0; this.jumpT = 0; this.jumpY = 0; } else if (!this.ride) this.goodPos = { x: this.x, z: this.z };   // never lost in a glitch
     this.unstick();
     if (sim && !this.sleeping && this.sedated <= 0 && !(this.down > 0)) {
-      this.yaw -= inp.mouse.dx * 0.0025; this.pitch = clamp(this.pitch - inp.mouse.dy * 0.0025, -1.3, 1.2);
+      { const S = inp.binds.sens, ak = (this.aimK || 0) > 0.5 ? (inp.padActive ? S.padAim : S.mouseAim) : 1, wheel = g.combat.wheelOpen; if (!wheel) { this.yaw -= inp.mouse.dx * 0.0025 * ak; this.pitch = clamp(this.pitch - inp.mouse.dy * 0.0025 * ak, -1.3, 1.2); } }   // (your sensitivity is applied as the mouse / stick is read; aiming has its own; the weapon wheel takes the mouse while it's open)
       if (inp.down('ArrowLeft')) this.yaw += 2 * rawDt; if (inp.down('ArrowRight')) this.yaw -= 2 * rawDt;
       if (inp.down('ArrowUp')) this.pitch = clamp(this.pitch + 1.2 * rawDt, -1.3, 1.2); if (inp.down('ArrowDown')) this.pitch = clamp(this.pitch - 1.2 * rawDt, -1.3, 1.2);
       if (inp.hit('KeyV')) this.third = !this.third;
       const cb = g.combat.on, sprinting = (inp.down('ShiftLeft') || inp.down('ShiftRight')) && this.speed > 5;
       this.aiming = !!this.gun && !this.mounted && !this.dead && !(cb && sprinting) && !(this.reloadT > 0 && WEAPONS[this.gun] && WEAPONS[this.gun].scope) && (inp.mouse.right || inp.down('PadAim')); inp.armed = !!this.gun && !this.mounted; inp.combat = cb && !this.mounted;
-      this.aimK = (this.aimK || 0) + ((this.aiming ? 1 : 0) - (this.aimK || 0)) * Math.min(1, rawDt * 10);
+      const low = cb ? (this.stance === 'prone' ? 0.35 : this.stance === 'crouch' ? 0.6 : 1) : 1;   // crouched or prone: up to the sights faster, and the gun sways far less
+      this.aimK = (this.aimK || 0) + ((this.aiming ? 1 : 0) - (this.aimK || 0)) * Math.min(1, rawDt * (low < 1 ? 14 : 10));
       if (this.aiming && inp.padActive) this.aimAssist(rawDt);
-      if (this.scoped() && !(inp.down('ShiftLeft') || inp.down('ShiftRight') || inp.down('PadBreath'))) { const t = g.elapsed; this.yaw += Math.cos(t * 1.1) * 0.0009 * rawDt * 60 * 0.4; this.pitch += Math.sin(t * 1.7) * 0.0006 * rawDt * 60 * 0.4; }   // scope sway (Shift: hold your breath)
+      if (this.scoped() && !(inp.down('ShiftLeft') || inp.down('ShiftRight') || inp.down('PadBreath'))) { const t = g.elapsed; this.yaw += Math.cos(t * 1.1) * 0.0009 * rawDt * 60 * 0.4 * low; this.pitch += Math.sin(t * 1.7) * 0.0006 * rawDt * 60 * 0.4 * low; }   // scope sway (Shift: hold your breath)
       this.eyeH = (this.eyeH || 1.65) + ((this.stance === 'prone' ? 0.42 : this.stance === 'crouch' ? 1.08 : 1.65) - (this.eyeH || 1.65)) * Math.min(1, rawDt * 10);
       if (cb) g.combat.controls(this, inp, rawDt);
       if (inp.mouse.wheel && this.third && !cb) this.camDist = clamp(this.camDist + inp.mouse.wheel * 0.6, 2.5, 9);
@@ -592,6 +593,8 @@ export class Player {
   /** Fire the gun in hand (Combat.fire: along the crosshair, stopped by walls). */
   shoot() { this.game.combat.fire(this); }
   /** Looking down a sniper scope? */
+  /** How far up (+) or down (-) the camera is aiming, in radians: the arms holding the gun follow it. */
+  aimPitch() { const c = this.game.camera, e = c.matrixWorld.elements; return Math.asin(Math.max(-1, Math.min(1, -e[9]))); }
   scoped() { const W = WEAPONS[this.gun]; return !!(W && W.scope && (this.aimK || 0) > 0.85 && !this.dead); }
   /** Controller aiming: a gentle pull towards another player near the crosshair. */
   aimAssist(dt) {
@@ -684,9 +687,9 @@ export class Player {
     if (this.gun && !this.mounted && lower !== 'lie' && !this.seat && (this.aiming || g.elapsed - (this.lastShot || -9) < 1.5 || (g.combat.on && this.speed < 5.2 && !this.cover)) && !(this.atkT > 0)) upper = 'aim';
     if (g.combat.on && this.stance === 'prone' && !this.mounted && (lower === 'stand' || lower === 'walk')) lower = 'prone';
     const hs = Math.sin(this.heading), hc = Math.cos(this.heading), sp = Math.max(this.speed, 1e-3), fwd = this.mounted ? 1 : ((this.vx || 0) * hs + (this.vz || 0) * hc) / sp, side = this.mounted ? 0 : ((this.vx || 0) * hc - (this.vz || 0) * hs) / sp;
-    this.anim.update(dt, { lower, upper, motor: this.bike === 2, dist: this.dist, speed: this.speed, run: this.mounted ? this.speed > 5.6 : this.speed > 3.2, step: this.mounted ? 0 : 0.38 + 0.21 * this.speed, fwd, side, land: this.landT > 0 ? this.landT / 0.16 : 0, crouch: g.combat.on && (this.stance === 'crouch' || this.slideT > 0) ? 1 : 0, gunProp: WEAPONS[this.gun] ? (WEAPONS[this.gun].rocket ? 'tube' : WEAPONS[this.gun].slot === 0 ? 'rifle' : 'pistol') : 'pistol', lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: 0.25, tired: this.energy < 25, crateColor: big ? MATERIALS[big].color : undefined, speaking: g.ui.dialogue ? false : undefined, prop: this.weapon && !this.sleeping && this.sedated <= 0 ? { handR: 'club' } : this.holding && !this.sleeping ? { handR: this.holding } : undefined });
+    this.anim.update(dt, { lower, upper, motor: this.bike === 2, dist: this.dist, speed: this.speed, run: this.mounted ? this.speed > 5.6 : this.speed > 3.2, step: this.mounted ? 0 : 0.38 + 0.21 * this.speed, fwd, side, land: this.landT > 0 ? this.landT / 0.16 : 0, crouch: g.combat.on && (this.stance === 'crouch' || this.slideT > 0) ? 1 : 0, gunProp: WEAPONS[this.gun] ? (WEAPONS[this.gun].rocket ? 'tube' : WEAPONS[this.gun].slot === 0 ? 'rifle' : 'pistol') : 'pistol', aimPitch: upper === 'aim' ? this.aimPitch() : 0, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: 0.25, tired: this.energy < 25, crateColor: big ? MATERIALS[big].color : undefined, speaking: g.ui.dialogue ? false : undefined, prop: this.weapon && !this.sleeping && this.sedated <= 0 ? { handR: 'club' } : this.holding && !this.sleeping ? { handR: this.holding } : undefined });
     if (this.holding && (this.holdT -= dt) <= 0) this.holding = null;
-    { const xh = this.xhair || (this.xhair = document.getElementById('xhair')), on = !!this.gun && g.mode === 'sim' && !this.sleeping && !(this.down > 0) && !this.dead && !this.scoped(); if (xh) { xh.style.display = on ? 'block' : 'none'; if (on) { this.hitMark = Math.max(0, (this.hitMark || 0) - dt); xh.className = (this.aiming ? 'aim' : '') + (this.hitMark > 0 ? (this.hitHead ? ' hit head' : ' hit') : ''); const W = WEAPONS[this.gun]; xh.style.transform = g.combat.on && W ? `scale(${Math.min(3, 0.55 + g.combat.spread(this, W) * 22).toFixed(2)})` : ''; } } }   // the gap shows the spread
+    { const xh = this.xhair || (this.xhair = document.getElementById('xhair')), on = !!this.gun && g.mode === 'sim' && !this.sleeping && !(this.down > 0) && !this.dead && !this.scoped() && !g.combat.wheelOpen; if (xh) { xh.style.display = on ? 'block' : 'none'; if (on) { this.hitMark = Math.max(0, (this.hitMark || 0) - dt); xh.className = (this.aiming ? 'aim' : '') + (this.hitMark > 0 ? (this.hitHead ? ' hit head' : ' hit') : ''); const W = WEAPONS[this.gun]; xh.style.transform = g.combat.on && W ? `scale(${Math.min(3, 0.55 + g.combat.spread(this, W) * 22).toFixed(2)})` : ''; } } }   // the gap shows the spread
     this.marker.visible = godView; this.marker.position.set(this.x, 5.2 + Math.sin(performance.now() / 300) * 0.4, this.z); this.marker.rotation.y += dt * 2;
   }
 

@@ -41,14 +41,19 @@ const NAMES = { Space: 'Space', ShiftLeft: 'Left Shift', ShiftRight: 'Right Shif
 export function keyName(code) { if (!code) return '—'; if (NAMES[code]) return NAMES[code]; if (/^Key[A-Z]$/.test(code)) return code.slice(3); if (/^Digit\d$/.test(code)) return code.slice(5); if (/^Numpad\d$/.test(code)) return 'Num ' + code.slice(6); return code; }
 const STORE = 'samcity-binds';
 
+/** How fast the view turns: the mouse, the right stick, and each while aiming down the sights (1 = as the game came). */
+export const SENS = { mouse: 1, mouseAim: 1, pad: 1, padAim: 1, invertMouse: false, invertPad: false };
+
 export class Bindings {
-  constructor() { this.keys = {}; this.pad = PAD_NAMES.map((_, i) => i); this.load(); }
+  constructor() { this.keys = {}; this.pad = PAD_NAMES.map((_, i) => i); this.sens = { ...SENS }; this.load(); }
   load() {
-    try { const s = JSON.parse(localStorage.getItem(STORE) || 'null'); if (s) { if (s.keys) this.keys = s.keys; if (Array.isArray(s.pad) && s.pad.length === this.pad.length) this.pad = s.pad; } } catch (e) { /* defaults */ }
+    try { const s = JSON.parse(localStorage.getItem(STORE) || 'null'); if (s) { if (s.keys) this.keys = s.keys; if (Array.isArray(s.pad) && s.pad.length === this.pad.length) this.pad = s.pad; if (s.sens) for (const k in SENS) if (typeof s.sens[k] === typeof SENS[k] && (typeof SENS[k] !== 'number' || Number.isFinite(s.sens[k]))) this.sens[k] = s.sens[k]; } } catch (e) { /* defaults */ }
     this.build();
   }
-  save() { try { localStorage.setItem(STORE, JSON.stringify({ keys: this.keys, pad: this.pad })); } catch (e) { /* no storage */ } this.build(); }
-  reset() { this.keys = {}; this.pad = PAD_NAMES.map((_, i) => i); this.save(); }
+  save() { try { localStorage.setItem(STORE, JSON.stringify({ keys: this.keys, pad: this.pad, sens: this.sens })); } catch (e) { /* no storage */ } this.build(); }
+  reset() { this.keys = {}; this.pad = PAD_NAMES.map((_, i) => i); this.sens = { ...SENS }; this.save(); }
+  /** One sensitivity setting (clamped to something usable). */
+  setSens(k, v) { if (!(k in SENS)) return; this.sens[k] = typeof SENS[k] === 'boolean' ? !!v : Math.max(0.2, Math.min(4, +v || 1)); this.save(); }
   /** The key on your keyboard for an action (its own key unless you changed it). */
   keyFor(a) { return this.keys[a.id] || a.code; }
   /** Bind action `id` to the key `code`: whatever had that key gets this action's old key (a swap, so nothing is lost). */
