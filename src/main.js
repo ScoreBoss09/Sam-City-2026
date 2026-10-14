@@ -1,4 +1,5 @@
 import { Sfx } from './core/Sfx.js';
+import { ControlsMenu } from './ui/ControlsMenu.js';
 import { Game } from './Game.js';
 import { Assets } from './render/Assets.js';
 import { VERSION } from './version.js';
@@ -28,30 +29,39 @@ padBtn.onclick = () => { padOpt.checked = !padOpt.checked; applyPad(); padLabel(
 const adultOpt = document.getElementById('opt-adult'); try { if (localStorage.getItem('samcity-adult') === '0' || params.has('clean')) adultOpt.checked = false; } catch (e) { /* no storage */ }
 const applyAdult = () => { game.ui.adult = adultOpt.checked; try { localStorage.setItem('samcity-adult', adultOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } }; adultOpt.onchange = applyAdult; applyAdult();
 const raidOpt = document.getElementById('opt-raids'); try { if (localStorage.getItem('samcity-raids') === '0') raidOpt.checked = false; } catch (e) { /* no storage */ }
-const begin = (demo, cont) => { game.raids.enabled = raidOpt.checked && !params.has('noraids'); try { localStorage.setItem('samcity-raids', raidOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } if (demo === true) game.demo(); if (cont) game.loadSave(); game.start(); };
-import { clearSave, slotInfo, setSlot, currentSlot, SLOTS, exportSlot, importSlot } from './core/Save.js';
+const begin = (demo, cont) => { game.raids.enabled = raidOpt.checked && !params.has('noraids'); try { localStorage.setItem('samcity-raids', raidOpt.checked ? '1' : '0'); } catch (e) { /* no storage */ } if (demo === true) game.demo(); if (cont) game.loadSave(typeof cont === 'string' ? cont : undefined); game.start(); };
+import { clearSave, slotInfo, setSlot, currentSlot, SLOTS, AUTOS, exportSlot, importSlot, initSaves, renameSlot } from './core/Save.js';
+await initSaves();   // every save into memory (and the old ones carried over to the browser's database)
 import { MONTHS } from './core/Clock.js';
 // ---- the main menu: Continue / New Game / Load Game / Demo / Options, with three save slots ----
-const $ = (id) => document.getElementById(id), menus = ['menu-main', 'menu-slots', 'menu-options', 'menu-net'];
+const $ = (id) => document.getElementById(id), menus = ['menu-main', 'menu-slots', 'menu-options', 'menu-net', 'menu-controls'];
 const showMenu = (id) => { for (const m of menus) $(m).classList.toggle('hidden', m !== id); game.ui._pfScope = null; };
-const describe = (n, inf) => !inf ? `Slot ${n}: empty` : !inf.ok ? `Slot ${n}: old save (can't be continued)` : `Slot ${n}: ${inf.pop} residents · ${inf.clock ? MONTHS[inf.clock.month] + ' ' + inf.clock.year : ''} · £${Math.round(inf.funds || 0).toLocaleString()}${inf.t ? ' · saved ' + new Date(inf.t).toLocaleDateString() : ''}`;
+const when = (t) => (t ? new Date(t).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '');
+const describe = (n, inf) => !inf ? `Slot ${n}: empty` : !inf.ok ? `${inf.name || 'Slot ' + n}: old save (can't be continued)` : `${inf.name || 'Slot ' + n} · ${inf.pop} residents · ${inf.clock ? MONTHS[inf.clock.month] + ' ' + inf.clock.year : ''} · £${Math.round(inf.funds || 0).toLocaleString()} · saved ${when(inf.t)}`;
 const cont = $('btn-continue');
-{ let best = null; for (let n = 1; n <= SLOTS; n++) { const inf = slotInfo(n); if (inf && inf.ok && (!best || (inf.t || 0) > (best.inf.t || 0))) best = { n, inf }; }
-  if (best) { cont.classList.remove('hidden'); cont.textContent = `Continue (slot ${best.n})`; cont.onclick = () => { setSlot(best.n); begin(false, true); }; } }
+{ let best = null; for (const n of [...Array.from({ length: SLOTS }, (_, i) => i + 1), ...AUTOS]) { const inf = slotInfo(n); if (inf && inf.ok && (!best || (inf.t || 0) > (best.inf.t || 0))) best = { n, inf }; }
+  if (best) { cont.classList.remove('hidden'); cont.textContent = `Continue: ${best.inf.name || 'slot ' + best.n}`; cont.onclick = () => { if (typeof best.n === 'string') { setSlot(best.inf.from || currentSlot()); begin(false, best.n); } else { setSlot(best.n); begin(false, true); } }; } }
 const newGame = (n) => { setSlot(n); clearSave(n); begin(false); game.playIntro(); };
+const download = (n, inf) => { const t = exportSlot(n); if (!t) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'application/json' })); a.download = `sam-city-${(inf && inf.name || 'save').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`; a.click(); };
 function slotMenu(mode) {
   $('slots-title').textContent = mode === 'new' ? 'New game: pick a save slot' : 'Load game'; const list = $('slot-list'); list.innerHTML = ''; let armed = 0;
-  for (let n = 1; n <= SLOTS; n++) {
-    const inf = slotInfo(n), b = document.createElement('button'); b.className = 'slot'; b.dataset.slot = n; b.textContent = describe(n, inf);
+  const add = (n) => {
+    const inf = slotInfo(n), row = document.createElement('div'); row.className = 'slotrow'; const b = document.createElement('button'); b.className = 'slot'; b.dataset.slot = n; b.textContent = describe(n, inf);
     if (mode === 'load' && !(inf && inf.ok)) b.disabled = true;
-    b.onclick = () => { if (mode === 'load') { setSlot(n); begin(false, true); return; } if (inf && armed !== n) { armed = n; b.textContent = `Slot ${n}: press again to start over (this save will be lost)`; return; } newGame(n); };
-    list.appendChild(b);
-    if (inf && mode === 'load') { const x = document.createElement('button'); x.className = 'slot del small'; x.textContent = '⬇ export'; x.title = 'Download this save as a file (to keep, or to send)'; x.onclick = () => { const t = exportSlot(n); if (!t) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'application/json' })); a.download = `sam-city-slot${n}-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }; list.appendChild(x); }
-    if (inf && mode === 'load') { const d = document.createElement('button'); d.className = 'slot del small'; d.dataset.del = n; d.textContent = '🗑 delete'; d.onclick = () => { if (d.dataset.armed) { clearSave(n); slotMenu(mode); } else { d.dataset.armed = 1; d.textContent = 'press again to delete'; } }; list.appendChild(d); }
-  }
+    b.onclick = () => { if (mode === 'load') { if (typeof n === 'string') { setSlot(inf.from || currentSlot()); begin(false, n); } else { setSlot(n); begin(false, true); } return; } if (inf && armed !== n) { armed = n; b.textContent = `${inf.name || 'Slot ' + n}: press again to start over (this save will be lost)`; return; } newGame(n); };
+    row.appendChild(b);
+    if (inf && mode === 'load') {
+      if (typeof n === 'number') { const r = document.createElement('button'); r.className = 'small'; r.textContent = '✎'; r.title = 'Rename'; r.onclick = () => { const nm = prompt('Name this save', inf.name || ''); if (nm) { renameSlot(n, nm); slotMenu(mode); } }; row.appendChild(r); }
+      const x = document.createElement('button'); x.className = 'small'; x.textContent = '⬇'; x.title = 'Download this save as a file (to keep, or to send)'; x.onclick = () => download(n, inf); row.appendChild(x);
+      const d = document.createElement('button'); d.className = 'small'; d.textContent = '🗑'; d.title = 'Delete'; d.onclick = () => { if (d.dataset.armed) { clearSave(n); slotMenu(mode); } else { d.dataset.armed = 1; d.textContent = 'sure?'; } }; row.appendChild(d);
+    }
+    list.appendChild(row);
+  };
+  for (let n = 1; n <= SLOTS; n++) if (mode === 'new' || slotInfo(n) || n === 1) add(n);
+  if (mode === 'load' && AUTOS.some((a) => slotInfo(a))) { const h = document.createElement('div'); h.className = 'bindgrp'; h.textContent = 'Autosaves'; list.appendChild(h); for (const a of AUTOS) if (slotInfo(a)) add(a); }
   if (mode === 'load') {   // put a save file (exported here, or sent by someone) back into a free slot
     const im = document.createElement('button'); im.className = 'slot'; im.textContent = '⬆ Import a save file'; const f = document.createElement('input'); f.type = 'file'; f.accept = '.json,application/json'; f.className = 'hidden';
-    im.onclick = () => f.click(); f.onchange = async () => { const file = f.files[0]; if (!file) return; let n = 0; for (let k = 1; k <= SLOTS; k++) if (!slotInfo(k)) { n = k; break; } if (!n) { im.textContent = 'All three slots are in use: delete one first'; return; } try { importSlot(n, await file.text()); slotMenu('load'); } catch (e) { im.textContent = '✗ ' + (e.message || 'Could not read that file'); } };
+    im.onclick = () => f.click(); f.onchange = async () => { const file = f.files[0]; if (!file) return; let n = 0; for (let k = 1; k <= SLOTS; k++) if (!slotInfo(k)) { n = k; break; } if (!n) { im.textContent = 'All twelve slots are in use: delete one first'; return; } try { importSlot(n, await file.text(), file.name.replace(/\.json$/i, '')); slotMenu('load'); } catch (e) { im.textContent = '✗ ' + (e.message || 'Could not read that file'); } };
     list.appendChild(im); list.appendChild(f);
   }
   showMenu('menu-slots');
@@ -64,6 +74,9 @@ $('btn-net').onclick = () => showMenu('menu-net');
 $('btn-net-host').onclick = async () => { const st = $('net-status'); try { let best = null; for (let n = 1; n <= SLOTS; n++) { const inf = slotInfo(n); if (inf && inf.ok && (!best || (inf.t || 0) > (best.t || 0))) best = { n, t: inf.t }; } if (best) { setSlot(best.n); begin(false, true); } else newGame(1); const code = await game.net.host(); game.ui.toast(`Hosting! Friends join with the code ${code}`, 6000); game.messages.push('Multiplayer', `Your town is open to visitors. Code: ${code}`); } catch (e) { st.textContent = e.message; } };
 $('btn-net-join').onclick = async () => { const st = $('net-status'), code = $('net-code').value.trim(); if (!code) { st.textContent = 'Type the code your friend sees on their screen.'; return; } st.textContent = 'Connecting...'; try { await game.net.join(code, $('net-name').value.trim() || 'Visitor'); game.raids.enabled = false; game.start(); game.netVisitor = true; game.clock.speed = 0; game.setMode('sim'); } catch (e) { st.textContent = e.message; } }; $('btn-slots-back').onclick = () => showMenu('menu-main');
 $('btn-options').onclick = () => showMenu('menu-options'); $('btn-options-back').onclick = () => showMenu('menu-main');
+{ const C = new ControlsMenu(game), draw = () => { $('controls-body').innerHTML = C.html(); game.ui._pfScope = null; };   // change keys and buttons
+  $('btn-controls').onclick = () => { draw(); showMenu('menu-controls'); }; $('btn-controls-back').onclick = () => { game.input.capture = null; game.input.padCapture = null; C.wait = null; showMenu('menu-options'); };
+  $('controls-body').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) C.click(b, draw); }); }
 // options: picture quality and volume, remembered between sessions
 { const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } };
   const setQ = (q) => { put('samcity-quality', q); game.lockQuality = q !== 'auto'; game.renderScale = q === 'high' ? 1 : q === 'low' ? 0.45 : (parseFloat(params.get('scale')) || 0.6); if (game.atmosphere && game.atmosphere.sun) game.atmosphere.sun.castShadow = q !== 'low'; game.resize(); for (const b of document.querySelectorAll('[data-q]')) b.classList.toggle('on', b.dataset.q === q); };
@@ -76,7 +89,7 @@ $('btn-options').onclick = () => showMenu('menu-options'); $('btn-options-back')
 window.addEventListener('beforeunload', () => game.save());
 document.addEventListener('visibilitychange', () => { if (document.hidden) game.save(); });
 $('btn-demo').onclick = () => begin(true);
-if (params.has('auto')) begin(params.has('demo'), params.has('cont'));
+if (params.has('auto')) begin(params.has('demo'), params.get('from') || params.has('cont'));   // (from: load an autosave into this game's slot)
 // if the game stopped responding last time (and had to be reloaded), say where it was
 import { Watchdog } from './core/Watchdog.js';
 Watchdog.lastFreeze().then((r) => {

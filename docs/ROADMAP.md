@@ -176,3 +176,15 @@ Status: [ ] to do, [~] partly done, [x] done (see notes).
 151. [x] Planned path no longer pulses all over the island when one tile is being dug.
 152. [x] Small leaks: event props share one box shape; map pins free their pictures.
 
+## Round 6.9 (owner's list: builders, homes, skills, query, mouse, move, controls, saves, grenades)
+153. [x] Builders never bounce between jobs: "is there more urgent work?" and "what can I do?" use one rule (a job waiting for supplies, or with no finished Stockyard to fetch from, is skipped and they carry on down the list).
+154. [x] Newcomers get the free bed nearest their job (couples a home with room for them all); now and then someone with a long walk to work moves closer.
+155. [x] Skill levels really speed up work: 15% a level (level 5 is 1.6x, level 10 2.35x), holding the button too; the mini-game shows the speed.
+156. [x] Query: names what's on a tile (rocks, iron ore, clay pit, berry bush, crops, trees) with what's left; townspeople are easy to pick from high up and get a card (job, home and distance to work, what they're doing, mood, fed, how they like Sam, partner, children, friends) with Home / Work / Follow and pins on the map until closed.
+157. [x] Mouse: captured again after the planning view, the post, forms and the pause menu; Esc frees it and opens the pause menu.
+158. [x] Iron ore and clay pits can be moved like bushes and rocks (the tool is now just "Move").
+159. [x] Keyboard game speed: P pause, + faster, − slower, . cycles; shown on the speed buttons.
+160. [x] Controls screen (title Options and the pause menu): every main action on the keyboard and every controller button can be changed (a key already in use swaps over); prompts follow your keys; Reset.
+161. [x] Saves: twelve named slots in the browser's database (old saves carried over), rename, download, delete, import; saves itself every minute and a half when the browser is idle plus three rotating autosave backups; a small "Saved" shows.
+162. [x] Grenades: the explosion's light is made once and reused (a new light made every lit material rebuild its shader: the hitch when anyone threw one); the fireball and smoke are prepared when combat starts. The aiming arc comes from Sam's hand as a trail of beads to a red landing ring (the old thin line was seen end-on in first person).
+

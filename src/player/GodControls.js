@@ -71,10 +71,10 @@ export class GodControls {
       return;
     }
     if (id === 'track') { if (g.trackBuilder) g.trackBuilder.update(inp, p); return; }
-    if (id === 'move') {   // pick a bush or rock, then where it should go; a villager does the digging
+    if (id === 'move') {   // pick a bush, rock, ore or clay pit, then where it should go; a villager does the digging
       const R = g.resources, sel = this.moveSel, n = R.nodeAt(tx, tz), inb = g.world.inBounds(tx, tz);
       this.tileBox.visible = inb && (!!sel || !!n); this.tileBox.scale.set(TILE, 0.2, TILE); this.tileBox.position.set((tx + 0.5) * TILE, 0.15, (tz + 0.5) * TILE);
-      if (!sel) { this.tileBox.material.color.setHex(n ? 0x44ff66 : 0x888888); g.ui.setHover(n ? `Click to pick up this ${n.kind === 'berry' ? 'berry bush' : 'rock'}` : 'Move plants: click a berry bush or rock to move it out of the way'); if (inp.mouse.down && n) { this.moveSel = n; g.ui.toast('Now click where it should go (Esc to cancel).', 2400); } }
+      if (!sel) { this.tileBox.material.color.setHex(n ? 0x44ff66 : 0x888888); g.ui.setHover(n ? `Click to pick up this ${R.label(n)}` : 'Move: click a berry bush, rock, iron ore or clay pit to move it out of the way'); if (inp.mouse.down && n) { this.moveSel = n; g.ui.toast('Now click where it should go (Esc to cancel).', 2400); } }
       else { const ok = inb && R.canReplant(tx, tz); this.tileBox.material.color.setHex(ok ? 0xffd23f : 0xff4455); this.ghost.visible = false; g.ui.setHover(ok ? 'Click to move it here' : 'Pick clear ground (no buildings, roads or other plants)'); if (inp.mouse.down && ok && R.requestMove(sel, tx, tz)) this.moveSel = null; if (inp.hit('Escape') || inp.mouse.rightDown) this.moveSel = null; }
       return;
     }
@@ -129,10 +129,18 @@ export class GodControls {
     const w = this.game.world, b = w.buildingAt(tx, tz); if (b) return `${b.def.name}${b.state === 'site' ? ` (building ${Math.round(b.progress * 100)}%)` : ''}`;
     const rp = this.game.roadPlans.get(tx, tz); if (rp) return `Planned ${rp.type === 2 ? 'paved road' : 'dirt path'} (${Math.round(rp.progress * 100)}% dug)`;
     if (w.road[w.idx(tx, tz)]) return w.road[w.idx(tx, tz)] === 2 ? 'Paved road' : 'Dirt track'; const z = w.zone[w.idx(tx, tz)]; if (z) return ['', 'Residential zone', 'Commercial zone', 'Industrial zone'][z];
-    const t = w.terrain[w.idx(tx, tz)]; return ['Water', 'Open land', 'Forest', 'Beach'][t];
+    const n = this.nodeAt(tx, tz); if (n) return n.label; const t = w.terrain[w.idx(tx, tz)]; return ['Water', 'Open land', 'Forest', 'Beach'][t];
   }
   queryAt(p, tx, tz) {
-    const g = this.game; const s = g.population.nearest(p.x, p.z, 3.5); if (s) return { sim: s };
-    const b = g.world.buildingAt(tx, tz); if (b) return { b }; return { tile: [tx, tz] };
+    const g = this.game; const s = g.population.nearest(p.x, p.z, Math.max(3, Math.min(9, this.dist * 0.035))); if (s) return { sim: s };   // (easier to hit from high up)
+    const b = g.world.buildingAt(tx, tz); if (b) return { b }; const n = this.nodeAt(tx, tz); if (n) return { node: n }; return { tile: [tx, tz] };
+  }
+  /** A resource on this tile: what it is and what it gives. */
+  nodeAt(tx, tz) {
+    const g = this.game, n = g.resources.nodes.find((q) => q.tx === tx && q.tz === tz && (q.mesh ? q.mesh.visible !== false : true));
+    const INFO = { rock: ['Rocks', 'stone', 'Break with the pickaxe for stone.'], ore: ['Iron ore', 'steel', 'Mined for steel (needs a Foundry).'], clay: ['Clay pit', 'bricks', 'Dug for bricks (needs a Brickworks).'], berry: ['Berry bush', 'food', 'Pick for food.'], field: ['Crops', 'food', 'Harvest for food.'] };
+    if (n && INFO[n.kind]) { const [label, mat, how] = INFO[n.kind]; const left = n.infinite ? '' : ` · ${Math.floor(n.amount)} ${mat} left${n.max ? ' of ' + n.max : ''}`; return { label, more: how + left + (g.resources.movable(n) ? '<br>Can be moved with Move plants.' : '') }; }
+    const trees = (g.terrain.trees || []).filter((t) => t.alive && t.tx === tx && t.tz === tz).length; if (trees) return { label: trees === 1 ? 'A tree' : `${trees} trees`, more: 'Chop for timber (axe).' };
+    return null;
   }
 }

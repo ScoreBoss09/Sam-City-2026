@@ -166,7 +166,7 @@ export class BuildingManager {
   blockedWhy(x0, z0, w, d) {
     const W = this.world; let res = false, road = false, occ = false, water = false;
     for (let z = z0; z < z0 + d; z++) for (let x = x0; x < x0 + w; x++) { if (!W.isLand(x, z)) { water = true; continue; } const i = W.idx(x, z); if (W.occ[i]) occ = true; else if (W.road[i]) road = true; else if (W.res[i]) res = true; }
-    return occ ? 'Blocked by another building' : water ? 'Not on water' : road ? 'Blocked by a road' : res ? 'A bush or rock is in the way: move it with the Move plants tool (🌱, key 8)' : 'Blocked';
+    return occ ? 'Blocked by another building' : water ? 'Not on water' : road ? 'Blocked by a road' : res ? 'A bush, rock, ore or clay pit is in the way: move it with the Move tool (🌱, key 8)' : 'Blocked';
   }
   /** Walls, furniture (upstairs furniture only blocks up there) and, for the sims' route finder only, the stairs. */
   setColliders(b) {

@@ -5,22 +5,58 @@ import { QUIRKS } from '../data/character.js';
 
 const KEY = 'samcity-save-v1';
 const SAVE_V = 2;   // 2: the 8 m grid (older saves were on the small 4 m grid and can't be carried over)
-// three save slots (slot 1 is the old single save, so existing games carry on)
-export const SLOTS = 3;
+/**
+ * Twelve named save slots plus three rotating autosaves ('a1'..'a3'), kept in the browser's database (IndexedDB: far
+ * more room than localStorage). Everything is read into memory at start-up (initSaves), so the rest of the game can ask
+ * about saves straight away; writes go to memory at once and to the database in the background (no hitch).
+ * The old three localStorage slots are carried over the first time.
+ */
+export const SLOTS = 12;
+export const AUTOS = ['a1', 'a2', 'a3'];
+const META = 'samcity-slots-meta', cache = new Map(); let meta = {}, db = null;
 let slot = 1; try { slot = Math.min(SLOTS, Math.max(1, +localStorage.getItem('samcity-slot') || 1)); } catch (e) { /* no storage */ }
-const keyOf = (n) => (n === 1 ? KEY : KEY + '-' + n);
+const keyOf = (n) => (n === 1 || n === '1' ? KEY : KEY + '-' + n);   // (the old localStorage keys)
+const idOf = (n) => String(n);
+const saveMeta = () => { try { localStorage.setItem(META, JSON.stringify(meta)); } catch (e) { /* no storage */ } };
+const openDB = () => new Promise((res) => { try { const r = indexedDB.open('samcity-saves', 1); r.onupgradeneeded = () => r.result.createObjectStore('slots'); r.onsuccess = () => res(r.result); r.onerror = () => res(null); } catch (e) { res(null); } });
+const tx = (mode, fn) => new Promise((res) => { if (!db) return res(false); try { const t = db.transaction('slots', mode), st = t.objectStore('slots'), q = fn(st); t.oncomplete = () => res(q && 'result' in q ? q.result : true); t.onerror = () => res(false); } catch (e) { res(false); } });
+const put = (id, text) => (db ? tx('readwrite', (st) => st.put(text, id)) : Promise.resolve((() => { try { localStorage.setItem(keyOf(id), text); return true; } catch (e) { return false; } })()));
+function metaOf(text, name, auto) { try { const d = JSON.parse(text); return { name: name || 'Sam City', auto: !!auto, v: d.v || 1, t: d.t, pop: (d.sims || []).length, funds: d.economy && d.economy.funds, clock: d.clock }; } catch (e) { return null; } }
+/** Read every save into memory (and carry the old localStorage ones over). Call once before the menus are used. */
+export async function initSaves() {
+  try { meta = JSON.parse(localStorage.getItem(META) || '{}') || {}; } catch (e) { meta = {}; }
+  db = await openDB();
+  if (db) { const keys = await tx('readonly', (st) => st.getAllKeys()), vals = await tx('readonly', (st) => st.getAll()); if (Array.isArray(keys) && Array.isArray(vals)) keys.forEach((k, i) => cache.set(String(k), vals[i])); }
+  for (const n of [...Array.from({ length: SLOTS }, (_, i) => i + 1), ...AUTOS]) {   // old saves in localStorage (or everything, if there's no database)
+    let s = null; try { s = localStorage.getItem(keyOf(n)); } catch (e) { /* no storage */ } if (!s || cache.has(idOf(n))) continue;
+    cache.set(idOf(n), s); if (!meta[n]) meta[n] = metaOf(s, typeof n === 'string' ? 'Autosave' : `Slot ${n}`, typeof n === 'string');
+    if (db && await put(idOf(n), s)) { try { localStorage.removeItem(keyOf(n)); } catch (e) { /* fine */ } }   // moved over safely
+  }
+  for (const [id, text] of cache) if (!meta[id]) meta[id] = metaOf(text, id[0] === 'a' ? 'Autosave' : `Slot ${id}`, id[0] === 'a');
+  for (const id of Object.keys(meta)) if (id[0] !== '_' && !cache.has(id)) delete meta[id];
+  saveMeta();
+}
 export const currentSlot = () => slot;
 export function setSlot(n) { slot = n; try { localStorage.setItem('samcity-slot', String(n)); } catch (e) { /* no storage */ } }
-/** What's in a slot: null if empty, else { ok, t (saved at), pop, funds, day, month, year }. */
-export function slotInfo(n) {
-  try { const s = localStorage.getItem(keyOf(n)); if (!s) return null; const d = JSON.parse(s); return { v: d.v || 1, ok: (d.v || 1) === SAVE_V, t: d.t, pop: (d.sims || []).length, funds: d.economy && d.economy.funds, clock: d.clock }; } catch (e) { return null; }
-}
+/** What's in a slot: null if empty, else { ok, name, t (saved at), pop, funds, clock, auto }. */
+export function slotInfo(n) { const m = meta[idOf(n)]; return m ? { ...m, ok: (m.v || 1) === SAVE_V } : null; }
+export const slotName = (n) => (meta[idOf(n)] && meta[idOf(n)].name) || '';
+export function renameSlot(n, name) { const m = meta[idOf(n)]; if (m) { m.name = String(name).slice(0, 40) || m.name; saveMeta(); } }
 export const saveInfo = () => slotInfo(slot);
-export const hasSave = () => { try { return !!localStorage.getItem(keyOf(slot)); } catch (e) { return false; } };
-export const clearSave = (n = slot) => { try { localStorage.removeItem(keyOf(n)); } catch (e) { /* private mode */ } };
+export const hasSave = () => cache.has(idOf(slot));
+export const clearSave = (n = slot) => { const id = idOf(n); cache.delete(id); delete meta[id]; saveMeta(); tx('readwrite', (st) => st.delete(id)); try { localStorage.removeItem(keyOf(n)); } catch (e) { /* private mode */ } };
 /** A save as text (to download and send), and putting one back into a slot. */
-export const exportSlot = (n) => { try { return localStorage.getItem(keyOf(n)); } catch (e) { return null; } };
-export function importSlot(n, text) { const d = JSON.parse(text); if (!d || !d.sims || !d.economy) throw new Error('That file isn\'t a Sam City save.'); localStorage.setItem(keyOf(n), JSON.stringify(d)); return d; }
+export const exportSlot = (n) => cache.get(idOf(n)) || null;
+export function importSlot(n, text, name) { const d = JSON.parse(text); if (!d || !d.sims || !d.economy) throw new Error('That file isn\'t a Sam City save.'); const s = JSON.stringify(d), id = idOf(n); cache.set(id, s); meta[id] = metaOf(s, name || 'Imported town'); saveMeta(); put(id, s); return d; }
+/** Write the town to slot n (default: this game's slot). Returns false if it can't be saved right now. */
+function writeTo(g, n, name, auto) {
+  if (g.demoMode || g.ending || !g.started || g.netVisitor) return false;
+  try { const text = JSON.stringify(serialize(g)), id = idOf(n); cache.set(id, text); meta[id] = metaOf(text, name || slotName(n) || g.townName || 'Sam City', auto); saveMeta(); put(id, text); return true; } catch (e) { return false; }
+}
+export function save(g, n = slot, name) { return writeTo(g, n, name, false); }
+/** A backup in the next of the three autosave slots (the oldest is replaced). */
+export function autosave(g) { const i = (meta._autoN = ((meta._autoN || 0) % AUTOS.length) + 1), id = AUTOS[i - 1], ok = writeTo(g, id, `Autosave: ${slotName(slot) || 'Sam City'}`, true); if (ok && meta[id]) { meta[id].from = slot; saveMeta(); } return ok; }
+export function load(n = slot) { try { const s = cache.get(idOf(n)); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
 
 /** Snapshot of everything that matters. Sims are stored by value and rebuilt on load. */
 export function serialize(g) {
@@ -38,8 +74,6 @@ export function serialize(g) {
     cars: g.cars ? g.cars.serialize() : [], player: { bike: g.player.bike, x: g.player.x, z: g.player.z, heading: g.player.heading, yaw: g.player.yaw, energy: g.player.energy, hunger: g.player.hunger, tools: [...g.player.tools], inv: g.player.inv }, piles: g.piles.serialize(),
   };
 }
-export function save(g) { if (g.demoMode || g.ending || !g.started || g.netVisitor) return false; try { localStorage.setItem(keyOf(slot), JSON.stringify(serialize(g))); return true; } catch (e) { return false; } }
-export function load() { try { const s = localStorage.getItem(keyOf(slot)); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
 
 /** A townsperson's quirk and what they remember telling Sam (see Talk), so they're the same person after loading. */
 function restoreTalk(g, sim, s) {

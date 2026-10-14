@@ -508,7 +508,7 @@ export class Player {
       if (t.node) { if (t.nk === 'tree') { g.terrain.hitTree(t.node); g.terrain.fallFrom = { x: this.x, z: this.z }; } else g.resources.shake(t.node); } this.strikeT = 0.5; this.faceTo(fx, fz); if (r.q === 'perfect') this.shake = 0.25;
       const hx = this.x + (fx - this.x) * 0.6, hz = this.z + (fz - this.z) * 0.6; g.particles.burst(hx, t.work === 'build' ? 0.8 : 1.0, hz, t.nk === 'berry' ? (Math.random() < 0.5 ? 0xc0243a : 0x7a2a8a) : t.nk === 'field' ? 0xe0c050 : CHIP[t.work], r.q === 'perfect' ? 14 : r.q === 'good' ? 8 : 3, 1, 3.2);
     }
-    if (held && t.work !== 'fish') { value += dt * 0.35; this.faceTo(fx, fz); }
+    if (held && t.work !== 'fish') { value += dt * 0.35 * g.skills.bonus(t.work); this.faceTo(fx, fz); }
     if (held || this.strikeT > 0 || t.work === 'fish') this.working = true;
     const speed = Math.max(1, g.clock.speed);
     if (t.kind === 'gather') {

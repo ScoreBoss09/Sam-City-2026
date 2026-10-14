@@ -10,6 +10,7 @@ import { fmtMoney } from '../util.js';
 import { MONTHS, DAYS } from '../core/Clock.js';
 import { TOOLS as TOOL_NAMES, TOOL_ICON, MAT_ICON, BACKPACK } from '../player/Player.js';
 import { Sfx } from '../core/Sfx.js';
+import { PAD_NAMES } from '../core/Bindings.js';
 import { CURIOS } from '../systems/Curios.js';
 
 const $ = (id) => document.getElementById(id);
@@ -19,7 +20,7 @@ const TOOL_ICONS = { axe: svg('<path d="M5 21 15 8"/><path d="M12.5 5.5c3-2 6.5-
   basket: svg('<path d="M3.5 10h17l-2.2 9.5H5.7z"/><path d="M8 10l4-6 4 6"/><path d="M9.5 13v4M14.5 13v4"/>'), rod: svg('<path d="M3.5 20.5 18 4"/><path d="M18 4v10"/><path d="M18 14a2 2 0 1 1-2 2"/>'), hammer: svg('<path d="M5 20l8.5-8.5"/><path d="M11 6.5 14.5 3l6.5 6.5-3.5 3.5-2.2-1-2.6-2.6z"/>') };
 const TOOLS = [
   ['pan', '✋', 'Pan'], ['bulldoze', '🚜', 'Bulldoze'], ['road', '🛣️', 'Roads'],
-  ['build', '🏢', 'Buildings'], ['park', '🌳', 'Parks'], ['util', '⚡', 'Utilities'], ['query', '🔍', 'Query'], ['move', '🌱', 'Move plants'], ['track', '🛤️', 'Track'],
+  ['build', '🏢', 'Buildings'], ['park', '🌳', 'Parks'], ['util', '⚡', 'Utilities'], ['query', '🔍', 'Query'], ['move', '🌱', 'Move'], ['track', '🛤️', 'Track'],
 ];
 
 /** All DOM. In Unity: UI Toolkit / uGUI screens driven by the same game-state getters. */
@@ -33,7 +34,7 @@ export class UI {
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; if (b.dataset.menu) { this.plan.show(); return; } const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'btn-perf') { this.togglePerf(); return; } game.clock.speed = +b.dataset.s; }); $('perf').addEventListener('click', (e) => this.perfClick(e));
-    $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); });
+    $('query').addEventListener('click', (e) => this.queryClick(e)); $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); });
     game.messages.on('msg', (m) => { const c = game.clock; m.when = `${c.day} ${MONTHS[c.month]} · ${String(Math.floor(c.hour)).padStart(2, '0')}:${String(Math.floor((c.hour % 1) * 60)).padStart(2, '0')}`; this.addMessage(m); });   // (stamped for the town news page)
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
     $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
@@ -73,7 +74,12 @@ export class UI {
 
   // ---------- controller ----------
   /** Swap keyboard hints for controller buttons while a pad is in use. */
-  keyText(t) { if (!this.game.input.padActive || !t) return t; return t.replace(/\bE\b/g, '✕').replace(/\bF\b/g, '□').replace(/\bQ\b/g, '△').replace(/\bTAB\b/g, 'OPTIONS').replace(/\bV\b/g, 'R1').replace(/\bG\b/g, '○').replace(/\bR\b/g, 'D-pad ↓').replace(/\bC\b/g, 'D-pad →'); }
+  keyText(t) {
+    if (!t) return t; const I = this.game.input, B = I.binds;
+    if (!I.padActive) { const L = B && B.labels; if (!L || !Object.keys(L).length) return t; return t.replace(/\b([B-HJ-Z])\b/g, (m, k) => L[k] || m).replace(/(Press |\()([AI])\b/g, (m, p, k) => (L[k] ? p + L[k] : m)); }   // your keys, if you changed them ('A' and 'I' only where they're clearly keys)
+    const pn = (slot) => PAD_NAMES[B ? B.pad[slot] : slot];   // your buttons, if you changed them
+    return t.replace(/\bE\b/g, pn(0)).replace(/\bF\b/g, pn(2)).replace(/\bQ\b/g, pn(3)).replace(/\bTAB\b/g, pn(9)).replace(/\bV\b/g, pn(5)).replace(/\bG\b/g, pn(1)).replace(/\bR\b/g, pn(13)).replace(/\bC\b/g, pn(15));
+  }
   padScope() { if (this.pause && this.pause.open) return $('pausemenu'); if (this.perfOpen) return $('perf'); if (!this.game.started) return $('title'); if (this.plan && this.plan.open) return $('planmenu'); if (!$('howto').classList.contains('hidden')) return $('howto'); if (this.terminalB) return $('terminal'); if (this.invOpen) return $('inventory'); if (this.journalOpen) return $('journal'); return null; }
   padUpdate(inp, dt) {
     const P = inp.pad, g = this.game; if (!inp.padActive || !P.connected) { this.clearPadFocus(); return; }
@@ -256,6 +262,8 @@ export class UI {
   openTerminal(b, mode = 'computer') { this._pfScope = null; this.terminalB = b; this.termMode = mode; this.terminalTab = mode === 'post' ? 'letters' : mode === 'hatch' ? 'materials' : mode === 'stock' ? 'stock' : mode === 'shop' ? 'shop' : mode === 'register' ? 'register' : (this.terminalTab === 'letters' ? 'permits' : this.terminalTab); this.modalOpen = true; this.game.input.unlock(); if (mode === 'post') this.game.flags.postRead = true; else if (mode !== 'stock' && mode !== 'shop' && mode !== 'register') this.game.flags.terminalOpened = true; this.renderTerminal(); this.show('terminal'); $('terminal').classList.toggle('post', mode === 'post' || mode === 'register'); }
   openShop(b, who, goods) { this.counter = { b, who, goods }; this.openTerminal(b, 'shop'); }
   closeTerminal() { this.terminalB = null; this._termTab = null; this.hide('terminal'); this.calm(); }
+  /** A little "Saved" in the corner when the town has saved itself. */
+  saved() { let el = this._savedEl; if (!el) { el = this._savedEl = document.createElement('div'); el.id = 'savedchip'; el.textContent = '💾 Saved'; document.body.appendChild(el); } el.classList.add('on'); clearTimeout(this._svT); this._svT = setTimeout(() => el.classList.remove('on'), 1600); }
   /** After closing a window, ignore 'use' for a moment so the same press doesn't reopen it. */
   calm() { if (this.game.player) this.game.player.interactCD = 0.4; }
 
@@ -399,14 +407,42 @@ export class UI {
 
   // ---------- query ----------
   query(o) {
-    const q = $('query'), g = this.game; let h = '';
-    if (o.sim) {
-      const s = o.sim, mood = s.mood > 0.35 ? 'happy' : s.mood > 0 ? 'content' : s.mood > -0.35 ? 'fed up' : 'miserable', hung = s.hunger < 35 ? 'well fed' : s.hunger < 65 ? 'peckish' : s.hunger < 90 ? 'hungry' : 'starving';
-      const fr = [...s.rel.entries()].filter(([, v]) => v >= 35).length;
-      h = `<b>${s.name}</b> (${s.gender === 'f' ? 'F' : 'M'}, ${Math.floor(s.age)})<br>${s.roleName} · ${s.trait}<br>Home: ${s.home ? s.home.def.name : 'none'}<br>Works: ${s.workplace ? s.workplace.def.name : (s.kind === 'child' ? 'school / play' : 'unemployed')}<br>Mood: ${mood} · ${hung}<br>${s.partner ? 'Partner: ' + s.partner.name + '<br>' : ''}Friends: ${fr}<br>Doing: ${s.pose === 'sleep' ? 'sleeping' : s.eating ? 'eating' : s.activity || 'idle'}`; }
-    else if (o.b) { const b = o.b; h = `<b>${b.def.name}</b><br>${b.def.blurb || ''}<br><i>${purposeOf(b.id, b.def)}</i><br>${b.graffiti ? 'Covered in graffiti.<br>' : ''}${b.state === 'site' ? `Under construction: ${Math.round(b.progress * 100)}%<br>Materials: ${Object.entries(b.need).map(([m, n]) => `${m} ${b.have[m] || 0}/${n}`).join(', ')}` : `Residents ${b.residents.length}/${b.def.beds || 0}<br>Workers ${b.workers.length}/${Object.values(b.def.jobs || {}).reduce((a, c) => a + c, 0)}`}`; }
-    else h = `Tile ${o.tile[0]},${o.tile[1]}`;
-    q.innerHTML = h; q.classList.remove('hidden'); clearTimeout(this._qt); this._qt = setTimeout(() => q.classList.add('hidden'), 6000);
+    const q = $('query'), g = this.game; let h = ''; clearTimeout(this._qt); this.qSim = null; this.qFollow = false; q.classList.remove('card');
+    if (o.sim) { this.qSim = o.sim; this.qT = 0; q.classList.add('card'); this.simCard(); q.classList.remove('hidden'); Sfx.play('ui');
+      const s = o.sim, alive = () => this.qSim === s && !s.remove;   // pins for them, their home and their work while the card is open
+      if (g.markers) { g.markers.add(s.x, s.z, '👤', s.name, 3600, s, alive); if (s.home) g.markers.add(s.home.cx, s.home.cz, '🏠', `${s.first}'s home`, 3600, null, alive); if (s.workplace) g.markers.add(s.workplace.cx, s.workplace.cz, '💼', `${s.first}'s work`, 3600, null, alive); }
+      return; }
+    q.dataset.who = '';
+    if (o.b) { const b = o.b; h = `<b>${b.def.name}</b><br>${b.def.blurb || ''}<br><i>${purposeOf(b.id, b.def)}</i><br>${b.graffiti ? 'Covered in graffiti.<br>' : ''}${b.state === 'site' ? `Under construction: ${Math.round(b.progress * 100)}%<br>Materials: ${Object.entries(b.need).map(([m, n]) => `${m} ${b.have[m] || 0}/${n}`).join(', ')}` : `Residents ${b.residents.length}/${b.def.beds || 0}${b.residents.length ? ': ' + b.residents.map((r) => r.first).join(', ') : ''}<br>Workers ${b.workers.length}/${Object.values(b.def.jobs || {}).reduce((x, c) => x + c, 0)}${b.workers.length ? ': ' + b.workers.map((r) => r.first).join(', ') : ''}`}`; }
+    else if (o.node) h = `<b>${o.node.label}</b><br>${o.node.more}`;
+    else h = g.god.describe(o.tile[0], o.tile[1]);
+    q.innerHTML = h; q.classList.remove('hidden'); this._qt = setTimeout(() => q.classList.add('hidden'), 6000);
+  }
+  /** The card for a townsperson picked with Query: who they are, where they live and work, how they're doing. Stays (and
+   *  keeps up to date) until closed; pins show them, their home and their work on the map. */
+  simCard() {
+    const s = this.qSim, q = $('query'), g = this.game; if (!s) return;
+    const bar = (label, v, col) => `<div class="qbar"><span>${label}</span><i><b style="width:${Math.round(Math.max(0, Math.min(1, v)) * 100)}%;background:${col}"></b></i></div>`;
+    const fr = [...s.rel.values()].filter((v) => v >= 35).length, kids = g.population.sims.filter((k) => !k.remove && (k.parents || []).includes(s)).map((k) => k.first);
+    const doing = s.pose === 'sleep' ? 'asleep' : s.down > 0 ? (s.dead ? 'dead' : 'hurt') : s.eating ? 'eating' : s.chat ? 'chatting' : s.activity === 'work' ? (s.working ? 'working' : 'at work') : s.activity || 'idle';
+    const commute = s.home && s.workplace ? Math.round(Math.hypot(s.home.cx - s.workplace.cx, s.home.cz - s.workplace.cz)) : null;
+    const dyn = `<div class="qline">${s.gender === 'f' ? 'Female' : 'Male'}, ${Math.floor(s.age)} · ${s.trait}${s.quirk && s.quirk.label ? ' · ' + s.quirk.label : ''}</div>
+      <div class="qline"><b>Job</b> ${s.roleName}${s.workplace ? ' at the ' + s.workplace.def.name : s.kind === 'child' ? ' (school and play)' : ''}</div>
+      <div class="qline"><b>Home</b> ${s.home ? 'the ' + s.home.def.name : s.homeless ? 'sleeping rough' : s.kind === 'visitor' ? 'a day trip' : 'none yet'}${commute !== null ? ` · ${commute} m from work` : ''}</div>
+      <div class="qline"><b>Now</b> ${doing}${s.inside ? ' in the ' + s.inside.def.name : ''}</div>
+      ${bar('Mood', (s.mood + 1) / 2, s.mood > 0 ? '#5fd38a' : s.mood > -0.35 ? '#e8c04a' : '#e2574c')}${bar('Fed', 1 - s.hunger / 100, '#e8a04a')}${bar('Likes Sam', (s.samRel || 0) / 100, '#7aa8ff')}
+      <div class="qline">${s.partner ? '<b>Partner</b> ' + s.partner.name + ' · ' : ''}${kids.length ? '<b>Children</b> ' + kids.join(', ') + ' · ' : ''}<b>Friends</b> ${fr}</div>`;
+    // the buttons are made once per person (redrawing them twice a second would swallow clicks); only the details refresh
+    if (q.dataset.who !== String(s.id)) { q.dataset.who = s.id; q.innerHTML = `<h2><span>${s.name}</span><button class="xbtn" data-q="close" title="Close">✕</button></h2><div class="qdyn"></div>
+      <div class="qbtns">${s.home ? '<button data-q="home">🏠 Home</button>' : ''}${s.workplace ? '<button data-q="work">💼 Work</button>' : ''}<button data-q="follow">👁 Follow</button></div>`; }
+    const d = q.querySelector('.qdyn'); if (d && d.innerHTML !== dyn) d.innerHTML = dyn; const f = q.querySelector('[data-q="follow"]'); if (f) f.classList.toggle('on', !!this.qFollow);
+  }
+  queryClick(e) {
+    const b = e.target.closest('button'); if (!b || !this.qSim) return; const a = b.dataset.q, s = this.qSim, G = this.game.god;
+    if (a === 'close') { this.qSim = null; this.qFollow = false; $('query').classList.add('hidden'); return; }
+    const go = (x, z) => { G.target.set(x, 0, z); G.distGoal = Math.min(G.distGoal || G.dist, 70); this.qFollow = false; };
+    if (a === 'home' && s.home) go(s.home.cx, s.home.cz); if (a === 'work' && s.workplace) go(s.workplace.cx, s.workplace.cz); if (a === 'follow') this.qFollow = !this.qFollow;
+    Sfx.play('ui'); this.simCard();
   }
 
   showEnding() {
@@ -417,6 +453,7 @@ export class UI {
 
   // ---------- per-frame ----------
   update(dt) {
+    if (this.qSim) { const s = this.qSim, g = this.game; if (s.remove || g.mode !== 'god') { this.qSim = null; $('query').classList.add('hidden'); } else { if (this.qFollow) g.god.target.set(s.x, 0, s.z); if ((this.qT = (this.qT || 0) - dt) <= 0) { this.qT = 0.5; this.simCard(); } } }   // the query card keeps up
     if (this.plan.open && this.plan.tab !== 'build') { this._planT = (this._planT || 0) - dt; if (this._planT <= 0) { this._planT = 1; this.plan.render(); } }
     const g = this.game;
     if (this.hoverTimer > 0) { this.hoverTimer -= dt; if (this.hoverTimer <= 0 || g.mode !== 'god') $('hover').classList.add('hidden'); }

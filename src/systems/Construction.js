@@ -25,7 +25,7 @@ export class ConstructionSystem {
   /** Goods left on the Lift dock that nobody has claimed yet. */
   dockPiles() { const g = this.game; if (!g.lift) return []; const d = g.logistics.dock(); return g.piles.list.filter((p) => Math.hypot(p.x - d.x, p.z - d.z) < 7 && g.piles.total(p) - (p.reserved || 0) > 0); }
   requestTask(sim) {
-    const g = this.game, B = g.buildings, depot = g.depot;
+    const g = this.game, B = g.buildings, depot = g.depot && g.depot.state === 'done' ? g.depot : null;
     // up to two builders at a time cart deliveries from the Lift dock to the Stockyard
     if (depot && g.population.sims.filter((q) => q.job && q.job.type === 'fetch').length < 2) { const p = this.dockPiles()[0]; if (p) { const qty = this.haulSize(sim); p.reserved = (p.reserved || 0) + qty; return { type: 'fetch', pile: p, qty }; } }
     // Everyone works down the list: the top job takes all the builders it can use (its crew: Auto is 2 to start, up to 6),
@@ -34,7 +34,7 @@ export class ConstructionSystem {
     for (const it of this.queue()) {
       if (it.kind === 'roads') { const p = g.roadPlans.next(sim); if (p) { p.reserved = sim; return { type: 'road', plan: p }; } continue; }
       const s = it.s, want = s.crew || 2, cap = s.crew || 6;
-      if (!this.workable(s) && !(depot && Object.keys(s.need).some((m) => B.missing(s, m) > 0 && g.economy.stock[m] > 0))) continue;   // waiting for something
+      if (!this.canHelp(s)) continue;   // waiting for supplies (or full up): on down the list
       if (++active > lim) break;
       if (this.workable(s) && (s.builders || 0) < want) return { type: 'build', site: s };
       if (depot) for (const mat of Object.keys(s.need)) {
@@ -49,8 +49,15 @@ export class ConstructionSystem {
   haulSize(sim) { const wp = sim && sim.workplace; return (wp && wp.def.haul) || 4; }
   /** The highest job on the list that builders could be doing something about right now. */
   focus() {
-    const g = this.game; for (const it of this.queue()) { if (it.kind === 'roads') { if ([...g.roadPlans.plans.values()].some((p) => !p.reserved)) return it; continue; } const s = it.s; if (this.workable(s) || Object.keys(s.need).some((m) => g.buildings.missing(s, m) > 0 && g.economy.stock[m] > 0)) return it; }
+    const g = this.game; for (const it of this.queue()) { if (it.kind === 'roads') { if ([...g.roadPlans.plans.values()].some((p) => !p.reserved)) return it; continue; } if (this.canHelp(it.s)) return it; }
     return null;
+  }
+  /** Could a builder do anything for this job right now: build (materials are on site and there's room in the crew),
+   *  or fetch something it's missing from a finished Stockyard that has it? (Otherwise it's skipped: waiting for supplies.) */
+  canHelp(s) {
+    const g = this.game, depot = g.depot && g.depot.state === 'done' ? g.depot : null;
+    if (this.workable(s) && (s.builders || 0) < (s.crew || 6)) return true;
+    return !!depot && Object.keys(s.need).some((m) => g.buildings.missing(s, m) > 0 && g.economy.stock[m] >= 1);
   }
   /** Walkable tile centre around the site footprint closest to the sim. */
   perimeterPoint(site, from) {

@@ -20,7 +20,7 @@ export class Skills {
   /** 0..1 progress towards the next level. */
   frac(k) { const l = this.level(k); if (l >= NEED.length) return 1; const a = NEED[l - 1], b = NEED[l]; return ((this.xp[k] || 0) - a) / (b - a); }
   /** Work done per stroke. */
-  bonus(k) { return 1 + 0.07 * (this.level(k) - 1); }
+  bonus(k) { return 1 + 0.15 * (this.level(k) - 1); }   // level 5 works 1.6x as fast, level 10 2.35x
   /** The green and gold zones widen a little with practice. */
   zone(k) { return 1 + 0.035 * (this.level(k) - 1); }
   /** Chance of a spare unit when gathering. */
