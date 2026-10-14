@@ -740,9 +740,54 @@ export function buildInterior(b) {
     const era = b.era ?? 2, t = eraT(f.t, era);
     const m = makeFurniture(t); m.position.set(f.x, f.k * WALL_H + 0.03, f.z); m.rotation.y = (f.r || 0) * Math.PI / 2; lg.add(m);
   }
+  dressWalls(b, g);
   if (lay.walls || lay.floors || lay.lights) { buildRooms(b, g); colorize(g); mergeByMaterial(g); }   // (the ground-floor rooms merge in too)
   for (const lg of g.userData.lv) if (lg) { colorize(lg); mergeByMaterial(lg); }
   return g;
+}
+/**
+ * What's on the walls: pictures in a home, posters and price boards in a shop, a notice board and the Queen in a civic
+ * building, safety signs in a works; a wall clock most places. Hung between the windows (the facade's own window
+ * positions), never over the door or behind something tall. Plus skirting boards, and a lampshade or two where the
+ * layout hasn't lit the room itself.
+ */
+const TALL = /shelf|case|wardrobe|rack|kitchen|fridge|backbar|bunk|locker|gondola|filing|cells|screen|dresser|toy|wine|meat|sweet|copier|poster|mirror|pegs|board|arcade|fruit|jukebox|bookcase|cabinet|stack|crate|safe/;
+function dressWalls(b, g) {
+  const def = b.def, lay = b.layout; if (!lay || def.park || def.special || def.special_ext || def.model) return;
+  const W = def.w * UNIT, D = def.d * UNIT, T = WALL_T, floors = Math.max(1, def.floors || 1), f = FACADES[def.wall] || FACADES.tan; if (f.kind === 'curtain') return;
+  const holes = (facadeMaterial(def.wall).userData.holes || []).map(([hx, , hw]) => [hx / 16 - 0.25, (hx + hw) / 16 + 0.25]), rnd = mulberry32(b.uid * 31 + 7), door = doorOffset(def.w), dw = DOOR_W;
+  const kind = def.cat === 'res' ? 'home' : def.shopping || def.dining ? 'shop' : def.cat === 'ind' || def.cat === 'util' ? 'works' : def.id === 'church' || def.id === 'chapel' ? 'church' : 'civic';
+  const frameC = [0x5a3a22, 0x2a2a2e, 0xb08a3a, 0xe8e2d2][b.uid % 4], art = [[0x6a9ac8, 0x6aa05a], [0xd8b070, 0x7a5a3a], [0x3a5a8a, 0xe8d8a8], [0xa84a3a, 0xe8c070], [0x2a6a5a, 0xd8e0c8]];
+  const lvGroup = (k) => { if (!k) return g; let lg = g.userData.lv[k]; if (!lg) { lg = g.userData.lv[k] = new THREE.Group(); lg.userData.keep = true; g.add(lg); } return lg; };
+  const blocked = (wx, wz) => lay.furniture.some((q) => TALL.test(q.t) && Math.hypot(q.x - wx, q.z - wz) < 1.0);
+  const flat = (grp, w, h, col, x, y, z, rotY, o) => { const m = new THREE.Mesh(unit, stdMat(col, o)); m.scale.set(w, h, 0.04); m.position.set(x, y, z); m.rotation.y = rotY; grp.add(m); return m; };
+  // [wall length, along-x?, inner face, facing into the room, front wall?]
+  const walls = [[W, true, -D / 2 + T + 0.025, 0, false], [W, true, D / 2 - T - 0.025, Math.PI, true], [D, false, -W / 2 + T + 0.025, Math.PI / 2, false], [D, false, W / 2 - T - 0.025, -Math.PI / 2, false]];
+  for (let k = 0; k < floors; k++) {
+    const grp = lvGroup(k), y0 = k * WALL_H, cy = y0 + 1.62; let clock = kind === 'home' ? rnd() < 0.6 : true, n = 0;
+    for (const [L, alongX, at, rotY, front] of walls) {
+      if (front && k === 0 && (def.shopping || def.dining)) continue;   // the shop window
+      for (let u = 0.9; u < L - 0.9; u += 0.5) {
+        const t = u % 4; if (holes.some(([a, c]) => t > a - 0.3 && t < c + 0.3) || holes.some(([a, c]) => t + 4 > a - 0.3 && t + 4 < c + 0.3) || holes.some(([a, c]) => t - 4 > a - 0.3 && t - 4 < c + 0.3)) continue;   // a window there
+        const lx = alongX ? u - L / 2 : at, lz = alongX ? at : u - L / 2; if (front && k === 0 && Math.abs(lx - door) < dw / 2 + 0.6) continue;
+        if (blocked(lx, lz) || rnd() < 0.35) { u += 0.5; continue; }
+        const r0 = rnd(), at2 = (x) => [alongX ? x : at, alongX ? at : x];
+        if (clock && r0 < 0.25) { clock = false; const c = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 16), stdMat(0xf4f0e6)); c.rotation.set(Math.PI / 2, 0, alongX ? 0 : Math.PI / 2); c.position.set(lx, cy + 0.35, lz); grp.add(c); const rim = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.02, 6, 16), stdMat(0x2a2a2e)); rim.position.copy(c.position); rim.rotation.y = rotY; grp.add(rim); }
+        else if (kind === 'home') { const [c1, c2] = art[Math.floor(rnd() * art.length)], w = 0.42 + rnd() * 0.25, h = 0.32 + rnd() * 0.15; flat(grp, w + 0.06, h + 0.06, frameC, lx, cy, lz, rotY); const p2 = flat(grp, w, h * 0.55, c1, lx, cy + h * 0.2, lz, rotY); p2.translateZ(0.01); const p3 = flat(grp, w, h * 0.45, c2, lx, cy - h * 0.25, lz, rotY); p3.translateZ(0.01); }
+        else if (kind === 'shop') { const col = [0xd8342c, 0xf2c94c, 0x2a7ab0, 0x3a9a54][Math.floor(rnd() * 4)]; flat(grp, 0.5, 0.7, col, lx, cy, lz, rotY); const st = flat(grp, 0.38, 0.12, 0xffffff, lx, cy + 0.15, lz, rotY); st.translateZ(0.01); }
+        else if (kind === 'works') { flat(grp, 0.45, 0.45, 0xf2c94c, lx, cy, lz, rotY); const st = flat(grp, 0.3, 0.06, 0x1a1a1a, lx, cy - 0.08, lz, rotY); st.translateZ(0.01); const tri = flat(grp, 0.16, 0.16, 0x1a1a1a, lx, cy + 0.08, lz, rotY); tri.translateZ(0.01); tri.rotateZ(Math.PI / 4); }
+        else if (kind === 'church') { flat(grp, 0.5, 0.8, 0x4a2a14, lx, cy, lz, rotY); for (let i = 0; i < 3; i++) { const no = flat(grp, 0.3, 0.1, 0xf4f0e6, lx, cy + 0.22 - i * 0.2, lz, rotY); no.translateZ(0.01); } }
+        else { if (n === 0 && rnd() < 0.5) { flat(grp, 0.4, 0.5, 0xb08a3a, lx, cy, lz, rotY); const q = flat(grp, 0.32, 0.42, 0x3a4a6a, lx, cy, lz, rotY); q.translateZ(0.01); } else { flat(grp, 0.9, 0.6, 0x9a7048, lx, cy, lz, rotY); for (let i = 0; i < 4; i++) { const pp = flat(grp, 0.18, 0.22, [0xf4f0e6, 0xf2c94c, 0xe07fa0, 0x9fd0e8][i], lx + (alongX ? (i - 1.5) * 0.2 : 0), cy + (i % 2 ? 0.1 : -0.1), lz + (alongX ? 0 : (i - 1.5) * 0.2), rotY); pp.translateZ(0.01); } } }
+        n++; u += 1.0;
+      }
+      // skirting board along this wall
+      const sk = new THREE.Mesh(unit, stdMat(kind === 'home' ? 0xf0ece2 : 0x3a3a3e)); const len = L - 2 * T; sk.scale.set(alongX ? len : 0.03, 0.1, alongX ? 0.03 : len); sk.position.set(alongX ? 0 : at, y0 + (k ? 0.08 : 0.19), alongX ? at : 0); if (!(front && k === 0)) grp.add(sk);
+    }
+    // a lampshade or two, where the layout doesn't light the room
+    if (!(lay.lights && lay.lights.length) && k === 0) { const ceil = floors > 1 ? WALL_H : Math.min(def.floors * WALL_H, WALL_H * 1.7), nx = Math.max(1, Math.min(3, Math.round(W / 6))), nz = Math.max(1, Math.min(2, Math.round(D / 7)));
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const x = -W / 2 + (i + 0.5) * W / nx, z = -D / 2 + (j + 0.5) * D / nz; const cord = new THREE.Mesh(unit, stdMat(0x2a2a2e)); cord.scale.set(0.02, 0.4, 0.02); cord.position.set(x, ceil - 0.32, z); grp.add(cord); const sh = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.2, 10, 1, true), stdMat(kind === 'works' ? 0x3a4a3a : 0xf2e2c0, { emissive: 0xffe0a0, emissiveIntensity: 0.5, side: THREE.DoubleSide })); sh.position.set(x, ceil - 0.6, z); grp.add(sh); }
+    }
+  }
 }
 /** Colliders for the furniture upstairs: they only block at their own storey (lo..h). */
 export function upperColliders(def) { return upperFurniture(def).filter((f) => f.solid).map((f) => ({ cx: f.x, cz: f.z, sx: f.sx * 0.92, sz: f.sz * 0.92, lo: f.k * WALL_H - 0.3, h: f.k * WALL_H + 2.3, furn: true })); }

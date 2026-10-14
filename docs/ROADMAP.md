@@ -146,5 +146,23 @@ Status: [ ] to do, [~] partly done, [x] done (see notes).
 125. [x] A freeze always gets explained: a background watchdog notes where the game was if it stops responding (shown when it recovers, or on the next start after a reload); a graphics-card reset (WebGL context lost) saves the town, says so and offers a reload, and the next start uses Auto quality; errors show as a red banner above every menu.
 126. [x] Lighter menus: no live background blur over the 3D view, simpler style rules; the slowdown guard now also steps in on High when it's dangerously slow (under ~7 fps), before the graphics driver gives up.
 127. [x] Round 6.2 (owner's report: "stopped responding after: input+ui", a second's freeze every two seconds, then a full freeze): the town simulation has a time budget (~45 ms a frame); when the computer can't keep up (4x speed, sleeping through the night in a big town) it does what fits instead of stalling to catch up. The freeze report now names the exact town system it was in, and any system call over 250 ms is logged (kept across a reload, shown on the next start and in the F8 report). Controller: ○ backs out of Options / Load / Multiplayer on the title screen.
-128. [~] Round 6.3 (owner: an old save freezes straight away in "town system population", controller on or off): every person's update is timed and anyone over 80 ms is written down (who, doing what, where); after a freeze in the townsfolk, the next session tells the watchdog who is being updated, so a repeat names them. Load Game has Export (download a save as a file) and Import (put a save file back into a free slot), so a save that freezes can be sent over and reproduced. Waiting on the owner's save / report.
+128. [x] Round 6.3 (owner: an old save freezes straight away in "town system population", controller on or off): every person's update is timed and anyone over 80 ms is written down (who, doing what, where); after a freeze in the townsfolk, the next session tells the watchdog who is being updated, so a repeat names them. Load Game has Export (download a save as a file) and Import (put a save file back into a free slot), so a save that freezes can be sent over and reproduced. Waiting on the owner's save / report.
+
+## Round 6.4 to 6.7 (owner's report: berry-bush loop, controller, performance, events, guns, windows)
+129. [x] The freeze found: moving a berry bush to a spot that was later built on (or couldn't be reached) looped for ever, about a fifth of a second each time. Now the spot is checked before digging and before planting (a clear tile next to it is used if it was taken), another villager tries after a failed go, and it gives up with a message after three.
+130. [x] Leisure crash fixed (an early bird with no park in town).
+131. [x] Controller: Chrome's zero-movement mouse events no longer flip the game back to mouse mode (which dropped held buttons and menu focus); when Windows shows the pad twice the one in use is followed; per-pad calibration; a note if the browser can't read a pad's layout.
+132. [x] The speed button cycles 1x > 2x > 4x > paused again; the PAUSED badge sits clear of the objective panel.
+133. [x] Train rides carry on in the planning view; passengers on trains and in the Lift aren't drawn on bikes through the roof.
+134. [x] Inside walls keep their windows (plain linings lost their window mask when merged); shops, cafés and pubs have long display windows right through the wall, goods on show inside.
+135. [x] No flicker along the foot of walls (the base slab was flush with the walls on 57 building types).
+136. [x] Events arrive and leave by the Lift and the roads: the ice-cream van (once a day, sells ice creams, not wherever Sam is), the car boot sale (on the plaza or a park, never the cricket pitch; Sam can rummage and buy).
+137. [x] Armed hold-ups play out: the gang walks up from the Lift (they no longer give up on the way), a lookout at the door, the alarm, a crowd at a safe distance, then a run for the Lift with the cash.
+138. [x] Guns: a red dot where the shot goes, the sights below the line of fire; no name tags over the sights; doors open by themselves in combat mode; shot townsfolk die, lie where they fell, are collected by the undertakers, have a funeral and a line in the parish register.
+139. [x] Windows break (shots, grenades), mended by the glazier a day later.
+140. [x] Curios rewritten: still hints, each with an ordinary explanation too.
+141. [x] Interiors dressed: pictures, posters, price boards, notice boards, safety signs, hymn boards and clocks between the windows; skirting boards; lampshades.
+142. [x] Memory: speech-bubble pictures are capped and freed; F8 lists the slowest sections of each slow frame.
+143. [ ] Destructible buildings (beyond windows).
+144. [ ] The easy mod option.
 
