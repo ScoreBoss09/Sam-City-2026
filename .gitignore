@@ -1,3 +1,4 @@
 textures/
 .claude/worktrees/
 __pycache__/
+tools/assets/node_modules/

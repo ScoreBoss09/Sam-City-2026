@@ -134,6 +134,10 @@ Every main key and controller button can be changed in Options → Controls (or 
 
 Shots leave the gun's barrel and land where the crosshair is; people are hit wherever the bullet meets them (head, body, arms, legs), with a ding for a headshot. Hold Tab (△ on a controller) for the weapon wheel; the armoury inside the police station has every gun. Crouch or go prone for a steadier aim. Bullets leave holes, grenades leave scorch marks, and holding a grenade shows exactly where it will go. Undertakers come with a hand cart for the dead, and bikes, tickets, cars and guns are all bought inside, at the counter. Buy a camera and a visiting celebrity will pose for a photo and sign it; they're kept in the Journal's album.
 
+## Making models
+
+New 3D models go through a check that keeps the game fast: drop `.glb` files into `assets/incoming/<kind>/` and run `node tools/assets/check.mjs`. It measures them against a budget for their kind, tidies them, cuts them down if they're too detailed, makes cheaper versions for distance and compresses them. The budgets and Blender export settings are in [docs/ASSETS.md](docs/ASSETS.md).
+
 ## Windows, guns and the parish register
 
 Shots that land where a window is shatter it (grenades blow out the windows round them); the glazier mends them a day later. Aiming puts a red dot exactly where the shot goes. Anyone shot dead stays where they fell until the undertakers come up the Lift for them, then there's a funeral, and the death is written in the parish register at the church.

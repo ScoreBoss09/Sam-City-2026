@@ -11,6 +11,7 @@ import { Watchdog } from './core/Watchdog.js';
 import { Glass } from './systems/Glass.js';
 import { Decals } from './systems/Decals.js';
 import { Photos } from './systems/Photos.js';
+import { ModelLib } from './render/ModelLib.js';
 // the town's systems: SIM_STEP run in every simulation round, SIM_FRAME once a frame (see Game.sys)
 const SIM_STEP = ['economy', 'logistics', 'population', 'resources', 'social', 'traffic', 'planner', 'raids', 'security', 'tech'];
 const SIM_FRAME = ['crime', 'hazards', 'happenings', 'transport', 'cars', 'rescue', 'carting', 'beerGarden', 'functionRoom', 'service', 'groundskeepers', 'lamps', 'markers', 'glass', 'decals', 'photos'];
@@ -82,7 +83,7 @@ export class Game {
   constructor(canvas, opts = {}) {
     this.canvas = canvas; this.flags = {}; this.mode = 'sim'; this.ending = false; this.fps = 60; this.glitch = 0; this.started = false; this.renderScale = opts.scale || 0.6;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-    this.watchdog = new Watchdog(this); this.glass = new Glass(this); this.decals = new Decals(this); this.photos = new Photos(this); Watchdog.watchContext(this, canvas);   // a freeze or a graphics-card reset always gets explained
+    this.watchdog = new Watchdog(this); this.glass = new Glass(this); this.decals = new Decals(this); this.photos = new Photos(this); this.models = new ModelLib(this);   // checked models (tools/assets/check.mjs) Watchdog.watchContext(this, canvas);   // a freeze or a graphics-card reset always gets explained
     this.post = new Post(this.renderer, { enabled: opts.post !== false });
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.3, 600);

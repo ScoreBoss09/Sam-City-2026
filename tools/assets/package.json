@@ -1,0 +1,15 @@
+{
+  "name": "samcity-asset-check",
+  "private": true,
+  "type": "module",
+  "description": "Checks and optimises 3D models (.glb) for Sam City: triangle and material budgets, distance versions (LODs), compression.",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "meshoptimizer": "^0.22.0"
+  }
+}
