@@ -1,1 +1,1 @@
-export const VERSION = 'Oct 2026, round 6.4 (berry-bush freeze fixed, steadier controller, real shop windows)';
+export const VERSION = 'Oct 2026, round 6.5 (events arrive by the Lift, hold-ups play out, red-dot aiming, deaths and funerals)';

@@ -3,6 +3,9 @@ import { pick } from '../util.js';
 import { Sfx } from '../core/Sfx.js';
 import { stdMat } from '../render/BuildingFactory.js';
 import { makeCarMesh } from '../render/Vehicles.js';
+import { SHOP_GOODS } from '../data/shopgoods.js';
+
+const TILE = 8;
 
 /**
  * Something is always going on: a random happening every couple of minutes (more often as the town grows).
@@ -23,7 +26,7 @@ export class Happenings {
   fire(kind) {
     const g = this.game, c = g.clock, h = c.hour, day = h >= 8 && h < 20, summer = c.month >= 4 && c.month <= 8, winter = c.month === 11 || c.month <= 1, age = g.tech ? g.tech.age : 2;
     const opts = [];
-    if (day && summer && age >= 3) opts.push(['icecream', 3]);
+    if (day && summer && age >= 3 && g.flags.iceDay !== c.totalDays) opts.push(['icecream', 1]);   // once a day at most
     const stage = (g.story && g.story.stage) || 0, days = c.totalDays || 0;
     const farm = g.buildings.list.find((b) => b.state === 'done' && ['farm', 'allotment', 'stables'].includes(b.id));
     // a slow burner: a quiet village at first; trouble and fuss come with a bigger town (and its problems)
@@ -49,15 +52,50 @@ export class Happenings {
   say(text, kind = 'info', toast = false) { const g = this.game; g.messages.push('Town news', text, kind === 'warn' ? kind : 'quiet'); if (toast) g.ui.toast(text, 3200); }   // town news goes in the log (the map icon is the notification)
   gather(p, r, n, emote) { for (const s of this.near(p.x, p.z, r).slice(0, n)) { const a = Math.random() * 6.28, d = 2.5 + Math.random() * 2.5; s.goTo({ x: p.x + Math.cos(a) * d, z: p.z + Math.sin(a) * d, face: Math.atan2(-Math.cos(a), -Math.sin(a)) }); if (emote) s.emote = { upper: emote, t: 3 }; } }
 
+  // ---------- coming and going: everything arrives up the Lift and leaves down it, along the roads ----------
+  /** The road from the Lift to p, as points (null if the Lift isn't there or no road reaches). */
+  roadFromLift(p) {
+    const g = this.game, L = g.lift, w = g.world; if (!L || !L.doorTile || !L.doorOut) return null;
+    const [tx, tz] = w.tileOf(p.x, p.z), path = w.findPath(L.doorTile.x, L.doorTile.z, tx, tz, true); if (!path) return null;
+    return [{ x: L.doorOut.x, z: L.doorOut.z }, ...path.map(([x, z]) => ({ x: (x + 0.5) * TILE, z: (z + 0.5) * TILE }))];
+  }
+  /** Move a vehicle along its path (true once it's there). */
+  drive(v, dt) {
+    const p = v.path[0]; if (!p) return true; const m = v.mesh, dx = p.x - m.position.x, dz = p.z - m.position.z, d = Math.hypot(dx, dz), step = v.speed * dt;
+    if (d > 0.1) { let da = Math.atan2(dx, dz) - m.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da)); m.rotation.y += da * Math.min(1, dt * 6); }
+    if (d <= step) { m.position.x = p.x; m.position.z = p.z; v.path.shift(); } else { m.position.x += dx / d * step; m.position.z += dz / d * step; }
+    return !v.path.length;
+  }
+  /** A street where people live (or by the park): where a van would stop. Not wherever Sam happens to be. */
+  /** Something Sam can do at a happening (buy an ice cream, rummage at a stall), while it lasts. */
+  offer(o) { (this.offers = this.offers || []).includes(o) || this.offers.push(o); }
+  withdraw(o) { if (this.offers) this.offers = this.offers.filter((q) => q !== o); }
+  street() {
+    const g = this.game, w = g.world, homes = g.buildings.list.filter((b) => b.state === 'done' && (b.def.cat === 'res' || b.def.park) && b.doorTile), out = [];
+    for (const b of homes) { const t = b.doorTile; if (w.inBounds(t.x, t.z) && w.road[w.idx(t.x, t.z)]) out.push({ x: (t.x + 0.5) * TILE, z: (t.z + 0.5) * TILE }); }
+    return out.length ? pick(out) : null;
+  }
   icecream() {
-    const g = this.game, p = this.spot(), van = new THREE.Group(); const b = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); m.castShadow = true; van.add(m); };
+    const g = this.game, p = this.street(); if (!p) return null; const route = this.roadFromLift(p); if (!route || route.length < 2) return null; g.flags.iceDay = g.clock.totalDays;
+    const van = new THREE.Group(); const b = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); m.castShadow = true; van.add(m); };
     b(2, 2.2, 4.4, 0xf4f0e8, 0, 1.4, 0); b(2.02, 0.4, 4.42, 0xe86aa0, 0, 0.6, 0); b(0.3, 0.9, 0.3, 0xf2d9a0, 0, 2.9, 1.2); b(0.5, 0.5, 0.5, 0xffb0c8, 0, 3.4, 1.2); b(1.9, 0.9, 0.05, 0x9fd8f0, 0, 1.9, 2.21);
+    b(0.05, 0.8, 1.6, 0x2a2a2a, 1.01, 1.7, -0.4);   // the serving hatch
     for (const [x, z] of [[-0.95, 1.4], [0.95, 1.4], [-0.95, -1.4], [0.95, -1.4]]) b(0.25, 0.6, 0.6, 0x111111, x, 0.3, z);
-    van.position.set(p.x + 2.2, 0, p.z); g.scene.add(van); this.say('🍦 The ice-cream van is here! Greensleeves and a 99 with a flake.'); this.mark(p, '🍦', 'Ice-cream van', 90);
-    this.gather(p, 35, 6, 'cheer'); let t = 0, ch = 0; const TUNE = [784, 880, 988, 1047, 988, 880, 784, 659];
-    let near = false; const chime = () => TUNE.forEach((f, i) => Sfx.tone(f, 0.24, { type: 'triangle', vol: 0.035, delay: i * 0.28 }));   // the chimes once when it pulls up and once when Sam walks up to it, not on a loop
-    if (g.mode === 'sim' && Math.hypot(g.player.x - p.x, g.player.z - p.z) < 40) chime();
-    return { update: (dt) => { t += dt; const n = g.mode === 'sim' && Math.hypot(g.player.x - p.x, g.player.z - p.z) < 18; if (ch > 0) ch -= dt; if (n && !near && ch <= 0) { chime(); ch = 40; } near = n; }, get done() { return t > 90; }, end: () => { g.scene.remove(van); for (const s of this.near(p.x, p.z, 12)) s.moodBoost += 0.05; } };
+    van.position.set(route[0].x, 0, route[0].z); g.scene.add(van);
+    const v = { mesh: van, path: route.slice(1), speed: 6 }, back = route.slice().reverse().slice(1);
+    const TUNE = [784, 880, 988, 1047, 988, 880, 784, 659], chime = (vol = 0.035) => TUNE.forEach((f, i) => Sfx.tone(f, 0.24, { type: 'triangle', vol, delay: i * 0.28 }));
+    const samD = () => (g.mode === 'sim' ? Math.hypot(g.player.x - van.position.x, g.player.z - van.position.z) : 1e9);
+    let stage = 'in', t = 0, heard = false, done = false;
+    const mk = this.mark(p, '🍦', 'Ice-cream van', 400, { get x() { return van.position.x; }, get z() { return van.position.z; } });   // the icon rides along with it
+    this.say('🍦 The ice-cream van is coming up from the Lift.');
+    const serve = { x: 0, z: 0, text: 'Buy an ice cream from the van', act: () => g.ui.openShop({ def: { id: 'icecream', name: 'The ice-cream van' } }, null, SHOP_GOODS.icecream) };
+    return { update: (dt) => { const gdt = dt * Math.max(0, g.clock.speed); if (!gdt) return;
+      if (!heard && samD() < 30) { heard = true; chime(0.03); }   // once, when it comes past Sam
+      if (stage === 'in') { if (this.drive(v, gdt)) { stage = 'serve'; t = 0; this.gather(p, 35, 6, 'cheer'); if (samD() < 45) chime(); } }
+      else if (stage === 'serve') { t += gdt; const s = Math.sin(van.rotation.y + Math.PI / 2), c = Math.cos(van.rotation.y + Math.PI / 2); serve.x = van.position.x + s * 1.6; serve.z = van.position.z + c * 1.6; this.offer(serve);   // the hatch side
+        if (t > 100) { stage = 'out'; v.path = back.slice(); this.withdraw(serve); for (const q of this.near(p.x, p.z, 12)) q.moodBoost += 0.05; } }
+      else if (stage === 'out' && this.drive(v, gdt)) done = true; },
+    get done() { return done; }, end: () => { g.scene.remove(van); this.withdraw(serve); if (mk) mk.until = 0; } };
   }
   pig() {
     const g = this.game, fb = g.buildings.list.find((b) => b.state === 'done' && ['farm', 'allotment', 'stables'].includes(b.id)); if (!fb) return null; g.flags.pigDay = g.clock.totalDays;
@@ -120,15 +158,40 @@ export class Happenings {
     let t = 0, ch = 0;
     return { update: (dt) => { t += dt; ch -= dt; if (ch <= 0) { ch = 2.5; const s = pick(this.near(p.x, p.z, 9)); if (s) { g.social.say(s, pick(['Pass the sausage rolls!', 'Who made the trifle? It\'s lethal.', 'Three cheers for... whoever organised this!', 'Is that Shakin\' Stevens on the radio?', 'Another bit of Battenberg?', 'Lovely do, this.']), 2.4); s.emote = { upper: pick(['cheer', 'dance', 'clap']), t: 2 }; } } }, get done() { return t > 140; }, end: () => g.scene.remove(grp) };
   }
-  // a car boot sale on a Sunday morning: hatchbacks with their boots open and pasting tables full of tat
+  /** Someone for a happening, standing right here (a stallholder getting out of their car, say). */
+  guest(x, z, look = {}) { const g = this.game, P = g.population.makePerson({ kind: 'visitor', gender: look.gender || (Math.random() < 0.5 ? 'm' : 'f') }); return g.population.spawnAt(x, z, { name: P.name, first: P.first, surname: P.surname, kind: 'guest', trait: 'cheerful', look: { ...P.look, ...look }, gender: P.gender, age: P.age }); }
+  // a car boot sale on a Sunday morning: the sellers drive up from the Lift, open their boots, set out pasting tables of tat,
+  // and pack up and drive off again at lunchtime. On the plaza or in a park (never the cricket pitch), or a quiet street.
   carboot() {
-    const g = this.game, park = g.buildings.list.find((b) => b.state === 'done' && b.def.park && b.def.w >= 3) || null, p = park ? { x: park.cx, z: park.cz } : this.spot(), grp = new THREE.Group();
-    const b = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); grp.add(m); };
-    for (let i = 0; i < 4; i++) { const x = (i - 1.5) * 3.2; const car = makeCarMesh(pick([0xc0392b, 0x2980b9, 0x7f8c8d, 0x27ae60, 0xecf0f1])); car.position.set(x, 0, -1.6); grp.add(car); b(1.8, 0.05, 0.7, 0xe8e2d0, x, 0.75, 1.0); for (let k = 0; k < 5; k++) b(0.25, 0.15 + (k % 3) * 0.1, 0.22, [0x8a6a4a, 0x2a2a2a, 0xd8342c, 0xf2c94c, 0x9a9a9a][k], x - 0.7 + k * 0.35, 0.85, 1.0); }
-    grp.position.set(p.x, 0, p.z); g.scene.add(grp);
-    this.say(`A car boot sale${park ? ` on the ${park.def.name}` : ''}! Old videos, a foot spa and a box of Readers' Digests.`); this.mark(p, '🧺', 'Car boot sale', 150); this.gather(p, 50, 12, null);
-    let t = 0, ch = 0;
-    return { update: (dt) => { t += dt; ch -= dt; if (ch <= 0) { ch = 3; const s = pick(this.near(p.x, p.z, 10)); if (s) g.social.say(s, pick(['How much for the foot spa?', 'Fifty pence? Go on then.', 'I\'ve got this exact toaster already.', 'Is the Betamax player working?', 'Two quid for the lot.', 'A Soda Stream! I\'ve always wanted one.']), 2.4); } }, get done() { return t > 150; }, end: () => g.scene.remove(grp) };
+    const g = this.game, site = ['plaza', 'park'].map((k) => g.buildings.list.find((b) => b.state === 'done' && b.def.park === k)).find(Boolean) || null;
+    const p = site ? { x: site.cx, z: site.cz } : this.street(); if (!p) return null; const route = this.roadFromLift(site && site.doorOut ? site.doorOut : p); if (!route) return null;
+    const rot = site ? site.rot * Math.PI / 2 : 0, cs = Math.cos(rot), sn = Math.sin(rot), at = (lx, lz) => ({ x: p.x + lx * cs + lz * sn, z: p.z - lx * sn + lz * cs });
+    const box = (grp, w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); grp.add(m); };
+    const cars = [0, 1, 2, 3].map((i) => {
+      const lx = (i - 1.5) * 3.2, slot = at(lx, -1.6), mesh = makeCarMesh(pick([0xc0392b, 0x2980b9, 0x7f8c8d, 0x27ae60, 0xecf0f1, 0x8e44ad])), stall = new THREE.Group();
+      box(stall, 1.8, 0.05, 0.7, 0xe8e2d0, 0, 0.75, 0); for (const x of [-0.8, 0.8]) box(stall, 0.05, 0.75, 0.6, 0x8a8a8a, x, 0.37, 0);
+      for (let k = 0; k < 5; k++) box(stall, 0.25, 0.15 + (k % 3) * 0.1, 0.22, [0x8a6a4a, 0x2a2a2a, 0xd8342c, 0xf2c94c, 0x9a9a9a][(k + i) % 5], -0.7 + k * 0.35, 0.85, 0);
+      const sp = at(lx, 1.0); stall.position.set(sp.x, 0, sp.z); stall.rotation.y = rot; stall.visible = false; g.scene.add(stall);
+      mesh.position.set(route[0].x, 0, route[0].z); mesh.visible = false; g.scene.add(mesh);
+      return { mesh, stall, slot, path: route.slice(1).concat([slot]), speed: 5, wait: i * 3, parked: false, seller: null, back: null, gone: false };
+    });
+    const mk = this.mark(p, '🧺', 'Car boot sale', 600); this.say(`🧺 A car boot sale${site ? ` on the ${site.def.name}` : ''} this morning! The sellers are on their way up the Lift.`);
+    const lines = ['How much for the foot spa?', 'Fifty pence? Go on then.', 'I\'ve got this exact toaster already.', 'Is the Betamax player working?', 'Two quid for the lot.', 'A Soda Stream! I\'ve always wanted one.'];
+    let stage = 'in', t = 0, ch = 0;
+    const shop = { x: p.x, z: p.z, text: 'Have a rummage at the car boot sale', act: () => { const c = cars.find((q) => q.seller && !q.seller.remove); g.ui.openShop({ def: { id: 'carboot', name: 'The car boot sale' } }, c && c.seller, SHOP_GOODS.carboot); } };
+    return { update: (dt) => { const gdt = dt * Math.max(0, g.clock.speed); if (!gdt) return; t += gdt;
+      for (const c of cars) {
+        if (c.gone) continue; if (c.wait > 0) { c.wait -= gdt; continue; } c.mesh.visible = true;
+        if (stage === 'in' && !c.parked && this.drive(c, gdt)) { c.parked = true; c.mesh.rotation.y = rot + Math.PI / 2; c.setT = 2.5; }
+        if (c.parked && c.setT > 0 && (c.setT -= gdt) <= 0) { c.stall.visible = true; const sp = at((cars.indexOf(c) - 1.5) * 3.2 + 1.1, 0.2); c.seller = this.guest(sp.x, sp.z); c.seller.faceGoal = rot; }   // out of the car, and the table comes out of the boot
+        if (stage === 'out' && c.back) { if (!c.pack) { const s = c.seller; if (!s || s.remove || Math.hypot(s.x - c.slot.x, s.z - c.slot.z) < 1.6 || (c.packT = (c.packT || 0) + gdt) > 10) { if (s && !s.remove) s.remove = true; c.stall.visible = false; c.pack = true; } else if (!s.path.length) s.goTo({ x: c.slot.x, z: c.slot.z }); } else if (this.drive({ mesh: c.mesh, path: c.back, speed: 5 }, gdt)) { c.gone = true; g.scene.remove(c.mesh); g.scene.remove(c.stall); } }
+      }
+      if (stage === 'in' && cars.every((c) => c.parked && c.stall.visible)) { stage = 'sale'; t = 0; this.gather(p, 50, 12, null); }
+      if (stage === 'sale') { const near = cars.some((c) => g.mode === 'sim' && Math.hypot(g.player.x - c.stall.position.x, g.player.z - c.stall.position.z) < 2.4); if (near) { const c = cars.reduce((a, q) => (Math.hypot(g.player.x - q.stall.position.x, g.player.z - q.stall.position.z) < Math.hypot(g.player.x - a.stall.position.x, g.player.z - a.stall.position.z) ? q : a)); shop.x = c.stall.position.x; shop.z = c.stall.position.z; this.offer(shop); } else this.withdraw(shop);
+        ch -= gdt; if (ch <= 0) { ch = 3; const s = pick(this.near(p.x, p.z, 10).filter((q) => q.kind !== 'guest')); if (s) g.social.say(s, pick(lines), 2.4); }
+        if (t > 260) { stage = 'out'; this.withdraw(shop); this.say('The car boot sale is packing up.'); for (const c of cars) c.back = [c.slot, ...route.slice().reverse()]; } }
+      if (t > 900 && stage !== 'out') { stage = 'out'; for (const c of cars) c.back = [...route.slice().reverse()]; }   // stuck somewhere: give up and go home
+    }, get done() { return cars.every((c) => c.gone); }, end: () => { this.withdraw(shop); for (const c of cars) { g.scene.remove(c.mesh); g.scene.remove(c.stall); if (c.seller && !c.seller.remove) c.seller.remove = true; } if (mk) mk.until = 0; } };
   }
   // a burst water main: a fountain in the middle of the road, and everyone stops to watch
   watermain() {
@@ -183,7 +246,7 @@ export class Happenings {
   }
   /** Things Sam can do with a happening (catch the pig). Called from Player.findTarget via Transport-style hook. */
   targets(P, consider) {
-    const h = this.target; if (h && Math.hypot(h.x - P.x, h.z - P.z) < 2.2) consider({ kind: 'act', text: h.text, act: h.act }, 0.1, undefined, undefined, [h.x, h.z]);
+    for (const h of [this.target, ...(this.offers || [])]) if (h && Math.hypot(h.x - P.x, h.z - P.z) < (h.r || 2.2)) consider({ kind: 'act', text: h.text, act: h.act }, 0.1, undefined, undefined, [h.x, h.z]);
     // a lottery winner walking home with the cheque: Sam could... (it's a crime, and people see)
     const g = this.game; for (const s of g.population.sims) if (s.winnings > 0 && !(s.down > 0) && Math.hypot(s.x - P.x, s.z - P.z) < 1.8) consider({ kind: 'act', text: `Rob ${s.first} of their lottery winnings (£${s.winnings})...`, act: () => this.samRobs(s) }, 0.6, undefined, undefined, [s.x, s.z]);
   }

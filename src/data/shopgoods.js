@@ -41,7 +41,8 @@ export const SHOP_GOODS = {
   video: [['a night\'s rental of Braveheart', 2.5, { mood: 0.05 }], ['Four Weddings and a Funeral (rental)', 2.5, { mood: 0.04 }], ['a big bag of Revels', 0.8, { hunger: -8 }]],
   poundshop: [['a pack of AA batteries', 1, {}], ['a lava lamp (sort of)', 1, { mood: 0.03 }], ['some own-brand cola', 1, { energy: 8 }]],
   supermarket: [['a weekly shop', 25, { inv: ['food', 6] }], ['a Pot Noodle', 0.6, { hunger: -25, note: 'The slag of all snacks.' }], ['a big bottle of Tizer', 0.9, { energy: 10 }]],
-  icecream: [['a 99 with a flake', 0.8, { hunger: -8, mood: 0.04 }], ['a Feast', 0.6, { hunger: -8 }]],
+  icecream: [['a 99 with a flake', 0.8, { hunger: -8, mood: 0.04 }], ['a Feast', 0.6, { hunger: -8 }], ['a Screwball (with the bubblegum at the bottom)', 0.5, { hunger: -6, mood: 0.03 }], ['a Mini Milk', 0.2, { hunger: -3 }]],
+  carboot: [['a foot spa (used once)', 1.5, { mood: 0.03, note: 'It hums. It may be haunted.' }], ['a box of old videos', 0.5, { mood: 0.03, note: 'Three of them are Jaws 3.' }], ['a Soda Stream', 3, { mood: 0.05, energy: 5 }], ['a stack of Reader\'s Digests', 0.2, { note: 'Increase Your Word Power, 1987.' }], ['a Betamax player (untested)', 2, { note: 'Nobody has Betamax tapes. That\'s not the point.' }], ['a home-made jam', 0.5, { inv: ['food', 1] }]],
 };
 /** Anything else that sells things gets a generic counter. */
 export const GENERIC_GOODS = [['a few bits and bobs', 2, { mood: 0.02 }]];

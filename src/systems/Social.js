@@ -122,6 +122,7 @@ export class Social {
     const g = this.game, cam = g.camera.position, godFar = g.mode === 'god' && g.god.dist > 85, p = g.player;
     // only the few nearest speakers show their bubble (a crowd all talking at once is just noise); none but the one Sam's talking to during a chat
     const talk = g.ui.dialogue && g.ui.dialogue.sim, near = g.population.sims.filter((s) => s.bubble && !s.remove && (!talk || s === talk)).map((s) => [s, (s.x - cam.x) ** 2 + (s.z - cam.z) ** 2]).filter(([, d]) => g.mode === 'god' || d < 900).sort((a, b) => a[1] - b[1]).slice(0, g.mode === 'god' ? 6 : 3), shown = new Set(near.map(([s]) => s));
+    const noTags = (g.combat && g.combat.on) || p.aiming;   // no name tags over the sights
     for (const s of g.population.sims) {
       const b = s.bubble; const vis = !s.mesh.visible || godFar;
       if (b) {
@@ -129,7 +130,7 @@ export class Social {
         else { const z = b.sprite.userData.size || { w: 3, h: 1 }; b.sprite.position.set(s.x, 2.55 + (s.sitting ? -0.35 : 0) + (z.h - 1) / 2, s.z); const sc = Math.min(1, b.t * 4, (b.dur - b.t) * 6 + 0.2) * closeK(b.sprite.position, cam); b.sprite.visible = sc > 0 && shown.has(s); b.sprite.scale.set(z.w * sc, z.h * sc, 1); }
       }
       // name tags near Sam
-      const near = g.mode === 'sim' && s.mesh.visible && Math.hypot(p.x - s.x, p.z - s.z) < 5.5 && !s.bubble && !s.sleeping;
+      const near = g.mode === 'sim' && !noTags && s.mesh.visible && Math.hypot(p.x - s.x, p.z - s.z) < 5.5 && !s.bubble && !s.sleeping;
       if (near && !s.tag) { s.tag = makeSprite(s.name, 'name'); s.tag.scale.set(s.tag.userData.size.w * 0.8, s.tag.userData.size.h * 0.8, 1); g.scene.add(s.tag); }
       if (s.tag) { if (near) { s.tag.position.set(s.x, 2.4 + (s.sitting ? -0.35 : 0), s.z); const k = 0.8 * closeK(s.tag.position, cam), z = s.tag.userData.size; s.tag.visible = k > 0; s.tag.scale.set(z.w * k, z.h * k, 1); } if (!near || s.remove) { g.scene.remove(s.tag); s.tag.material.dispose(); s.tag = null; } }
     }

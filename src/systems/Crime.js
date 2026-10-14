@@ -72,7 +72,7 @@ export class Crime {
       const b = pick(banks); g.flags.lastSerious = today;
       for (let i = 0; i < 3; i++) { const P = g.population.makePerson({ kind: 'visitor', gender: 'm' }), look = { ...P.look, shirt: 0x1a1a1a, pants: 0x1a1a22, hat: { type: 'beanie', color: 0x111111 }, facial: null };
         const s = g.population.spawnAtLift({ name: P.name, first: P.first, surname: P.surname, kind: 'visitor', trait: 'busy', look, gender: 'm', age: P.age });
-        s.crook = { type: 'robber', state: 'prowl', t: 0, repath: 0, loot: 0, items: null, seen: true, fixed: b, lead: i === 0 }; s.hp = 120; s.hurry = true; }
+        s.crook = { type: 'robber', state: 'prowl', t: 0, repath: 0, loot: 0, items: null, seen: true, fixed: b, lead: i === 0, lookout: i === 1 }; s.hp = 120; s.hurry = true; s.holding = 'pistol'; }
       this.stats.crimes++; if (g.markers) g.markers.add(b.cx, b.cz, '🔫', `Raid on the ${b.def.name}!`, 3600, null, () => g.population.sims.some((s) => s.crook && s.crook.fixed === b && !s.remove));
       g.messages.push('Police', `999! Three men in balaclavas are heading for the ${b.def.name}!`, 'warn'); g.ui.toast(`🚨 Armed robbery at the ${b.def.name}!`, 3500); Sfx.play('bell');
     } else if ((h >= 1 && h < 4)) {
@@ -117,7 +117,8 @@ export class Crime {
       const tp = c.target.sim || c.target.player ? (c.target.sim || g.player) : null;
       if (tp && Math.hypot(tp.x - s.x, tp.z - s.z) < 1.3) this.rob(s, tp);
       else if (c.target.b && (s.inside === c.target.b || (!s.path.length && Math.hypot(c.target.b.cx - s.x, c.target.b.cz - s.z) < c.target.b.def.w * 3))) { c.state = 'act'; c.t = 0; }
-      if (c.t > 90) this.flee(s);
+      if (c.t > (c.fixed ? 400 : 90)) this.flee(s);   // (a gang with a job to do keeps going till it gets there)
+    } else if (c.state === 'act' && c.type === 'robber') { this.holdUp(s, dt); return;
     } else if (c.state === 'act') {
       s.working = true; s.fightAnim = c.type === 'vandal' ? 'wave' : 'browse';
       if (c.type === 'robber') s.fightAnim = 'point';   // hands up, everybody
@@ -138,6 +139,24 @@ export class Crime {
         if (c.loot) g.messages.push('Police report', `A ${c.type} got away${c.loot ? ` with £${c.loot}` : ''}.${this.hasPolice() ? '' : ' A Watch House or Police Station would help.'}`, 'warn');
         s.remove = true;
       }
+    }
+  }
+  /** An armed hold-up, in plain sight: one of them keeps watch at the door with a gun while the others clear out the tills,
+   *  the alarm bell rings, a crowd gathers at a safe distance, then they run for the Lift with bags of cash. */
+  holdUp(s, dt) {
+    const g = this.game, c = s.crook, b = c.target.b, P = g.player, d = b.doorOut, a = b.rot * Math.PI / 2, ox = Math.sin(a), oz = Math.cos(a);
+    if (!c.started) { c.started = true; c.t = 0;
+      if (c.lookout) { s.goTo({ x: d.x + ox * 1.2, z: d.z + oz * 1.2, face: a }); }
+      if (c.lead) { g.messages.push('Police', `The ${b.def.name} is being held up at gunpoint!`, 'warn'); Sfx.play('bell');
+        for (const q of g.population.sims) { if (q === s || q.crook || q.inside || q.kind === 'guest' || q.activity === 'police' || q.pose === 'sleep' || q.down > 0 || q.fight) continue; const dd = Math.hypot(q.x - d.x, q.z - d.z); if (dd > 45 || dd < 3) continue;
+          const k = Math.random() * 1.6 - 0.8, r = 11 + Math.random() * 4; q.goTo({ x: d.x + Math.sin(a + k) * r, z: d.z + Math.cos(a + k) * r, face: a + k + Math.PI }); q.emote = { upper: 'point', t: 4 }; }   // everyone stops to watch, well back
+      } }
+    s.working = true; s.fightAnim = 'point';
+    if (c.lookout && !s.path.length && Math.random() < dt * 0.25 && s.mesh.visible) g.social.say(s, pick(['Nobody move!', 'Back! Get BACK!', 'Hurry up in there!', 'Don\'t be a hero, Sam.']), 1.8);
+    if (c.lead && (c.ring = (c.ring || 0) - dt) <= 0) { c.ring = 1.4; if (g.mode === 'sim' && Math.hypot(P.x - d.x, P.z - d.z) < 70) Sfx.play('bell'); }   // the alarm box over the door
+    if (c.t > 40) {
+      s.fightAnim = null; s.working = false; s.bag = true; const loot = c.lead ? 600 + Math.floor(Math.random() * 2400) : 0; if (loot) { c.loot = loot; g.economy.lose(loot, 'Theft'); }
+      if (c.lead) this.report(s, `The gang is out of the ${b.def.name} with £${loot} in bags, running for the Lift!`); this.flee(s);
     }
   }
   go(s, t) { if (t.b) s.goTo({ b: t.b, x: t.b.doorIn.x, z: t.b.doorIn.z }); else { const p = t.sim || this.game.player; s.goTo({ x: p.x, z: p.z }); } }
