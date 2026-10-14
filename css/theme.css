@@ -290,7 +290,7 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 #savename { width: 100%; margin-left: 10px; padding: 6px 10px; font: 600 14px var(--ui-font); border-radius: 8px; border: 1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.3); color: #fff; }
 
 /* sensitivity sliders in the Controls screen */
-.bind .sens { display: flex; align-items: center; gap: 10px; min-width: 210px; }
-.bind .sens input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+.bind > span.sens { display: flex; align-items: center; gap: 8px; flex: 0 0 min(300px, 58%); }
+.bind .sens input[type=range] { flex: 1; min-width: 50px; accent-color: var(--accent); cursor: pointer; }
 .bind .sens .keycap { min-width: 0; padding: 4px 10px; }
 .bind .sens output { min-width: 48px; text-align: right; font: 700 13px var(--ui-font); color: var(--accent); }

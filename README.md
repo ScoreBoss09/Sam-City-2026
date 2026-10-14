@@ -128,7 +128,11 @@ In the planning view Sam carries on by himself: he sleeps at night, eats when hu
 
 ## Controls and saves
 
-Every main key and controller button can be changed in Options → Controls (or the pause menu). Game speed on the keyboard: P pause, + faster, − slower. There are twelve named save slots; the game saves itself every minute and a half and keeps three autosave backups.
+Every main key and controller button can be changed in Options → Controls (or the pause menu), along with mouse and stick sensitivity (and while aiming) and invert up/down. Game speed on the keyboard: P pause, + faster, − slower. There are twelve named save slots; the game saves itself every minute and a half and keeps three autosave backups.
+
+## Combat
+
+Shots leave the gun's barrel and land where the crosshair is; people are hit wherever the bullet meets them (head, body, arms, legs), with a ding for a headshot. Hold Tab (△ on a controller) for the weapon wheel; the armoury inside the police station has every gun. Crouch or go prone for a steadier aim. Bullets leave holes, grenades leave scorch marks, and holding a grenade shows exactly where it will go. Undertakers come with a hand cart for the dead, and bikes, tickets, cars and guns are all bought inside, at the counter. Buy a camera and a visiting celebrity will pose for a photo and sign it; they're kept in the Journal's album.
 
 ## Windows, guns and the parish register
 
