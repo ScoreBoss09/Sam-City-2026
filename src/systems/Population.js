@@ -74,7 +74,7 @@ export class Population {
   }
   makeResident(opts = {}) {
     const g = this.game, P = this.makePerson(opts), s = this.spawnAtLift({ name: P.name, kind: opts.age != null && opts.age < 16 ? 'child' : 'resident', trait: pick(TRAITS), look: P.look, gender: P.gender, age: P.age, first: P.first, surname: P.surname, actor: Math.random() });
-    s.arrivalDay = g.clock.day; return s;
+    s.arrivalDay = g.clock.totalDays; return s;
   }
   arrive() {
     const g = this.game; if (this.sims.length >= this.simCap - 1) return null;

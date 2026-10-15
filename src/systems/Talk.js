@@ -10,6 +10,8 @@ import { STORIES, KIDS_F, KIDS_M } from '../data/stories.js';
 import { ROLE_TALK, PLACE_TALK, TRAIT_TALK, QUIRK_TALK, AGE_TALK, ADULT_TALK } from '../data/talk90s.js';
 import { TIME_TALK, DAY_TALK, WEATHER_TALK, SEASON_TALK, NEWS_TALK, GOSSIP_ABOUT, GOSSIP_QUIRK, GOSSIP_ROLE, RUNNING, REQUESTS, JOKES, KID_JOKES, ADULT_JOKES, SMALLTALK, KID_SMALLTALK } from '../data/talkworld.js';
 import { mulberry32, pick } from '../util.js';
+import { today as keyToday } from '../data/calendar.js';
+import { KEYDAY_TALK } from '../data/keydays.js';
 
 const hashStr = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 const OPENERS = Object.values(D.TRAIT_OPEN).flat().filter((o) => o);
@@ -239,7 +241,7 @@ export class Talk {
         const m = s.mood ?? 0, mk = m > 0.35 ? 'happy' : m > -0.05 ? 'content' : m > -0.4 ? 'fedup' : 'miserable'; text = this.pk(this.mix(D.MOOD[mk], A.MOOD[mk], s));
         const why = []; if (s.hunger > 65) why.push('hungry'); if (s.tired) why.push('tired'); if (!s.home && s.kind === 'resident') why.push('homeless');
         if (s.partner) why.push('partner'); else if (s.kind === 'resident' && s.friendCount && s.friendCount() === 0) why.push('lonely');
-        if (s.arrivalDay !== undefined && g.clock.day - s.arrivalDay < 2) why.push('newcomer'); if (g.raids && g.raids.count && g.raids.state !== 'idle') why.push('raid');
+        if (s.arrivalDay !== undefined && g.clock.totalDays - s.arrivalDay < 2) why.push('newcomer'); if (g.raids && g.raids.count && g.raids.state !== 'idle') why.push('raid');
         if (s.kind === 'resident' && s.age < 66) why.push(s.workplace ? 'work' : 'nowork');
         if (why.length) { const k = pick(why.slice(0, 2)); text += ' ' + this.fill(this.pk(this.mix(D.REASON[k], A.REASON[k], s)), s); }
       }
@@ -296,7 +298,7 @@ export class Talk {
       case 'age': {
         if (s.kind === 'visitor') return this.pk2(AGE_TALK.visitor);
         if (s.kind === 'child') return this.pk2(AGE_TALK.child);
-        const nw = s.arrivalDay !== undefined && g.clock.day - s.arrivalDay >= 0 && g.clock.day - s.arrivalDay < 2;
+        const nw = s.arrivalDay !== undefined && g.clock.totalDays - s.arrivalDay >= 0 && g.clock.totalDays - s.arrivalDay < 2;
         const L = nw && Math.random() < 0.6 ? AGE_TALK.newcomer : age < 20 ? AGE_TALK.teen : age >= 66 ? (Math.random() < 0.75 ? AGE_TALK.pensioner : ELDER_LINES) : AGE_TALK.adult;
         return this.pk2(L);
       }
@@ -326,6 +328,7 @@ export class Talk {
     else if (c.month >= 5 && c.month <= 7 && h > 9 && h < 19) wk = 'sunny';
     else if (c.month === 11 || c.month <= 1) wk = 'cold';
     if (wk && WEATHER_TALK[wk]) opts.push([WEATHER_TALK[wk], wk === 'sunny' || wk === 'cold' ? 1 : 2.5]);
+    { const t = keyToday(c); if (t && KEYDAY_TALK[t.name]) opts.push([KEYDAY_TALK[t.name], t.sam ? (s.samRel || 0) >= 8 ? 9 : 3 : 4]); }   // the day itself comes up first (and his friends don't forget Sam's birthday)
     if (kid) { opts.push([KID_SMALLTALK, 2]); return this.pk2(weighted(opts)) || this.pk2(KID_SMALLTALK); }
     const tk = h >= 22 || h < 5 ? 'late' : h < 8 ? 'early' : h < 12 ? 'morning' : h < 14 ? 'lunch' : h < 17 ? 'afternoon' : 'evening';
     const sk = c.month >= 2 && c.month <= 4 ? 'spring' : c.month <= 7 && c.month >= 5 ? 'summer' : c.month >= 8 && c.month <= 10 ? 'autumn' : 'winter';
@@ -351,7 +354,7 @@ export class Talk {
     const rl = adults.filter((q) => q.role && q.workplace && GOSSIP_ROLE[q.role]); if (rl.length) { const q = pick(rl); opts.push([GOSSIP_ROLE[q.role], { a: q.first, bld: q.workplace.def.name }, 2]); }
     const kids = res.filter((q) => q.kind === 'child'); if (kids.length) opts.push([GOSSIP_ABOUT.child, { a: pick(kids).first }, 0.6]);
     const olds = adults.filter((q) => q.age >= 66); if (olds.length) opts.push([GOSSIP_ABOUT.old, { a: pick(olds).first }, 0.7]);
-    const nw = adults.filter((q) => q.arrivalDay !== undefined && g.clock.day - q.arrivalDay >= 0 && g.clock.day - q.arrivalDay < 3); if (nw.length) opts.push([GOSSIP_ABOUT.newcomer, { a: pick(nw).first }, 1.2]);
+    const nw = adults.filter((q) => q.arrivalDay !== undefined && g.clock.totalDays - q.arrivalDay >= 0 && g.clock.totalDays - q.arrivalDay < 3); if (nw.length) opts.push([GOSSIP_ABOUT.newcomer, { a: pick(nw).first }, 1.2]);
     const jl = adults.filter((q) => P.canWork(q) && !q.workplace); if (jl.length) opts.push([GOSSIP_ABOUT.jobless, { a: pick(jl).first }, 0.5]);
     const dr = adults.filter((q) => q.drunk > 0.4); if (dr.length) opts.push([GOSSIP_ABOUT.drunk, { a: pick(dr).first }, 0.8]);
     const hl = adults.filter((q) => q.homeless); if (hl.length) opts.push([GOSSIP_ABOUT.homeless, { a: pick(hl).first }, 0.8]);
@@ -426,7 +429,7 @@ export class Talk {
     const g = this.game, P = g.population, res = P.residents().filter((q) => q !== s && !q.remove), opts = [];
     const couple = res.find((q) => q.partner && q.partner !== s && Math.random() < 0.5); if (couple) opts.push(['couple', { a: couple.first, b: couple.partner.first }]);
     const fr = res.find((q) => [...q.rel.entries()].some(([id, v]) => v >= 35)); if (fr) { const id = [...fr.rel.entries()].find(([, v]) => v >= 35)[0], o = P.sims.find((q) => q.id === id); if (o && o !== s) opts.push(['friends', { a: fr.first, b: o.first }]); }
-    const newest = res.filter((q) => q.arrivalDay !== undefined).sort((a, b) => b.arrivalDay - a.arrivalDay)[0]; if (newest && g.clock.day - newest.arrivalDay < 3) opts.push(['newcomer', { a: newest.first }]);
+    const newest = res.filter((q) => q.arrivalDay !== undefined).sort((a, b) => b.arrivalDay - a.arrivalDay)[0]; if (newest && g.clock.totalDays - newest.arrivalDay < 3) opts.push(['newcomer', { a: newest.first }]);
     const hungry = res.find((q) => q.hunger > 80); if (hungry) opts.push(['hungry', { a: hungry.first }]);
     const recent = (g.flags.recent || []).filter((r) => g.clock.totalDays - r.day <= 4); if (recent.length) { const r = recent[Math.floor(Math.random() * recent.length)]; opts.push(['recent', r], ['recent', r]); }
     if (g.economy.stock.food < Math.max(3, P.count() * 0.5) && P.count() > 2) opts.push(['noFood', {}], ['noFood', {}]);

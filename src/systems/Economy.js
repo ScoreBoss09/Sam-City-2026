@@ -4,16 +4,16 @@ const TIER_ORDER = TIERS.map((t) => t[0]);
 import { START_FUNDS } from '../config.js';
 import { Emitter } from '../util.js';
 
-/** Rates a head each month. Change them once there's a Town Hall and a Bank; higher rates sour the mood. */
+/** Rates a head each week. Change them once there's a Town Hall and a Bank; higher rates sour the mood. */
 export const RATES = [
   { name: 'Low', per: 10, mood: 0.08, note: 'Low rates: people are a little happier, and the town takes in less.' },
   { name: 'Normal', per: 14, mood: 0, note: 'The usual rates. Nobody notices.' },
   { name: 'High', per: 20, mood: -0.08, note: 'High rates: grumbling in the pub and letters to the paper.' },
   { name: 'Steep', per: 28, mood: -0.2, note: 'Steep rates: people are properly fed up. Expect protests and the odd drunk.' },
 ];
-export const LOANS = { sizes: [2000, 5000, 10000], months: 12, rate: 0.015 };
+export const LOANS = { sizes: [2000, 5000, 10000], months: 12, rate: 0.015 };   // (months: weekly repayments, twelve of them)
 
-/** Funds, material/food stock, permits, trade and monthly accounts. */
+/** Funds, material/food stock, permits, trade and the weekly accounts (every Monday). */
 export class Economy extends Emitter {
   constructor(game) {
     super(); this.game = game; this.funds = START_FUNDS; this.stock = { timber: 0, stone: 0, brick: 0, steel: 0, glass: 0, food: 0 };
@@ -35,7 +35,7 @@ export class Economy extends Emitter {
     g.mail.send('The Council', `New permits: ${names.join(', ')}`, `Dear Sam,\n\nWith ${pop} souls now calling Sam City home, the Council is pleased to accept permit forms for the following:\n\n${fresh.map((id) => `• ${BUILDINGS[id].name} (£${BUILDINGS[id].permit.cost}): ${BUILDINGS[id].blurb}`).join('\n')}\n\nForms are in the Postbox as usual.\n\nYours,\nThe Council`);
     g.ui.refreshSub && g.ui.refreshSub();
   }
-  // every pound in and out goes in this month's ledger under a heading, so the accounts can say where the money went
+  // every pound in and out goes in this week's ledger under a heading, so the accounts can say where the money went
   book(cat, n) { if (!n) return; const L = this.ledger || (this.ledger = {}); L[cat] = (L[cat] || 0) + n; }
   spend(n, cat = 'Other spending') { if (this.funds < n) return false; this.funds -= n; this.book(cat, -n); return true; }
   earn(n, cat = 'Other income') { this.funds += n; this.book(cat, n); }
@@ -117,7 +117,7 @@ export class Economy extends Emitter {
   canBorrow() { return this.canSetRates(); }
   maxLoan() { return Math.max(2000, Math.round(this.game.population.count() * 150 / 1000) * 1000); }
   get rateMood() { return RATES[this.rate].mood; }
-  /** What each kind of building brings in or costs a month, as things stand now. */
+  /** What each kind of building brings in or costs a week, as things stand now. */
   perBuilding() {
     const g = this.game, out = {}, per = RATES[this.rate].per;
     for (const b of g.buildings.list) {
@@ -150,13 +150,13 @@ export class Economy extends Emitter {
     for (const [n, v] of Object.entries(takings)) this.earn(v, 'Takings: ' + n);
     { const ads = g.buildings.list.filter((b) => b.state === 'done' && b.def.rent).reduce((a, b) => a + b.def.rent, 0); if (ads) this.earn(ads, 'Advertising (billboards)'); }
     this.lose(upkeep, 'Building upkeep'); this.lose(g.population.employed() * 2, 'Wages (council share)');
-    // close the books: everything that came in and went out this month, biggest first
+    // close the books: everything that came in and went out this week, biggest first
     const L = this.ledger || {}, lines = Object.entries(L).map(([k, v]) => [k, Math.round(v)]).filter(([, v]) => v).sort((a, b) => b[1] - a[1]); this.ledger = {};
     const income = lines.filter(([, v]) => v > 0).reduce((a, [, v]) => a + v, 0), cost = -lines.filter(([, v]) => v < 0).reduce((a, [, v]) => a + v, 0), net = income - cost;
     this.lastReport = { income, cost, net, lines };
     const pad = (v) => (v >= 0 ? '+' : '-') + '£' + Math.abs(v);
-    g.messages.push('Treasury', `Monthly accounts: in £${income}, out £${cost}, net ${pad(net)}.`, net >= 0 ? 'good' : 'warn');
-    g.mail.send('The Treasury', 'Monthly accounts', `MONEY IN\n${lines.filter(([, v]) => v > 0).map(([k, v]) => `  ${k}: £${v}`).join('\n') || '  nothing'}\n\nMONEY OUT\n${lines.filter(([, v]) => v < 0).map(([k, v]) => `  ${k}: £${-v}`).join('\n') || '  nothing'}\n\nNet for the month: ${pad(net)}\nFunds now: £${Math.round(this.funds)}\nStockyard: ${Object.entries(this.stock).map(([m, n]) => `${Math.floor(n)} ${m}`).join(', ')}`, { kind: 'report' });
+    g.messages.push('Treasury', `Weekly accounts: in £${income}, out £${cost}, net ${pad(net)}.`, net >= 0 ? 'good' : 'warn');
+    g.mail.send('The Treasury', 'Weekly accounts', `MONEY IN\n${lines.filter(([, v]) => v > 0).map(([k, v]) => `  ${k}: £${v}`).join('\n') || '  nothing'}\n\nMONEY OUT\n${lines.filter(([, v]) => v < 0).map(([k, v]) => `  ${k}: £${-v}`).join('\n') || '  nothing'}\n\nNet for the month: ${pad(net)}\nFunds now: £${Math.round(this.funds)}\nStockyard: ${Object.entries(this.stock).map(([m, n]) => `${Math.floor(n)} ${m}`).join(', ')}`, { kind: 'report' });
   }
   serialize() { const stock = { ...this.stock }; for (const c of (this.game.carting && this.game.carting.carts) || []) if (c.stage !== 'home') for (const [m, n] of Object.entries(c.load)) stock[m] = (stock[m] || 0) + n;   // goods out on a cart go back in the yard
     return { market: this.market, funds: this.funds, stock, permits: this.permits, revealed: [...this.revealed], tier: this.lastTier, rate: this.rate, loan: this.loan, day: this.day, days: this.days, dayNo: this.dayNo }; }

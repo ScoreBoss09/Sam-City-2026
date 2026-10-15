@@ -294,3 +294,16 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 .bind .sens input[type=range] { flex: 1; min-width: 50px; accent-color: var(--accent); cursor: pointer; }
 .bind .sens .keycap { min-width: 0; padding: 4px 10px; }
 .bind .sens output { min-width: 48px; text-align: right; font: 700 13px var(--ui-font); color: var(--accent); }
+
+/* the date: today's special day (or the next one this week) under the clock, and the Journal's calendar */
+#c-special { font: 600 12px var(--ui-body, sans-serif); color: var(--muted); letter-spacing: .02em; min-height: 0; }
+#c-special:empty { display: none; }
+#c-special.today { color: var(--accent, #ffd23f); }
+.jcal { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.jcal .kd { display: grid; grid-template-columns: 28px 1fr; column-gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line-2); border-radius: var(--r-sm, 6px); background: rgba(255,255,255,.03); }
+.jcal .kd span { grid-row: span 2; font-size: 20px; text-align: center; }
+.jcal .kd em { font-style: normal; color: var(--muted); font-size: 12px; }
+.jcal .kd.today, .jcal .kd.sam { border-color: var(--accent, #ffd23f); }
+
+/* the title: SAM CITY with the year beside it */
+#title h1 .yr { font-size: .5em; letter-spacing: .12em; vertical-align: .35em; margin-left: .25em; padding: .08em .35em; border: 2px solid currentColor; border-radius: 6px; opacity: .9; }

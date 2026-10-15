@@ -28,4 +28,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest SamCity-playable.zip --title "Sam City (latest playable build)" --notes "Unzip into a NEW folder, close any old Sam City window, then double-click play.bat (Windows) or run play.sh (Mac/Linux). It needs Node.js (nodejs.org) or Python installed; don't open index.html directly. The title screen shows the version date, so you can check you have the newest one."
+          gh release create latest SamCity-playable.zip --title "Sam City 1995 (latest playable build)" --notes "Unzip into a NEW folder, close any old Sam City 1995 window, then double-click play.bat (Windows) or run play.sh (Mac/Linux). It needs Node.js (nodejs.org) or Python installed; don't open index.html directly. The title screen shows the version date, so you can check you have the newest one."

@@ -11,8 +11,8 @@ export const DAWN = 6, DUSK = 20;
 export const DAY_SECONDS = DAYLIGHT_SECONDS + NIGHT_SECONDS;   // a whole day
 export const START_FUNDS = 2500;
 export const START_HOUR = 9;
-export const START_MONTH = 4;     // 0-based (4 = May)
-export const START_YEAR = 1996;     // mid-90s England: Euro 96, Britpop, the Spice Girls, Pogs
-export const DAYS_PER_MONTH = 8;   // short months so the seasons come round in a play session
+export const START_MONTH = 3;     // 0-based (3 = April)
+export const START_DAY = 3;       // Monday 3rd April 1995: Easter and Sam's birthday come in the first three weeks
+export const START_YEAR = 1995;   // mid-90s England: Britpop, Blur against Oasis, Pogs, the National Lottery (the calendar is the real one: src/data/calendar.js)
 export const MAX_SIMS_HARD = 100000;  // no real ceiling: the performance governor (Population) only caps the town when frame rate drops
 export const MIN_SIMS = 10;

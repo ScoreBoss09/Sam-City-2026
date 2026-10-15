@@ -517,7 +517,7 @@ export const BUILDINGS = {
   billboard: {
     name: 'Billboard', cat: 'park', w: 1, d: 1, floors: 0, park: 'billboard', joy: 0, needsRoad: false,
     mat: { timber: 2, steel: 1 }, work: 6, permit: { cost: 60, pop: 8 }, tab: 'Parks',
-    blurb: 'A big poster hoarding. Advertisers pay rent (a few quid a month), and the posters change every few days.', income: 0, rent: 12,
+    blurb: 'A big poster hoarding. Advertisers pay rent (a few quid a week), and the posters change every few days.', income: 0, rent: 12,
   },
   phonebox: {
     name: 'Phone Box', cat: 'park', w: 1, d: 1, floors: 0, park: 'phonebox', joy: 0.01,

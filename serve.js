@@ -1,4 +1,4 @@
-// Tiny web server for Sam City using Node.js (no extra packages needed), for computers without Python.
+// Tiny web server for Sam City 1995 using Node.js (no extra packages needed), for computers without Python.
 // Same job as serve.py: serve the game folder without caching, find a free port, open the browser.
 const http = require('http'), fs = require('fs'), path = require('path'), { exec } = require('child_process');
 const root = __dirname, start = +(process.argv.slice(2).find((a) => /^\d+$/.test(a)) || 8123), lan = process.argv.includes('--lan'), host = lan ? '0.0.0.0' : '127.0.0.1';
@@ -16,7 +16,7 @@ let port = start;
 server.on('error', (e) => { if (e.code === 'EADDRINUSE' && port < start + 20) { port++; server.listen(port, host); } else { console.log('Could not start: ' + e.message); } });
 server.on('listening', () => {
   const url = `http://localhost:${port}/index.html?v=${Math.floor(fs.statSync(path.join(root, 'index.html')).mtimeMs / 1000)}`;
-  console.log(`Sam City running at ${url}  (close this window to stop)`);
+  console.log(`Sam City 1995 running at ${url}  (close this window to stop)`);
   if (lan) { const ips = Object.values(require('os').networkInterfaces()).flat().filter((i) => i && i.family === 'IPv4' && !i.internal).map((i) => i.address); console.log(`Multiplayer: friends on your network open http://${ips[0] || 'YOUR-IP'}:${port}/index.html and join with your code.`); }
   if (!process.argv.includes('--no-browser')) { const cmd = process.platform === 'win32' ? `start "" "${url}"` : process.platform === 'darwin' ? `open "${url}"` : `xdg-open "${url}"`; exec(cmd); }
 });

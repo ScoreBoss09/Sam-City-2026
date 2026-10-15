@@ -47,7 +47,7 @@ export const hasSave = () => cache.has(idOf(slot));
 export const clearSave = (n = slot) => { const id = idOf(n); cache.delete(id); delete meta[id]; saveMeta(); tx('readwrite', (st) => st.delete(id)); try { localStorage.removeItem(keyOf(n)); } catch (e) { /* private mode */ } };
 /** A save as text (to download and send), and putting one back into a slot. */
 export const exportSlot = (n) => cache.get(idOf(n)) || null;
-export function importSlot(n, text, name) { const d = JSON.parse(text); if (!d || !d.sims || !d.economy) throw new Error('That file isn\'t a Sam City save.'); const s = JSON.stringify(d), id = idOf(n); cache.set(id, s); meta[id] = metaOf(s, name || 'Imported town'); saveMeta(); put(id, s); return d; }
+export function importSlot(n, text, name) { const d = JSON.parse(text); if (!d || !d.sims || !d.economy) throw new Error('That file isn\'t a Sam City 1995 save.'); const s = JSON.stringify(d), id = idOf(n); cache.set(id, s); meta[id] = metaOf(s, name || 'Imported town'); saveMeta(); put(id, s); return d; }
 /** Write the town to slot n (default: this game's slot). Returns false if it can't be saved right now. */
 function writeTo(g, n, name, auto) {
   if (g.demoMode || g.ending || !g.started || g.netVisitor) return false;

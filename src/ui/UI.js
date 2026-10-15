@@ -8,6 +8,7 @@ import { BUILDINGS, MATERIALS, ROLES, TOOL_MENUS, ALL_BUILDABLE, tierOf } from '
 import { OBJECTIVES, stepProgress } from '../data/story.js';
 import { fmtMoney } from '../util.js';
 import { MONTHS, DAYS } from '../core/Clock.js';
+import { today as keyToday, upcoming, dateText, MONTH_NAMES } from '../data/calendar.js';
 import { TOOLS as TOOL_NAMES, TOOL_ICON, MAT_ICON, BACKPACK } from '../player/Player.js';
 import { Sfx } from '../core/Sfx.js';
 import { PAD_NAMES } from '../core/Bindings.js';
@@ -41,7 +42,7 @@ export class UI {
     this.refreshTools(); this.renderObjectives();
   }
   /** A window is open (talking, the post, the backpack, the journal, the how-to card): worked out fresh each time so it can't get stuck. */
-  get modalOpen() { return !!((this.pause && this.pause.open) || this.perfOpen || (this.plan && this.plan.open) || this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
+  get modalOpen() { return !!((this.pause && this.pause.open) || this.perfOpen || (this.game.minimap && this.game.minimap.big) || (this.plan && this.plan.open) || this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
   set modalOpen(v) { /* derived; kept so old callers stay harmless */ }
   get mouseOverCanvas() { return this.game.input.overCanvas !== false; }
   /** Something broke: say so on screen (once in a while) instead of silently freezing. */
@@ -289,6 +290,7 @@ export class UI {
     const best = g.workgame.best || 0;
     $('journal').innerHTML = `<h2><span>SAM'S JOURNAL</span><button data-j="close" class="xbtn" title="Close">✕</button></h2>
       <div class="jstats"><div><b>${g.clock.totalDays}</b><span>days on the island</span></div><div><b>${g.buildings.list.filter((b) => b.state === 'done' && !b.def.special).length}</b><span>buildings finished</span></div><div><b>${f.gathered || 0}</b><span>things gathered</span></div><div><b>${best}</b><span>best gold chain</span></div><div><b>${f.favours || 0}</b><span>favours done</span></div><div><b>${f.cooked || 0}</b><span>campfire meals</span></div></div>
+      <div class="jsec">Calendar: ${dateText(g.clock, true)}</div><div class="jcal">${(() => { const t = keyToday(g.clock); return (t ? `<div class="kd today"><span>${t.icon}</span><b>Today: ${t.name}</b></div>` : '') + upcoming(g.clock, 7).filter((k) => k.inDays > 0).map((k) => `<div class="kd${k.sam ? ' sam' : ''}"><span>${k.icon}</span><b>${k.name}</b><em>${DAYS[(new Date(Date.UTC(k.year, k.m, k.d)).getUTCDay() + 6) % 7]} ${k.d} ${MONTHS[k.m]}${k.year !== g.clock.year ? ' ' + k.year : ''} · ${k.inDays === 1 ? 'tomorrow' : `in ${k.inDays} days`}</em></div>`).join(''); })()}</div>
       <div class="jsec">Skills (practice makes perfect)</div><div class="jsk">${Object.entries(SKILLS).map(([k, d]) => `<div class="sk"><span class="ic">${d.icon}</span><b>${d.name}</b><em>Lv ${g.skills.level(k)} · ${g.skills.title(k)}</em><i><u style="width:${Math.round(g.skills.frac(k) * 100)}%"></u></i></div>`).join('')}</div>
       <div class="jsec">Friends (${friends.length})${acq ? ` · ${acq} acquaintances` : ''}</div><div class="jfr">${friends.length ? friends.join(', ') : 'Nobody yet. Talk to people, do them favours.'}</div>
       ${(() => { const A = f.asks || {}, rows = Object.entries(A).filter(([, L]) => L.length).sort((a, b) => b[1].length - a[1].length); return `<div class="jsec">What people have asked for (${rows.length})</div><div class="jfr">${rows.length ? rows.map(([id, L]) => `<b>${(BUILDINGS[id] || { name: id }).name}</b> ×${L.length} <small>(${L.map((i) => (P.sims.find((s) => s.id === i) || {}).first).filter(Boolean).slice(0, 4).join(', ')})</small>`).join(' · ') : 'Nobody\'s asked for anything yet. Talk to people.'}</div>`; })()}
@@ -371,11 +373,11 @@ export class UI {
       body = `<table><tr><td>Funds</td><td>${fmtMoney(e.funds)}</td></tr><tr><td>Residents</td><td>${P.count()}</td></tr><tr><td>Buildings</td><td>${g.buildings.list.filter((b) => b.state === 'done').length} (+${g.buildings.list.filter((b) => b.state === 'site').length} under construction)</td></tr>
         <tr><td>Age</td><td>${g.tech.status().name}${g.tech.era < 2 ? ` · research ${g.tech.status().research}/${g.tech.status().need} for computers${g.tech.era < 1 ? ' (needs power too)' : ''}` : ''}</td></tr><tr><td>Power</td><td>${g.buildings.count('power') ? 'ONLINE' : 'none'}</td></tr><tr><td>Water</td><td>${g.buildings.count('water') ? 'ONLINE' : 'none'}</td></tr>
         <tr><td>Last month</td><td>${r ? `income ${fmtMoney(r.income)} · costs ${fmtMoney(r.cost)} · net ${fmtMoney(r.net)}` : 'no report yet'}</td></tr></table>`;
-      // where the money comes from and where it goes: this month so far, and last month in full
+      // where the money comes from and where it goes: this week so far, and last week in full
       const rows = (lines) => lines.map(([k, v]) => `<tr><td>${k}</td><td class="${v < 0 ? 'bad' : 'ok'}">${v < 0 ? '−' : '+'}${fmtMoney(Math.abs(v))}</td></tr>`).join('');
       const now = Object.entries(e.ledger || {}).map(([k, v]) => [k, Math.round(v)]).filter(([, v]) => v).sort((a, b) => b[1] - a[1]);
-      body += `<h3>This month so far</h3>${now.length ? `<table>${rows(now)}</table>` : '<div class="note">Nothing yet.</div>'}`;
-      if (r && r.lines) body += `<h3>Last month in full</h3><table>${rows(r.lines)}<tr><td><b>Net</b></td><td class="${r.net < 0 ? 'bad' : 'ok'}"><b>${r.net < 0 ? '−' : '+'}${fmtMoney(Math.abs(r.net))}</b></td></tr></table>`;
+      body += `<h3>This week so far</h3>${now.length ? `<table>${rows(now)}</table>` : '<div class="note">Nothing yet.</div>'}`;
+      if (r && r.lines) body += `<h3>Last week in full</h3><table>${rows(r.lines)}<tr><td><b>Net</b></td><td class="${r.net < 0 ? 'bad' : 'ok'}"><b>${r.net < 0 ? '−' : '+'}${fmtMoney(Math.abs(r.net))}</b></td></tr></table>`;
       body += '';
       body += perDayTable(e);
     } else if (tab === 'money') {
@@ -466,8 +468,11 @@ export class UI {
     { const pp = $('pausedpill'), on = g.started && !g.ending && g.clock.speed === 0 && !this.modalOpen && !(g.introScene && g.introScene.live); if (pp && pp.classList.contains('hidden') === on) pp.classList.toggle('hidden', !on); }   // paused: say so, plainly, until it isn't
     this.acc += dt; if (this.acc < 0.25) return; this.acc = 0;
     const c = g.clock, P = g.population;
-    $('h-pop').textContent = P.count().toLocaleString(); $('h-funds').textContent = fmtMoney(g.economy.funds); $('h-month').textContent = MONTHS[c.month]; $('h-year').textContent = c.year; $('h-sims').textContent = `${P.sims.filter((s) => !s.hidden).length}${P.simCap < 100000 ? "/" + P.simCap : ""}`;
-    $('c-date').textContent = `${DAYS[c.weekday]} · ${MONTHS[c.month]} ${c.year}${this.game.seasons ? ' · ' + ({ Winter: '❄', Spring: '🌸', Summer: '☀', Autumn: '🍂' })[this.game.seasons.season] : ''}`; $('c-time').textContent = c.hhmm;
+    $('h-pop').textContent = P.count().toLocaleString(); $('h-funds').textContent = fmtMoney(g.economy.funds); $('h-month').textContent = `${c.day} ${MONTHS[c.month]}`; $('h-year').textContent = c.year; $('h-sims').textContent = `${P.sims.filter((s) => !s.hidden).length}${P.simCap < 100000 ? "/" + P.simCap : ""}`;
+    $('c-date').textContent = `${DAYS[c.weekday]} ${c.day} ${MONTHS[c.month]} ${c.year}${this.game.seasons ? ' · ' + ({ Winter: '❄', Spring: '🌸', Summer: '☀', Autumn: '🍂' })[this.game.seasons.season] : ''}`;
+    { const dk = c.year * 400 + c.month * 32 + c.day; if (this._calK !== dk) { this._calK = dk; const t = keyToday(c), nx = upcoming(c, 4).filter((k) => k.inDays > 0), soon = nx.find((k) => k.inDays <= 7), el = $('c-special');   // today's special day, or the next one this week
+      el.textContent = t ? `${t.icon} ${t.name}` : soon ? `${soon.icon} ${soon.name} ${soon.inDays === 1 ? 'tomorrow' : `in ${soon.inDays} days`}` : ''; el.classList.toggle('today', !!t);
+      $('c-date').title = `${dateText(c, true)}\nComing up: ${nx.map((k) => `${k.name} (${k.d} ${MONTH_NAMES[k.m]}${k.inDays === 1 ? ', tomorrow' : `, in ${k.inDays} days`})`).join('; ')}`; } } $('c-time').textContent = c.hhmm;
     for (const b of $('c-speed').children) b.classList.toggle('on', +b.dataset.s === c.speed);
     $('stock').innerHTML = Object.keys(MATERIALS).map((m) => { const r = g.economy.perDay(m).yesterday, u = g.economy.perDay(m, 'used').yesterday, net = Math.round(r - u); return `<div title="Yesterday: +${Math.round(r)} gathered or made, −${Math.round(u)} used"><span>${MATERIALS[m].name}</span> <b>${Math.floor(g.economy.stock[m])}</b>${r || u ? `<i class="${net < 0 ? 'neg' : ''}">${net >= 0 ? '+' : '−'}${Math.abs(net)}/d</i>` : ''}</div>`; }).join('');   // with yesterday's change
     $('h-tier').textContent = tierOf(P.count());
