@@ -62,7 +62,7 @@ export class Sim {
     else if (bn === 'tall') { st.stride *= 1.1; } else if (bn === 'short') st.stride *= 0.9; else if (bn === 'athletic') st.speed *= 1.06;
   }
   get roleName() {
-    if (this.kind === 'child') return 'Child'; if (this.kind === 'resident' && this.age >= 66 && !this.role) return 'Retired'; return this.role ? ROLES[this.role].name : (this.kind === 'visitor' ? 'Visitor' : this.kind === 'security' ? 'Security' : this.kind === 'raider' ? 'Intruder' : 'Unemployed'); }
+    if (this.jobTitle) return this.jobTitle; if (this.kind === 'child') return 'Child'; if (this.kind === 'resident' && this.age >= 66 && !this.role) return 'Retired'; return this.role ? ROLES[this.role].name : (this.kind === 'visitor' ? 'Visitor' : this.kind === 'security' ? 'Security' : this.kind === 'raider' ? 'Intruder' : 'Unemployed'); }
   get sleeping() { return this.pose === 'sleep'; }
 
   // ---------- navigation ----------
@@ -453,7 +453,7 @@ export class Sim {
       if (c === 'shop') { const b = pick(shops), sp = pick(b.spots.visit.length ? b.spots.visit : b.spots.idle); ok = this.goTo({ b, x: sp.x, z: sp.z, face: b.rot * Math.PI / 2 + Math.PI }); this.shopping = true; this.visitDo = () => { g.economy.earn(8 + Math.floor(Math.random() * 18), 'Visitors (tourism)'); this.bag = true; say(pick(['Lovely shop!', 'I\'ll take two.', 'Do you sell postcards?'])); }; }
       else if (c === 'sit') { const b = pick(seats), st = pick(this.freeSeat(b)); ok = this.goTo({ b, x: st.x, z: st.z, seat: st }); this.visitDo = () => say(pick(['Ahh, that is the life.', 'Smells like woodsmoke.', 'So peaceful here.'])); }
       else if (c === 'souvenir') { ok = this.goTo({ x: yard.doorOut.x + (Math.random() - 0.5) * 2, z: yard.doorOut.z + 1.5, face: yard.rot * Math.PI / 2 + Math.PI }); this.visitDo = () => { g.economy.earn(5 + Math.floor(Math.random() * 10), 'Visitors (tourism)'); this.emote = { upper: 'point', t: 1.6 }; say(pick(['Can I buy a little log as a souvenir?', 'Real hand-chopped timber!', 'How much for a crate of berries?'])); }; }
-      else if (c === 'sam') { const p = g.player; ok = this.goTo({ x: p.x + 1.4, z: p.z + 0.8, face: Math.atan2(p.x - this.x, p.z - this.z) }); this.visitDo = () => { this.metSam = true; this.faceGoal = Math.atan2(g.player.x - this.x, g.player.z - this.z); this.emote = { upper: 'wave', t: 2 }; say(pick(['Are you THE Sam?', 'Can I get a photo with you?', 'Everybody back home talks about you!'])); }; }
+      else if (c === 'sam') { const p = g.player; ok = this.goTo({ x: p.x + 1.4, z: p.z + 0.8, face: Math.atan2(p.x - this.x, p.z - this.z) }); this.visitDo = () => { this.metSam = true; this.faceGoal = Math.atan2(g.player.x - this.x, g.player.z - this.z); this.emote = { upper: 'wave', t: 2 }; say(pick((g.flags.tellyTill || 0) > g.clock.totalDays ? ['I saw you on the telly!', 'You\'re the one off Britain\'s Newest Town!', 'Can I get a photo? My mum watched your programme.'] : ['Are you THE Sam?', 'Can I get a photo with you?', 'Everybody back home talks about you!'])); }; }
       else { const b = done.length ? pick(done) : null; if (b) { const a = b.rot * Math.PI / 2, dx = Math.sin(a), dz = Math.cos(a); ok = this.goTo({ x: b.doorOut.x + dx * 3 + (Math.random() - 0.5) * 3, z: b.doorOut.z + dz * 3 + (Math.random() - 0.5) * 3, face: Math.atan2(b.cx - b.doorOut.x - dx * 3, b.cz - b.doorOut.z - dz * 3) }); this.visitDo = () => { this.emote = { upper: Math.random() < 0.5 ? 'phone' : 'point', t: 2.5 }; say(pick([`What a lovely ${b.def.name.toLowerCase()}!`, 'Click! Got it.', 'They built all this by hand?', 'Postcard material, that.'])); }; } else ok = this.wander(); }
       if (!ok) { this.phase = 2; this.visitDo = null; }
     }
@@ -627,6 +627,7 @@ export class Sim {
       else if (db && NL && !this.chat && (!U || U.dance)) { lower = 'stand'; upper = NL.on(db) ? NL.move(this, db) : 'drink'; }
       else if (this.role === 'entertainer' && this.activity === 'work' && !this.moved && this.phase === 2 && this.inside && this.inside === this.workplace && this.workplace.layout && this.workplace.layout.stage) upper = 'fiddle'; }   // the band
     if (this.bandT && !this.moved && !this.chat && lower === 'stand') upper = (this.id + Math.floor(this.game.clock.hour * 4)) % 3 === 0 ? 'clap' : (this.id % 2 ? 'dance' : 'idle');
+    if (this.crewPose) upper = this.crewPose;   // the documentary crew: camera on the shoulder, the boom up, the mic
     if (this.emote && this.emote.t > 0) upper = this.emote.upper;
     if (this.activity === 'firefight' && !this.moved && !this.run) upper = this.role === 'firefighter' || this.id % 3 ? 'point' : 'panic';
     if (this.activity === 'shelter' && this.moved && (this.kind === 'child' || this.id % 3 === 0) && !this.carry) upper = 'panic';   // running for home with their hands on their heads
@@ -725,7 +726,7 @@ export class Sim {
       }
       this.glanceTarget = tgt; this.glanceT = tgt ? 1.2 + Math.random() * 2.2 : 2 + Math.random() * 5;
     }
-    let ty = 0, tp = 0; const gt = this.chat ? this.chat.partner : this.frozen ? g.player : this.glanceTarget;
+    let ty = 0, tp = 0; const gt = this.eyeOn || (this.chat ? this.chat.partner : this.frozen ? g.player : this.glanceTarget);   // (eyeOn: somebody to look at and nowhere else, like a presenter into the camera)
     if (gt) { const dx = gt.x - this.x, dz = gt.z - this.z; ty = angleDiff(this.heading, Math.atan2(dx, dz)); tp = Math.atan2(1.65 - (gt.y || 1.65), Math.hypot(dx, dz)) * 0.5; if (Math.abs(ty) > 1.4) { ty = 0; tp = 0; } }
     else if (this.path.length && this.moved) { const p = this.path[0]; ty = angleDiff(this.heading, Math.atan2(p.x - this.x, p.z - this.z)) * 0.5; }
     const k = Math.min(1, dt * 5); this.lookYaw += (ty - this.lookYaw) * k; this.lookPitch += (tp - this.lookPitch) * k;

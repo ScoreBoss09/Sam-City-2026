@@ -359,4 +359,20 @@ body.cutscene #app > *:not(#view):not(#intro):not(#fade):not(#cine):not(#notice)
 #cine .cap .txt { font: 600 20px/1.45 var(--ui-font, 'Trebuchet MS', sans-serif); max-width: 58ch; }
 #cine .cap.card .ttl { font-size: 26px; letter-spacing: .08em; }
 #cine .skip { position: absolute; right: 28px; bottom: 3%; color: #fff; font: 600 13px var(--ui-font, sans-serif); letter-spacing: .08em; opacity: 0; transition: opacity .25s; } #cine .skip.on { opacity: .85; }
+#cine .vf { position: absolute; inset: 14% 6%; opacity: 0; transition: opacity .2s; color: #fff; font: 600 15px/1 'Courier New', monospace; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+#cine.rec .vf { opacity: 1; }
+#cine .vf .c { position: absolute; width: 34px; height: 24px; border: 2px solid rgba(255,255,255,.85); }
+#cine .vf .tl { left: 0; top: 0; border-right: 0; border-bottom: 0; } #cine .vf .tr { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+#cine .vf .bl { left: 0; bottom: 0; border-right: 0; border-top: 0; } #cine .vf .br { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+#cine .vf .recd { position: absolute; left: 46px; top: 4px; color: #ff4a3a; animation: recblink 1s steps(2) infinite; } #cine .vf .tc { position: absolute; right: 46px; top: 4px; } #cine .vf .bat { position: absolute; right: 46px; bottom: 4px; letter-spacing: -2px; }
+@keyframes recblink { 50% { opacity: .15; } }
+#cine .cap.ask { bottom: 12.5%; }
+#cine .opts { display: grid; gap: 6px; margin-top: 6px; width: min(640px, 92vw); pointer-events: auto; }
+#cine .opts:empty { display: none; }
+#cine .opts button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 14px; border-radius: 9px; border: 1px solid rgba(255,255,255,.28); background: rgba(12,16,24,.72); color: #fff; font: 600 16px/1.35 var(--ui-font, 'Trebuchet MS', sans-serif); cursor: pointer; text-shadow: none; transition: background .15s, border-color .15s, opacity .3s; }
+#cine .opts button .n { flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 22px; border-radius: 5px; background: rgba(255,255,255,.14); font-size: 13px; }
+#cine .opts button .n:empty { display: none; }
+#cine .opts button:hover, #cine .opts button.sel { border-color: var(--accent, #ffd23f); background: rgba(40,34,10,.85); }
+#cine .opts button.picked { border-color: var(--accent, #ffd23f); background: rgba(255,210,63,.22); }
+#cine .opts button.gone { opacity: .25; }
 #cine .skip .key { display: inline-block; padding: 2px 8px; border: 1px solid rgba(255,255,255,.6); border-radius: 5px; margin-right: 6px; }

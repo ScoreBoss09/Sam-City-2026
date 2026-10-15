@@ -9,6 +9,10 @@ import * as THREE from 'three';
  *                       onEnd: () => {...} })
  *
  * cam is fixed, or a function of the seconds into that shot. Scenes asked for while one is playing wait their turn.
+ * A shot can ask Sam something: { ask: { q: 'Who says it', opts: [{ t: 'An answer', on: () => {...} }, ...] } } holds the
+ * shot until one is picked (1-3, arrows and Enter, a click, or the d-pad and ✕); skipping the scene picks the first.
+ * say can be a function (worked out when the shot starts: a reply to the answer before). rec: true is seen through the
+ * TV camera's viewfinder. tick(dt, shot) on the scene runs every frame it plays.
  */
 export class Cutscene {
   constructor(game) { this.game = game; this.live = null; this.queue = []; this.pos = new THREE.Vector3(); this.look = new THREE.Vector3(); }
@@ -18,16 +22,19 @@ export class Cutscene {
     this.speed = g.clock.speed; if (!g.clock.speed) g.clock.speed = 1;   // the world has to move for the scene to happen
     this.mode = g.mode; if (g.mode !== 'sim') g.setMode('sim'); this.fov0 = g.camera.fov; g.input.unlock(); document.body.classList.add('cutscene');
     const o = this.el = document.createElement('div'); o.id = 'cine';
-    o.innerHTML = '<div class="bar top"></div><div class="bar bot"></div><div class="cap"><div class="ttl"></div><div class="txt"></div></div><div class="skip"><span class="key"></span> skip</div>';
-    document.getElementById('app').appendChild(o); this.cap = o.querySelector('.cap'); this.skipEl = o.querySelector('.skip');
+    o.innerHTML = '<div class="vf"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i><span class="recd">● REC</span><span class="tc"></span><span class="bat">▮▮▮▯</span></div><div class="bar top"></div><div class="bar bot"></div><div class="cap"><div class="ttl"></div><div class="txt"></div><div class="opts"></div></div><div class="skip"><span class="key"></span> skip</div>';
+    document.getElementById('app').appendChild(o); this.cap = o.querySelector('.cap'); this.skipEl = o.querySelector('.skip'); this.optsEl = o.querySelector('.opts'); this.tcEl = o.querySelector('.tc'); this.recT = 0;
+    this.optsEl.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && this.asking) this.answer(+b.dataset.i); });
     o.querySelector('.key').textContent = g.input.padActive ? '✕' : 'Space';
     this.next();
   }
   next() {
     const S = this.live.shots; this.i++; this.t = 0; if (this.i >= S.length) { this.end(); return; }
     const s = S[this.i]; if (s.at) try { s.at(); } catch (e) { console.warn('cutscene shot', e); }
-    const ttl = this.cap.querySelector('.ttl'), txt = this.cap.querySelector('.txt');
-    if (s.say) { ttl.textContent = s.say[0]; txt.textContent = s.say[1]; this.cap.className = 'cap say'; }
+    const ttl = this.cap.querySelector('.ttl'), txt = this.cap.querySelector('.txt'), say = typeof s.say === 'function' ? s.say() : s.say;
+    this.el.classList.toggle('rec', !!s.rec); this.asking = s.ask || null; this.sel = 0; this.answered = -1; this.optsEl.innerHTML = '';
+    if (s.ask) { ttl.textContent = s.ask.who || ''; txt.textContent = s.ask.q; this.cap.className = 'cap say ask'; this.drawOpts(); }
+    else if (say) { ttl.textContent = say[0]; txt.textContent = say[1]; this.cap.className = 'cap say'; }
     else if (s.title || s.text) { ttl.textContent = s.title || ''; txt.textContent = s.text || ''; this.cap.className = 'cap card'; }
     else if (!s.keep) { ttl.textContent = ''; txt.textContent = ''; this.cap.className = 'cap'; }
   }
@@ -36,18 +43,45 @@ export class Cutscene {
     const g = this.game, s = this.live && this.live.shots[this.i]; if (!s) return;
     this.t += Math.min(dt, 0.1);
     // skipping: a first press shows how, a second one skips
-    this.skipT = Math.max(0, this.skipT - dt); const inp = g.input, P = inp.pad, pressed = (inp.hit('Space') || inp.hit('KeyE') || inp.hit('Escape') || inp.hit('Enter') || (inp.padActive && P && (P.hitB[0] || P.hitB[1]))) && this.t > 0.3;
+    this.skipT = Math.max(0, this.skipT - dt); const inp = g.input, P = inp.pad;
+    if (this.asking && this.answered < 0) this.askKeys(inp, P);   // (a question waits for its answer: Space and ✕ pick, they don't skip)
+    const pressed = (this.asking ? inp.hit('Escape') || (inp.padActive && P && P.hitB[1]) : inp.hit('Space') || inp.hit('KeyE') || inp.hit('Escape') || inp.hit('Enter') || (inp.padActive && P && (P.hitB[0] || P.hitB[1]))) && this.t > 0.3;
     if (pressed) { for (const k of ['Space', 'KeyE', 'Escape', 'Enter']) inp.pressed.delete(k); if (this.skipT > 0) { this.skipAll(); return; } this.skipT = 2.5; }
     this.skipEl.classList.toggle('on', this.skipT > 0);
+    if (s.rec && this.tcEl) { this.recT += dt; const f = Math.floor(this.recT * 25), two = (n) => String(n).padStart(2, '0'); this.tcEl.textContent = `${two(Math.floor(f / 90000) % 24)}:${two(Math.floor(f / 1500) % 60)}:${two(Math.floor(f / 25) % 60)}:${two(f % 25)}`; }
+    if (this.live.tick) try { this.live.tick(dt, this.i); } catch (e) { console.warn('cutscene tick', e); }   // (the scene's own every-frame work: Sam stood there, say)
     const c = typeof s.cam === 'function' ? s.cam(this.t, Math.min(1, this.t / s.dur)) : s.cam; if (c) {
       const k = this.first ? 1 : Math.min(1, dt * (s.snap ? 30 : 2.2)); this.first = false;
       this.pos.lerp(new THREE.Vector3(...c.pos), k); this.look.lerp(new THREE.Vector3(...c.look), k);
       cam.position.copy(this.pos); cam.lookAt(this.look); if (c.fov && cam.fov !== c.fov) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
     }
+    if (this.asking && this.answered < 0) this.t = Math.min(this.t, s.dur * 0.95);   // (held till Sam answers)
+    else if (this.asking && this.t < this.answeredAt + 0.7) this.t = Math.min(this.t, s.dur * 0.95);   // (a moment to see the pick)
+    else if (this.asking) { if (s.cut) this.first = true; this.next(); return; }
     if (this.t >= s.dur) { if (s.cut) this.first = true; this.next(); }
   }
+  drawOpts() {
+    const A = this.asking; if (!A) return; const pad = this.game.input.padActive;
+    this.optsEl.innerHTML = A.opts.map((o, i) => `<button data-i="${i}" class="${i === this.sel ? 'sel' : ''}${i === this.answered ? ' picked' : ''}${this.answered >= 0 && i !== this.answered ? ' gone' : ''}"><span class="n">${pad ? '' : i + 1}</span>${o.t}</button>`).join('');
+  }
+  askKeys(inp, P) {
+    const A = this.asking, n = A.opts.length, pad = inp.padActive && P;
+    for (let i = 0; i < n; i++) if (inp.hit('Digit' + (i + 1)) || inp.hit('Numpad' + (i + 1))) { this.answer(i); return; }
+    const up = inp.hit('ArrowUp') || inp.hit('KeyW') || (pad && P.hitB[12]), dn = inp.hit('ArrowDown') || inp.hit('KeyS') || (pad && P.hitB[13]);
+    if (up || dn) { this.sel = (this.sel + (dn ? 1 : n - 1)) % n; this.drawOpts(); }
+    if (this.t > 0.4 && (inp.hit('Enter') || inp.hit('Space') || inp.hit('KeyE') || (pad && P.hitB[0]))) { for (const k of ['Space', 'KeyE', 'Enter']) inp.pressed.delete(k); this.answer(this.sel); }
+  }
+  /** Sam's answer to the question on screen. */
+  answer(i) {
+    const A = this.asking; if (!A || this.answered >= 0 || !A.opts[i]) return; this.answered = i; this.sel = i; this.answeredAt = this.t; this.drawOpts();
+    try { A.opts[i].on && A.opts[i].on(); } catch (e) { console.warn('cutscene answer', e); }
+  }
   /** Skipped: every shot's start still happens (handing over a club, say), then the end. */
-  skipAll() { const S = this.live.shots; for (let j = this.i + 1; j < S.length; j++) if (S[j].at) try { S[j].at(); } catch (e) { /* skip */ } this.i = S.length; this.end(); }
+  skipAll() {
+    const S = this.live.shots; if (this.asking && this.answered < 0) this.answer(0);
+    for (let j = this.i + 1; j < S.length; j++) { if (S[j].at) try { S[j].at(); } catch (e) { /* skip */ } const A = S[j].ask; if (A && A.opts[0] && A.opts[0].on) try { A.opts[0].on(); } catch (e) { /* skip */ } }   // (questions not reached yet get the first answer)
+    this.i = S.length; this.end();
+  }
   end() {
     const g = this.game, sc = this.live; if (!sc) return; this.live = null;
     if (this.el) this.el.remove(); document.body.classList.remove('cutscene'); if (this.fov0 && g.camera.fov !== this.fov0) { g.camera.fov = this.fov0; g.camera.updateProjectionMatrix(); }

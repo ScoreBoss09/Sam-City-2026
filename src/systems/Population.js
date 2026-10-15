@@ -201,9 +201,10 @@ export class Population {
       if (can && this.sims.length < this.simCap) { this.arrive(); if (this.invites > 0) this.invites--; }
     }
     if (this.visitorTimer <= 0) {
-      this.visitorTimer = (50 + Math.random() * 40) / (1 + 0.5 * Math.min(2, g.buildings.count('busstop')));
+      const telly = (g.flags.tellyTill || 0) > g.clock.totalDays;   // (on the telly: sightseers come to have a look)
+      this.visitorTimer = (50 + Math.random() * 40) / (1 + 0.5 * Math.min(2, g.buildings.count('busstop'))) / (telly ? 2 : 1);
       const vis = this.sims.filter((s) => s.kind === 'visitor').length;
-      if (vis < 3 && g.clock.hour > 8 && g.clock.hour < 18 && this.sims.length < this.simCap && g.buildings.shops().length + g.buildings.list.filter((b) => b.def.park).length > 0)
+      if (vis < (telly ? 6 : 3) && g.clock.hour > 8 && g.clock.hour < 18 && this.sims.length < this.simCap && g.buildings.shops().length + g.buildings.list.filter((b) => b.def.park).length > 0)
         this.spawnAtLift({ ...(() => { const P = this.makePerson({ kind: 'visitor' }); return { name: P.name, look: P.look, gender: P.gender, age: P.age, first: P.first, surname: P.surname }; })(), kind: 'visitor', actor: 1 });
     }
     // unemployment drift & emigration
