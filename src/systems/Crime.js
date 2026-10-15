@@ -90,7 +90,7 @@ export class Crime {
   }
   /** A fight between two townsfolk; at night outside the pub or nightclub if there is one. */
   brawl(venue) {
-    const g = this.game, pubs = g.buildings.list.filter((b) => b.state === 'done' && (b.id === 'tavern' || b.id === 'nightclub'));
+    const g = this.game, pubs = g.buildings.list.filter((b) => b.state === 'done' && (b.id === 'tavern' || b.id === 'local' || b.id === 'irish' || b.id === 'nightclub'));
     const site = venue && pubs.length ? pick(pubs) : null;
     const pool = g.population.sims.filter((s) => s.kind === 'resident' && s.age >= 18 && s.age < 60 && !s.inside && !s.fight && !s.crook && s.activity !== 'police' && s.pose !== 'sleep' && !(s.down > 0) && !s.hidden && (!site || Math.hypot(s.x - site.cx, s.z - site.cz) < 40));
     pool.sort((a, b) => ((b.drunk || 0) > 0.5) - ((a.drunk || 0) > 0.5) || (b.trait === 'grumpy') - (a.trait === 'grumpy') || (b.temper || 0) - (a.temper || 0));

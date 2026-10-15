@@ -2,4 +2,5 @@
 import * as food from './food.js';
 import * as shops from './shops.js';
 import * as civic from './civic.js';
-export const MODULES = [food, shops, civic];
+import * as music from './music.js';
+export const MODULES = [food, shops, civic, music];

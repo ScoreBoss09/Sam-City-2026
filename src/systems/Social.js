@@ -94,11 +94,11 @@ export class Social {
     if (this.timer <= 0) {
       this.timer = 1.2;
       for (const s of sims) {
-        if (s.chat || s.sleeping || (s.kind === 'security' || s.kind === 'raider' || s.down > 0 || s.activity === 'shelter') || s.chatCool > 0 || s.frozen || s.job || s.carry || s.working) continue;
+        if (s.chat || s.sleeping || (s.kind === 'security' || s.kind === 'raider' || s.down > 0 || s.activity === 'shelter') || s.chatCool > 0 || s.frozen || s.job || s.carry || s.working || s.upstairs || s.danceAt) continue;   // (not mid-dance, not upstairs: they'd chat through the floor)
         if (!['leisure', 'visit', 'home'].includes(s.activity) && !(s.activity === 'work' && s.phase === 2)) continue;
         if (Math.random() > 0.35 * s.style.soc) continue;
         for (const o of sims) {
-          if (o === s || o.chat || o.sleeping || (o.kind === 'security' || o.kind === 'raider' || o.down > 0 || o.activity === 'shelter') || o.chatCool > 0 || o.frozen || o.job || o.carry || o.inside !== s.inside) continue;
+          if (o === s || o.chat || o.sleeping || (o.kind === 'security' || o.kind === 'raider' || o.down > 0 || o.activity === 'shelter') || o.chatCool > 0 || o.frozen || o.job || o.carry || o.inside !== s.inside || o.upstairs || o.danceAt) continue;
           if (!['leisure', 'visit', 'home'].includes(o.activity) && !(o.activity === 'work' && o.phase === 2)) continue;
           if (Math.hypot(o.x - s.x, o.z - s.z) < 3.0 && !s.sitting && !o.sitting && !s.path.length && !o.path.length && !this.inDoorway(s) && !this.inDoorway(o)) { this.startChat(s, o); break; }
         }

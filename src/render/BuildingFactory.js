@@ -42,7 +42,7 @@ function texMat(key, fallback, rx = 1, ry = 1, tint = 0xffffff, o = {}) {
 const INTERIOR = {
   hut: ['floor_wood_dark', 0x8a6a44, 'int_planks', 0xa98660], cabin: ['floor_wood_dark', 0x8a6a44, 'int_planks', 0xa98660], shed: ['floor_wood_dark', 0x8a6a44, 'int_planks', 0xa98660],
   terminalhut: ['floor_wood_dark', 0x8a6a44, 'int_planks', 0xa98660], yard: ['ground_pavement', 0x999999, 'int_stucco', 0xc9bfa0],
-  tavern: ['floor_wood_dark', 0x7a5a3a, 'int_wallpaper_red', 0xa04a40], school: ['floor_wood', 0xa6825a, 'int_paint_yellow', 0xe0cf8a],
+  tavern: ['floor_wood_dark', 0x7a5a3a, 'int_wallpaper_red', 0xa04a40], snug: ['floor_wood_dark', 0x6a4a30, 'int_wallpaper_red', 0x8a3a30], irishpub: ['floor_wood_dark', 0x5a3a24, 'int_paint_green', 0x3a6a4a], school: ['floor_wood', 0xa6825a, 'int_paint_yellow', 0xe0cf8a],
   shop: ['floor_tile', 0xd8dade, 'int_paint_blue', 0x9ab4d0], clinic: ['floor_tile', 0xd8dade, 'int_paint_green', 0xa8d0b0], police: ['floor_tile_grey', 0xaaaeb4, 'int_paint_grey', 0xaab0b8],
   office: ['floor_carpet_green', 0x6a8a70, 'int_wallpaper_white', 0xe6e2d8], lobby: ['floor_tile_grey', 0xaaaeb4, 'int_wallpaper_white', 0xe6e2d8], townhall: ['floor_carpet_red', 0x9a4a40, 'int_wallpaper_white', 0xe6e2d8],
   factory: ['ground_pavement', 0x999999, 'int_paint_grey', 0xaab0b8], power: ['ground_pavement', 0x999999, 'int_paint_grey', 0xaab0b8], pump: ['ground_pavement', 0x999999, 'int_paint_grey', 0xaab0b8],
@@ -314,10 +314,10 @@ function buildExterior0(def, uid = 1, era = 2) {
     const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.06, 10), stdMat(0x7a8086, { metalness: 0.4 })); lid.position.set(bx0, 0.83, D / 2 + 0.45); g.add(lid);
     if (uid % 2) for (let i = 0; i < 2; i++) { const mb = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.22, 6), stdMat(0xf6f6f2)); mb.position.set(door + dw / 2 - 0.25 - i * 0.14, 0.25, D / 2 + 0.45); g.add(mb); const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 6), stdMat(0xc0c8d0, { metalness: 0.7 })); cap.position.set(door + dw / 2 - 0.25 - i * 0.14, 0.37, D / 2 + 0.45); g.add(cap); }
   }
-  if (def.id === 'tavern') {   // swinging pub sign on a bracket
-    const sx = W / 2 - 0.4; box(g, 0.1, 0.1, 1.3, 0x1a1a1a, sx, 3.6, D / 2 + 0.6); const board = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.3), new THREE.MeshBasicMaterial({ map: pubSignTexture(), side: THREE.DoubleSide })); board.rotation.y = Math.PI / 2; board.position.set(sx, 2.85, D / 2 + 1.0); g.add(board);
-    for (const hx of [-1.6, 1.6]) { const bk = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), stdMat(0x3a7a3a)); bk.position.set(door + hx, 2.5, D / 2 + 0.4); g.add(bk); for (let i = 0; i < 5; i++) box(g, 0.12, 0.12, 0.12, [0xd93a6a, 0xf1c40f, 0xff7a2a][i % 3], door + hx + Math.cos(i) * 0.25, 2.45 + (i % 2) * 0.12, D / 2 + 0.4 + Math.sin(i) * 0.25); }
-    beerGarden(g, W, D);
+  if (def.id === 'tavern' || def.id === 'local' || def.id === 'irish') {   // swinging pub sign on a bracket
+    const sx = W / 2 - 0.4; box(g, 0.1, 0.1, 1.3, 0x1a1a1a, sx, 3.6, D / 2 + 0.6); const board = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.3), new THREE.MeshBasicMaterial({ map: pubSignTexture(def.id), side: THREE.DoubleSide })); board.rotation.y = Math.PI / 2; board.position.set(sx, 2.85, D / 2 + 1.0); g.add(board);
+    for (const hx of def.w >= 3 ? [-1.6, 1.6] : [1.2]) { const bk = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), stdMat(0x3a7a3a)); bk.position.set(door + hx, 2.5, D / 2 + 0.4); g.add(bk); for (let i = 0; i < 5; i++) box(g, 0.12, 0.12, 0.12, [0xd93a6a, 0xf1c40f, 0xff7a2a][i % 3], door + hx + Math.cos(i) * 0.25, 2.45 + (i % 2) * 0.12, D / 2 + 0.4 + Math.sin(i) * 0.25); }
+    if (def.id === 'tavern') beerGarden(g, W, D);
   }
   // door step and a little lamp over the door
   box(g, dw + 0.6, 0.16, 0.6, 0x8d8a82, door, -0.02, D / 2 + 0.3);
@@ -331,7 +331,7 @@ function buildExterior0(def, uid = 1, era = 2) {
   }
   // striped shop awning over the door
   if (def.shopping || def.dining) {
-    const cols2 = { chippy: [0x2a6aa8, 0xffffff], bakery: [0xd98a3a, 0xf4ecd9], newsagent: [0x2a7a3a, 0xf4ecd9], video: [0x2a3a8a, 0xf1c40f], bookies: [0x2a6a3a, 0xf4ecd9], tavern: [0x7a2a2a, 0xe8d8a8] }[def.id] || [0xc0392b, 0xf4ecd9];
+    const cols2 = { chippy: [0x2a6aa8, 0xffffff], bakery: [0xd98a3a, 0xf4ecd9], newsagent: [0x2a7a3a, 0xf4ecd9], video: [0x2a3a8a, 0xf1c40f], bookies: [0x2a6a3a, 0xf4ecd9], tavern: [0x7a2a2a, 0xe8d8a8], local: [0x2a3a5a, 0xe8d8a8], irish: [0x1e5a34, 0xe8c860] }[def.id] || [0xc0392b, 0xf4ecd9];
     // short and steep, tucked under the sign, so it shades the door without hiding the shop front (or the sign) from above
     const aw = Math.min(W - 0.6, dw + 0.9), n = 6;
     for (let i = 0; i < n; i++) { const m = box(g, aw / n, 0.06, 0.7, cols2[i % 2], door - aw / 2 + (i + 0.5) * aw / n, 2.42, D / 2 + 0.3); m.rotation.x = 0.55; }
@@ -544,7 +544,6 @@ export function adTexture(i) {
   x.strokeStyle = fg; x.lineWidth = 3; x.strokeRect(5, 5, 246, 118);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (_adTex[i] = t);
 }
-let _pubTex = null;
 /** The beer garden down the side and round the back: picnic tables under brollies, a picket fence, a sign. */
 function beerGarden(g, W, D) {
   const m = 1.85, xL = -W / 2 - m / 2 - 0.05, zB = -D / 2 - m / 2 - 0.05, wood = 0x9a7048, brolly = [0xc0392b, 0x2a6ab0, 0x2a8a4a];
@@ -566,12 +565,24 @@ function beerGarden(g, W, D) {
   for (let x = fx; x < W / 2 - 1.3; x += 0.5) box(g, 0.04, 1.0, 0.08, 0xf2ece0, x, 0, fz);
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.4), new THREE.MeshBasicMaterial({ map: signTexture('BEER GARDEN', '#1f3a20', '#f2e6b0') })); sign.position.set(fx - 0.06, 1.25, D / 2 - 1.4); sign.rotation.y = -Math.PI / 2; g.add(sign);
 }
-function pubSignTexture() {
-  if (_pubTex) return _pubTex; const c = document.createElement('canvas'); c.width = 64; c.height = 80; const x = c.getContext('2d');
-  x.fillStyle = '#2a1a10'; x.fillRect(0, 0, 64, 80); x.fillStyle = '#e8d8a8'; x.fillRect(3, 3, 58, 74); x.fillStyle = '#7a1a1a'; x.fillRect(5, 5, 54, 70);
-  x.fillStyle = '#d4a020'; x.fillRect(16, 30, 30, 16); x.fillRect(40, 22, 12, 12); x.fillRect(18, 46, 5, 12); x.fillRect(38, 46, 5, 12); x.fillRect(10, 26, 8, 4); x.fillStyle = '#c03020'; x.fillRect(48, 26, 4, 3);   // a very heraldic lion
-  x.fillStyle = '#f4e4c1'; x.font = 'bold 9px monospace'; x.textAlign = 'center'; x.fillText('THE RED', 32, 14); x.fillText('LION', 32, 72);
-  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace; return (_pubTex = t);
+const _pubTex = {};
+function pubSignTexture(id = 'tavern') {
+  if (_pubTex[id]) return _pubTex[id]; const c = document.createElement('canvas'); c.width = 64; c.height = 80; const x = c.getContext('2d');
+  const R = (col, a, b, w, h) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
+  if (id === 'irish') {   // O'Malley's: green and gold, a shamrock
+    R('#1a1a10', 0, 0, 64, 80); R('#d4a020', 3, 3, 58, 74); R('#14502c', 5, 5, 54, 70); x.fillStyle = '#3ab04a'; for (const [cx, cy] of [[32, 30], [24, 38], [40, 38]]) { x.beginPath(); x.arc(cx, cy, 7, 0, Math.PI * 2); x.fill(); } R('#2a8a3a', 31, 40, 3, 14);
+    x.fillStyle = '#f2d878'; x.font = 'bold 8px monospace'; x.textAlign = 'center'; x.fillText("O'MALLEY'S", 32, 14); x.fillText('BAR', 32, 72);
+  } else if (id === 'local') {   // the Dog & Duck: a brown dog, a green-headed duck
+    R('#2a1a10', 0, 0, 64, 80); R('#e8d8a8', 3, 3, 58, 74); R('#f2ead0', 5, 5, 54, 70);
+    R('#8a5a2a', 12, 36, 20, 10); R('#8a5a2a', 28, 30, 8, 8); R('#5a3a1a', 33, 29, 3, 5); R('#8a5a2a', 13, 46, 3, 8); R('#8a5a2a', 27, 46, 3, 8); R('#8a5a2a', 9, 34, 4, 3);
+    R('#c9a060', 40, 40, 14, 8); R('#2a7a3a', 48, 33, 7, 7); R('#e8a020', 55, 36, 4, 2); R('#f4f0e0', 47, 40, 7, 1);
+    x.fillStyle = '#3a2410'; x.font = 'bold 9px monospace'; x.textAlign = 'center'; x.fillText('DOG &', 32, 15); x.fillText('DUCK', 32, 72);
+  } else {
+    R('#2a1a10', 0, 0, 64, 80); R('#e8d8a8', 3, 3, 58, 74); R('#7a1a1a', 5, 5, 54, 70);
+    x.fillStyle = '#d4a020'; x.fillRect(16, 30, 30, 16); x.fillRect(40, 22, 12, 12); x.fillRect(18, 46, 5, 12); x.fillRect(38, 46, 5, 12); x.fillRect(10, 26, 8, 4); x.fillStyle = '#c03020'; x.fillRect(48, 26, 4, 3);   // a very heraldic lion
+    x.fillStyle = '#f4e4c1'; x.font = 'bold 9px monospace'; x.textAlign = 'center'; x.fillText('THE RED', 32, 14); x.fillText('LION', 32, 72);
+  }
+  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace; return (_pubTex[id] = t);
 }
 function buildPark(def, uid) {
   const W = def.w * UNIT, D = def.d * UNIT, rnd = mulberry32(uid * 31 + 5), g = new THREE.Group(), roof = new THREE.Group();

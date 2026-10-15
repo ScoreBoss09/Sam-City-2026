@@ -138,7 +138,7 @@ const LAYOUTS = {
   nightclub(def) {
     const l = empty(), W = def.w * UNIT, D = def.d * UNIT;
     l.furniture.push({ t: 'decks', x: 0, z: -D / 2 + 0.8, r: 0 }, { t: 'speaker', x: -1.8, z: -D / 2 + 0.6, r: 0 }, { t: 'speaker', x: 1.8, z: -D / 2 + 0.6, r: 0 }, { t: 'bar', x: W / 2 - 0.6, z: 0.4, r: 1 }, { t: 'mirrorball', x: 0, z: 0.2, r: 0 });
-    l.work.push({ x: 0, z: -D / 2 + 1.7 }, { x: W / 2 - 1.6, z: 0.4 }); for (const [x, z] of [[-1.5, -0.4], [-0.4, 0.6], [0.8, -0.2], [-1.0, 1.2], [0.5, 1.4]]) l.visit.push({ x, z }); l.idle.push({ x: -2.5, z: 1.8 }); return l;
+    l.work.push({ x: 0, z: -D / 2 + 1.7 }, { x: W / 2 - 1.6, z: 0.4 }); for (const [x, z] of [[-1.5, -0.4], [-0.4, 0.6], [0.8, -0.2], [-1.0, 1.2], [0.5, 1.4]]) l.visit.push({ x, z }); l.idle.push({ x: -2.5, z: 1.8 }); l.dance = { x: -0.4, z: 0.4, r: 2.0, k: 0, club: true }; return l;
   },
   arcade(def) {
     const l = empty(), W = def.w * UNIT, D = def.d * UNIT;
@@ -206,7 +206,34 @@ const LAYOUTS = {
     for (const x of [-1.2, 0, 1.2]) l.furniture.push({ t: 'stool', x, z: -D / 2 + 2.95, r: 2 });
     l.furniture.push({ t: 'backbar', x: 0, z: -D / 2 + 0.5, r: 0 }, { t: 'fruitmachine', x: -W / 2 + 0.55, z: -1.5, r: 1 }, { t: 'jukebox', x: W / 2 - 0.4, z: -1.6, r: 3 });
     l.furniture.push({ t: 'dartboard', x: -W / 2 + 0.36, z: 2.0, r: 1 }, { t: 'picture', x: -2.4, z: -D / 2 + 0.36, r: 0 }, { t: 'picture', x: 2.4, z: -D / 2 + 0.36, r: 0 }, { t: 'clock', x: W / 2 - 0.5, z: 3.6, r: 3 });
-    l.idle.push({ x: 0.6, z: 1.6 }, { x: -2, z: 2 }); l.visit.push({ x: 0.6, z: 1.6 }); return l;
+    l.idle.push({ x: 0.6, z: 1.6 }, { x: -2, z: 2 }); l.visit.push({ x: 0.6, z: 1.6 });
+    if ((def.floors || 1) >= 2 && W >= 12) {   // upstairs, the function room: an old upright piano, a parquet dance floor under a mirror ball, tables round the edge
+      l.upper = [{ t: 'piano', x: 1.0, z: -D / 2 + 0.65, r: 0 }, { t: 'pianostool', x: 1.0, z: -D / 2 + 1.55, r: 0 }, { t: 'dancefloor', x: 0.8, z: 0.4, r: 0 }, { t: 'mirrorball', x: 0.8, z: 0.4, r: 0 },
+        { t: 'table', x: 4.6, z: -2.6, r: 0 }, { t: 'chair', x: 4.6, z: -3.55, r: 0 }, { t: 'chair', x: 4.6, z: -1.65, r: 2 }, { t: 'table', x: 4.6, z: 1.8, r: 0 }, { t: 'chair', x: 4.6, z: 0.85, r: 0 }, { t: 'chair', x: 4.6, z: 2.75, r: 2 },
+        { t: 'table', x: 1.6, z: 4.6, r: 0 }, { t: 'chair', x: 0.45, z: 4.6, r: 1 }, { t: 'chair', x: 2.75, z: 4.6, r: 3 }, { t: 'table', x: -2.6, z: 4.6, r: 0 }, { t: 'chair', x: -3.75, z: 4.6, r: 1 }, { t: 'chair', x: -1.45, z: 4.6, r: 3 },
+        { t: 'bunting', x: -1.8, z: -D / 2 + 0.32, r: 0 }, { t: 'bunting', x: 0.6, z: D / 2 - 0.32, r: 2 }, { t: 'picture', x: W / 2 - 0.36, z: 0, r: 3 }, { t: 'plant', x: W / 2 - 0.7, z: D / 2 - 0.7, r: 0 }].map((f) => ({ ...f, k: 1 }));
+      l.piano = { x: 1.0, z: -D / 2 + 1.55, k: 1 }; l.dance = { x: 0.8, z: 0.4, r: 1.7, k: 1 }; l.upstair = { x: -5.1, z: 1.9 };   // (the stool; the floor; the foot of the stairs)
+    }
+    return l;
+  },
+  // a little backstreet local: the bar down one side, a fire, a dartboard and two tables
+  snug(def) {
+    const l = empty(), W = def.w * UNIT, D = def.d * UNIT; l.seatKind = 'dining';
+    l.furniture.push({ t: 'bar', x: W / 2 - 1.9, z: -0.9, r: 3 }, { t: 'backbar', x: W / 2 - 0.55, z: -0.9, r: 3 }, { t: 'hearth', x: -1.0, z: -D / 2 + 0.7, r: 0 }, { t: 'dartboard', x: -W / 2 + 0.36, z: -0.2, r: 1 });
+    for (const z of [-2.1, -0.9, 0.3]) l.furniture.push({ t: 'stool', x: W / 2 - 2.85, z, r: 1 });
+    l.furniture.push({ t: 'table', x: -2.2, z: -1.5, r: 0 }, { t: 'chair', x: -3.35, z: -1.5, r: 1 }, { t: 'chair', x: -1.05, z: -1.5, r: 3 }, { t: 'table', x: 0.1, z: 2.1, r: 0 }, { t: 'chair', x: -1.05, z: 2.1, r: 1 }, { t: 'chair', x: 1.25, z: 2.1, r: 3 });
+    l.furniture.push({ t: 'fruitmachine', x: W / 2 - 0.5, z: D / 2 - 1.0, r: 3 }, { t: 'picture', x: 1.4, z: -D / 2 + 0.36, r: 0 }, { t: 'clock', x: -W / 2 + 0.5, z: 2.4, r: 1 }, { t: 'barrel', x: W / 2 - 0.6, z: -D / 2 + 0.6, r: 0 });
+    l.work.push({ x: W / 2 - 1.2, z: -0.9 }); l.idle.push({ x: -0.6, z: 0.4 }); l.visit.push({ x: W / 2 - 2.7, z: 1.2 }); return l;
+  },
+  // an Irish pub: the bar along the back, the band in the corner on its little stage, room in front of them for a jig
+  irishpub(def) {
+    const l = empty(), W = def.w * UNIT, D = def.d * UNIT; l.seatKind = 'dining';
+    l.furniture.push({ t: 'bar', x: 1.6, z: -D / 2 + 1.9, r: 0 }, { t: 'backbar', x: 1.6, z: -D / 2 + 0.55, r: 0 }, { t: 'bandcorner', x: -W / 2 + 1.6, z: -D / 2 + 1.1, r: 0 }, { t: 'barrel', x: -W / 2 + 3.4, z: -D / 2 + 0.6, r: 0 });
+    for (const x of [0.4, 1.6, 2.8]) l.furniture.push({ t: 'stool', x, z: -D / 2 + 2.85, r: 2 });
+    l.furniture.push({ t: 'table', x: -4.4, z: 1.7, r: 0 }, { t: 'chair', x: -5.5, z: 1.7, r: 1 }, { t: 'chair', x: -3.25, z: 1.7, r: 3 }, { t: 'table', x: 4.3, z: 1.0, r: 0 }, { t: 'chair', x: 3.15, z: 1.0, r: 1 }, { t: 'chair', x: 5.45, z: 1.0, r: 3 });
+    l.furniture.push({ t: 'harpmirror', x: -1.0, z: -D / 2 + 0.33, r: 0 }, { t: 'harpmirror', x: W / 2 - 0.33, z: -1.4, r: 3 }, { t: 'bunting', x: -W / 2 + 0.32, z: 0.6, r: 1 }, { t: 'picture', x: 4.0, z: D / 2 - 0.36, r: 2 }, { t: 'clock', x: W / 2 - 0.5, z: 2.6, r: 3 });
+    l.work.push({ x: 1.6, z: -D / 2 + 1.2 }); l.idle.push({ x: -1.4, z: 1.2 }); l.visit.push({ x: 1.6, z: -D / 2 + 3.4 });
+    l.stage = { x: -W / 2 + 1.3, z: -D / 2 + 1.2, face: 0 }; l.dance = { x: -2.6, z: -0.3, r: 1.1, k: 0, jig: true }; return l;   // (the fiddler; the floor in front of the band)
   },
   school(def) {
     const l = empty(), W = def.w * UNIT, D = def.d * UNIT;

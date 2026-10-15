@@ -1,1 +1,1 @@
-export const VERSION = 'Oct 2026, round 6.11 (Sam City 1995: real calendar, fires and ruins, multiplayer helpers, three times the timber, notices, first-time events)';
+export const VERSION = 'Oct 2026, round 6.11 (Sam City 1995: real calendar, fires and ruins, multiplayer helpers, three times the timber, notices, first-time events, couples, nights out)';

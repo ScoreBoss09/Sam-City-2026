@@ -25,8 +25,20 @@ const PINTS = [
   ['a Sunday roast (beef and Yorkshire)', 4.5, { hunger: -70, mood: 0.1 }],
 ];
 
+const IRISH = [
+  ['a pint of Guinness', 2.0, { drunk: 0.18, hunger: -6, note: 'The barman draws a shamrock in the head. You wait two minutes for it to settle.' }],
+  ['a pint of Murphy\'s', 1.9, { drunk: 0.18, hunger: -5 }],
+  ['a pint of Beamish', 1.9, { drunk: 0.18, hunger: -5 }],
+  ['a pint of Harp', 1.7, { drunk: 0.16 }],
+  ['a pint of Magners', 1.8, { drunk: 0.18, note: 'Over ice. Very modern.' }],
+  ['a Jameson\'s', 2.0, { drunk: 0.24, note: 'Sláinte.' }],
+  ['an Irish coffee', 2.6, { drunk: 0.16, energy: 20, note: 'Cream on top, whiskey underneath, coffee somewhere in the middle.' }],
+  ['a bowl of Irish stew and soda bread', 3.8, { hunger: -55, mood: 0.06 }],
+  ['a packet of Tayto', 0.4, { hunger: -8, note: 'Cheese and onion. Smuggled over specially, apparently.' }],
+];
+
 export const SHOP_GOODS = {
-  tavern: PINTS, wmc: PINTS.filter((d) => !/Breezer|Hooch|Babycham/.test(d[0])), snooker: PINTS.slice(0, 8), bowling: PINTS.slice(0, 4),
+  tavern: PINTS, local: PINTS.filter((d) => !/Breezer|Hooch|Babycham|Pernod|roast/.test(d[0])), irish: IRISH, wmc: PINTS.filter((d) => !/Breezer|Hooch|Babycham/.test(d[0])), snooker: PINTS.slice(0, 8), bowling: PINTS.slice(0, 4),
   nightclub: [['a bottle of Hooch', 2.5, { drunk: 0.16 }], ['a Bacardi Breezer', 2.8, { drunk: 0.15 }], ['a Red Bull and vodka', 3.5, { drunk: 0.2, energy: 30 }], ['a bottle of Becks', 2.5, { drunk: 0.18 }], ['a bottle of water', 1.5, { drunk: -0.1 }]],
   offy: [['four cans of Stella', 4.0, { drunk: 0.4 }], ['a bottle of Thunderbird', 2.5, { drunk: 0.35, note: 'The label says "wine". Allegedly.' }], ['a bottle of Mad Dog 20/20', 2.2, { drunk: 0.35 }], ['a bottle of Blue Nun', 3.5, { drunk: 0.3 }], ['a packet of Monster Munch', 0.2, { hunger: -6 }], ['a bottle of Irn-Bru', 0.6, { energy: 10 }]],
   bakery: [['a sausage roll', 0.6, { hunger: -20 }], ['an iced finger', 0.4, { hunger: -10, mood: 0.03 }], ['a cheese and onion pasty', 0.9, { hunger: -28 }], ['a crusty loaf', 0.7, { inv: ['food', 1] }]],

@@ -4,7 +4,7 @@
 /** A line that matches the pattern is only said if one of these buildings is finished. */
 export const NEEDS = [
   [/chip ?shop|chippy|saveloy|battered sausage/i, ['chippy']],
-  [/\bpub\b|pints?\b|landlord|last orders|lager|bitter\b|jukebox|snakebite|bacardi|hooch|babycham|pub quiz/i, ['tavern', 'wmc', 'nightclub', 'snooker']],
+  [/\bpub\b|pints?\b|landlord|last orders|lager|bitter\b|jukebox|snakebite|bacardi|hooch|babycham|pub quiz/i, ['tavern', 'local', 'irish', 'wmc', 'nightclub', 'snooker']],
   [/video shop|blockbust|rental/i, ['video']], [/bookie/i, ['bookies']], [/launderette/i, ['launderette']],
   [/\bschool\b|teacher|double maths|playground/i, ['school', 'secondary']], [/vicar|church|hymn|songs of praise|sermon/i, ['church', 'chapel']],
   [/post office/i, ['postoffice']], [/newsagent|paper round/i, ['newsagent']], [/cinema|the pictures/i, ['cinema']], [/bingo/i, ['bingo']],
@@ -14,7 +14,7 @@ export const NEEDS = [
   [/\bcarts?\b|carter|horse and cart|\bBoxer\b/, ['stables']], [/fire station|fire engine|fire brigade/i, ['firestation']], [/railway station|the station\b|the trains?\b/i, ['railstation', 'monostation']],
   [/allotment/i, ['allotment']], [/village hall/i, ['villagehall']], [/the bakery/i, ['bakery']], [/Red Lion|beer garden|function room/i, ['tavern']], [/harbour/i, ['harbour']],
   [/greasy spoon|the caf[eé]\b/i, ['cafe']], [/hospital/i, ['clinic']], [/the bank\b|cash machine/i, ['bank']], [/leisure centre|wave machine/i, ['leisure']], [/youth club/i, ['youthclub']],
-  [/the shop\b|corner shop/i, ['shop', 'supermarket', 'newsagent']], [/the Ritzy|\bRitzy\b/i, ['nightclub']],
+  [/the shop\b|corner shop/i, ['shop', 'supermarket', 'newsagent']], [/the Ritzy|\bRitzy\b/i, ['nightclub']], [/Dog (and|&) Duck/i, ['local']], [/O'Malley|Irish pub|Guinness|fiddler/i, ['irish']],
 ];
 /** Lines about a husband, wife or in-laws: single folk only say these when they've nothing else to say. */
 export const SPOUSE_RE = /\b(my|the) (husband|wife|missus|fella)\b|\b(him|her) indoors\b|mother-in-law|\bin-laws\b/i;
@@ -52,6 +52,9 @@ export const WISHES = {
 export const RECENT = {
   _: ['Have you seen the new {bld}? Smashing job.', 'The {bld} has really smartened the place up.', 'Everyone\'s talking about the new {bld}.', 'I walked past the {bld} this morning. Lovely.'],
   tavern: ['The {bld}\'s open! First round\'s on you, Sam.', 'Been in the {bld} yet? Nice pint, that.'],
+  local: ['The {bld}\'s open. Proper little boozer, that.', 'Had a pint of mild in the {bld}. Nobody spoke to me. Lovely.'],
+  irish: ['Been to {bld}? There\'s a fiddler!', 'The craic at {bld} last night! I think. I don\'t remember much.'],
+  nightclub: ['The {bld}\'s open! Who\'s coming out Saturday?', 'Got in at three from the {bld}. Mum went mad.'],
   chippy: ['The {bld}\'s open! The smell of vinegar on a Friday night. Heaven.', 'Had my first fish supper from the {bld}. Proper job.'],
   school: ['The kids have started at the {bld}. The peace and quiet!', 'My lad says the {bld} is "well boring". So it\'s working.'],
   clinic: ['Good to have the {bld}. Peace of mind, that.'], surgery: ['The doctor at the {bld} looked at my knee. Said "hmm". Very reassuring.'],

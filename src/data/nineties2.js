@@ -154,6 +154,8 @@ export const N96 = {
     kebab: ['Chilli sauce? It\'s not a kebab without chilli sauce.', 'Three in the morning is our rush hour.', 'Everybody says they\'ll eat the salad. Nobody eats the salad.'],
     offy: ['Hooch, Two Dogs, Diamond White. The holy trinity.', 'Are you eighteen? Course you are. Course you are.', 'Twenty Regal and a scratchcard, is it?'],
     snooker: ['Jimmy White will win the World Championship one day. ONE day.', 'Ronnie O\'Sullivan did a maximum in five minutes. FIVE minutes.', 'Chalk your cue, son.'],
+    local: ['Mild or bitter, love? We don\'t do anything foreign.', 'Darts team\'s top of the league. Well, second. Out of two.', 'That stool\'s Ron\'s. Has been since 1971.'],
+    irish: ['Give it a minute to settle. Good things come to those who wait.', 'The fiddler\'s on at seven. Don\'t request Danny Boy, he\'ll cry.', 'Sláinte! First one\'s on the house. No it isn\'t.'],
     wmc: ['Turn on Saturday is a Tom Jones tribute. From Rotherham.', 'Bingo, then the meat raffle, then the turn. In that order. Always.', 'Committee meeting\'s been going four hours. About the carpet.'],
     bingo: ['Two fat ladies, eighty-eight!', 'Legs eleven! Whistle whistle!', 'Kelly\'s eye, number one!', 'Clickety click, sixty-six!', 'Two little ducks, twenty-two!', 'Key of the door, twenty-one!', 'Top of the shop, ninety!', 'Unlucky for some, thirteen!'],
     hairdresser: ['Going anywhere nice on your holidays?', 'You want the Rachel? Everyone wants the Rachel.', 'Curtains or a number two? There\'s no in-between.'],
@@ -182,6 +184,9 @@ export const N96 = {
     nightclub: ['WHOOOO!', 'Tune!', 'I LOVE this song!', 'Hands in the air!'],
     youthclub: ['Ping!', 'Pong!', 'Your serve!', 'Somebody put Oasis on!'],
     wmc: ['Ladies and gentlemen, the meat raffle!', 'Pint of mild, please.', 'Order! ORDER!'],
+    local: ['Same again, Ron?', 'Double top!', 'Lovely drop of mild, that.'],
+    irish: ['Sláinte!', 'Whoop!', 'Give us The Wild Rover!', 'Another round of the black stuff!'],
+    tavern: ['Roll out the barrel!', 'Knees up, Mother Brown!', 'Who\'s on the piano?', 'My round!'],
     arcade: ['HADOUKEN!', 'Finish him!', 'Insert coin!'],
   },
   slips: [

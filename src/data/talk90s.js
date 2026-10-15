@@ -84,6 +84,8 @@ export const PLACE_TALK = {
   fisher: ['Fisher\'s Hut smells of fish. Shocking, I know.'],
   youthclub: ['Youth Club disco on Friday. Boys on one side, girls on the other, nobody dances till Macarena.'],
   nightclub: ['Ritzy\'s got a sticky carpet you could lose a shoe in. Lost three.'],
+  local: ['The Dog and Duck? Same six blokes on the same six stools since 1971.', 'Proper pub, the Duck. No music, no food, no nonsense.'],
+  irish: ['O\'Malley\'s has a fiddler on a Friday. And a Tuesday. And every other night.', 'Took two minutes to pour my Guinness at O\'Malley\'s. Worth it.', 'Everyone\'s Irish on St Patrick\'s Day. Even Gary.'],
   wmc: ['Working Men\'s Club committee have banned jeans. And trainers. And fun, basically.'],
   bingo: ['Eyes Down Bingo Hall, Tuesday night. The car park\'s full of Metros.'],
 };

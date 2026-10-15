@@ -199,6 +199,8 @@ const PROPS = {
   cup: () => { const g = new THREE.Group(); pbox(g, 0.07, 0.08, 0.07, 0xf4f4f4, 0, 0.0, 0); pbox(g, 0.1, 0.01, 0.1, 0xf4f4f4, 0, -0.045, 0); return g; },
   wine: () => { const g = new THREE.Group(); pbox(g, 0.012, 0.09, 0.012, 0xeaf2f4, 0, -0.05, 0); pbox(g, 0.05, 0.008, 0.05, 0xeaf2f4, 0, -0.095, 0); pbox(g, 0.06, 0.06, 0.06, 0x8a1a2a, 0, 0.02, 0); return g; },
   shortglass: () => { const g = new THREE.Group(); pbox(g, 0.06, 0.07, 0.06, 0xd89a3a, 0, 0, 0); return g; },
+  stout: () => { const g = new THREE.Group(); pbox(g, 0.08, 0.13, 0.08, 0x1a0e0a, 0, 0.0, 0); pbox(g, 0.082, 0.035, 0.082, 0xf2e8d0, 0, 0.075, 0); return g; },   // the black stuff, with a head on it
+  fiddle: () => { const g = new THREE.Group(); pbox(g, 0.2, 0.05, 0.34, 0x9a4a1a, 0, 0.02, 0.08); pbox(g, 0.05, 0.03, 0.26, 0x2a1a10, 0, 0.04, 0.36); pbox(g, 0.012, 0.012, 0.6, 0xe8dcc0, 0.12, 0.07, 0.1).rotation.y = 0.5; return g; },
   mug2: () => { const g = new THREE.Group(); pbox(g, 0.08, 0.12, 0.08, 0xc99a4a, 0, 0.0, 0); return g; },
   club: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.62, 0.05, 0x6e4a2a, 0, -0.1, 0.03); pbox(g, 0.09, 0.2, 0.09, 0x5a3a20, 0, 0.18, 0.03); return g; },
   pistol: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.12, 0.05, 0x2a2a2e, 0, -0.04, 0.02); pbox(g, 0.045, 0.05, 0.22, 0x3a3d44, 0, 0.04, 0.12); return g; },

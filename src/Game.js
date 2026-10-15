@@ -14,7 +14,7 @@ import { Photos } from './systems/Photos.js';
 import { ModelLib } from './render/ModelLib.js';
 // the town's systems: SIM_STEP run in every simulation round, SIM_FRAME once a frame (see Game.sys)
 const SIM_STEP = ['economy', 'logistics', 'population', 'resources', 'social', 'traffic', 'planner', 'raids', 'security', 'tech'];
-const SIM_FRAME = ['crime', 'hazards', 'happenings', 'transport', 'cars', 'rescue', 'carting', 'beerGarden', 'functionRoom', 'service', 'groundskeepers', 'lamps', 'markers', 'glass', 'decals', 'photos', 'models'];
+const SIM_FRAME = ['crime', 'hazards', 'happenings', 'transport', 'cars', 'rescue', 'carting', 'beerGarden', 'functionRoom', 'nightlife', 'service', 'groundskeepers', 'lamps', 'markers', 'glass', 'decals', 'photos', 'models'];
 import { World } from './world/World.js';
 import { Terrain } from './render/Terrain.js';
 import { Atmosphere } from './render/Atmosphere.js';
@@ -45,6 +45,7 @@ import { Combat } from './systems/Combat.js';
 import { Rescue } from './systems/Rescue.js';
 import { Carting } from './systems/Carting.js';
 import { BeerGarden, FunctionRoom } from './systems/BeerGarden.js';
+import { Nightlife } from './systems/Nightlife.js';
 import { Service } from './systems/Service.js';
 import { Groundskeepers } from './systems/Groundskeepers.js';
 import { Fireworks } from './render/Fireworks.js';
@@ -93,7 +94,7 @@ export class Game {
     this.world = new World(); this.terrain = new Terrain(this.scene, this.world); this.atmosphere = new Atmosphere(this.scene, this.renderer);
     this.tech = new Tech(this); this.roadPlans = new RoadPlans(this); this.tools = new ToolRack(this); this.resources = new Resources(this); this.economy = new Economy(this); this.buildings = new BuildingManager(this); this.construction = new ConstructionSystem(this); this.upgrades = new Upgrades(this); this.perf = new PerfMonitor(this); this.liftRides = new LiftRides(this); this.autopilot = new Autopilot(this); this.logistics = new Logistics(this);
     this.player = new Player(this); this.population = new Population(this); this.story = new Story(this); this.security = new Security(this); this.raids = new Raids(this); this.combat = new Combat(this); this.transport = new Transport(this); this.markers = new Markers(this); this.crime = new Crime(this); this.lamps = new StreetLights(this); this.hazards = new Hazards(this); this.happenings = new Happenings(this); this.planner = new Planner(this); this.social = new Social(this);
-    this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.skills = new Skills(this); this.challenges = new Challenges(this); this.celebrations = new Celebrations(this); this.introScene = new Intro(this); this.cutscene = new Cutscene(this); this.pauseScene = new PauseScene(this); this.trackBuilder = new TrackBuilder(this); this.cars = new Cars(this); this.net = new Net(this); this.rescue = new Rescue(this); this.carting = new Carting(this); this.beerGarden = new BeerGarden(this); this.functionRoom = new FunctionRoom(this); this.service = new Service(this); this.groundskeepers = new Groundskeepers(this); this.fireworks = new Fireworks(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.mail = new Mail(this); this.talk = new Talk(this); this.favours = new Favours(this); this.events = new Events(this); this.weather = new Weather(this); this.siteLabels = new SiteLabels(this); this.townBatch = new TownBatch(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
+    this.god = new GodControls(this); this.ui = new UI(this); this.minimap = new Minimap(this); this.workgame = new WorkGame(this); this.skills = new Skills(this); this.challenges = new Challenges(this); this.celebrations = new Celebrations(this); this.introScene = new Intro(this); this.cutscene = new Cutscene(this); this.pauseScene = new PauseScene(this); this.trackBuilder = new TrackBuilder(this); this.cars = new Cars(this); this.net = new Net(this); this.rescue = new Rescue(this); this.carting = new Carting(this); this.beerGarden = new BeerGarden(this); this.functionRoom = new FunctionRoom(this); this.nightlife = new Nightlife(this); this.service = new Service(this); this.groundskeepers = new Groundskeepers(this); this.fireworks = new Fireworks(this); this.particles = new Particles(this.scene); this.piles = new Piles(this); this.mail = new Mail(this); this.talk = new Talk(this); this.favours = new Favours(this); this.events = new Events(this); this.weather = new Weather(this); this.siteLabels = new SiteLabels(this); this.townBatch = new TownBatch(this); this.decor = new Decor(this); this.traffic = new Traffic(this); this.harbor = new Harbor(this); this.elapsed = 0;
     this.clock.on('week', () => this.economy.monthly());   // (pay day is every Monday: rates, wages, upkeep and the accounts)
     // objective beacon
     this.beacon = new THREE.Group(); const bm = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.9, depthTest: false });

@@ -71,7 +71,8 @@ export class FunctionRoom {
     this.on = { b, kind }; this.doDay = g.clock.totalDays;
     // somewhere to stand: not down the stairwell, not in the furniture, not on top of each other
     const plan = levelPlan(b.def), busy = (plan ? slabHoles(plan, 1) : []).map((r) => [r[0] - 0.6, r[1] + 0.6, r[2] - 0.6, r[3] + 0.6]);
-    for (const f of upperFurniture(b.def)) if (f.k === 1) { const d = FURN[f.t], [sx, sz] = d ? ((f.r || 0) % 2 ? [d.s[1], d.s[0]] : d.s) : [1, 1]; busy.push([f.x - sx / 2 - 0.35, f.x + sx / 2 + 0.35, f.z - sz / 2 - 0.35, f.z + sz / 2 + 0.35]); }
+    for (const f of upperFurniture(b.def)) if (f.k === 1 && !['dancefloor', 'mirrorball', 'bunting', 'picture', 'plant'].includes(f.t)) {   // (guests dance on the dance floor)
+      const d = FURN[f.t], [sx, sz] = d ? ((f.r || 0) % 2 ? [d.s[1], d.s[0]] : d.s) : [1, 1]; busy.push([f.x - sx / 2 - 0.35, f.x + sx / 2 + 0.35, f.z - sz / 2 - 0.35, f.z + sz / 2 + 0.35]); }
     const spots = [];
     for (let t = 0; t < 200 && spots.length < n; t++) { const x = (Math.random() - 0.5) * (W - 1.6), z = (Math.random() - 0.5) * (D - 1.6); if (!busy.some((r) => x > r[0] && x < r[1] && z > r[2] && z < r[3]) && !spots.some((p) => Math.hypot(p.x - x, p.z - z) < 0.75)) spots.push({ x, z }); }
     for (const sp of spots) {
