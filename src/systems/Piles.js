@@ -17,7 +17,7 @@ export class Piles {
   update(dt) {
     if (!this.list.length || (this.t = (this.t || 0) - dt) > 0) return; this.t = 2; const g = this.game, now = g.elapsed;
     for (const p of this.list.slice()) {
-      if (!(p.items.food > 0) || now - (p.t0 ?? now) < 25) continue;
+      if (p.yard || !(p.items.food > 0) || now - (p.t0 ?? now) < 25) continue;   // (a farm's or forager's stack isn't dropped food)
       const s = g.population.sims.find((q) => (q.kind === 'resident' || q.kind === 'child') && !q.hidden && !q.inside && !q.down && q.hunger > 35 && !q.carry && Math.hypot(q.x - p.x, q.z - p.z) < 6); if (!s) continue;
       const n = Math.min(p.items.food, Math.ceil(s.hunger / 25)); p.items.food -= n; s.hunger = Math.max(0, s.hunger - n * 25); if (!p.items.food) delete p.items.food;
       if (s.mesh.visible && g.social) g.social.say(s, ['Ooh, free food!', 'Waste not, want not.', 'Someone\'s dropped their dinner. Lovely.'][Math.floor(Math.random() * 3)], 2.2);

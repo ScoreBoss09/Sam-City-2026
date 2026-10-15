@@ -43,7 +43,7 @@ export class Happenings {
     // a slow burner: a quiet village at first; trouble and fuss come with a bigger town (and its problems)
     const pop = g.population.count(), troubled = g.population.sims.filter((s) => s.homeless || s.mood < -0.4 || s.drunk > 0.6).length, news = g.buildings.count('newsagent') > 0;
     if (day) opts.push(['pig', farm && days - (g.flags.pigDay ?? -99) >= 12 ? 0.25 : 0], ['protest', pop >= 25 && !(g.celebrations && g.celebrations.protests.p) ? (c.isSunday ? 1.6 : 0.6) + troubled * 0.05 : 0], ['tvcrew', stage >= 2 && days >= 16 ? 0.7 : 0], ['lottery', news && pop >= 15 && days - (g.flags.lottoDay ?? -99) >= 10 ? 0.5 : 0]);
-    if (day && winter) opts.push(['snowballs', 3]);
+    if (day && winter && g.seasons && g.seasons.snow > 0.3) opts.push(['snowballs', 3]);   // (only when there's snow lying to make them with)
     if (age >= 3) opts.push(['prang', pop >= 20 ? 1 : 0], ['powercut', g.tech.era >= 1 && pop >= 20 ? 0.6 : 0]);
     const sun = c.isSunday, sat = c.weekday === 5, mornin = h >= 5 && h < 8;
     if (day) opts.push(['morris', this.morrisWeight(c, pop)], ['streetparty', summer && (sat || sun) && !g.flags.partyDay ? 1.2 : 0], ['carboot', sun && h < 13 ? 1.5 : 0], ['watermain', age >= 2 ? 0.6 : 0]);
@@ -168,7 +168,7 @@ export class Happenings {
     // the dance: two lines face each other, advance and retire with a hop-step, and cross over every four bars
     let t = 0, ring = 0, lastCross = 0, wait = 0, on = false;
     return { update: (dt) => { if (!on) { wait += dt; if (!this.arrived(men, p, 4, wait)) return; on = true; for (const s of men) { s.path.length = 0; s.dest = null; if (Math.hypot(s.x - p.x, s.z - p.z) > 9) { s.x = p.x; s.z = p.z; } } } t += dt; const bar = t / 1.8, cross = Math.floor(bar / 4) % 2;   // (a straggler who got stuck joins in, rather than wandering about)
-      men.forEach((s, i) => { if (s.path.length) { s.path.length = 0; s.dest = null; }   // (a route would stop him being placed in the line) const side = (i % 2 ? 1 : -1) * (cross ? -1 : 1), row = Math.floor(i / 2), inward = (0.5 - 0.5 * Math.cos(bar * Math.PI * 2)) * 0.8;
+      men.forEach((s, i) => { if (s.path.length) { s.path.length = 0; s.dest = null; } const side = (i % 2 ? 1 : -1) * (cross ? -1 : 1), row = Math.floor(i / 2), inward = (0.5 - 0.5 * Math.cos(bar * Math.PI * 2)) * 0.8;   // (a route would stop him being placed in the line)
         s.glide = { x: p.x + side * (1.3 - inward), z: p.z - 2.5 + row * 2.5 }; s.heading = side > 0 ? -Math.PI / 2 : Math.PI / 2; s.faceGoal = s.heading; s.emote = { upper: 'morris', t: 0.5 }; });
       const near = g.mode === 'sim' && Math.hypot(g.player.x - p.x, g.player.z - p.z) < 30;
       if (near && (ring -= dt) <= 0) { ring = 0.22; Sfx.tone(1568 + Math.random() * 500, 0.05, { type: 'sine', vol: 0.025 }); if (Math.random() < 0.25) Sfx.tone(392 + Math.random() * 200, 0.3, { type: 'triangle', vol: 0.03 }); }   // bells, and the melodeon
@@ -258,7 +258,7 @@ export class Happenings {
   snowballs() {
     const g = this.game, kids = g.population.sims.filter((s) => s.kind === 'child' && !s.inside && s.pose !== 'sleep').slice(0, 6); if (kids.length < 2) return null;
     this.say('⛄ Snowball fight in the street!', 'info', false); this.mark(kids[0], '⛄', 'Snowball fight', 50, kids[0]); let t = 0;
-    return { update: (dt) => { t += dt; if (Math.random() < dt * 2) { const a = pick(kids), b = pick(kids); if (a !== b) { a.faceGoal = Math.atan2(b.x - a.x, b.z - a.z); a.emote = { upper: 'punch', t: 0.4 }; g.particles.burst(b.x, 1.4, b.z, 0xffffff, 6, 1.5, 2, 0.08); if (Math.random() < 0.4 && b.mesh.visible) g.social.say(b, pick(['Oi!', 'Got you!', 'Missed me!', 'Right down my neck!']), 1.4); } } }, get done() { return t > 50; } };
+    return { update: (dt) => { t += dt; if (Math.random() < dt * 2) { const a = pick(kids), b = pick(kids); if (a !== b) { a.faceGoal = Math.atan2(b.x - a.x, b.z - a.z); a.emote = { upper: 'punch', t: 0.4 }; g.particles.burst(b.x, 1.4, b.z, 0xffffff, 6, 1.5, 2, 0.08); if (Math.random() < 0.4 && b.mesh.visible) g.social.say(b, pick(['Oi!', 'Got you!', 'Missed me!', 'Right down my neck!']), 1.4); } } }, get done() { return t > 50 || !(g.seasons && g.seasons.snow > 0.2); } };   // (and it's over once the snow's gone)
   }
   prang() { const g = this.game; this.say('🚗 A car prang on the high street. The drivers are having words...'); if (g.crime) g.crime.brawl(false); return null; }
   powercut() { if (this.game.hazards) this.game.hazards.cutPower(); return null; }

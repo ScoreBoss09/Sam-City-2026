@@ -22,7 +22,7 @@ export class GodControls {
   setTool(id, sub = null) {
     this.moveSel = null;
     if (this.game.trackBuilder && (id !== 'track' || sub !== this.tool.sub)) this.game.trackBuilder.hide();
-    this.tool = { id, sub }; this.game.ui.refreshTools(); if (id === 'pan') { const sm = document.getElementById('submenu'); if (sm) sm.classList.add('hidden'); }   // back to Pan: the building list goes too this.ghost.visible = false; this.tileBox.visible = false; this.painting = false;
+    this.tool = { id, sub }; this.game.ui.refreshTools(); if (id === 'pan') { const sm = document.getElementById('submenu'); if (sm) sm.classList.add('hidden'); } this.ghost.visible = false; this.tileBox.visible = false; this.painting = false;   // (back to Pan: the building list goes too)
   }
   placing() { return ['build', 'park', 'util'].includes(this.tool.id) && this.tool.sub; }
 

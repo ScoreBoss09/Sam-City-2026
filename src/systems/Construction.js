@@ -25,7 +25,7 @@ export class ConstructionSystem {
   /** Goods on the ground that nobody has claimed yet: deliveries on the Lift dock, and anything left lying about for a while (Sam's dropped load, what he couldn't carry). */
   dockPiles(sim) {
     const g = this.game, d = g.lift ? g.logistics.dock() : null, now = g.elapsed;
-    const L = g.piles.list.filter((p) => g.piles.total(p) - (p.reserved || 0) > 0 && ((d && Math.hypot(p.x - d.x, p.z - d.z) < 7) || now - (p.t0 ?? now) > 25));
+    const L = g.piles.list.filter((p) => !p.yard && g.piles.total(p) - (p.reserved || 0) > 0 && ((d && Math.hypot(p.x - d.x, p.z - d.z) < 7) || now - (p.t0 ?? now) > 25));
     return sim ? L.sort((a, b) => Math.hypot(a.x - sim.x, a.z - sim.z) - Math.hypot(b.x - sim.x, b.z - sim.z)) : L;
   }
   requestTask(sim) {

@@ -459,7 +459,7 @@ function rectMinus(R, holes) {
   return out;
 }
 
-/** The Lock-Up: a round stone tower with a little domed roof and slit windows, like the one on the Everton badge. */
+/** The Lock-Up: a round stone tower with a little domed roof and slit windows, the old village kind. */
 /** A 1970s multi-storey car park: bare concrete decks on columns, a ramp, and a space for every car (ext.spaces). */
 function buildCarPark(def) {
   const g = new THREE.Group(), roof = new THREE.Group(), cols = [], W = def.w * UNIT, D = def.d * UNIT, decks = 3, Hh = 2.8, spaces = [];
@@ -831,9 +831,9 @@ function dressWalls(b, g) {
     const h = RC.intersectObject(b.ext.group, true).find((q) => q.object.isMesh); return h ? Math.max(0, Math.min(0.3, 1.2 - h.distance)) : 0;
   };
   // the ceiling's height above a spot in the room (a ray straight up), or the storey height
-  const ceilingAt = (x, z) => {
+  const ceilingAt = (x, z, above = 0) => {   // (above: ignore anything lower, like the door's lintel)
     if (!b.ext || !b.toWorld) return WALL_H; const [wx, wz] = b.toWorld(x, z); RC.set(new THREE.Vector3(wx, 2.0, wz), new THREE.Vector3(0, 1, 0)); RC.far = 4;
-    const h = RC.intersectObjects([b.ext.group, b.ext.roof].filter(Boolean), true).find((q) => q.object.isMesh); return h ? 2.0 + h.distance : WALL_H;
+    const h = RC.intersectObjects([b.ext.group, b.ext.roof].filter(Boolean), true).find((q) => q.object.isMesh && 2.0 + q.distance > above); return h ? 2.0 + h.distance : WALL_H;
   };
   // a window at this distance along a wall? (the facade's window pattern repeats every 4 m; the same test the pictures use)
   const windowAt = (u) => { const t = u % 4; return holes.some(([a, c]) => t > a - 0.3 && t < c + 0.3) || holes.some(([a, c]) => t + 4 > a - 0.3 && t + 4 < c + 0.3) || holes.some(([a, c]) => t - 4 > a - 0.3 && t - 4 < c + 0.3); };
@@ -868,7 +868,7 @@ function dressWalls(b, g) {
     }
     // no free wall for the clock (windows, tall shelving): it goes over the front door, inside, where a shop or an office would have it
     if (clock && kind !== 'home' && k === 0) {
-      clock = false; const zf = D / 2 - T - 0.025, room = ceilingAt(door, zf - 0.5) - 2.74 - 0.03;   // the gap between the top of the door and the ceiling
+      clock = false; const zf = D / 2 - T - 0.025, ceil = Math.min(...[-0.25, 0, 0.25].flatMap((o) => [ceilingAt(door + o, zf - 0.08, 2.6), ceilingAt(door + o, zf - 0.4, 2.6)])), room = ceil - 2.74 - 0.12;   // the gap between the top of the door and the lowest bit of ceiling over it (a good hand's width clear of it)
       if (room >= 0.3) hangClock(grp, door, 2.74 + Math.min(room, 0.42) / 2, zf, Math.PI, true, Math.min(1, room / 0.35));
       else {   // too low above the door (an upper floor): beside it, where the front has no window; a shop front is all glass, so a smaller clock over the door
         const side = def.shopping || def.dining ? undefined : [1.6, -1.6, 2.4, -2.4].map((o) => door + o).find((x) => Math.abs(x) < W / 2 - T - 0.4 && !windowAt(x + W / 2));

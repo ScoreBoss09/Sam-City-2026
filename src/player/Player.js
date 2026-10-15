@@ -408,7 +408,7 @@ export class Player {
           for (const t of b.spots.work) {
             const d = Math.hypot(t.x - px, t.z - pz); if (d > 1.6) continue;
             const manned = g.population.sims.some((s) => s.inside === b && Math.hypot(s.x - t.x, s.z - t.z) < 1.2);
-            if (!manned) consider({ kind: 'work', b, role, text: `Work a shift as ${ROLES[role].name}  (hold E, earns city funds)`, hold: true }, d + 0.3, undefined, undefined, [t.x, t.z]);
+            if (!manned) consider({ kind: 'work', b, role, text: `Work a shift as ${ROLES[role].name} (earns city funds)`, hold: true }, d + 0.3, undefined, undefined, [t.x, t.z]);
           }
         }
         if (g.service && g.service.isPublic(b) && !b.open && g.buildings.playerInside === b) consider({ kind: 'info', text: `Closed. Nobody's behind the counter at the ${b.def.name} right now.` }, 2.5);

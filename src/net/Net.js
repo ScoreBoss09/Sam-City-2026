@@ -193,7 +193,7 @@ export class Net {
     this.looks = new Map(m.looks); for (const b of g.buildings.list) this.bsig.set(b.id + '@' + b.x0 + ',' + b.z0, b);
     const P = g.player, col = m.col || 0x2a7ab0; g.scene.remove(P.mesh); P.rig = createRig({ shirt: col, pants: 0x2d3a55, skin: 0xe8c0a0, hair: 0x6a4a2a, hairStyle: 'short', hat: { type: 'cap', color: col }, backpack: true }); P.mesh = P.rig.root; P.anim = new Animator(P.rig, { trait: 'cheerful' }); g.scene.add(P.mesh);
     // visitors get a bit of spending money for the day
-    P.teleport(g.lift.doorOut.x, g.lift.doorOut.z + 2); P.pocket = 60; P.inv = {}; P.tools = new Set(Object.keys(TOOLS));   // (their own backpack, and a full set of tools to help with) this.puppet('sam', { shirt: 0xe8772e, hat: { type: 'cap', color: 0xe8772e }, hairStyle: 'side', backpack: true }, 'Sam');
+    P.teleport(g.lift.doorOut.x, g.lift.doorOut.z + 2); P.pocket = 60; P.inv = {}; P.tools = new Set(Object.keys(TOOLS)); this.puppet('sam', { shirt: 0xe8772e, hat: { type: 'cap', color: 0xe8772e }, hairStyle: 'side', backpack: true }, 'Sam');   // (their own backpack, and a full set of tools to help with)
     this.hookAttack(); this.badge(); if (this.onWorld) this.onWorld(); g.messages.push('Lift', `You're visiting the host's town. Help out: build at the sites, gather and deliver, dig paths, put what you gather in the Stockyard. (The planning is the host's.)`);
   }
   visitorTick() { const g = this.game; if (g.population.sims.length) { for (const s of g.population.sims) s.dispose(); g.population.sims.length = 0; }   // only the host's people live here
