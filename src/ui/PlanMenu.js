@@ -21,13 +21,13 @@ export class PlanMenu {
   }
   show(tab) { const g = this.game; if (tab) this.tab = tab; this.open = true; this.focusFirst = true; g.input.unlock(); this.render(); $('planmenu').classList.remove('hidden'); Sfx.play('ui'); }
   close() { this.open = false; $('planmenu').classList.add('hidden'); this.game.ui.calm && this.game.ui.calm(); }
-  cycleTab(d) { const T = ['build', 'queue', 'upgrades', 'money'], i = T.indexOf(this.tab); this.tab = T[(i + d + T.length) % T.length]; this.focusFirst = true; this.render(); Sfx.play('ui'); }
+  cycleTab(d) { const T = ['town', 'build', 'queue', 'upgrades', 'money'], i = T.indexOf(this.tab); this.tab = T[(i + d + T.length) % T.length]; this.focusFirst = true; this.render(); Sfx.play('ui'); }
   cycleCat(d) { if (this.tab !== 'build') return; const i = CATS.findIndex((c) => c[0] === this.cat); this.cat = CATS[(i + d + CATS.length) % CATS.length][0]; this.focusFirst = true; this.render(); Sfx.play('ui'); }
   render() {
     const g = this.game, Q = g.construction.queue(), ups = g.upgrades.candidates(), canUp = ups.filter((b) => g.upgrades.check(b).ok).length, pad = g.input.padActive;
-    const tabs = [['build', '🏗️ Build'], ['queue', `📋 Work queue (${Q.length})`], ['upgrades', `⬆️ Upgrades${canUp ? ` (${canUp})` : ''}`], ['money', '💷 Money & goods']];
+    const W = g.overview ? (g.overview.data || g.overview.compute()).warn.length : 0, tabs = [['town', `🏘️ Town${W ? ` ⚠️${W}` : ''}`], ['build', '🏗️ Build'], ['queue', `📋 Work queue (${Q.length})`], ['upgrades', `⬆️ Upgrades${canUp ? ` (${canUp})` : ''}`], ['money', '💷 Money & goods']];
     let body = '';
-    if (this.tab === 'build') body = this.renderBuild(); else if (this.tab === 'queue') body = this.renderQueue(Q); else if (this.tab === 'money') body = `<div class="pmoney">${moneyHTML(g)}${perDayTable(g.economy)}</div>`; else body = this.renderUpgrades(ups);
+    if (this.tab === 'town') body = `<div class="pmoney ptown">${g.overview.html()}</div>`; else if (this.tab === 'build') body = this.renderBuild(); else if (this.tab === 'queue') body = (g.overview ? g.overview.queueLine() : '') + this.renderQueue(Q); else if (this.tab === 'money') body = `<div class="pmoney">${moneyHTML(g)}${perDayTable(g.economy)}</div>`; else body = this.renderUpgrades(ups);
     const html = `<div class="pwin"><div class="phead"><b>📐 PLANNING</b><span class="funds">Funds</span>${g.net && g.net.role === 'host' ? `<button data-a="raid">${g.raidNight ? '🎯 Raid night on' : '🎯 Start Raid night'}</button>` : ''}<button data-a="perf">📊 Report</button><button data-a="close" class="xbtn" title="Close">✕</button></div>
       <div class="ptabs">${tabs.map(([k, n]) => `<button data-a="tab" data-k="${k}" class="${k === this.tab ? 'on' : ''}">${n}</button>`).join('')}<span class="hint">${pad ? '<b class="ps">L1</b>/<b class="ps">R1</b> page · <b class="ps">L2</b>/<b class="ps">R2</b> category · <b class="ps ps-x">✕</b> choose · <b class="ps ps-o">○</b> close' : 'B opens this · Esc closes'}</span></div>${body}</div>`;
     // the menu redraws every second on the queue and upgrades pages: only touch the page if something changed, and keep the scroll
@@ -101,6 +101,7 @@ export class PlanMenu {
       if (m === 'show') { this.close(); g.god.target.set(it.s.cx, 0, it.s.cz); g.god.dist = Math.min(g.god.dist, 45); return; }
       if (m === 'crew') { const C = [undefined, 2, 4, 6, 8, 10], i = C.indexOf(it.s.crew); it.s.crew = C[(i + 1) % C.length]; Sfx.play('ui'); return this.render(); }
       if (m === 'cancel') g.upgrades.cancel(it.s); else g.construction.move(it, m === 'top' ? 'top' : m === 'up' ? -1 : 1); Sfx.play('ui'); }
+    if (a === 'overlay') { g.overview.toggle(k); this.close(); if (g.mode !== 'god' && g.setMode) g.setMode('god'); return; }   // where that trade's people live and work
     if (a === 'qfocus') { g.flags.qFocus = +btn.dataset.n; Sfx.play('ui'); return this.render(); }
     if (a === 'upevery') { let n = 0; for (const L of this.groups || []) for (const b of L) if (g.upgrades.check(b).ok && g.upgrades.order(b, { quiet: true }).ok) n++; g.ui.toast(`${n} upgrades added to the work queue.`, 2400); }
     if (a === 'up1' || a === 'upall') { const L = (this.groups[+btn.dataset.i] || []).filter((b) => g.upgrades.check(b).ok), list = a === 'up1' ? [this.nearest(L)] : L; let n = 0; for (const b of list) if (b && g.upgrades.order(b, { quiet: n > 0 }).ok) n++; if (n > 1) g.ui.toast(`${n} upgrades added to the work queue.`, 2400); }
