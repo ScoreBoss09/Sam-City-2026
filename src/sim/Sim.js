@@ -198,7 +198,7 @@ export class Sim {
     if (this.lockedT) { if (this.game.elapsed < this.lockedT) return 'locked'; this.lockedT = 0; this.hidden = false; if (this.inCell) { this.inCell = false; this.pose = 'stand'; this.roughLie = undefined; this.inside = null; } const lk = this.lockup; if (lk && lk.doorOut) { this.x = lk.doorOut.x; this.z = lk.doorOut.z; } this.lockup = null; }
     // everyone keeps their own hours: early birds, night owls, children in bed by eight
     const wd = this.game.clock.weekday, late = this.kind !== 'resident' || this.age < 18 ? 0 : (wd >= 3 && wd <= 5 && this.age < 36 ? 2 : wd === 4 || wd === 5 ? (this.age < 50 ? 1 : 0) : this.age < 26 ? 1 : 0), bed = (this.bedH ?? 22) + late, wake = this.wakeH ?? 6, night = bed >= 24 ? h >= bed - 24 && h < wake : h >= bed || h < wake;
-    if (alert) { if (this.role === 'guard' && this.kind === 'resident') return 'defend'; if (!(night && this.home)) return 'shelter'; }
+    if (alert) { if ((this.role === 'guard' && this.kind === 'resident') || this.hero) return 'defend'; if (!(night && this.home)) return 'shelter'; }
     if (this.role === 'guard' && this.kind === 'resident' && this.workplace && this.workplace.state === 'done' && this.game.crime) { if (this.game.crime.onShift(this, h)) return 'police'; if (this.id % 2 === 0 && h >= 7 && h < 15) return this.home ? 'sleep' : 'leisure'; }   // constables: day or night shift
     { const ev = this.game.celebrations && this.game.celebrations.calling(this, h); if (ev && this.hunger < 85 && !(this.kind === 'child' && h >= 21.5)) return 'event'; }
     if (this.activity === 'eat' && this.eating && !night) return 'eat';
@@ -269,7 +269,7 @@ export class Sim {
     }
     if (this.upTo && this.phase === 2 && !this.upstairs && !this.path.length && this.inside === this.upTo.b) { if (!g.nightlife.climb(this, this.upTo.b, this.upTo.what)) this.upTo = null; }   // at the foot of the stairs: up to the function room
     if (this.phase === 2 && !this.upstairs && !this.path.length && !this.sitting && (this.activity === 'work' || this.activity === 'home') && (this.upT = (this.upT || 0) - dt) <= 0) { this.upT = 8; this.goUpstairs(); }
-    if (this.hurry && this.activity !== 'work' && this.activity !== 'firefight' && this.activity !== 'flee') this.hurry = false;   // (people run to a fire, and away from one)
+    if (this.hurry && this.activity !== 'work' && this.activity !== 'firefight' && this.activity !== 'flee' && this.activity !== 'shelter' && !this.hero) this.hurry = false;   // (people run to a fire, and away from one)
     if (this.hurry && this.phase === 2) this.hurry = false;
   }
   doShelter() {
@@ -597,6 +597,7 @@ export class Sim {
   decideAnim() {
     const g = this.game; let lower = 'stand', upper = 'idle', speaking = false;
     { const tp = this.trip && this.game.transport.pose(this); if (tp) return { lower: tp, upper: 'idle', speaking: false }; }
+    if (this.rowing) return { lower: 'sit', upper: 'pull', speaking: false };   // raiders at the oars
     if (this.pose === 'sleep') return { lower: 'lie', upper: 'sleep', lieH: this.roughLie };   // (in bed, or rough: on the ground or a bench)
     if (this.down > 0) return { lower: 'lie', upper: 'sedated', lieH: this.inCart ? this.inCart.lieH : 0.15 };   // on the ground where they fell (or in the undertaker's cart), never at bed height in mid-air
     if (this.sitting) { lower = 'sit'; upper = SEAT_UPPER[this.sitting.kind] || 'idle'; if (upper === 'type' && this.role === 'engineer') upper = 'type'; if (this.sitting.kind === 'bench' && this.mood < 0) upper = 'phone'; if (this.sitting.kind === 'terrace') upper = this.eating ? 'eat' : 'drink'; }
@@ -628,6 +629,7 @@ export class Sim {
     if (this.bandT && !this.moved && !this.chat && lower === 'stand') upper = (this.id + Math.floor(this.game.clock.hour * 4)) % 3 === 0 ? 'clap' : (this.id % 2 ? 'dance' : 'idle');
     if (this.emote && this.emote.t > 0) upper = this.emote.upper;
     if (this.activity === 'firefight' && !this.moved && !this.run) upper = this.role === 'firefighter' || this.id % 3 ? 'point' : 'panic';
+    if (this.activity === 'shelter' && this.moved && (this.kind === 'child' || this.id % 3 === 0) && !this.carry) upper = 'panic';   // running for home with their hands on their heads
     if ((this.activity === 'flee' && !this.moved) || this.activity === 'trapped') upper = this.trapped || (this.fleeFire && this.fleeFire.home) ? 'panic' : this.id % 2 ? 'point' : 'facepalm';
     if (this.digging && !this.moved) { upper = 'dig'; lower = 'crouch'; }
     if (this.busk && !this.moved && this.activity === 'leisure' && !this.chat) upper = this.busk === 'busk' ? 'airguitar' : this.busk === 'watch' ? 'lookaround' : upper;

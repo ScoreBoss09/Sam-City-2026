@@ -57,6 +57,22 @@ export class Wildlife {
     const sp0 = C.home === 'water' ? 0.1 : 0.6, a = { kind, C, g, legs, x: (tx + 0.5 + (Math.random() - 0.5) * sp0) * TILE, z: (tz + 0.5 + (Math.random() - 0.5) * sp0) * TILE, h: Math.random() * 6.28, tx: 0, tz: 0, state: 'graze', t: Math.random() * 4, ph: 0, up: 0 };
     a.tx = a.x; a.tz = a.z; g.position.set(a.x, 0, a.z); this.game.scene.add(g); this.list.push(a); return a;
   }
+  /** The nearest standing tree within r metres. */
+  treeNear(x, z, r) { const T = this.game.terrain && this.game.terrain.trees; let best = null, bd = r; if (T) for (const t of T) { if (!t.alive) continue; const d = Math.hypot(t.x - x, t.z - z); if (d < bd) { bd = d; best = t; } } return best; }
+  /** Running to the trunk, up it (head first, clinging to the bark), a wait up there, and back down again once it's quiet. */
+  climb(a, dt, threat) {
+    const tr = a.tree, C = a.C, rr = 0.26 * tr.s + 0.08, top = 0.85 * tr.s, bx = tr.x + Math.sin(a.side) * rr, bz = tr.z + Math.cos(a.side) * rr;
+    if (!tr.alive) { a.tree = null; a.up = 0; a.g.rotation.x = 0; a.g.position.y = 0; return; }   // felled under it
+    if (a.state === 'flee') {   // the dash to the foot of the trunk
+      const dx = bx - a.x, dz = bz - a.z, d = Math.hypot(dx, dz);
+      if (d > 0.15) { a.h = Math.atan2(dx, dz); const st = Math.min(d, C.fast * dt); a.x += Math.sin(a.h) * st; a.z += Math.cos(a.h) * st; a.ph += st * C.step; a.g.position.set(a.x, Math.abs(Math.sin(a.ph)) * (C.hop || 0), a.z); a.g.rotation.set(0, a.h, 0); return; }
+      a.state = 'up'; a.t = 8 + Math.random() * 10; a.x = bx; a.z = bz;
+    }
+    if (a.state === 'up') { a.up = Math.min(1, a.up + dt * 1.2); a.t -= threat ? 0 : dt; if (a.t <= 0) a.state = 'down'; }
+    else if (a.state === 'down') { a.up = Math.max(0, a.up - dt * 0.5); if (a.up <= 0) { a.tree = null; a.state = 'graze'; a.t = 1 + Math.random() * 3; a.tx = a.x + Math.sin(a.side) * 1.2; a.tz = a.z + Math.cos(a.side) * 1.2; a.g.rotation.x = 0; a.g.position.set(a.x, 0, a.z); return; } }
+    const down = a.state === 'down', k = Math.min(1, a.up * 4);   // (tips up onto the trunk in the first moment)
+    a.g.position.set(bx, a.up * top, bz); a.g.rotation.set(0, 0, 0); a.g.rotation.y = a.side + Math.PI; a.g.rotateX(-(Math.PI / 2) * k * (down ? -1 : 1));   // facing the trunk, head up the bark (head down coming back)
+  }
   okTile(a, x, z) {
     const w = this.game.world, wet = (px, pz) => { const [tx, tz] = w.tileOf(px, pz); return w.inBounds(tx, tz) && w.terrain[w.idx(tx, tz)] === T.WATER; };
     if (a.C.home === 'water') return wet(x, z) && wet(x + 4.5, z) && wet(x - 4.5, z) && wet(x, z + 4.5) && wet(x, z - 4.5);   // ducks keep clear of the beach and its surf
@@ -76,16 +92,20 @@ export class Wildlife {
       // who is close? Sam or any citizen (a cat only minds Sam; sheep and cows hardly mind anyone)
       let threat = null, td = C.flee; { const d = Math.hypot(p.x - a.x, p.z - a.z); if (d < td && !p.transit) { td = d; threat = p; } }
       if (!threat && a.t < 0.5 && C.flee > 2) for (const s of g.population.sims) { if (s.hidden || s.inside) continue; const d = Math.hypot(s.x - a.x, s.z - a.z); if (d < td * 0.8) { threat = s; break; } }
-      if (threat && a.state !== 'flee') { const ang = Math.atan2(a.x - threat.x, a.z - threat.z) + (Math.random() - 0.5) * 0.6, r = C.fleeR; a.tx = a.x + Math.sin(ang) * r; a.tz = a.z + Math.cos(ang) * r; a.state = 'flee'; a.t = 2.5; if (C.climb) a.up = 1; }
+      if (a.tree) { this.climb(a, dt, threat); continue; }   // a squirrel up (or on its way up) a tree
+      if (threat && a.state !== 'flee') {
+        const tr = C.climb && this.treeNear(a.x, a.z, 14);
+        if (tr) { a.tree = tr; a.up = 0; a.state = 'flee'; a.t = 0; const ang = Math.atan2(a.x - tr.x, a.z - tr.z); a.side = ang; this.climb(a, dt, threat); continue; }   // off to the nearest tree, and up it
+        const ang = Math.atan2(a.x - threat.x, a.z - threat.z) + (Math.random() - 0.5) * 0.6, r = C.fleeR; a.tx = a.x + Math.sin(ang) * r; a.tz = a.z + Math.cos(ang) * r; a.state = 'flee'; a.t = 2.5;
+      }
       else if (a.t <= 0) { if (a.state !== 'walk') { const ang = Math.random() * 6.28, r = 1.5 + Math.random() * C.wander; a.tx = a.x + Math.sin(ang) * r; a.tz = a.z + Math.cos(ang) * r; a.state = 'walk'; a.t = 7; } else { a.state = 'graze'; a.t = 2 + Math.random() * 6; } }
       if (!this.okTile(a, a.tx, a.tz)) { a.tx = a.x; a.tz = a.z; }
       if (!this.okTile(a, a.x, a.z) && (a.C.home !== 'water' || (a.strand = (a.strand || 0) + dt) > 4)) { a.strand = 0; const sp = this.spot(C.home); if (sp) { a.x = a.tx = (sp[0] + 0.5) * TILE; a.z = a.tz = (sp[1] + 0.5) * TILE; } }   // a building went up on top of it
       const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz), moving = a.state !== 'graze' && d > 0.2, sp = a.state === 'flee' ? C.fast : C.speed;
       if (moving) { const want = Math.atan2(dx, dz); let dh = want - a.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); a.h += dh * Math.min(1, dt * 8); const st = Math.min(d, sp * dt); a.x += Math.sin(a.h) * st; a.z += Math.cos(a.h) * st; a.ph += st * C.step; }
       else if (a.state === 'walk' || a.state === 'flee') { a.state = 'graze'; a.t = 2 + Math.random() * 5; }
-      if (a.up > 0) a.up = Math.max(0, a.up - dt * 0.15);   // a squirrel up a tree comes back down eventually
       const hop = C.hop && moving ? Math.abs(Math.sin(a.ph)) * C.hop : 0, bob = C.home === 'water' ? -0.92 + Math.sin(this.t * 2 + a.ph) * 0.03 : 0;   // sitting in the sea (at -0.5), not hovering over it
-      a.g.position.set(a.x, hop + bob + a.up * 3, a.z); a.g.rotation.y = a.h;
+      a.g.position.set(a.x, hop + bob, a.z); a.g.rotation.y = a.h;
       for (const [i, l] of a.legs.entries()) l.rotation.x = moving ? Math.sin(a.ph + (i % 2 ? Math.PI : 0) + (i > 1 ? 1.2 : 0)) * 0.6 : 0;
       if (C.peck && !moving) a.g.rotation.x = Math.max(0, Math.sin(this.t * 6 + a.ph)) * 0.35; else a.g.rotation.x = 0;
     }

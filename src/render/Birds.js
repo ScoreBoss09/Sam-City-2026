@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { MAP, TILE } from '../config.js';
 import { T } from '../world/World.js';
+import { perchOn, nearestPerch } from './Perch.js';
 
 /**
  * Birds with somewhere to be. Seagulls soar and bank over the coast, ride thermals in tight climbing circles, dive for
@@ -53,18 +54,23 @@ export class Birds {
   update(dt) {
     const g = this.game; this.t += dt; const t = this.t, cam = g.camera.position, P = g.player, w = g.world;
     // ---------- gulls ----------
+    const night = (g.atmosphere.night || 0) > 0.5;
     for (const q of this.gulls) {
       q.t -= dt; let flap = false;
+      if (night && q.state !== 'perch' && q.state !== 'land') { const p = nearestPerch(g.buildings.list, q.x, q.z, 140); if (p) { q.state = 'land'; q.on = p.b; q.tx = p.x; q.tz = p.z; q.ty = p.y + 0.12; q.t = 40; } }   // dusk: off to roost on the nearest roof
       if (q.state === 'perch') {
         q.g.position.set(q.x, q.y, q.z); q.wl.rotation.z = 0.15; q.wr.rotation.z = -0.15; q.g.rotation.z = 0; q.g.rotation.x = 0;
-        if (q.t <= 0 || (q.on && (q.on.remove || !g.buildings.list.includes(q.on))) || Math.hypot(P.x - q.x, P.z - q.z) < 7 && Math.abs((P.floorY || 0) + 1.6 - q.y) < 6) { this.pickSoar(q); q.ty = q.y + 8; q.speed = 4; }
+        const gone = q.on && (q.on.remove || !g.buildings.list.includes(q.on)), scared = Math.hypot(P.x - q.x, P.z - q.z) < 7 && Math.abs((P.floorY || 0) + 1.6 - q.y) < 6;
+        if (night && !gone && !scared) { q.t = 5; continue; }   // asleep on the roof till morning
+        if (night) { const p = nearestPerch(g.buildings.list.filter((b) => b !== q.on), q.x, q.z, 80); if (p) { q.state = 'land'; q.on = p.b; q.tx = p.x; q.tz = p.z; q.ty = p.y + 0.12; q.t = 30; q.speed = 4; continue; } }   // woken: just over to the next roof
+        if (q.t <= 0 || gone || scared) { this.pickSoar(q); q.ty = q.y + 8; q.speed = 4; }
         continue;
       }
       if (q.state === 'soar' && q.t <= 0) {   // what next? keep soaring, ride a thermal, dive for a fish, or land on a roof
         const r = Math.random(), roofs = g.buildings.list.filter((b) => b.state === 'done' && !b.def.park && b.ext);
         if (r < 0.25) { q.state = 'thermal'; q.t = 8 + Math.random() * 6; q.cx = q.x; q.cz = q.z; q.ang = Math.random() * 6.28; }
         else if (r < 0.45) { let ok = false; for (let k = 0; k < 10 && !ok; k++) { const tx = Math.floor(q.x / TILE) + Math.round((Math.random() - 0.5) * 12), tz = Math.floor(q.z / TILE) + Math.round((Math.random() - 0.5) * 12); if (w.inBounds(tx, tz) && w.terrain[w.idx(tx, tz)] === T.WATER) { q.tx = (tx + 0.5) * TILE; q.tz = (tz + 0.5) * TILE; ok = true; } } if (ok) { q.state = 'dive'; q.t = 12; } else this.pickSoar(q); }
-        else if (r < 0.62 && roofs.length) { const b = roofs[Math.floor(Math.random() * roofs.length)], H = (b.def.floors || 1) * 3.2 + (['gable', 'thatch', 'church'].includes(b.def.roof) ? 2.2 : 0.4); q.state = 'land'; q.on = b; q.tx = b.cx + (Math.random() - 0.5) * 2; q.tz = b.cz + (Math.random() - 0.5) * 2; q.ty = H; q.t = 20; }
+        else if (r < 0.62 && roofs.length) { const p = perchOn(roofs[Math.floor(Math.random() * roofs.length)]); if (p) { q.state = 'land'; q.on = p.b; q.tx = p.x; q.tz = p.z; q.ty = p.y + 0.12; q.t = 20; } else this.pickSoar(q); }   // (on the slates themselves)
         else this.pickSoar(q);
       }
       let tx = q.tx, tz = q.tz, ty = q.ty;
@@ -72,7 +78,7 @@ export class Birds {
       if (q.state === 'dive') { const d2 = Math.hypot(tx - q.x, tz - q.z); ty = d2 < 10 ? SEA + 0.4 : Math.max(q.y, 6); if (q.t <= 0) { q.state = 'climb'; q.t = 3; } if (q.y < SEA + 0.9) { q.state = 'climb'; q.t = 3; g.particles && Math.hypot(cam.x - q.x, cam.z - q.z) < 60 && g.particles.burst(q.x, SEA + 0.1, q.z, 0xdfeaf2, 6, 1.5, 2, 0.08); } }
       if (q.state === 'climb') { ty = 14; flap = true; if (q.t <= 0) this.pickSoar(q); }
       if (q.state !== 'dive') ty = Math.max(ty, 3);   // only a diving gull goes down to the water
-      if (q.state === 'land') { const d2 = Math.hypot(tx - q.x, tz - q.z); if (d2 < 1.2 && Math.abs(q.y - ty) < 0.6) { q.state = 'perch'; q.y = ty; q.t = 6 + Math.random() * 14; continue; } if (d2 > 6) ty = Math.max(ty + 4, q.y); if (q.t <= 0) this.pickSoar(q); }
+      if (q.state === 'land') { const d2 = Math.hypot(tx - q.x, tz - q.z); if (d2 < 1.2 && Math.abs(q.y - ty) < 0.6) { q.state = 'perch'; q.x = tx; q.z = tz; q.y = ty; q.t = 6 + Math.random() * 14; continue; } if (d2 > 6) ty = Math.max(ty + 4, q.y); if (q.t <= 0) this.pickSoar(q); }
       // steer: turn towards the target (banking into the turn), ease up and down, slow right down to land
       const dx = tx - q.x, dz = tz - q.z, dist = Math.hypot(dx, dz), want = Math.atan2(dx, dz); let dh = want - q.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
       const turn = Math.max(-1.4, Math.min(1.4, dh * 1.6)); q.h += turn * dt; q.bank += (-turn * 0.45 - q.bank) * Math.min(1, dt * 3);
@@ -104,15 +110,17 @@ export class Birds {
     for (const p of this.pigeons) {
       const home = this.homes[p.flock]; if (!home) { p.g.visible = false; continue; }
       if (!p.placed) { p.placed = true; p.x = home.x + (Math.random() - 0.5) * 6; p.z = home.z + (Math.random() - 0.5) * 6; }
-      p.g.visible = Math.hypot(p.x - cam.x, p.z - cam.z) < 95 && (g.atmosphere.night || 0) < 0.5; p.t -= dt;
+      p.g.visible = Math.hypot(p.x - cam.x, p.z - cam.z) < 95; p.t -= dt;
+      if (night && p.state === 'peck') { const r = p.roost || (p.roost = nearestPerch(g.buildings.list, home.x + (Math.random() - 0.5) * 10, home.z + (Math.random() - 0.5) * 10, 50)); if (r) { p.state = 'fly'; p.u = 0; p.sx = p.x; p.sz = p.z; p.sy = p.y; p.fx = r.x + (Math.random() - 0.5) * 1.2; p.fz = r.z + (Math.random() - 0.5) * 1.2; p.fy = r.y; p.toRoost = true; } }   // up onto a roof for the night
+      if (p.state === 'roost') { p.wl.visible = p.wr.visible = false; p.hd.position.y = 0.22; if (!night) { p.state = 'fly'; p.u = 0; p.sx = p.x; p.sz = p.z; p.sy = p.y; p.fx = home.x + (Math.random() - 0.5) * 6; p.fz = home.z + (Math.random() - 0.5) * 6; p.fy = 0; p.toRoost = false; p.roost = null; } p.g.position.set(p.x, p.y, p.z); p.g.rotation.y = p.h || 0; continue; }
       if (p.state === 'peck') {
         const close = Math.hypot(P.x - p.x, P.z - p.z) < 3 || g.population.sims.some((s) => !s.inside && Math.abs(s.x - p.x) < 2 && Math.abs(s.z - p.z) < 2 && s.moved);
         if (close || p.t <= -20) { const a = Math.random() * 6.28, r = 12 + Math.random() * 12; p.state = 'fly'; p.u = 0; p.sx = p.x; p.sz = p.z; p.fx = home.x + Math.cos(a) * r * 0.4 + (close ? Math.cos(a) * r * 0.6 : 0); p.fz = home.z + Math.sin(a) * r * 0.4 + (close ? Math.sin(a) * r * 0.6 : 0); }
         else if (p.t <= 0) { p.t = 0.5 + Math.random() * 1.5; p.h = (p.h || 0) + (Math.random() - 0.5) * 2; p.x += Math.sin(p.h) * 0.25; p.z += Math.cos(p.h) * 0.25; }
         p.hd.position.y = 0.26 - Math.max(0, Math.sin(t * 8 + p.ph)) * 0.1; p.y = 0; p.wl.visible = p.wr.visible = false;
       } else {
-        p.u = Math.min(1, p.u + dt * 0.6); const k = p.u; p.x = p.sx + (p.fx - p.sx) * k; p.z = p.sz + (p.fz - p.sz) * k; p.y = Math.sin(k * Math.PI) * 5; p.h = Math.atan2(p.fx - p.sx, p.fz - p.sz);
-        p.wl.visible = p.wr.visible = true; const f = Math.sin(t * 22 + p.ph) * 0.8; p.wl.rotation.z = f; p.wr.rotation.z = -f; if (k >= 1) { p.state = 'peck'; p.t = 1; }
+        p.u = Math.min(1, p.u + dt * 0.6); const k = p.u, sy = p.sy || 0, fy = p.fy || 0; p.x = p.sx + (p.fx - p.sx) * k; p.z = p.sz + (p.fz - p.sz) * k; p.y = sy + (fy - sy) * k + Math.sin(k * Math.PI) * 5; p.h = Math.atan2(p.fx - p.sx, p.fz - p.sz);
+        p.wl.visible = p.wr.visible = true; const f = Math.sin(t * 22 + p.ph) * 0.8; p.wl.rotation.z = f; p.wr.rotation.z = -f; if (k >= 1) { p.state = p.toRoost ? 'roost' : 'peck'; p.t = 1; p.sy = p.fy = p.y = p.toRoost ? fy : 0; }
       }
       p.g.position.set(p.x, p.y, p.z); p.g.rotation.y = p.h || 0;
     }
@@ -121,14 +129,14 @@ export class Birds {
   /** Garden birds: each perches near you (grass, a verge, a roof edge), hops and pecks, and flits to a new spot now and then or when someone comes close. */
   smallBirds(dt, t, cam, P, w) {
     const g = this.game, day = (g.atmosphere.night || 0) < 0.5 && (g.atmosphere.rain || 0) < 0.6; this.small.visible = day; if (!day) return;
-    const spot = () => { for (let k = 0; k < 8; k++) { const a = Math.random() * 6.28, r = 6 + Math.random() * 45, x = cam.x + Math.cos(a) * r, z = cam.z + Math.sin(a) * r, [tx, tz] = w.tileOf(x, z); if (!w.inBounds(tx, tz) || w.terrain[w.idx(tx, tz)] === T.WATER) continue; const b = w.buildingAt ? w.buildingAt(tx, tz) : null; if (b && b.state === 'done' && !b.def.park && Math.random() < 0.6) { const H = (b.def.floors || 1) * 3.2; return { x, z, y: H + 0.05 }; } if (w.collides(x, z, 0.2)) continue; return { x, z, y: 0.05 }; } return null; };
+    const spot = () => { for (let k = 0; k < 8; k++) { const a = Math.random() * 6.28, r = 6 + Math.random() * 45, x = cam.x + Math.cos(a) * r, z = cam.z + Math.sin(a) * r, [tx, tz] = w.tileOf(x, z); if (!w.inBounds(tx, tz) || w.terrain[w.idx(tx, tz)] === T.WATER) continue; const b = w.buildingAt ? w.buildingAt(tx, tz) : null; if (b && b.state === 'done' && !b.def.park && Math.random() < 0.6) { const p = perchOn(b, 2); if (p) return { x: p.x, z: p.z, y: p.y + 0.01 }; continue; } if (w.collides(x, z, 0.2)) continue; return { x, z, y: 0.05 }; } return null; };
     for (let i = 0; i < this.NB; i++) {
       const b = this.sb[i]; b.t -= dt;
       if (b.st === 'off' || Math.hypot(b.x - cam.x, b.z - cam.z) > 70) { const s2 = spot(); if (s2) Object.assign(b, s2, { st: 'perch', t: 2 + Math.random() * 6 }); }
       else if (b.st === 'perch') {
         const scared = Math.hypot(P.x - b.x, P.z - b.z) < 2.5 && Math.abs((P.floorY || 0) - b.y) < 2;
-        if (scared || b.t <= 0) { const s2 = Math.random() < 0.5 || scared ? spot() : { x: b.x + (Math.random() - 0.5) * 6, z: b.z + (Math.random() - 0.5) * 6, y: b.y }; if (s2) { b.st = 'fly'; b.u = 0; b.sx = b.x; b.sy = b.y; b.sz = b.z; b.fx = s2.x; b.fy = s2.y; b.fz = s2.z; b.h = Math.atan2(s2.x - b.x, s2.z - b.z); } else b.t = 2; }
-        else if (Math.random() < dt * 1.5) { b.h += (Math.random() - 0.5) * 2; b.x += Math.sin(b.h) * 0.12; b.z += Math.cos(b.h) * 0.12; b.hop = 0.15; }   // a hop
+        if (scared || b.t <= 0) { const s2 = Math.random() < 0.5 || scared || b.y > 0.5 ? spot() : { x: b.x + (Math.random() - 0.5) * 6, z: b.z + (Math.random() - 0.5) * 6, y: b.y }; if (s2) { b.st = 'fly'; b.u = 0; b.sx = b.x; b.sy = b.y; b.sz = b.z; b.fx = s2.x; b.fy = s2.y; b.fz = s2.z; b.h = Math.atan2(s2.x - b.x, s2.z - b.z); } else b.t = 2; }
+        else if (Math.random() < dt * 1.5 && b.y < 0.5) { b.h += (Math.random() - 0.5) * 2; b.x += Math.sin(b.h) * 0.12; b.z += Math.cos(b.h) * 0.12; b.hop = 0.15; }   // a hop (on the ground: up on a roof they keep still)
       } else { const L = Math.hypot(b.fx - b.sx, b.fz - b.sz) + 1; b.u = Math.min(1, b.u + dt * 9 / L); const k = b.u; b.x = b.sx + (b.fx - b.sx) * k; b.z = b.sz + (b.fz - b.sz) * k; b.y = b.sy + (b.fy - b.sy) * k + Math.sin(k * Math.PI) * Math.min(4, L * 0.3) + Math.sin(t * 30 + i) * 0.04; if (k >= 1) { b.st = 'perch'; b.t = 3 + Math.random() * 8; } }
       if (b.hop > 0) b.hop -= dt; const hop = b.hop > 0 ? Math.sin(b.hop / 0.15 * Math.PI) * 0.07 : 0, peck = b.st === 'perch' ? Math.max(0, Math.sin(t * 5 + i * 1.3)) * 0.3 : 0;
       this.e.set(peck, b.h, 0); this.q4.setFromEuler(this.e); this.v3.set(b.x, b.y + 0.05 + hop, b.z); this.m4.compose(this.v3, this.q4, this.s3); this.small.setMatrixAt(i, this.m4);

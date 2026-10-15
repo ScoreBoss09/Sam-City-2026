@@ -213,6 +213,7 @@ export class Crime {
   hit(v, dmg, from) {
     const g = this.game, P = g.player;
     if (v === P) { P.takeHit(dmg, from); return; }
+    if (v.kind === 'raider') { v.bruise = (v.bruise || 0) + dmg; v.fightAnim = 'hit'; v.fightAnimT = 0.35; v.freezeT = Math.max(v.freezeT || 0, 0.35); Sfx.noise(0.08, { freq: 300, vol: 0.25, type: 'lowpass' }); if (v.bruise >= 30) { v.bruise -= 30; g.raids.hit(v, 1); } if (g.particles) g.particles.burst(v.x, 1.5, v.z, 0xffffff, 5, 1.2, 1.5, 0.06); return; }   // a raider: every couple of good punches (or one kick and a punch) counts as a blow; enough of them and he's down
     v.hp = (v.hp ?? 100) - dmg; v.fightAnim = 'hit'; v.fightAnimT = 0.35; Sfx.noise(0.08, { freq: 300, vol: 0.25, type: 'lowpass' });
     const dx = v.x - from.x, dz = v.z - from.z, d = Math.hypot(dx, dz) || 1, w = g.world; for (const k of [0.6, 0.3]) { const nx = v.x + dx / d * k, nz = v.z + dz / d * k; if (!w.collides(nx, nz, 0.3)) { v.x = nx; v.z = nz; break; } }
     if (g.particles) g.particles.burst(v.x, 1.5, v.z, 0xffffff, 5, 1.2, 1.5, 0.06);
