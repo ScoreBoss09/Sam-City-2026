@@ -195,7 +195,7 @@ export class Sim {
     if (this.carting) return 'work';   // out with the Carter's Yard cart
     if (this.escort) return 'escorted';   // in the constable's custody, walking where he walks
     if (this.cellsUntil) { const c = this.game.clock; if (c.totalDays * 24 + c.hour < this.cellsUntil) return 'locked'; this.game.crime.release(this); }   // a night in the cells
-    if (this.lockedT) { if (this.game.elapsed < this.lockedT) return 'locked'; this.lockedT = 0; this.hidden = false; const lk = this.lockup; if (lk && lk.doorOut) { this.x = lk.doorOut.x; this.z = lk.doorOut.z; } this.lockup = null; }
+    if (this.lockedT) { if (this.game.elapsed < this.lockedT) return 'locked'; this.lockedT = 0; this.hidden = false; if (this.inCell) { this.inCell = false; this.pose = 'stand'; this.roughLie = undefined; this.inside = null; } const lk = this.lockup; if (lk && lk.doorOut) { this.x = lk.doorOut.x; this.z = lk.doorOut.z; } this.lockup = null; }
     // everyone keeps their own hours: early birds, night owls, children in bed by eight
     const wd = this.game.clock.weekday, late = this.kind !== 'resident' || this.age < 18 ? 0 : (wd >= 3 && wd <= 5 && this.age < 36 ? 2 : wd === 4 || wd === 5 ? (this.age < 50 ? 1 : 0) : this.age < 26 ? 1 : 0), bed = (this.bedH ?? 22) + late, wake = this.wakeH ?? 6, night = bed >= 24 ? h >= bed - 24 && h < wake : h >= bed || h < wake;
     if (alert) { if (this.role === 'guard' && this.kind === 'resident') return 'defend'; if (!(night && this.home)) return 'shelter'; }

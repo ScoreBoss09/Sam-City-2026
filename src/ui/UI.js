@@ -32,6 +32,7 @@ export class UI {
     // toolbox
     this.drawToolbox = () => { const tr = this.trackReady(); if (tr === this._trackShown) return; this._trackShown = tr; $('toolbox').innerHTML = this.tools().map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('') + '<button class="tool wide" data-menu="1"><span class="ic">📐</span>Planning menu <b class="key kbonly">B</b><b class="ps padonly">□</b></button>'; this.refreshTools(); }; this.drawToolbox();
     this.plan = new PlanMenu(game); this.pause = new PauseMenu(game);
+    $('h-warn').addEventListener('click', () => { if (!game.netVisitor) this.plan.show('town'); });   // the warning badge: the town page
     for (const e of ['building:added', 'building:removed', 'building:done']) game.world.events.on(e, () => { this.buildDirty = true; });   // build menus that are open keep up (sites placed, finished, permits through)
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; if (b.dataset.menu) { this.plan.show(); return; } const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });

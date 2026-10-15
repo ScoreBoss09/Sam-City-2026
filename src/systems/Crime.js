@@ -85,7 +85,7 @@ export class Crime {
     const g = this.game; if (!s.crook || !s.crook.local) { g.population.depart(s); return; }
     s.crook = null; s.fightAnim = null; s.path = []; s.phase = 0;
     const lk = g.buildings.list.find((b) => b.id === 'lockup' && b.state === 'done') || g.buildings.list.find((b) => (b.id === 'police' || b.id === 'watchhouse') && b.state === 'done');
-    if (lk) { s.lockup = lk; s.lockedT = g.elapsed + 150; s.hidden = true; s.x = lk.cx; s.z = lk.cz; g.messages.push('Police', `${s.name} is cooling off in the ${lk.def.name}.`); }
+    if (lk) { s.lockup = lk; s.lockedT = g.elapsed + 150; this.cell(s, lk); g.messages.push('Police', `${s.name} is cooling off in the ${lk.def.name}.`); }
     else g.messages.push('Police', `${s.name} gets off with a caution. There's nowhere to lock anyone up: a Lock-up would help.`);
   }
   /** A fight between two townsfolk; at night outside the pub or nightclub if there is one. */
@@ -251,12 +251,20 @@ export class Crime {
     if (Math.hypot(q.x - cop.x, q.z - cop.z) > 3) return;
     cop.escorting = null; q.escort = null; q.path = [];
     if (e.toLift) { g.population.depart(q); g.messages.push('Police', `${cop.roleName || 'PC'} ${cop.surname || cop.first} walked ${q.name} up to the Lift. Not welcome back in a hurry.`, 'quiet'); return; }
-    const c = g.clock; q.lockup = e.to; q.cellsUntil = (c.hour < 7 ? c.totalDays * 24 + 7 : (c.totalDays + 1) * 24 + 7); q.hidden = true; q.inside = e.to; q.x = e.to.cx; q.z = e.to.cz; q.drinking = false;
+    const c = g.clock; q.lockup = e.to; q.cellsUntil = (c.hour < 7 ? c.totalDays * 24 + 7 : (c.totalDays + 1) * 24 + 7); this.cell(q, e.to); q.drinking = false;
     g.social.say(cop, pick(['In you go. Sleep it off.', 'Breakfast is at seven. Don\'t get excited.', 'Mind your head.']), 2.2);
+  }
+  /** Into the cell. In the Lock-Up they're to be seen (open the door): the first on the stone bench, the rest on the straw, asleep. Anywhere else they're just shut away. */
+  cell(q, lk) {
+    q.path = []; q.glide = null; q.phase = 2; q.standUp(); if (q.activity !== 'locked') { q.endActivity(); q.activity = 'locked'; } const B = lk.ext && lk.ext.bench;   // (now, so the change of activity doesn't get them up off the bench)
+    if (!B) { q.hidden = true; q.inside = lk; q.x = lk.cx; q.z = lk.cz; return; }
+    const others = this.game.population.sims.filter((s) => s !== q && s.lockup === lk && !s.remove && (s.cellsUntil || s.lockedT)).length, r = lk.rot * Math.PI / 2;
+    const [x, z] = others ? lk.toWorld(0.25 - (others % 2) * 0.5, 0.35) : lk.toWorld(B.x, B.z);
+    q.hidden = false; q.inside = lk; q.x = x; q.z = z; q.pose = 'sleep'; q.heading = r + Math.PI / 2 + (others ? 0.4 * (others % 2 ? 1 : -1) : 0); q.roughLie = others ? 0.14 : 0.5; q.inCell = true;
   }
   /** Seven in the morning: out they come with a sore head. A local goes home; anyone else is walked up to the Lift by a constable, or makes their own way up it. */
   release(q) {
-    const g = this.game, lk = q.lockup; q.cellsUntil = 0; q.lockup = null; q.hidden = false; q.inside = null; q.drunk = 0; q.moodBoost -= 0.15;
+    const g = this.game, lk = q.lockup; q.cellsUntil = 0; q.lockup = null; q.hidden = false; q.inside = null; q.drunk = 0; q.moodBoost -= 0.15; if (q.inCell) { q.inCell = false; q.pose = 'stand'; q.roughLie = undefined; }
     if (lk && lk.doorOut) { q.x = lk.doorOut.x; q.z = lk.doorOut.z; }
     if (q.mesh.visible) g.social.say(q, pick(['Oh, my head...', 'Never again.', 'What happened last night?', 'Where\'s my shoe?']), 2.6);
     if (q.home || q.kind === 'resident') { g.messages.push('Police', `${q.name} slept it off in the ${lk ? lk.def.name : 'cells'} and has gone home with a sore head.`, 'quiet'); return; }
