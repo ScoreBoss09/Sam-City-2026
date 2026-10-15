@@ -3,7 +3,7 @@ import { TILE } from '../config.js';
 import { ROLES, GATHER } from '../data/buildings.js';
 import { makeCart, updateCart } from '../render/Carts.js';
 import { shiftOf, inHours } from '../data/hours.js';
-import { createRig } from '../render/SimRig.js';
+import { createRig, HAIR_STYLES_M, HAIR_STYLES_F } from '../render/SimRig.js';
 import { Animator } from '../render/Animator.js';
 import { pick, angleDiff } from '../util.js';
 import { Dog } from '../render/Dog.js';
@@ -193,7 +193,7 @@ export class Sim {
     // mood drifts around the personality baseline
     this.moodBoost *= Math.exp(-dt * 0.02);
     this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + ((this.home && this.home.def.homeJoy) || 0) + Math.min(0.2, this.friendCount() * 0.04) + (this.kind !== 'visitor' ? g.buildings.townJoy() + g.economy.rateMood : 0);
-    this.smokeHabit(dt);
+    this.smokeHabit(dt); this.salon(dt);
     // a few drinks at the pub: merry, then wobbly, then wanting a kebab and a fight (it wears off by morning)
     if (this.drinking && this.sitting && this.kind === 'resident' && this.age >= 18) this.drunk = Math.min(1, (this.drunk || 0) + dt * 0.011 * (this.trait === 'cheerful' ? 1.4 : this.trait === 'shy' || this.trait === 'busy' ? 0.6 : 1));
     else if (this.drunk > 0) { this.drunk = Math.max(0, this.drunk - dt * (this.pose === 'sleep' ? 0.02 : 0.0025)); if (this.drunk > 0.5 && !this.sitting && !this.chat && this.mesh.visible && !this.inside && Math.random() < dt * 0.05) { g.social.say(this, pick(DRUNK), 2.4); this.emote = { upper: pick(['cheer', 'wave', 'dance']), t: 1.6 }; } }
@@ -351,7 +351,7 @@ export class Sim {
       }
       else if (c === 'park' && parks.length) { const p = pick(parks), s = pick(p.spots.idle); ok = this.goTo({ b: p, x: s.x, z: s.z }); }
       else if (c === 'bench' && parks.length) { const p = pick(parks), seats = this.freeSeat(p); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: p, x: s.x, z: s.z, seat: s }); } }
-      else if (c === 'shop') { const p = pick(shops), s = p && p.spots && pick(p.spots.visit || []); if (s) { ok = this.goTo({ b: p, x: s.x, z: s.z, face: p.rot * Math.PI / 2 + Math.PI }); this.shopping = true; } }
+      else if (c === 'shop') { const p = pick(shops); this.shopB = p; this.cutT = 0; this.cutDone = false; const s = p && p.spots && pick(p.spots.visit || []); if (s) { ok = this.goTo({ b: p, x: s.x, z: s.z, face: p.rot * Math.PI / 2 + Math.PI }); this.shopping = true; } }
       else if (c === 'pub') { const p = pick(pubs), seats = this.freeSeat(p, ['dining']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: p, x: st.x, z: st.z, seat: st }); this.drinking = ok; } }
       else if (c === 'church' && church) { const seats = this.freeSeat(church, ['pew']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: church, x: st.x, z: st.z, seat: st }); if (ok && Math.random() < 0.7) this.wear('sunday', g.clock.totalDays * 24 + 15); } }
       else if (c === 'train') { ok = g.transport.planTrip(this); if (ok) this.timer = 200; }
@@ -566,6 +566,16 @@ export class Sim {
     return (this._smk = this.age >= 17 && this.kind !== 'child' && this.kind !== 'security' && h % 100 < pct);
   }
   /** Light up now and then: more often over a pint, and when a builder's stood about on site. One lasts a minute or so. */
+  /** In the chair at the hairdresser's: a few minutes with the scissors and they come out with a different do. */
+  salon(dt) {
+    const b = this.shopB; if (!this.shopping || this.cutDone || !b || b.id !== 'hairdresser' || this.phase !== 2 || this.path.length || !(this.inside === b || this.game.buildings.onBuilding(b, this.x, this.z))) return;
+    this.cutT = (this.cutT || 0) + dt * Math.max(0.25, this.game.clock.speed); if (this.cutT < 7) return; this.cutDone = true;
+    const g = this.game, L = this.baseLook || this.look, pool = (this.gender === 'f' ? HAIR_STYLES_F : HAIR_STYLES_M).filter((h) => h !== L.hairStyle && h !== 'bald'), hs = pick(pool);
+    const dye = Math.random() < 0.18 ? pick([0xe8c878, 0xb8462a, 0x2a1a12, 0xd8a050, 0x6a3a2a]) : L.hair;   // (Curl Up & Dye: now and then a new colour too)
+    const nl = { ...L, hairStyle: hs, hair: dye }; if (this.baseLook) this.baseLook = nl; this.look = this.baseLook ? { ...this.look, hairStyle: hs, hair: dye } : nl; this.rebuildMesh();
+    if (this.mesh.visible) { g.particles.burst(this.x, 1.7, this.z, L.hair, 8, 0.5, 0.8, 0.05); g.social.say(this, pick(['Ooh, I love it!', 'Is it too short? Be honest.', 'Very Jennifer Aniston, that.', 'My mum\'s going to hate it.', 'Ten years younger, me.', 'Same again in six weeks, love.']), 2.6); }
+    this.moodBoost += 0.06;
+  }
   smokeHabit(dt) {
     if (this.smokeT > 0) { this.smokeT -= dt; if (this.smokeT <= 0) this.smokeCD = 50 + Math.random() * 130; return; }
     if ((this.smokeCD = (this.smokeCD || Math.random() * 60) - dt) > 0 || this.pose === 'sleep' || this.down > 0 || !this.smoker || this.hidden) return;

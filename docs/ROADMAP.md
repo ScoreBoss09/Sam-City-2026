@@ -205,3 +205,20 @@ Status: [ ] to do, [~] partly done, [x] done (see notes).
 176. [x] Grenade arc: a dashed ribbon the same width on screen near and far, along the grenade's real flight (bounces included), fading at the end; the blast area shaded on the ground with a target where it goes off.
 177. [ ] Destructible buildings (beyond windows).
 178. [ ] The easy mod option.
+
+## Round 6.11: Sam City 1995 (owner's list: the real calendar, fires, multiplayer helpers, timber, notices, events, the town's people)
+179. [x] Sam City 1995: starts on Monday 3 April 1995 on a real calendar (month lengths, weekdays, Easter), with the town's key dates (Easter, Bonfire Night, Christmas, New Year's Eve and the rest) and Sam's birthday on 20 April (cards in the post). Accounts, rates and loans go weekly.
+180. [x] Important letters wait on screen until you press a button, then go in the post. Buy and sell by a typed or dialled amount (keyboard and controller). The open map is a menu: scrolling it doesn't move Sam.
+181. [x] Cutscenes: the first time an event comes to town (morris men, the ice-cream van, a car boot sale) it arrives down the Lift with a caption. Morris men only April to September, about twice a month, in a straight line. Seen events lose their map icon. No cars at the car boot sale before there are cars; a proper fête with stalls, a tea tent and a bouncy castle.
+182. [x] Fires: neighbours each run with a bucket from the well to the fire and back. Sleepers wake and flee; now and then someone is trapped and dies unless Sam or the fire brigade gets them out. With no well and no Fire Station it burns to the ground: the ruin goes to the top of the builders' list, then the plot is free. The dead rest at the church, chapel, clinic or surgery until a joint Sunday funeral (or two builders take them up the Lift).
+183. [x] Multiplayer: visitors' shots land on Sam (the host's Sam was being taken for a townsperson); visitors help build, gather, deliver, dig paths and fill the Stockyard, all done in the host's town; desks, the post and the Lift intercom say access denied.
+184. [x] Timber: lumberjacks (and quarrymen) fill their load tree to tree, two logs a chop, stack it at the camp and barrow it to the Stockyard two dozen at a go: about three times the timber from the same camps.
+185. [x] God mode's building list shows a placed site (amber, "being built") and catches up as soon as a permit comes through.
+186. [x] Lots of smokers (builders and the pub most of all); dropped goods picked up and used or taken to the Stockyard; trees by sites can be chopped and a path over a tree fells it first; no stumps under paths or new buildings.
+187. [x] Rough sleepers each find their own bench, patch under a tree or shop doorway and lie on it, not stacked in mid-air. Snowball fights only when there's snow. Hairdressers give their customers a new do.
+188. [x] Fixed: controller presses in menus and notices (a line of code had been turned into a comment), Sunday church and pub outings, the god tools' ghost building, the library clock in the ceiling, campfire glow jumping in god mode, site labels flickering, the brickworks' extra roof, log cabin curtains, door signs floating, the homeless-homebody crash, white townsfolk (owner's choice).
+189. [ ] God mode draw calls (building exteriors batched per district).
+190. [ ] Wildlife: squirrels on the ground, birds perching and roosting, bats and owls.
+191. [ ] Raids: rowing ashore, the guard's club, punches and kicks.
+192. [ ] Town overview, worker map, build-queue totals, shortage warning.
+193. [ ] The pub (drinks in hand, drunks staggering home, upstairs piano), more pubs, the nightclub late, couples holding hands, the fire station's pole and engine bay, the lock-up and drunks spending the night in it, the documentary crew, the 1995/2026 story, batch 005 models.
