@@ -91,30 +91,33 @@ export function createRig(look = {}) {
     .box(0.04, 0.06, 0.05, 0, 0.14, 0.165, skinD);
   const hc = L.hair, hs = L.hairStyle, brow = shade(hc, 0.8);
   hd.box(F ? 0.075 : 0.085, F ? 0.012 : 0.02, 0.012, -0.075, 0.27, 0.153, brow).box(F ? 0.075 : 0.085, F ? 0.012 : 0.02, 0.012, 0.075, 0.27, 0.153, brow);
-  if (F) { hd.box(0.075, 0.012, 0.012, -0.075, 0.236, 0.154, 0x2a1d12).box(0.075, 0.012, 0.012, 0.075, 0.236, 0.154, 0x2a1d12); hd.box(0.03, 0.02, 0.008, -0.12, 0.1, 0.15, 0xe89aa0).box(0.03, 0.02, 0.008, 0.12, 0.1, 0.15, 0xe89aa0); } // lashes, blush
-  if (F && L.shadow) hd.box(0.075, 0.022, 0.01, -0.075, 0.245, 0.155, L.shadow).box(0.075, 0.022, 0.01, 0.075, 0.245, 0.155, L.shadow);   // eyeshadow
+  if (F) { hd.box(0.075, 0.012, 0.012, -0.075, 0.236, 0.154, 0x2a1d12).box(0.075, 0.012, 0.012, 0.075, 0.236, 0.154, 0x2a1d12); hd.box(0.03, 0.02, 0.012, -0.12, 0.1, 0.151, 0xe89aa0).box(0.03, 0.02, 0.012, 0.12, 0.1, 0.151, 0xe89aa0); } // lashes, blush (stood clear of the skin, not flush with it)
+  if (F && L.shadow) hd.box(0.075, 0.022, 0.008, -0.075, 0.25, 0.153, L.shadow).box(0.075, 0.022, 0.008, 0.075, 0.25, 0.153, L.shadow);   // eyeshadow (just behind the lashes: their fronts used to be level, and flickered)
   if (L.earrings) for (const x of [-hwid / 2 - 0.02, hwid / 2 + 0.02]) hd.box(0.02, 0.07, 0.05, x, 0.05, 0.02, 0xe8c040);
   if (L.facial === 'stubble') hd.box(hwid - 0.02, 0.1, 0.012, 0, 0.06, 0.152, shade(L.skin, 0.8));
   if (L.facial === 'moustache' || L.facial === 'beard') hd.box(0.14, 0.035, 0.03, 0, 0.1, 0.165, hc);
   if (L.facial === 'beard') hd.box(hwid + 0.01, 0.12, 0.05, 0, 0.04, 0.14, hc).box(hwid + 0.01, 0.14, 0.2, 0, 0.1, -0.02, hc);
-  if (hs !== 'bald') {
+  const capped = !!(L.hat && L.hat.type !== 'mask'), masked = !!(L.hat && L.hat.type === 'mask');   // (a hat: the hair stays under it, nothing poking up through the crown or the brim)
+  if (hs !== 'bald' && !masked) {
     const hh = L.hat && (L.hat.type === 'flat' || L.hat.type === 'bowler') ? 0 : 1;
-    hd.box(hwid + 0.02, 0.1, 0.32, 0, 0.35, 0, hc).box(hwid + 0.02, 0.22, 0.09, 0, 0.25, -0.14, hc).box(0.04, 0.12, 0.28, -hwid / 2 - 0.02, 0.28, 0, hc).box(0.04, 0.12, 0.28, hwid / 2 + 0.02, 0.28, 0, hc);
+    if (capped) hd.box(hwid + 0.02, 0.05, 0.32, 0, 0.33, 0, hc); else hd.box(hwid + 0.02, 0.1, 0.32, 0, 0.35, 0, hc);
+    hd.box(hwid + 0.02, 0.22, 0.09, 0, 0.25, -0.14, hc).box(0.04, 0.12, 0.28, -hwid / 2 - 0.02, 0.28, 0, hc).box(0.04, 0.12, 0.28, hwid / 2 + 0.02, 0.28, 0, hc);
     if (hs === 'crop') { /* just the base */ }
     if (hs === 'long') hd.box(hwid + 0.03, 0.46, 0.08, 0, 0.08, -0.15, hc).box(0.04, 0.4, 0.1, -hwid / 2 - 0.03, 0.08, -0.04, hc).box(0.04, 0.4, 0.1, hwid / 2 + 0.03, 0.08, -0.04, hc);
-    if (hs === 'bob') hd.box(hwid + 0.05, 0.3, 0.08, 0, 0.14, -0.15, hc).box(0.05, 0.28, 0.2, -hwid / 2 - 0.03, 0.15, -0.02, hc).box(0.05, 0.28, 0.2, hwid / 2 + 0.03, 0.15, -0.02, hc).box(hwid, 0.07, 0.04, 0, 0.32, 0.16, hc);
-    if (hs === 'bun') hd.box(0.13, 0.13, 0.13, 0, 0.45, -0.08, hc);
-    if (hs === 'afro' || hs === 'curly') hd.box(hs === 'afro' ? 0.44 : 0.38, hs === 'afro' ? 0.28 : 0.2, hs === 'afro' ? 0.4 : 0.34, 0, hs === 'afro' ? 0.41 : 0.39, -0.06, hc);
-    if (hs === 'side') hd.box(0.34, 0.07, 0.12, -0.02, 0.4, 0.12, hc).box(0.1, 0.18, 0.1, 0.12, 0.26, 0.14, hc);
+    if (hs === 'bob') hd.box(hwid + 0.05, 0.3, 0.08, 0, 0.14, -0.15, hc).box(0.05, 0.28, 0.2, -hwid / 2 - 0.03, 0.15, -0.02, hc).box(0.05, 0.28, 0.2, hwid / 2 + 0.03, 0.15, -0.02, hc).box(hwid, 0.07, 0.04, 0, capped ? 0.28 : 0.32, 0.16, hc);
+    if (hs === 'bun') hd.box(0.13, 0.13, 0.13, 0, capped ? 0.28 : 0.45, capped ? -0.2 : -0.08, hc);
+    if ((hs === 'afro' || hs === 'curly' || hs === 'perm') && capped) hd.box(hwid + 0.08, 0.14, 0.34, 0, 0.25, -0.03, hc);   // puffed out under the hat
+    else if (hs === 'afro' || hs === 'curly') hd.box(hs === 'afro' ? 0.44 : 0.38, hs === 'afro' ? 0.28 : 0.2, hs === 'afro' ? 0.4 : 0.34, 0, hs === 'afro' ? 0.41 : 0.39, -0.06, hc);
+    if (hs === 'side') { if (!capped) hd.box(0.34, 0.07, 0.12, -0.02, 0.4, 0.12, hc); hd.box(0.1, capped ? 0.1 : 0.18, 0.1, 0.12, capped ? 0.24 : 0.26, 0.14, hc); }
     if (hs === 'pony') hd.box(0.08, 0.34, 0.08, 0, 0.16, -0.2, hc).box(0.06, 0.06, 0.06, 0, 0.34, -0.19, 0xd9532b);
     // the 1990s
-    if (hs === 'curtains') hd.box(0.16, 0.16, 0.06, -0.085, 0.3, 0.15, hc).box(0.16, 0.16, 0.06, 0.085, 0.3, 0.15, hc);   // centre parting, a fringe either side
+    if (hs === 'curtains') { const fy = capped ? 0.26 : 0.3, fh = capped ? 0.1 : 0.16; hd.box(0.16, fh, 0.06, -0.085, fy, 0.15, hc).box(0.16, fh, 0.06, 0.085, fy, 0.15, hc); }   // centre parting, a fringe either side
     if (hs === 'mullet') hd.box(hwid - 0.02, 0.3, 0.08, 0, 0.02, -0.16, hc);   // business at the front...
-    if (hs === 'spiky') for (const [x, z] of [[-0.09, 0.06], [0, 0.08], [0.09, 0.06], [-0.05, -0.05], [0.05, -0.05]]) hd.box(0.06, 0.1, 0.06, x, 0.45, z, hc);
+    if (hs === 'spiky' && !capped) for (const [x, z] of [[-0.09, 0.06], [0, 0.08], [0.09, 0.06], [-0.05, -0.05], [0.05, -0.05]]) hd.box(0.06, 0.1, 0.06, x, 0.45, z, hc);
     if (hs === 'bowl') hd.box(hwid + 0.06, 0.1, 0.36, 0, 0.32, 0.01, hc).box(hwid + 0.04, 0.06, 0.05, 0, 0.27, 0.16, hc);
-    if (hs === 'rachel') hd.box(hwid + 0.07, 0.34, 0.12, 0, 0.12, -0.13, hc).box(0.06, 0.32, 0.16, -hwid / 2 - 0.035, 0.13, 0.02, hc).box(0.06, 0.32, 0.16, hwid / 2 + 0.035, 0.13, 0.02, hc).box(hwid + 0.04, 0.05, 0.3, 0, 0.42, 0, shade(hc, 1.15));
-    if (hs === 'perm') hd.box(0.44, 0.22, 0.36, 0, 0.39, -0.07, hc).box(0.5, 0.28, 0.22, 0, 0.17, -0.14, hc).box(0.06, 0.24, 0.12, -0.24, 0.2, 0.02, hc).box(0.06, 0.24, 0.12, 0.24, 0.2, 0.02, hc);   // big, but off the face
-    if (hs === 'scrunchie') hd.box(0.09, 0.3, 0.09, 0, 0.36, -0.2, hc).box(0.13, 0.07, 0.13, 0, 0.44, -0.18, L.scrunchie || 0xe0407a);
+    if (hs === 'rachel') hd.box(hwid + 0.07, 0.34, 0.12, 0, 0.12, -0.13, hc).box(0.06, 0.32, 0.16, -hwid / 2 - 0.035, 0.13, 0.02, hc).box(0.06, 0.32, 0.16, hwid / 2 + 0.035, 0.13, 0.02, hc).box(hwid + 0.04, 0.05, 0.3, 0, capped ? 0.31 : 0.42, 0, shade(hc, 1.15));
+    if (hs === 'perm' && !capped) hd.box(0.44, 0.22, 0.36, 0, 0.39, -0.07, hc); if (hs === 'perm') hd.box(0.5, 0.28, 0.22, 0, 0.17, -0.14, hc).box(0.06, 0.24, 0.12, -0.24, 0.2, 0.02, hc).box(0.06, 0.24, 0.12, 0.24, 0.2, 0.02, hc);   // big, but off the face
+    if (hs === 'scrunchie') hd.box(0.09, 0.3, 0.09, 0, capped ? 0.2 : 0.36, -0.2, hc).box(0.13, 0.07, 0.13, 0, capped ? 0.3 : 0.44, -0.18, L.scrunchie || 0xe0407a);
     if (hs === 'plait') hd.box(0.07, 0.5, 0.07, 0.05, 0.0, -0.2, hc).box(0.06, 0.06, 0.06, 0.05, -0.26, -0.2, 0xd9532b);
     void hh;
   }
