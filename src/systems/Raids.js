@@ -69,22 +69,78 @@ export class Raids {
       const mk = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.45, 6), new THREE.MeshBasicMaterial({ color: 0xff3030, depthTest: false })); mk.rotation.x = Math.PI; mk.position.y = 2.55; mk.renderOrder = 15; s.mesh.add(mk);
       g.population.sims.push(s); g.population.names.add(P.name); this.raiders.push(s);
     }
-    this.assignTargets();
-    this.spawnPickup();
-    g.messages.push('Planning Office', 'Raiders are landing on the beach! Get everyone indoors. There is a club by the Stockyard if you are feeling brave, Sam.', 'alarm'); g.ui.toast('RAIDERS LANDING!', 3200);
+    this.assignTargets(); this.rowIn(land);
+    const first = !g.flags.firstRaid; g.flags.firstRaid = true;
+    if (first && this.guard()) this.firstScene(); else if (!g.flags.hasClub) this.spawnPickup();
+    g.messages.push('Planning Office', `A boat full of raiders is rowing in to the beach! Get everyone indoors.${g.flags.hasClub ? ' Your club\'s on your belt, Sam: F to swing it.' : ' The Lift guards have a club if you are feeling brave, Sam.'}`, 'alarm'); g.ui.toast('RAIDERS!', 3200);
+    this.panicTown(); this.heroes(); if (g.flags.hasClub && !first) g.player.weapon = 'club';   // (Sam's own club, off his belt)
     return true;
+  }
+  /** The boat starts well out to sea and rows in to the beach, the raiders sat in it pulling on the oars, then they jump out. */
+  rowIn(l) {
+    const dx = l.bx - l.x, dz = l.bz - l.z, n = Math.hypot(dx, dz) || 1, fx = dx / n, fz = dz / n, ex = l.bx - fx * 2.2, ez = l.bz - fz * 2.2;
+    this.row = { t: 0, dur: 14, sx: ex + fx * 34, sz: ez + fz * 34, ex, ez, h: Math.atan2(-fx, -fz) };
+    for (const r of this.raiders) { r.riding = 'boat'; r.rowing = true; r.path = []; }
+    this.rowStep(0);
+  }
+  rowStep(dt) {
+    const R = this.row, b = this.boat; if (!R || !b) return; R.t += dt; const k = Math.min(1, R.t / R.dur), e = k * (2 - k), t = this.game.elapsed;
+    const x = R.sx + (R.ex - R.sx) * e, z = R.sz + (R.ez - R.sz) * e, y = -0.42 + Math.sin(t * 1.8) * 0.05 + k * 0.12, c = Math.cos(R.h), s = Math.sin(R.h);
+    b.position.set(x, y, z); b.rotation.set(Math.sin(t * 1.3) * 0.04, R.h, Math.sin(t * 1.1) * 0.05); const st = Math.sin(t * 3.2);
+    for (const [i, o] of (b.userData.oars || []).entries()) { o.rotation.y = (i ? -1 : 1) * (0.5 + st * 0.45); o.rotation.z = (i ? -1 : 1) * (0.25 + Math.max(0, st) * 0.2); }
+    this.raiders.forEach((r, i) => { const n = this.raiders.length, oz = (i - (n - 1) / 2) * -0.62, ox = (i % 2 ? 0.22 : -0.22); r.x = x + ox * c + oz * s; r.z = z - ox * s + oz * c; r.rideY = y + 0.18; r.heading = R.h + Math.PI; });   // (rowers face the back)
+    if (k >= 1) {   // ashore: out they jump
+      const l = this.land; this.row = null; this.raiders.forEach((r, i) => { r.riding = null; r.rowing = false; r.rideY = 0; r.x = l.x + (i % 3 - 1) * 1.1; r.z = l.z + Math.floor(i / 3) * 1.1; r.heading = l.heading + Math.PI; r.phase = 0; r.goneTo = false; });
+      b.position.y = 0.05; b.rotation.set(0, R.h, 0);
+    }
+  }
+  /** One of the Lift guards (for the first raid's scene). */
+  guard() { const S = this.game.security; return S && S.guards.find((s) => !s.hidden && !s.remove) || null; }
+  /** The first raid: the boat rowing in, then the Lift guard: "Sam! Use this to stop the raiders." and a club of Sam's own. */
+  firstScene() {
+    const g = this.game, l = this.land, R = this.row, G = this.guard(), P = g.player; if (!R || !G) return;
+    const px = -Math.sin(R.h), pz = -Math.cos(R.h), sx = -pz, sz = px;   // (out to sea; along the beach)
+    const boatAt = () => (this.boat ? this.boat.position : { x: l.x, y: 0, z: l.z });
+    const toG = () => { const [lx, lz] = [g.lift.cx, g.lift.cz], dx = G.x - lx, dz = G.z - lz, n = Math.hypot(dx, dz) || 1; return { x: G.x + (dx / n) * 0.2 + (G.x - lx === 0 ? 0 : 0), z: G.z + 1.6, n }; };
+    g.cutscene.play({ shots: [
+      { dur: 6.5, title: 'Raiders', text: 'A boat is rowing in to the beach.', cam: (t) => { const b = boatAt(); return { pos: [b.x - px * 5 + sx * 6.5, 2.4, b.z - pz * 5 + sz * 6.5], look: [b.x, 0.5, b.z], fov: 46 }; } },   // (alongside the boat as it comes in)
+      { dur: 4.2, snap: true, cut: true, say: ['Lift Guard', '"Sam! Use this to stop the raiders."'], at: () => { const s = toG(); P.teleport(s.x, s.z); P.heading = Math.atan2(G.x - P.x, G.z - P.z); P.yaw = P.heading + Math.PI; G.path = []; G.faceGoal = Math.atan2(P.x - G.x, P.z - G.z); G.heading = G.faceGoal; G.emote = { upper: 'point', t: 4 }; G.holding = 'club'; g.social.say(G, 'Sam! Use this to stop the raiders!', 3.5); },
+        cam: (t) => ({ pos: [P.x - Math.sin(P.heading) * 1.9 + Math.cos(P.heading) * 0.7, 2.0, P.z - Math.cos(P.heading) * 1.9 - Math.sin(P.heading) * 0.7], look: [G.x, 1.55, G.z], fov: 45 }) },
+      { dur: 3.4, title: 'A club of your own', text: 'F swings it. Fists (F) and boots (X) work on raiders too.', at: () => { G.emote = { upper: 'nod', t: 2 }; G.holding = null; g.flags.hasClub = true; P.weapon = 'club'; this.take(); },   // (handed over)
+        cam: (t) => ({ pos: [(P.x + G.x) / 2 + Math.cos(P.heading) * 3.4, 1.8, (P.z + G.z) / 2 - Math.sin(P.heading) * 3.4], look: [(P.x + G.x) / 2, 1.3, (P.z + G.z) / 2], fov: 50 }) },
+    ], onEnd: () => g.ui.toast('Stop the raiders! F to swing the club.', 3200) });
+  }
+  /** Everyone outside who can see or hear it: a shout, hands to their heads, and a run for home. */
+  panicTown() {
+    const g = this.game, LINES = ['Raiders! RAIDERS!', 'Get inside! Quick!', 'Lock the doors!', 'Oh my God, they\'re coming up the beach!', 'Someone call the police!', 'Mum! MUM!'];
+    for (const s of g.population.sims) { if ((s.kind !== 'resident' && s.kind !== 'child') || s.inside || s.sleeping || s.down > 0 || s.hidden || s.hero) continue; s.emote = { upper: 'panic', t: 1.6 + Math.random() }; s.hurry = true; if (s.mesh.visible && Math.random() < 0.3) g.social.say(s, pick(LINES), 2.4); }
+  }
+  /** A have-a-go hero or two: the burly and the bad-tempered square up to the raiders with their fists. */
+  heroes() {
+    const g = this.game, T = this.targets && this.targets[0], c = g.population.sims.filter((s) => s.kind === 'resident' && s.age >= 20 && s.age < 55 && !s.sleeping && s.pose !== 'sleep' && !(s.down > 0) && !s.hidden && !s.upstairs && s.role !== 'guard' && s.activity !== 'work' && (!T || Math.hypot(s.x - T.cx, s.z - T.cz) < 90) && ((s.temper || 0) > 0.55 || s.trait === 'grumpy' || s.trait === 'cheerful' && Math.random() < 0.15));   // (out of the pub, the house, wherever they are: not off a shift)
+    c.sort(() => Math.random() - 0.5); for (const s of c.slice(0, Math.min(2, Math.max(1, Math.floor(this.raiders.length / 2))))) { s.hero = { t: 0, cd: 1 }; s.endActivity(); s.activity = 'defend'; s.phase = 0; if (s.mesh.visible) g.social.say(s, pick(['Right. Who wants some?', 'Not on my island, pal.', 'Come on then!', 'Leave it to me.']), 2.4); }
+  }
+  /** A hero's fight: up to the nearest raider, then fists, until they're beaten, knocked flat, or it's over. */
+  hero(s, dt) {
+    const g = this.game, H = s.hero; if (!H || s.down > 0) { if (s.down > 0) s.hero = null; return; }
+    let best = null, bd = 400; for (const r of this.raiders) { if (r.captured || r.remove || r.rowing) continue; const d = Math.hypot(r.x - s.x, r.z - s.z); if (d < bd) { bd = d; best = r; } }
+    if (!best) { s.hero = null; return; } H.cd -= dt; s.repath = (s.repath || 0) - dt; s.hurry = true;
+    if (bd > 1.3) { if (s.repath <= 0 || !s.path.length) { s.repath = 1; s.goTo({ x: best.x, z: best.z }); } return; }
+    s.path = []; s.faceGoal = Math.atan2(best.x - s.x, best.z - s.z);
+    if (H.cd <= 0) { H.cd = 0.9 + Math.random() * 0.5; s.fightAnim = Math.random() < 0.3 ? 'kick' : 'punch'; s.fightAnimT = 0.4; if (Math.random() < 0.4) { this.hit(best, 1); best.freezeT = 0.5; if (best.mesh.visible) g.social.say(best, pick(['Ow!', 'Get off!', 'Argh!']), 1.2); } }
   }
   makeBoat(l) {
     const b = new THREE.Group(), wood = new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 0.9 }), dark = new THREE.MeshStandardMaterial({ color: 0x40301f, roughness: 0.9 });
     const hull = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.55, 3.0), wood); hull.position.y = 0.1; const bow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.8), wood); bow.position.set(0, 0.12, 1.7); bow.rotation.y = 0.3;
     const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.3), dark); seat.position.set(0, 0.42, 0); const oar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 2.0), dark); oar.position.set(0.85, 0.5, 0); oar.rotation.y = 0.5;
-    for (const m of [hull, bow, seat, oar]) { m.castShadow = true; b.add(m); } b.position.set(l.bx - Math.sin(l.heading) * 0.3, 0.05, l.bz - Math.cos(l.heading) * 0.3); b.rotation.y = l.heading + Math.PI / 2; return b;
+    const oar2 = oar.clone(); oar2.position.x = -0.85; oar2.rotation.y = -0.5; b.userData.oars = [oar, oar2];
+    for (const m of [hull, bow, seat, oar, oar2]) { m.castShadow = true; b.add(m); } b.position.set(l.bx - Math.sin(l.heading) * 0.3, 0.05, l.bz - Math.cos(l.heading) * 0.3); b.rotation.y = l.heading + Math.PI / 2; return b;
   }
   spawnPickup() {
-    const g = this.game, dep = g.depot || g.townhall || g.lift; if (!dep) return;
+    const g = this.game, G = this.guard(), dep = g.lift || g.depot || g.townhall; if (!dep) return;
     const m = new THREE.Group(), wood = new THREE.MeshStandardMaterial({ color: 0x6e4a2a, roughness: 0.9 }), glow = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 12), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.45 }));
     const club = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.08), wood); club.rotation.z = 1.2; club.position.y = 0.12; const head = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.22, 0.14), wood); head.position.set(0.3, 0.2, 0); head.rotation.z = 1.2;
-    m.add(glow, club, head); const px = dep.doorOut.x + 1.6, pz = dep.doorOut.z + 0.4; m.position.set(px, 0.08, pz); g.scene.add(m); this.pickup = { x: px, z: pz, mesh: m };
+    m.add(glow, club, head); const px = G ? G.x + 1.1 : dep.doorOut.x + 1.6, pz = G ? G.z + 0.6 : dep.doorOut.z + 0.4; m.position.set(px, 0.08, pz); g.scene.add(m); this.pickup = { x: px, z: pz, mesh: m };
   }
   take() { const p = this.pickup; if (!p) return false; this.game.scene.remove(p.mesh); this.pickup = null; return true; }
 
@@ -100,7 +156,8 @@ export class Raids {
 
   // ---------- per-tick ----------
   tick(dt) {
-    const g = this.game; this.t += dt; this.barkT -= dt;
+    const g = this.game; if (this.row) { this.rowStep(dt); return; } this.t += dt; this.barkT -= dt;
+    for (const s of g.population.sims) if (s.hero) this.hero(s, dt);
     for (const r of this.raiders) { if (!r.remove && !r.captured) this.drive(r, dt); else if (r.captured && r.capT > 0) { r.capT -= dt; if (r.capT <= 0) { r.remove = true; } } }
     for (const d of this.defenders()) this.defend(d.s, d.range, dt);
     if (this.t > 260) for (const r of this.raiders) if (!r.captured && r.rstate !== 'flee') { r.rstate = 'flee'; r.goneTo = false; }
@@ -203,7 +260,9 @@ export class Raids {
     this.take();
     for (const r of this.raiders) g.population.depart(r); this.raiders = [];
     for (const s of g.population.sims) { s.engaged = null; s.panic = false; }
-    if (g.player.weapon && !silent) { g.player.weapon = null; g.ui.toast('You hang the club back on its peg.'); } else if (silent) g.player.weapon = null;
+    for (const s of g.population.sims) if (s.hero) { s.hero = null; if (s.activity === 'defend' && s.role !== 'guard') s.activity = 'none'; }
+    if (g.player.weapon && !silent) { g.player.weapon = null; g.ui.toast(g.flags.hasClub ? 'You put the club back on your belt.' : 'You hang the club back on its peg.'); } else if (silent) g.player.weapon = null;
+    this.row = null;
     if (this.state !== 'idle' && !silent) {
       this.alert = false; const sims = g.population.sims.filter((s) => s.kind === 'resident' && s.mesh.visible && !s.inside && !s.sleeping), c = sims.length ? pick(sims) : null; if (c) g.social.say(c, pick(RAID_CALM_LINES), 2.6);
     }
