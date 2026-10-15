@@ -321,3 +321,7 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 
 /* trading: how many */
 .qtyc { white-space: nowrap; } .qtyc .tqty { width: 4.2em; padding: 6px 8px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: rgba(255,255,255,.06); color: var(--text); font: 600 14px var(--ui-font, sans-serif); text-align: right; } .qtyc button { margin-left: 4px; min-width: 2.2em; }
+/* god-mode build list: a site that's placed but not built yet (amber, no tick); with one built too, the badges sit side by side */
+.sub .tick.site { background: #e0a43a !important; color: #2a1a02 !important; }
+.sub.both .tick:not(.site) { right: 58px !important; }
+.sub small b.placed { color: #e0a43a; font-weight: 600; }

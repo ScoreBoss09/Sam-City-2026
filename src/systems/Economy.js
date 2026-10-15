@@ -56,7 +56,7 @@ export class Economy extends Emitter {
     if (this.permits[id] !== 'locked') return { ok: false, msg: 'Already requested.' };
     if (g.population.count() < def.permit.pop) return { ok: false, msg: `Needs ${def.permit.pop} residents.` };
     if (!this.spend(def.permit.cost, 'Permits')) return { ok: false, msg: 'Not enough funds.' };
-    this.permits[id] = 'pending';
+    this.permits[id] = 'pending'; if (this.game.ui) this.game.ui.buildDirty = true;
     g.messages.push('Planning Office', `Permit form for ${def.name} posted. Expect a reply soon.`);
     g.flags.permitRequested = true;
     this.pending.push({ id, t: 30 });
@@ -95,7 +95,8 @@ export class Economy extends Emitter {
   }
   update(dt) {
     this.revealAcc += dt; if (this.revealAcc > 1) { this.revealAcc = 0; this.checkReveals(); }
-    for (const q of this.pending) { q.t -= dt; if (q.t <= 0 && this.permits[q.id] === 'pending') { this.permits[q.id] = 'approved'; this.game.messages.push('Planning Office', `${BUILDINGS[q.id].name} APPROVED. It is now in your build menu.`, 'good'); this.game.mail.send('The Planning Office', `Permit approved: ${BUILDINGS[q.id].name}`, `Dear Sam,\n\nWe are pleased to approve your application for a ${BUILDINGS[q.id].name}. You will find it in the planning view under Buildings.\n\n${BUILDINGS[q.id].blurb || ''}\n\nYours faithfully,\nThe Planning Office`); this.emit('permits'); } }
+    for (const q of this.pending) { q.t -= dt; if (q.t <= 0 && this.permits[q.id] === 'pending') { this.permits[q.id] = 'approved'; if (this.game.ui) this.game.ui.buildDirty = true;   // (any build menu that's open shows it straight away)
+      this.game.messages.push('Planning Office', `${BUILDINGS[q.id].name} APPROVED. It is now in your build menu.`, 'good'); this.game.mail.send('The Planning Office', `Permit approved: ${BUILDINGS[q.id].name}`, `Dear Sam,\n\nWe are pleased to approve your application for a ${BUILDINGS[q.id].name}. You will find it in the planning view under Buildings.\n\n${BUILDINGS[q.id].blurb || ''}\n\nYours faithfully,\nThe Planning Office`); this.emit('permits'); } }
     this.pending = this.pending.filter((q) => q.t > 0);
     for (const o of this.orders) { o.eta -= dt; if (o.eta <= 0 && !o.sent) { o.sent = true; this.game.logistics.dispatch(o); } }
     this.orders = this.orders.filter((o) => !o.done);

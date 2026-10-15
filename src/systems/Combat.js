@@ -172,9 +172,10 @@ export class Combat {
 
   // ---------------- shooting ----------------
   /** Everyone and everything a bullet can hit, as vertical capsules. */
+  /** (Townsfolk puppets on a visitor's screen are s12, s40...: 'sam' is the host's Sam, a player like any other.) */
   targets(exclude) {
     const g = this.game, out = [];
-    if (g.net && g.net.role) for (const p of g.net.puppets.values()) { if (p.a === 6 || p.a === 4 || p.ragged || p.k === exclude) continue; if (p.k[0] === 's') { if (!this.on) out.push({ x: p.x, y: p.y, z: p.z, top: 1.8, r: 0.35, ref: p, kind: 'sim' }); continue; } const f = p.f || 0; out.push({ x: p.x, y: p.y, z: p.z, top: f & 8 ? 0.5 : f & 4 ? 1.2 : 1.8, r: f & 8 ? 0.55 : 0.34, ref: p, kind: 'puppet' }); }
+    if (g.net && g.net.role) for (const p of g.net.puppets.values()) { if (p.a === 6 || p.a === 4 || p.ragged || p.k === exclude) continue; if (/^s\d/.test(p.k)) { if (!this.on) out.push({ x: p.x, y: p.y, z: p.z, top: 1.8, r: 0.35, ref: p, kind: 'sim' }); continue; } const f = p.f || 0; out.push({ x: p.x, y: p.y, z: p.z, top: f & 8 ? 0.5 : f & 4 ? 1.2 : 1.8, r: f & 8 ? 0.55 : 0.34, ref: p, kind: 'puppet' }); }
     if (this.auth) for (const b of this.bots) if (b.alive && b.key !== exclude) out.push({ x: b.x, y: b.y, z: b.z, top: STANCE_TOP[b.stance], r: b.stance === 'prone' ? 0.55 : 0.34, ref: b, kind: 'bot' });
     if (exclude !== 'sam' && this.auth && !g.netVisitor && exclude) { const P = g.player; if (!P.dead) out.push({ x: P.x, y: P.floorY || 0, z: P.z, top: STANCE_TOP[P.stance || 'stand'], r: 0.34, ref: P, kind: 'sam' }); }
     if (this.auth) for (const s of g.population.sims) if (s.mesh.visible && !(s.down > 0) && !s.hidden) out.push({ x: s.x, y: s.rideY || 0, z: s.z, top: 1.8, r: 0.35, ref: s, kind: 'sim' });

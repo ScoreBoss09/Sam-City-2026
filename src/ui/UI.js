@@ -32,6 +32,7 @@ export class UI {
     // toolbox
     this.drawToolbox = () => { const tr = this.trackReady(); if (tr === this._trackShown) return; this._trackShown = tr; $('toolbox').innerHTML = this.tools().map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('') + '<button class="tool wide" data-menu="1"><span class="ic">📐</span>Planning menu <b class="key kbonly">B</b><b class="ps padonly">□</b></button>'; this.refreshTools(); }; this.drawToolbox();
     this.plan = new PlanMenu(game); this.pause = new PauseMenu(game);
+    for (const e of ['building:added', 'building:removed', 'building:done']) game.world.events.on(e, () => { this.buildDirty = true; });   // build menus that are open keep up (sites placed, finished, permits through)
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; if (b.dataset.menu) { this.plan.show(); return; } const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'btn-perf') { this.togglePerf(); return; } game.clock.speed = +b.dataset.s; }); $('perf').addEventListener('click', (e) => this.perfClick(e));
@@ -180,7 +181,8 @@ export class UI {
     sm.innerHTML = (tabs ? `<div class="tabrow">${tabs}</div>` : '') + (list.length ? '' : '<div class="sub locked teaser">Nothing here yet<small>grow the village</small></div>') + list.map((k) => {
       const d = BUILDINGS[k], un = g.economy.isUnlocked(k), p = g.economy.permits[k], mats = Object.entries(d.mat).map(([m, n]) => n + ' ' + m).join(', ');
       const status = un ? mats : (p === 'pending' ? 'permit pending…' : pop < d.permit.pop ? `needs ${d.permit.pop} residents` : `permit £${d.permit.cost} (Postbox form)`);
-      const nb = g.buildings.count(k); return `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${un ? '' : 'locked'} ${nb ? 'built' : ''}" data-s="${k}">${nb ? `<span class="tick">✓${nb > 1 ? ' ×' + nb : ''}</span>` : ''}${d.name}<small>${status}</small></button>`;
+      const nb = g.buildings.count(k), ns = g.buildings.count(k, false) - nb, badge = (nb ? `<span class="tick">✓${nb > 1 ? ' ×' + nb : ''}</span>` : '') + (ns ? `<span class="tick site" title="${ns} placed, not built yet">🏗️${ns > 1 ? ' ×' + ns : ''}</span>` : '');   // placed but not built yet: a site badge, no tick
+      return `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${un ? '' : 'locked'} ${nb || ns ? 'built' : ''} ${nb && ns ? 'both' : ''}" data-s="${k}">${badge}${d.name}<small>${status}${ns ? ` · <b class="placed">${ns > 1 ? ns + ' placed' : 'placed'}, being built</b>` : ''}</small></button>`;
     }).join('') + more; sm.classList.remove('hidden'); this.subOpen = id;
   }
   refreshSub() { if (this.drawToolbox) this.drawToolbox(); const sm = $('submenu'); if (this.subOpen && sm && !sm.classList.contains('hidden') && this.game.mode === 'god') this.openSub(this.subOpen);
@@ -503,6 +505,7 @@ export class UI {
   update(dt) {
     this.noticeKeys(dt);
     if (this.qSim) { const s = this.qSim, g = this.game; if (s.remove || g.mode !== 'god') { this.qSim = null; $('query').classList.add('hidden'); } else { if (this.qFollow) g.god.target.set(s.x, 0, s.z); if ((this.qT = (this.qT || 0) - dt) <= 0) { this.qT = 0.5; this.simCard(); } } }   // the query card keeps up
+    if (this.buildDirty && performance.now() - (this._bdT || 0) > 250) { this.buildDirty = false; this._bdT = performance.now(); this.refreshSub(); if (this.plan.open && this.plan.tab === 'build') this.plan.render(); }
     if (this.plan.open && this.plan.tab !== 'build') { this._planT = (this._planT || 0) - dt; if (this._planT <= 0) { this._planT = 1; this.plan.render(); } }
     const g = this.game;
     if (this.hoverTimer > 0) { this.hoverTimer -= dt; if (this.hoverTimer <= 0 || g.mode !== 'god') $('hover').classList.add('hidden'); }

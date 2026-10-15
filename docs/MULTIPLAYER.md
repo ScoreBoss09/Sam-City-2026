@@ -4,7 +4,7 @@
 1. Both players start the game as usual (**play.bat** on Windows, **play.sh** on Mac/Linux). Both need to be online.
 2. Host: main menu > **Multiplayer** > **Host**. Your latest town opens and a 4-letter code appears at the top of the screen (e.g. `PZWE`). Tell your friend the code (text it, ring them).
 3. Friend: main menu > **Multiplayer**, type their name and the code, **Join**.
-4. Visitors come down the Lift into your town. They can walk, run, ride, punch and kick (and so can Sam back); they can't plan, build or spend your money. Up to 7 visitors. To visit theirs, swap roles.
+4. Visitors come down the Lift into your town. They can walk, run, ride, punch, kick and shoot (and so can Sam back), and they help build: hammering at building sites, chopping, mining and picking into their own backpacks, delivering to sites, digging planned paths and putting what they gather in the Stockyard. The decisions stay yours: the planning desks, the postbox, the Lift intercom and Sam's bed say **access denied**, and they can't plan, place, bulldoze, take from the Stockyard or spend your money. Up to 7 visitors. To visit theirs, swap roles.
 
 No IP addresses, ports, routers or servers. The two games talk directly (WebRTC) after a free matchmaking service
 (PeerJS, `0.peerjs.com`) introduces them by the code; if a home router won't allow a direct link, PeerJS's relay
@@ -22,6 +22,7 @@ own PeerJS server.
 What's in: the town arrives as a save snapshot; townsfolk, Sam and the other visitors move ten times a second; buildings placed, finished or knocked down appear for everyone; time of day and rain follow the host; punches and kicks land across the network (on townsfolk, on Sam, on other visitors), and the police notice.
 Code: `src/net/Net.js` (the game side and, by default, the host's link to its visitors), `netrelay.js` (the optional WebSocket relay).
 Also: visitors ride the trains and sky lift (kept in step with the host's) and buy from shopkeepers with their own pocket money (£60).
+Helping: a visitor's work is done in the host's town (hammering and digging add up and go with their position ten times a second; a chop, delivery or Stockyard drop goes at once), and twice a second the host sends back how far along each site is and what it has, any changed road tiles and planned paths, trees and rocks that changed, and the Stockyard, so everyone sees the same town.
 
 ### Raid night (opt-in shootout)
 The host starts it from the **Planning menu** (🎯 Start Raid night). For three minutes everyone (Sam and the visitors) carries one of the set's prop pistols: **F** (□ on a controller) fires a blank down the line of the camera. Anyone hit is knocked flat (it's a TV set; nobody gets hurt for real), the townsfolk run indoors, and a scoreboard at the top counts knock-downs. Most knock-downs wins.
@@ -44,7 +45,9 @@ The goal: friends visit your town. The host is Sam and owns the town (planning v
 | Punch, kick, chase, get arrested | yes | yes (the police treat them the same) |
 | Talk to townsfolk, buy in shops and pubs | yes | yes (own pocket money, not the town funds) |
 | Planning view, build, bulldoze, permits, Lift orders | yes | no |
-| Work shifts, deliver materials, build by hand | yes | yes (helps the host's town) |
+| Build by hand, gather, deliver materials, dig paths, put things in the Stockyard | yes | yes (helps the host's town) |
+| Planning desks and terminals, the postbox, the Lift intercom, taking from the Stockyard, work shifts | yes | no: "access denied" |
+| Shoot (combat and Raid night) | yes | yes (hits land on Sam, other visitors and townsfolk) |
 | Save the town | yes | no (visitors keep only their own character) |
 
 ## Network
