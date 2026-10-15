@@ -22,7 +22,7 @@ export class GodControls {
   setTool(id, sub = null) {
     this.moveSel = null;
     if (this.game.trackBuilder && (id !== 'track' || sub !== this.tool.sub)) this.game.trackBuilder.hide();
-    this.tool = { id, sub }; this.game.ui.refreshTools(); if (id === 'pan') { const sm = document.getElementById('submenu'); if (sm) sm.classList.add('hidden'); }   // back to Pan: the building list goes too this.ghost.visible = false; this.tileBox.visible = false; this.painting = false;
+    this.tool = { id, sub }; this.game.ui.refreshTools(); if (id === 'pan') { const sm = document.getElementById('submenu'); if (sm) sm.classList.add('hidden'); } this.ghost.visible = false; this.tileBox.visible = false; this.painting = false;   // (back to Pan: the building list goes too)
   }
   placing() { return ['build', 'park', 'util'].includes(this.tool.id) && this.tool.sub; }
 
@@ -132,7 +132,8 @@ export class GodControls {
     const n = this.nodeAt(tx, tz); if (n) return n.label; const t = w.terrain[w.idx(tx, tz)]; return ['Water', 'Open land', 'Forest', 'Beach'][t];
   }
   queryAt(p, tx, tz) {
-    const g = this.game; const s = g.population.nearest(p.x, p.z, Math.max(3, Math.min(9, this.dist * 0.035))); if (s) return { sim: s };   // (easier to hit from high up)
+    const g = this.game, r = Math.max(3, Math.min(9, this.dist * 0.035)); const s = g.population.nearest(p.x, p.z, r); if (s) return { sim: s };   // (easier to hit from high up)
+    if (g.carting) { const c = g.carting.carts.find((q) => q.w && !q.w.remove && Math.hypot(q.mesh.position.x - p.x, q.mesh.position.z - p.z) < r); if (c) return { sim: c.w }; }   // a horse and cart: its carter (who's sat up on it)
     const b = g.world.buildingAt(tx, tz); if (b) return { b }; const n = this.nodeAt(tx, tz); if (n) return { node: n }; return { tile: [tx, tz] };
   }
   /** A resource on this tile: what it is and what it gives. */

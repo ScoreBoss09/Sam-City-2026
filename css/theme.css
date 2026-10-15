@@ -294,3 +294,34 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 .bind .sens input[type=range] { flex: 1; min-width: 50px; accent-color: var(--accent); cursor: pointer; }
 .bind .sens .keycap { min-width: 0; padding: 4px 10px; }
 .bind .sens output { min-width: 48px; text-align: right; font: 700 13px var(--ui-font); color: var(--accent); }
+
+/* the date: today's special day (or the next one this week) under the clock, and the Journal's calendar */
+#c-special { font: 600 12px var(--ui-body, sans-serif); color: var(--muted); letter-spacing: .02em; min-height: 0; }
+#c-special:empty { display: none; }
+#c-special.today { color: var(--accent, #ffd23f); }
+.jcal { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.jcal .kd { display: grid; grid-template-columns: 28px 1fr; column-gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line-2); border-radius: var(--r-sm, 6px); background: rgba(255,255,255,.03); }
+.jcal .kd span { grid-row: span 2; font-size: 20px; text-align: center; }
+.jcal .kd em { font-style: normal; color: var(--muted); font-size: 12px; }
+.jcal .kd.today, .jcal .kd.sam { border-color: var(--accent, #ffd23f); }
+
+/* the title: SAM CITY with the year beside it */
+#title h1 .yr { font-size: .5em; letter-spacing: .12em; vertical-align: .35em; margin-left: .25em; padding: .08em .35em; border: 2px solid currentColor; border-radius: 6px; opacity: .9; }
+
+/* a notice: worth reading properly, the game waits */
+#notice { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(4, 8, 14, .55); }
+#notice.hidden { display: none; }
+#notice .box { width: min(520px, calc(100vw - 32px)); background: var(--glass); border: 1px solid var(--line-2); border-radius: var(--r-lg); box-shadow: var(--shadow); padding: 24px 26px; display: grid; gap: 12px; justify-items: start; color: var(--text); }
+#notice .nicon { font-size: 34px; line-height: 1; }
+#notice h2 { margin: 0; font: 700 22px var(--ui-head); }
+#notice p { margin: 0; line-height: 1.5; color: var(--text); }
+#notice small { color: var(--muted); }
+
+#c-date { white-space: nowrap; letter-spacing: .06em !important; font-size: 14px !important; }
+
+/* trading: how many */
+.qtyc { white-space: nowrap; } .qtyc .tqty { width: 4.2em; padding: 6px 8px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: rgba(255,255,255,.06); color: var(--text); font: 600 14px var(--ui-font, sans-serif); text-align: right; } .qtyc button { margin-left: 4px; min-width: 2.2em; }
+/* god-mode build list: a site that's placed but not built yet (amber, no tick); with one built too, the badges sit side by side */
+.sub .tick.site { background: #e0a43a !important; color: #2a1a02 !important; }
+.sub.both .tick:not(.site) { right: 58px !important; }
+.sub small b.placed { color: #e0a43a; font-weight: 600; }

@@ -59,7 +59,7 @@ export class Input {
       const dz = (v) => (Math.abs(v) < 0.25 ? 0 : (v - Math.sign(v) * 0.25) / 0.75), ax = (i) => dz((gp.axes[i] || 0) - (P.base[i] || 0));
       const bt = (i) => { const b = gp.buttons[i], on = !!(b && (b.pressed || b.value > 0.5)); if (P.stuck[i]) { if (!on) P.stuck[i] = false; return false; } return on; };
       if (this.padCapture) { P.hitB = []; P.relB = []; const raw = gp.buttons.map((b) => !!(b && (b.pressed || b.value > 0.5))), was = P.rawPrev || []; P.rawPrev = raw; const i = raw.findIndex((v, k) => v && !was[k] && k < 17); if (i >= 0) { const f = this.padCapture; this.padCapture = null; P.prev = raw.slice(); f(i); } return; }   // the Controls menu waiting for "press a button"
-      P.rawPrev = null; const map = this.binds.pad, cur = []; for (let i = 0; i < 17; i++) cur.push(bt(map[i] ?? i));   // (your button for each of the game's buttons) P.hitB = cur.map((v, i) => v && !P.prev[i]); P.relB = cur.map((v, i) => !v && !!P.prev[i]); P.prev = cur; P.down = cur;
+      P.rawPrev = null; const map = this.binds.pad, cur = []; for (let i = 0; i < 17; i++) cur.push(bt(map[i] ?? i)); P.hitB = cur.map((v, i) => v && !P.prev[i]); P.relB = cur.map((v, i) => !v && !!P.prev[i]); P.prev = cur; P.down = cur;   // (cur: your button for each of the game's buttons)
       P.lx = ax(0); P.ly = ax(1); P.rx = ax(2); P.ry = ax(3);
       if (cur.some(Boolean) || Math.hypot(P.lx, P.ly) > 0.4 || Math.hypot(P.rx, P.ry) > 0.4) { this.padActive = true; P.lastT = performance.now(); if (cur.some(Boolean) && this.onActivity) this.onActivity(); }
       if (this.padActive) {

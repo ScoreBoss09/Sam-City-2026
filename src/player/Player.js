@@ -360,9 +360,7 @@ export class Player {
 
   // ---------- interaction ----------
   findTarget() {
-    if (this.game.netVisitor) {   // visiting someone else's town: the trains and the shops, nothing else
-      let best = null, bd = 1e9; const c = (t, d) => { if (d < bd) { bd = d; best = t; } }; this.game.transport.targets(this, c); if (!this.platform && !this.transit) this.game.net.shopTargets(this, c); return best;
-    }
+    const vis = this.game.netVisitor;   // visiting someone else's town: help build it (hammer, deliver, gather, dig), but the decisions are the host's
     if (this.platform || (this.transit && this.transit.cabin)) { let best = null, bd = 1e9; this.game.transport.targets(this, (t, d) => { if (d < bd) { bd = d; best = t; } }); return best; }
     if ((this.floorY || 0) > 0.5) return this.roofDoorTarget();   // upstairs and on roofs: just the door out onto the roof
     const g = this.game, px = this.x, pz = this.z, B = g.buildings.list; let best = null, bd = 1e9;
@@ -371,7 +369,7 @@ export class Player {
     // ...and nothing through a wall or a shut door: a target with a position (x, z, or `at` for one that doesn't steer by facing) has to be in sight
     const eyeY = (this.floorY || 0) + 1.3, shut = g.buildings.list.filter((b) => b.ext && b.ext.doors && b.ext.doors.length && (b.doorK || 0) <= 0.6 && Math.abs(b.cx - px) < 16 && Math.abs(b.cz - pz) < 16).map((b) => g.buildings.doorRect(b));
     const seen = (x, z) => !g.world.wallBetween(px, pz, x, z, eyeY) && !shut.some((q) => segBox(px, pz, x, z, q, 0.6));
-    const consider = (t, d, x, z, at) => { const q = at || (x !== undefined ? [x, z] : null); if (q && !seen(q[0], q[1])) return; if (x !== undefined) { const dx = x - px, dz = z - pz, l = Math.hypot(dx, dz); if (l > 0.3) d += (1 - (dx * fx + dz * fz) / l) * 0.9; } if (d < bd) { bd = d; best = t; } };
+    const consider = (t, d, x, z, at) => { if (vis && !(t = this.visitorAllow(t))) return; const q = at || (x !== undefined ? [x, z] : null); if (q && !seen(q[0], q[1])) return; if (x !== undefined) { const dx = x - px, dz = z - pz, l = Math.hypot(dx, dz); if (l > 0.3) d += (1 - (dx * fx + dz * fz) / l) * 0.9; } if (d < bd) { bd = d; best = t; } };
     for (const s of g.population.sims) {
       if (s.kind === 'raider' || s.kind === 'guest') continue;
       if (s.pose === 'sleep' || s.hidden || !s.mesh.visible || (s.inside && s.inside !== g.buildings.playerInside && !s.inside.def.open)) continue;
@@ -410,7 +408,7 @@ export class Player {
           for (const t of b.spots.work) {
             const d = Math.hypot(t.x - px, t.z - pz); if (d > 1.6) continue;
             const manned = g.population.sims.some((s) => s.inside === b && Math.hypot(s.x - t.x, s.z - t.z) < 1.2);
-            if (!manned) consider({ kind: 'work', b, role, text: `Work a shift as ${ROLES[role].name}  (hold E, earns city funds)`, hold: true }, d + 0.3, undefined, undefined, [t.x, t.z]);
+            if (!manned) consider({ kind: 'work', b, role, text: `Work a shift as ${ROLES[role].name} (earns city funds)`, hold: true }, d + 0.3, undefined, undefined, [t.x, t.z]);
           }
         }
         if (g.service && g.service.isPublic(b) && !b.open && g.buildings.playerInside === b) consider({ kind: 'info', text: `Closed. Nobody's behind the counter at the ${b.def.name} right now.` }, 2.5);
@@ -438,7 +436,7 @@ export class Player {
       if (need && !g.buildings.count(need[0])) { consider({ kind: 'info', text: `${verb.split(' ')[0]}: you need a ${need[1]} to turn this into ${MATERIALS[mat].name.toLowerCase()}` }, d + 1.5); return; }
       consider(full ? { kind: 'info', text: 'Your backpack is full. Store it at the Stockyard, deliver it, or drop it (R).' } : { kind: 'gather', node, nk: kind, mat, time, per, upper, work: WORK_KIND[upper], text: verb }, d + 0.4, node.x, node.z);
     };
-    for (const t of g.terrain.trees) { if (!t.alive) continue; const d = Math.hypot(t.x - px, t.z - pz); if (d < 3.7) addGather(Object.assign(t, { kind: 'tree' }), 'tree', 'Chop tree', 'timber', 2.2, 1, 'chop', d); }
+    for (const t of g.terrain.trees) { if (!t.alive) continue; const d = Math.hypot(t.x - px, t.z - pz); if (d >= 3.7) continue; const facing = d > 0.2 ? ((t.x - px) * fx + (t.z - pz) * fz) / d : 1; addGather(Object.assign(t, { kind: 'tree' }), 'tree', 'Chop tree', 'timber', 2.2, 1, 'chop', d - (facing > 0.7 ? 1.1 : 0)); }   // (a tree Sam's facing beats a building site's prompt: trees at the edge of a site were impossible to chop)
     for (const n of R2.nodes) {
       if (n.amount < 1) continue; const d = Math.hypot(n.x - px, n.z - pz), reach = n.kind === 'field' ? 3.2 : 3.0; if (d > reach) continue;
       if (n.kind === 'rock') addGather(n, 'rock', 'Break rocks', 'stone', 2.6, 1, 'mine', d);
@@ -451,7 +449,23 @@ export class Player {
       if (tt === T.SAND && !w.road[w.idx(tx, tz)] && !g.buildings.playerInside && !g.buildings.buildingAtPoint(px, pz)) addGather({ kind: 'sand', infinite: true, amount: 999, x: px, z: pz }, 'sand', 'Dig sand', 'glass', 3.0, 1, 'dig', 2.9, ['glassworks', 'Glassworks']);
       const ax0 = px - Math.sin(this.yaw) * 2.6, az0 = pz - Math.cos(this.yaw) * 2.6, [ax, az] = w.tileOf(ax0, az0);
       if (w.inBounds(ax, az) && w.terrain[w.idx(ax, az)] === T.WATER && w.isLand(tx, tz)) addGather({ kind: 'fish', infinite: true, amount: 999, x: ax0, z: az0 }, 'fish', 'Fish', 'food', 3.2, 2, 'fish', 1.4); }
+    if (vis) g.net.shopTargets(this, consider);   // (buying from the host's shopkeepers)
     return best;
+  }
+  /** A visitor in someone else's town can help (build, deliver, gather, dig, store what they gather) but not decide: desks, the post and ordering are locked. */
+  visitorAllow(t) {
+    const deny = (why) => ({ kind: 'deny', text: `🔒 ${(t.text || '').replace(/\s*\(.*\)\s*$/, '')}: access denied`, why });
+    switch (t.kind) {
+      case 'terminal': return deny('Only the host can use the planning desk.');
+      case 'post': return deny('The post is for the host.');
+      case 'hatch': return deny('Only the host can order supplies.');
+      case 'bed': return deny('That\'s Sam\'s bed.');
+      case 'work': return deny('Shifts are for the townsfolk.');
+      case 'bet': return deny('The bookies only take bets from locals.');
+      case 'depot': return this.invTotal() ? { kind: 'vstore', text: `Put ${this.invText()} in the town's Stockyard` } : deny('Visitors can put what they gather in the Stockyard, not take things out.');
+      case 'tool': case 'pile': case 'curio': case 'weapon': case 'sim': return null;
+      default: return t;
+    }
   }
   /** Materials in the backpack that this site still needs: [[mat, qty], ...] */
   deliverable(b) { const out = []; for (const [m, n] of Object.entries(this.inv)) { const need = (b.need[m] || 0) - (b.have[m] || 0); if (need > 0) out.push([m, Math.min(n, need)]); } return out; }
@@ -487,6 +501,8 @@ export class Player {
     else if (t.kind === 'work') { if (held) { this.working = true; g.economy.earn(12 * rawDt, 'Shifts Sam worked'); this.hold = (this.hold + rawDt * 0.2) % 1; } else this.hold = 0; }
     else if (t.kind === 'act' && e) t.act();
     else if (t.kind === 'douse') { if (held) { this.working = true; g.hazards.douse(t.b, rawDt, this); this.hold = (this.hold + rawDt * 0.5) % 1; } else this.hold = 0; }
+    else if (t.kind === 'deny' && e) { Sfx.play('deny'); g.ui.toast('🔒 Access denied. ' + t.why, 2600); }
+    else if (t.kind === 'vstore' && e) g.net.storeAll(this);
     else if (t.kind === 'info' && e) Sfx.play('deny');
     if (!held && !['rest'].includes(t.kind)) this.hold = 0;
   }
@@ -517,18 +533,18 @@ export class Player {
     if (t.kind === 'gather') {
       this.gatherT = (this.gatherT || 0) + value * t.time;
       while (t.time > 0 && this.gatherT >= t.time) {
-        this.gatherT -= t.time; if (!g.resources.take(t.node)) { this.gatherT = 0; break; }
+        this.gatherT -= t.time; if (!g.resources.take(t.node)) { this.gatherT = 0; break; } if (g.netVisitor) g.net.help('take', t.node, t.nk);
         let got = this.invAdd(t.mat, t.per); const lucky = Math.random() < g.skills.luck(t.work) && this.invRoom() > 0 ? this.invAdd(t.mat, 1) : 0; got += lucky; g.skills.gain(t.work, 2); g.flags.gathered = (g.flags.gathered || 0) + got; Sfx.play('unit'); wg.pop(t.nk === 'fish' ? `+${got} food: ${['a mackerel', 'a fat cod', 'a herring', 'a little sole', 'a plaice', 'a sardine', 'an old boot... no, a crab', 'a whopping sea bass'][Math.floor(Math.random() * 8)]}!` : `+${got} ${MATERIALS[t.mat].name.toLowerCase()}${lucky ? ' (lucky!)' : ''}`, 'unit');
         if (this.invRoom() <= 0) { Sfx.play('deny'); this.gatherT = 0; break; }   // (the prompt along the bottom says it's full and what to do)
         if (t.node.kind === 'tree' && !t.node.alive) { const tn = t.node; setTimeout(() => { g.particles.burst(tn.x, 0.6, tn.z, 0x4a7a3a, 26, 2.2, 2.5); Sfx.noise(0.6, { freq: 160, vol: 0.7, type: 'lowpass' }); }, 900); wg.pop('TIMBER!', 'perfect'); this.lock = null; break; }
       }
       wg.setProgress(this.gatherT / t.time, `backpack ${this.invTotal()}/${BACKPACK}`);
     } else if (t.kind === 'site') {
-      if (value) g.buildings.addWork(t.b, value * 5 * (tap ? 1 : speed));
+      if (value) { const amt = value * 5 * (tap ? 1 : speed); if (g.netVisitor) g.net.help('build', t.b, amt); else g.buildings.addWork(t.b, amt); }   // (a visitor's hammering is done in the host's town)
       wg.setProgress(t.b.progress, `${Math.round(t.b.progress * 100)}%`);
       if (t.b.state === 'done') { wg.stop(); this.finished(t.b); }
     } else if (t.kind === 'road') {
-      const p = t.plan; if (value && g.roadPlans.work(p, value * 1.6 * (tap ? 1 : speed))) { wg.stop(); Sfx.play('unit'); g.ui.toast('Path dug!'); } else if (p.type === 2 && !p.paid) g.ui.toast('No stone in the Stockyard for paving.');
+      const p = t.plan; if (g.netVisitor) { if (value) g.net.help('dig', p, value * 1.6 * (tap ? 1 : speed)); } else if (value && g.roadPlans.work(p, value * 1.6 * (tap ? 1 : speed))) { wg.stop(); Sfx.play('unit'); g.ui.toast('Path dug!'); } else if (p.type === 2 && !p.paid) g.ui.toast('No stone in the Stockyard for paving.');
       wg.setProgress(p.progress, `${Math.round(p.progress * 100)}%`);
     }
   }
@@ -559,7 +575,7 @@ export class Player {
     Sfx.play('pickup'); if (!Object.keys(p.items).length) g.piles.remove(p); else g.piles.rebuild(p);
   }
   deliverTo(b) {
-    const g = this.game, give = this.deliverable(b); if (!give.length) return;
+    const g = this.game, give = this.deliverable(b); if (!give.length) return; if (g.netVisitor) g.net.help('deliver', b, give);
     for (const [m, n] of give) { this.invTake(m, n); g.buildings.deliver(b, m, n); }
     Sfx.play('drop'); g.particles.burst(b.cx, 0.6, b.cz, 0xb5834a, 10, 1.2, 2.5); g.ui.toast('Delivered ' + give.map(([m, n]) => `${n} ${MATERIALS[m].name.toLowerCase()}`).join(', '));
   }
@@ -617,7 +633,8 @@ export class Player {
     if (fx.lotto) { const r = Math.random(), w = r < 0.01 ? 500 : r < 0.05 ? 50 : r < 0.18 ? 10 : 0; if (w) { g.economy.earn(w, 'Scratchcards'); Sfx.play('cash'); } g.ui.toast(w ? `Scratch, scratch... £${w}! It could be you, and it was.` : 'Scratch, scratch... nothing. Not even a free ticket.', 2600); }
     { const n = name.toLowerCase(); this.holding = /pint|lager|bitter|cider|stout|shandy|snakebite|ale\b|guinness|half/.test(n) ? 'pint' : /chips|cod|haddock|fish|kebab|saveloy|pie|curry|burger|sausage/.test(n) ? 'chips' : /tea|coffee|cuppa|hot choc/.test(n) ? 'cup' : /video|vhs|film/.test(n) ? 'video' : /popcorn/.test(n) ? 'popcorn' : /ticket/.test(n) ? 'ticket' : 'bag'; this.holdT = 45; }   // and Sam walks off with it
     Sfx.play('cash'); if (c.who && c.who.mesh && c.who.mesh.visible) g.social.say(c.who, pick(['Ta, love.', 'There you go, Sam.', 'Cheers, Sam.', 'Anything else?', 'Mind how you go.', 'Lovely.']), 2);
-    if (!fx.lotto) g.ui.toast(`You buy ${name}.${fx.note ? ' ' + fx.note : ''}`, 2400);
+    if (fx.camera) g.ui.notice(`You bought ${name}`, `${fx.note || ''}\n\nWhen somebody famous is in town, talk to them: you can have your photo taken together, and they'll sign it. The photos go in the Album in your Journal (${g.input.padActive ? 'D-pad ←' : 'J'}).`, { icon: '📷', from: 'Receipt' });   // (worth reading properly)
+    else if (!fx.lotto) g.ui.toast(`You buy ${name}.${fx.note ? ' ' + fx.note : ''}`, 2400);
     return { ok: true };
   }
   /** Drink wears off; very drunk Sam stumbles now and then, and the police take an interest in a drunk on wheels. */

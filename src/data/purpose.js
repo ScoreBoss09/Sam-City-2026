@@ -8,7 +8,7 @@ const SPECIAL = {
   school: 'Children learn here; adds research.', library: 'Research towards computers.', townhall: 'Research and civic pride.', secondary: 'Teenagers learn here; adds research.',
   clinic: 'Doctors heal the sick and the injured (Sam too).', police: 'Constables patrol, catch crooks and break up fights.', watchhouse: 'Night watchmen patrol, catch crooks and break up fights.',
   firestation: 'Firefighters rush to put out fires.', church: 'Sunday service and weddings. Cheers people up.', bandstand: 'The brass band plays in the evening.',
-  bank: 'Pays 1% interest on the town funds every month.', supermarket: 'Sells food: adds to the food store while staff are in.', garage: 'Keeps the motor cars running: needed for cars on the roads.',
+  bank: 'Pays 1% interest on the town funds every week.', supermarket: 'Sells food: adds to the food store while staff are in.', garage: 'Keeps the motor cars running: needed for cars on the roads.',
   stables: 'Horse-and-cart traffic, and carts fetch your Lift orders.', cycleshop: 'Townsfolk ride bikes; Sam can buy one.', railstation: 'Two or more make a railway Sam can ride.',
   monostation: 'Two or more make a monorail Sam can ride.', skylift: 'Two or more make a sky lift Sam can ride.', leisure: 'Swimming and keep-fit: happier, healthier townsfolk.',
   nightclub: 'Night life (and the odd scuffle at closing time).', cinema: 'Films: a big lift in spirits.', arcade: 'Games for the kids, joy for all.', records: 'Music for the young ones; a little joy.',
@@ -23,7 +23,7 @@ export function purposeOf(id, def) {
   if (def.jobs) bits.push(`${Object.entries(def.jobs).map(([r, n]) => `${n} ${(ROLES[r] ? ROLES[r].name : r).toLowerCase()}${n > 1 ? 's' : ''}`).join(', ')}.`);
   if (def.produce && def.produce.food && !SPECIAL[id]) bits.push('Makes food.');
   if (def.dining && !SPECIAL[id]) bits.push('People eat and drink here.'); else if (def.shopping && !SPECIAL[id]) bits.push('People shop here.');
-  if (def.income) bits.push(`Rates £${def.income}/month.`);
+  if (def.income) bits.push(`Rates £${def.income}/week.`);
   if (def.joy && !SPECIAL[id]) bits.push('Cheers up the neighbourhood.');
   return bits.join(' ');
 }

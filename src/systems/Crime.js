@@ -137,7 +137,7 @@ export class Crime {
       if (!s.path.length || c.repath <= 0) { c.repath = 4; s.goTo({ b: g.lift, x: g.lift.doorIn.x, z: g.lift.doorIn.z }); }
       if (s.inside === g.lift || Math.hypot(g.lift.doorIn.x - s.x, g.lift.doorIn.z - s.z) < 2) {
         if (c.loot) g.messages.push('Police report', `A ${c.type} got away${c.loot ? ` with £${c.loot}` : ''}.${this.hasPolice() ? '' : ' A Watch House or Police Station would help.'}`, 'warn');
-        s.remove = true;
+        g.population.depart(s); s.hurry = true;   // into the queue for the Lift like anyone else (nobody walks into the shaft): it goes when it goes
       }
     }
   }

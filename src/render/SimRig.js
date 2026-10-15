@@ -186,6 +186,7 @@ const PROPS = {
   basket: () => { const g = new THREE.Group(); pbox(g, 0.34, 0.2, 0.26, 0xb98a4a, 0, -0.1, 0); pbox(g, 0.2, 0.08, 0.16, 0x7aa63a, 0, 0.02, 0); return g; },
   sickle: () => { const g = new THREE.Group(); pbox(g, 0.03, 0.2, 0.03, 0x8a5a33, 0, -0.04, 0.02); pbox(g, 0.03, 0.03, 0.22, 0xaeb4bc, 0, 0.08, 0.1); return g; },
   // things handed over a counter: a pint, a bag of chips, a plate of dinner, the waiter's pad, a ticket, a video...
+  fag: () => { const g = new THREE.Group(); pbox(g, 0.014, 0.014, 0.085, 0xf6f4ec, 0, 0, 0.05); pbox(g, 0.016, 0.016, 0.022, 0xd8a050, 0, 0, 0.01); const tip = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.016, 0.014), new THREE.MeshBasicMaterial({ color: 0xff5a1a })); tip.position.set(0, 0, 0.098); g.add(tip); return g; },   // a cigarette, lit
   pint: () => { const g = new THREE.Group(); pbox(g, 0.08, 0.13, 0.08, 0xd8a03a, 0, 0.0, 0); pbox(g, 0.082, 0.03, 0.082, 0xf4f0e0, 0, 0.075, 0); return g; },
   chips: () => { const g = new THREE.Group(); pbox(g, 0.18, 0.06, 0.24, 0xf4f0e0, 0, -0.02, 0.05); pbox(g, 0.14, 0.04, 0.18, 0xe8c050, 0, 0.03, 0.05); return g; },
   plate: () => { const g = new THREE.Group(); pbox(g, 0.28, 0.02, 0.28, 0xf8f8f8, 0, 0.02, 0.12); pbox(g, 0.12, 0.05, 0.1, 0x8a5a2a, -0.04, 0.05, 0.12); pbox(g, 0.08, 0.04, 0.08, 0x3a9a3a, 0.07, 0.05, 0.1); pbox(g, 0.08, 0.03, 0.08, 0xe8c050, 0.04, 0.05, 0.18); return g; },

@@ -3,6 +3,7 @@ import { TILE, UNIT, MAP } from '../config.js';
 import { T } from '../world/World.js';
 import { Assets } from './Assets.js';
 import { mulberry32 } from '../util.js';
+import { fireGlowMat } from './BuildingFactory.js';
 
 const hash = (x, z) => { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); };
 
@@ -52,10 +53,12 @@ export class Decor {
     for (const p of this.puffs) { if (p.life <= 0) continue; p.life -= dt; const k = 1 - p.life / p.max; p.sp.position.x += p.vx * dt; p.sp.position.z += p.vz * dt; p.sp.position.y += (1.2 + k) * dt; const sz = p.s0 * (1 + k * 2.6); p.sp.scale.set(sz, sz, 1); p.sp.material.opacity = Math.sin(Math.min(1, k * 1.2) * Math.PI) * 0.26; if (p.life <= 0) p.sp.visible = false; }
     { const n = this.nightLevel || 0, f0 = g.mode === 'sim' ? g.player : g.god.target, near = n > 0.05 ? this.lampPos.map((l) => [l, (l.x - f0.x) ** 2 + (l.z - f0.z) ** 2]).sort((a, b) => a[1] - b[1]).slice(0, this.lampLights.length) : [];
       this.lampLights.forEach((L, i) => { const e = near[i]; if (e && e[1] < 60 * 60) { L.position.x = e[0].x; L.position.z = e[0].z; L.intensity = 9 * n; } else L.intensity = 0; }); }
-    // campfire light on the camp nearest the viewer
-    let best = null, bd = 1e9; const f = g.mode === 'sim' ? g.player : { x: g.god.target.x, z: g.god.target.z };
-    for (const b of g.buildings.list) if (b.state === 'done' && b.def.park === 'camp') { const d = Math.hypot(b.cx - f.x, b.cz - f.z); if (d < bd) { bd = d; best = b; } }
-    if (best) { const [x, z] = [best.cx, best.cz]; this.fireLight.position.set(x, 1.6, z); const n = this.nightLevel || 0; this.fireLight.intensity = (6 + 10 * n) * (1 + Math.sin(g.elapsed * 14) * 0.1 + Math.sin(g.elapsed * 23) * 0.06) * (bd < 60 ? 1 : 0.4); } else this.fireLight.intensity = 0;
+    // every campfire has the same drawn glow on the ground (brighter at night); a real light only on the fire Sam is standing
+    // by, faded in and out with distance so it never jumps from one fire to another (and none in the planning view)
+    const n = this.nightLevel || 0; fireGlowMat().opacity = 0.18 + n * 0.62;
+    let best = null, bd = 1e9; if (g.mode === 'sim') for (const b of g.buildings.list) if (b.state === 'done' && b.def.park === 'camp') { const d = Math.hypot(b.cx - g.player.x, b.cz - g.player.z); if (d < bd) { bd = d; best = b; } }
+    const want = best && bd < 34 ? Math.min(1, (34 - bd) / 14) : 0; if (best && want > 0) this.fireLight.position.set(best.cx, 1.6, best.cz);
+    this.fireK = (this.fireK || 0) + (want - (this.fireK || 0)) * Math.min(1, dt * 2); this.fireLight.intensity = this.fireK > 0.01 ? (6 + 10 * n) * this.fireK * (1 + Math.sin(g.elapsed * 14) * 0.1 + Math.sin(g.elapsed * 23) * 0.06) : 0;
   }
   /** Keep the grass flat in a circle { x, z, r } (the opening scene: Sam lies in it, and the tufts would fill the screen); null puts it back. */
   clearGrass(spot) { this.grassClear = spot; this.rebuild(); }

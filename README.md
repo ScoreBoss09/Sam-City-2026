@@ -1,4 +1,4 @@
-# Sam City
+# Sam City 1995
 
 Build a town from a single wooden hut, and live in it. You are **Sam**, one of the townsfolk: switch between a top-down planning view and a fully walkable 3D world (first or third person). Nothing is built by magic. Timber is felled, stone is quarried, bricks are fired, food is foraged and farmed, and every building is hauled together and built by hand, by builders or by you. Everyone eats, sleeps, makes friends, falls in love, starts families and grows up.
 
@@ -6,7 +6,7 @@ Playable prototype (Three.js, no build step), structured as a data-driven refere
 
 ## Play it
 - **In the browser:** https://scoreboss09.github.io/Sam-City-2026/ (one-time setup: repo Settings > Pages > Source "Deploy from a branch" > `gh-pages` / root; the branch appears after the first Actions run).
-- **Download:** https://github.com/ScoreBoss09/Sam-City-2026/releases/download/latest/SamCity-playable.zip (rebuilt on every push). Close any old Sam City window first, unzip into a new folder, then double-click `play.bat` (Windows) or run `./play.sh` (Mac/Linux). Needs **Node.js** (nodejs.org, the LTS button) **or** Python 3 installed, just one. Don't open `index.html` directly: browsers won't run the game from a file, and the title screen will say so. The title screen shows the version date so you can check it's the newest; the launcher tells the browser not to keep old copies and picks another port if an old copy is still running.
+- **Download:** https://github.com/ScoreBoss09/Sam-City-2026/releases/download/latest/SamCity-playable.zip (rebuilt on every push). Close any old Sam City 1995 window first, unzip into a new folder, then double-click `play.bat` (Windows) or run `./play.sh` (Mac/Linux). Needs **Node.js** (nodejs.org, the LTS button) **or** Python 3 installed, just one. Don't open `index.html` directly: browsers won't run the game from a file, and the title screen will say so. The title screen shows the version date so you can check it's the newest; the launcher tells the browser not to keep old copies and picks another port if an old copy is still running.
 
 ## Run
 ```

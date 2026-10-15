@@ -52,8 +52,11 @@ export class Minimap {
   }
   update(dt) {
     const g = this.game, inp = g.input;
-    if (g.started && !g.ending && inp.hit('KeyM') && !g.ui.modalOpen) { this.big = !this.big; this.el.classList.toggle('big', this.big); this.fit(); this.legendT = 0; this.drawT = 0; }
-    if (this.big && inp.hit('Escape')) { this.big = false; this.el.classList.remove('big'); this.fit(); }
+    // the island map is a menu while it's open: Sam stands still, the mouse is free to scroll the key, the stick scrolls it too
+    const P = inp.pad, pad = inp.padActive && P && P.connected; let opened = false;
+    if (g.started && !g.ending && inp.hit('KeyM') && (!g.ui.modalOpen || this.big)) { this.big = !this.big; opened = this.big; this.el.classList.toggle('big', this.big); this.fit(); this.legendT = 0; this.drawT = 0; if (this.big) { inp.unlock(); this.legend.scrollTop = 0; } }
+    if (this.big && !opened && (inp.hit('Escape') || (pad && (P.hitB[1] || P.hitB[11])))) { this.big = false; this.el.classList.remove('big'); this.fit(); inp.pressed.delete('Escape'); }
+    if (this.big && pad) { const v = Math.abs(P.ry) > 0.2 ? P.ry : Math.abs(P.ly) > 0.3 ? P.ly : 0; if (v) this.legend.scrollTop += v * 700 * dt; }
     const show = g.started && !g.ending && (g.mode === 'sim' || this.big); this.el.classList.toggle('hidden', !show); if (!show) return;
     // the map picture only changes when the town does; the pins are redrawn ~10 times a second (not every frame)
     this.baseT -= dt; if (this.dirty || this.baseT <= 0) { this.dirty = false; this.baseT = 4; this.drawBase(); }

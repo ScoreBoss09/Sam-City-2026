@@ -8,6 +8,7 @@ import { BUILDINGS, MATERIALS, ROLES, TOOL_MENUS, ALL_BUILDABLE, tierOf } from '
 import { OBJECTIVES, stepProgress } from '../data/story.js';
 import { fmtMoney } from '../util.js';
 import { MONTHS, DAYS } from '../core/Clock.js';
+import { today as keyToday, upcoming, dateText, MONTH_NAMES } from '../data/calendar.js';
 import { TOOLS as TOOL_NAMES, TOOL_ICON, MAT_ICON, BACKPACK } from '../player/Player.js';
 import { Sfx } from '../core/Sfx.js';
 import { PAD_NAMES } from '../core/Bindings.js';
@@ -31,17 +32,18 @@ export class UI {
     // toolbox
     this.drawToolbox = () => { const tr = this.trackReady(); if (tr === this._trackShown) return; this._trackShown = tr; $('toolbox').innerHTML = this.tools().map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('') + '<button class="tool wide" data-menu="1"><span class="ic">📐</span>Planning menu <b class="key kbonly">B</b><b class="ps padonly">□</b></button>'; this.refreshTools(); }; this.drawToolbox();
     this.plan = new PlanMenu(game); this.pause = new PauseMenu(game);
+    for (const e of ['building:added', 'building:removed', 'building:done']) game.world.events.on(e, () => { this.buildDirty = true; });   // build menus that are open keep up (sites placed, finished, permits through)
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; if (b.dataset.menu) { this.plan.show(); return; } const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
     $('submenu').addEventListener('click', (e) => { const tb = e.target.closest('.subtab'); if (tb) { this.buildTab = tb.dataset.tab; this.openSub('build'); return; } const b = e.target.closest('.sub'); if (!b) return; game.god.setTool(game.god.tool.id, b.dataset.s); this.openSub(game.god.tool.id); });
     $('c-speed').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'btn-perf') { this.togglePerf(); return; } game.clock.speed = +b.dataset.s; }); $('perf').addEventListener('click', (e) => this.perfClick(e));
-    $('query').addEventListener('click', (e) => this.queryClick(e)); $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); const im = e.target.closest('.album img'); if (im) { const v = document.createElement('div'); v.id = 'photoview'; v.innerHTML = `<img src="${im.src}" alt="">`; v.onclick = () => v.remove(); $('app').appendChild(v); } });   // (a photo full size)
+    $('query').addEventListener('click', (e) => this.queryClick(e)); $('terminal').addEventListener('click', (e) => this.terminalClick(e)); $('terminal').addEventListener('input', (e) => { if (e.target.classList.contains('tqty')) this.qtyInput(e.target); }); $('terminal').addEventListener('keydown', (e) => { if (e.target.classList.contains('tqty') && (e.key === 'Enter' || e.key === 'Escape')) e.target.blur(); }); $('dialogue').addEventListener('click', () => this.nextLine()); $('inventory').addEventListener('click', (e) => this.invClick(e)); $('journal').addEventListener('click', (e) => { if (e.target.closest('[data-j="close"]')) this.closeJournal(); const im = e.target.closest('.album img'); if (im) { const v = document.createElement('div'); v.id = 'photoview'; v.innerHTML = `<img src="${im.src}" alt="">`; v.onclick = () => v.remove(); $('app').appendChild(v); } });   // (a photo full size)
     game.messages.on('msg', (m) => { const c = game.clock; m.when = `${c.day} ${MONTHS[c.month]} · ${String(Math.floor(c.hour)).padStart(2, '0')}:${String(Math.floor((c.hour % 1) * 60)).padStart(2, '0')}`; this.addMessage(m); });   // (stamped for the town news page)
     game.economy.on('permits', () => { if (this.terminalB) this.renderTerminal(); });
     $('btn-howto').onclick = () => { this.hide('howto'); this.modalOpen = false; this.game.clock.speed = 1; };
     this.refreshTools(); this.renderObjectives();
   }
   /** A window is open (talking, the post, the backpack, the journal, the how-to card): worked out fresh each time so it can't get stuck. */
-  get modalOpen() { return !!((this.pause && this.pause.open) || this.perfOpen || (this.plan && this.plan.open) || this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
+  get modalOpen() { return !!((this.pause && this.pause.open) || this.perfOpen || this.noticeOpen || (this.game.cutscene && this.game.cutscene.live) || (this.game.minimap && this.game.minimap.big) || (this.plan && this.plan.open) || this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
   set modalOpen(v) { /* derived; kept so old callers stay harmless */ }
   get mouseOverCanvas() { return this.game.input.overCanvas !== false; }
   /** Something broke: say so on screen (once in a while) instead of silently freezing. */
@@ -179,7 +181,8 @@ export class UI {
     sm.innerHTML = (tabs ? `<div class="tabrow">${tabs}</div>` : '') + (list.length ? '' : '<div class="sub locked teaser">Nothing here yet<small>grow the village</small></div>') + list.map((k) => {
       const d = BUILDINGS[k], un = g.economy.isUnlocked(k), p = g.economy.permits[k], mats = Object.entries(d.mat).map(([m, n]) => n + ' ' + m).join(', ');
       const status = un ? mats : (p === 'pending' ? 'permit pending…' : pop < d.permit.pop ? `needs ${d.permit.pop} residents` : `permit £${d.permit.cost} (Postbox form)`);
-      const nb = g.buildings.count(k); return `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${un ? '' : 'locked'} ${nb ? 'built' : ''}" data-s="${k}">${nb ? `<span class="tick">✓${nb > 1 ? ' ×' + nb : ''}</span>` : ''}${d.name}<small>${status}</small></button>`;
+      const nb = g.buildings.count(k), ns = g.buildings.count(k, false) - nb, badge = (nb ? `<span class="tick">✓${nb > 1 ? ' ×' + nb : ''}</span>` : '') + (ns ? `<span class="tick site" title="${ns} placed, not built yet">🏗️${ns > 1 ? ' ×' + ns : ''}</span>` : '');   // placed but not built yet: a site badge, no tick
+      return `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${un ? '' : 'locked'} ${nb || ns ? 'built' : ''} ${nb && ns ? 'both' : ''}" data-s="${k}">${badge}${d.name}<small>${status}${ns ? ` · <b class="placed">${ns > 1 ? ns + ' placed' : 'placed'}, being built</b>` : ''}</small></button>`;
     }).join('') + more; sm.classList.remove('hidden'); this.subOpen = id;
   }
   refreshSub() { if (this.drawToolbox) this.drawToolbox(); const sm = $('submenu'); if (this.subOpen && sm && !sm.classList.contains('hidden') && this.game.mode === 'god') this.openSub(this.subOpen);
@@ -211,7 +214,30 @@ export class UI {
   }
   setCountdown(n, label) { const c = $('countdown'); if (n == null) { c.classList.add('hidden'); return; } c.classList.remove('hidden'); if (c.dataset.n !== String(n)) { c.dataset.n = n; c.innerHTML = `<div>${label}</div><b>${n}</b>`; c.classList.remove('tick'); void c.offsetWidth; c.classList.add('tick'); Sfx.play('deny'); } }
   setAlert(text) { const a = $('alertbar'); if (!a) return; if (text) { a.textContent = text; a.classList.remove('hidden'); } else a.classList.add('hidden'); }
-  toast(text, ms = 2600) { const t = $('toast'); t.textContent = this.keyText(text); t.classList.remove('hidden'); clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.add('hidden'), ms); }
+  /**
+   * Something worth reading properly: a card in the middle of the screen with the game paused, until a button is pressed
+   * (E, Enter, Space, Esc, ✕ or ○). A copy goes in the Postbox, so a missed one can be read again.
+   */
+  notice(title, body, { icon = '📜', from = 'Sam\'s notes', post = true } = {}) {
+    (this.notices ||= []).push({ title, body, icon }); if (post && this.game.mail) this.game.mail.send(from, title, body, { kind: 'note' });
+    if (!this.noticeOpen) this.nextNotice();
+  }
+  nextNotice() {
+    const g = this.game, n = (this.notices || []).shift(); let el = $('notice');
+    if (!n) { this.noticeOpen = false; if (el) el.classList.add('hidden'); if (this._noticeSpeed !== undefined) { g.clock.speed = this._noticeSpeed; this._noticeSpeed = undefined; } return; }
+    if (!el) { el = document.createElement('div'); el.id = 'notice'; el.className = 'hidden'; $('app').appendChild(el); el.addEventListener('click', (e) => { if (e.target.closest('button')) this.nextNotice(); }); }
+    this.noticeOpen = true; this._noticeT = 0.35; if (this._noticeSpeed === undefined) { this._noticeSpeed = g.clock.speed; g.clock.speed = 0; } g.input.unlock();
+    const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+    el.innerHTML = `<div class="box"><div class="nicon">${n.icon}</div><h2>${esc(n.title)}</h2><p>${esc(n.body).replace(/\n/g, '<br>')}</p><button class="nok">${g.input.padActive ? '✕ OK' : 'OK (E)'}</button><small>A copy is in the Postbox.</small></div>`;
+    el.classList.remove('hidden');
+  }
+  /** Close the notice on a key or button (after a moment, so the key that caused it doesn't close it straight away). */
+  noticeKeys(dt) {
+    if (!this.noticeOpen) return; if ((this._noticeT -= dt) > 0) return; const inp = this.game.input, P = inp.pad;
+    if (inp.hit('KeyE') || inp.hit('Enter') || inp.hit('Space') || inp.hit('Escape') || (inp.padActive && P && (P.hitB[0] || P.hitB[1]))) { for (const k of ['KeyE', 'Enter', 'Space', 'Escape']) inp.pressed.delete(k); this.nextNotice(); }
+  }
+  toast(text, ms = 2600) { ms = Math.min(9000, Math.max(ms, 1400 + String(text).length * 45)); const t = $('toast'); t.textContent = this.keyText(text);   // (long enough to read)
+    t.classList.remove('hidden'); clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.add('hidden'), ms); }
   fade(a, text = '') { $('fade').style.opacity = a; $('fade-text').textContent = text; }
   setPrompt(text, hold, info = false) {
     const p = $('prompt'); if (!text || this.game.mode !== 'sim' || this.modalOpen) { p.classList.add('hidden'); return; }
@@ -289,6 +315,7 @@ export class UI {
     const best = g.workgame.best || 0;
     $('journal').innerHTML = `<h2><span>SAM'S JOURNAL</span><button data-j="close" class="xbtn" title="Close">✕</button></h2>
       <div class="jstats"><div><b>${g.clock.totalDays}</b><span>days on the island</span></div><div><b>${g.buildings.list.filter((b) => b.state === 'done' && !b.def.special).length}</b><span>buildings finished</span></div><div><b>${f.gathered || 0}</b><span>things gathered</span></div><div><b>${best}</b><span>best gold chain</span></div><div><b>${f.favours || 0}</b><span>favours done</span></div><div><b>${f.cooked || 0}</b><span>campfire meals</span></div></div>
+      <div class="jsec">Calendar: ${dateText(g.clock, true)}</div><div class="jcal">${(() => { const t = keyToday(g.clock); return (t ? `<div class="kd today"><span>${t.icon}</span><b>Today: ${t.name}</b></div>` : '') + upcoming(g.clock, 7).filter((k) => k.inDays > 0).map((k) => `<div class="kd${k.sam ? ' sam' : ''}"><span>${k.icon}</span><b>${k.name}</b><em>${DAYS[(new Date(Date.UTC(k.year, k.m, k.d)).getUTCDay() + 6) % 7]} ${k.d} ${MONTHS[k.m]}${k.year !== g.clock.year ? ' ' + k.year : ''} · ${k.inDays === 1 ? 'tomorrow' : `in ${k.inDays} days`}</em></div>`).join(''); })()}</div>
       <div class="jsec">Skills (practice makes perfect)</div><div class="jsk">${Object.entries(SKILLS).map(([k, d]) => `<div class="sk"><span class="ic">${d.icon}</span><b>${d.name}</b><em>Lv ${g.skills.level(k)} · ${g.skills.title(k)}</em><i><u style="width:${Math.round(g.skills.frac(k) * 100)}%"></u></i></div>`).join('')}</div>
       <div class="jsec">Friends (${friends.length})${acq ? ` · ${acq} acquaintances` : ''}</div><div class="jfr">${friends.length ? friends.join(', ') : 'Nobody yet. Talk to people, do them favours.'}</div>
       ${(() => { const A = f.asks || {}, rows = Object.entries(A).filter(([, L]) => L.length).sort((a, b) => b[1].length - a[1].length); return `<div class="jsec">What people have asked for (${rows.length})</div><div class="jfr">${rows.length ? rows.map(([id, L]) => `<b>${(BUILDINGS[id] || { name: id }).name}</b> ×${L.length} <small>(${L.map((i) => (P.sims.find((s) => s.id === i) || {}).first).filter(Boolean).slice(0, 4).join(', ')})</small>`).join(' · ') : 'Nobody\'s asked for anything yet. Talk to people.'}</div>`; })()}
@@ -336,9 +363,9 @@ export class UI {
       const P = g.player, room = P.invRoom(), carry = (m) => P.inv[m] || 0;
       body = `<div class="note">Backpack <b>${P.invTotal()}/${P.invTotal() + room}</b>${P.invTotal() ? `: ${P.invText()}` : ' (empty)'}.</div>
         <div class="stockbtns"><button data-act="storeall" class="${P.invTotal() ? '' : 'cant'}">⬇ Store everything</button> <button data-act="packsites" class="${room ? '' : 'cant'}">🏗️ Pack what the building sites need</button></div>
-        <table class="market stocktbl"><tr><th>Goods</th><th>In store</th><th>Carrying</th><th colspan="3">Take</th><th>Put back</th></tr>` +
+        <table class="market stocktbl"><tr><th>Goods</th><th>In store</th><th>Carrying</th><th>How many</th><th>Take</th><th>Put back</th><th></th></tr>` +
         Object.entries(MATERIALS).map(([m, d]) => { const have = Math.floor(e.stock[m] || 0), fill = Math.min(have, room);
-          return `<tr><td>${d.name}</td><td>${have}</td><td>${carry(m)}</td>${[1, 5].map((q) => `<td><button data-act="take" data-m="${m}" data-q="${q}" class="${have >= q && room >= q ? '' : 'cant'}">Take ${q}</button></td>`).join('')}<td><button data-act="take" data-m="${m}" data-q="fill" class="${fill ? '' : 'cant'}">Fill up${fill ? ` (${fill})` : ''}</button></td><td><button data-act="put" data-m="${m}" class="${carry(m) ? '' : 'cant'}">Put 1 back</button></td></tr>`; }).join('') + '</table>' + perDayTable(e);
+          return `<tr data-row="${m}"><td>${d.name}</td><td>${have}</td><td>${carry(m)}</td>${this.qtyCell(m)}${this.stockBtns(m)}<td><button data-act="take" data-m="${m}" data-q="fill" class="${fill ? '' : 'cant'}">Fill up${fill ? ` (${fill})` : ''}</button></td></tr>`; }).join('') + '</table>' + perDayTable(e);
     }
     if (tab === 'permits') {
       const list = ALL_BUILDABLE.filter((k) => e.visible(k)).sort((a, b) => (e.permits[a] === 'approved') - (e.permits[b] === 'approved') || BUILDINGS[a].permit.pop - BUILDINGS[b].permit.pop || BUILDINGS[a].permit.cost - BUILDINGS[b].permit.cost), nx = e.nextMilestone();
@@ -349,9 +376,9 @@ export class UI {
       }).join('') + '</table>';
     } else if (tab === 'materials') {
       body = `<div>Stockyard: ${Object.keys(MATERIALS).map((m) => `${MATERIALS[m].name} <b>${Math.floor(e.stock[m])}</b>`).join(' · ')}</div>
-        <table class="market"><tr><th>Goods</th><th>In stock</th><th>Market (each)</th><th colspan="2">Buy</th><th colspan="2">Sell</th></tr>` +
+        <table class="market"><tr><th>Goods</th><th>In stock</th><th>Market (each)</th><th>How many</th><th>Buy</th><th>Sell</th></tr>` +
         Object.entries(MATERIALS).map(([m, d]) => { const tr = e.trend(m), arrow = tr > 0.02 ? `<span class="up">▲${Math.round(tr * 100)}%</span>` : tr < -0.02 ? `<span class="down">▼${Math.round(-tr * 100)}%</span>` : '<span class="flat">▬</span>';
-          return `<tr><td>${d.name}</td><td>${Math.floor(e.stock[m])}</td><td>buy ${fmtMoney(e.buyPrice(m))} · sell ${fmtMoney(e.sellPrice(m))} ${arrow}</td>${[5, 20].map((q) => { const c = e.quote(m, q, 'buy'); return `<td><button data-act="order" data-m="${m}" data-q="${q}" class="${e.funds < c ? 'cant' : ''}">Buy ${q}<small>−${fmtMoney(c)}</small></button></td>`; }).join('')}${[5, 20].map((q) => `<td><button data-act="sell" data-m="${m}" data-q="${q}" class="${e.stock[m] < q ? 'cant' : ''}">Sell ${q}<small>+${fmtMoney(e.quote(m, q, 'sell'))}</small></button></td>`).join('')}</tr>`; }).join('') +
+          return `<tr data-row="${m}"><td>${d.name}</td><td>${Math.floor(e.stock[m])}</td><td>buy ${fmtMoney(e.buyPrice(m))} · sell ${fmtMoney(e.sellPrice(m))} ${arrow}</td>${this.qtyCell(m)}${this.tradeBtns(m)}</tr>`; }).join('') +
         `</table><div class="note">${g.buildings.count('postoffice') ? 'Post Office discount: 20% off · ' : ''}Orders on the way: ${e.orders.length + g.logistics.queue.length}${g.depot ? '' : ' · No Stockyard yet: deliveries wait on the Lift dock'}</div>`;
     } else if (tab === 'jobs') {
       const P = g.population, res = P.residents(), adults = res.filter((q) => P.canWork(q)), idle = adults.filter((q) => !q.workplace), vac = P.vacancies();
@@ -371,11 +398,11 @@ export class UI {
       body = `<table><tr><td>Funds</td><td>${fmtMoney(e.funds)}</td></tr><tr><td>Residents</td><td>${P.count()}</td></tr><tr><td>Buildings</td><td>${g.buildings.list.filter((b) => b.state === 'done').length} (+${g.buildings.list.filter((b) => b.state === 'site').length} under construction)</td></tr>
         <tr><td>Age</td><td>${g.tech.status().name}${g.tech.era < 2 ? ` · research ${g.tech.status().research}/${g.tech.status().need} for computers${g.tech.era < 1 ? ' (needs power too)' : ''}` : ''}</td></tr><tr><td>Power</td><td>${g.buildings.count('power') ? 'ONLINE' : 'none'}</td></tr><tr><td>Water</td><td>${g.buildings.count('water') ? 'ONLINE' : 'none'}</td></tr>
         <tr><td>Last month</td><td>${r ? `income ${fmtMoney(r.income)} · costs ${fmtMoney(r.cost)} · net ${fmtMoney(r.net)}` : 'no report yet'}</td></tr></table>`;
-      // where the money comes from and where it goes: this month so far, and last month in full
+      // where the money comes from and where it goes: this week so far, and last week in full
       const rows = (lines) => lines.map(([k, v]) => `<tr><td>${k}</td><td class="${v < 0 ? 'bad' : 'ok'}">${v < 0 ? '−' : '+'}${fmtMoney(Math.abs(v))}</td></tr>`).join('');
       const now = Object.entries(e.ledger || {}).map(([k, v]) => [k, Math.round(v)]).filter(([, v]) => v).sort((a, b) => b[1] - a[1]);
-      body += `<h3>This month so far</h3>${now.length ? `<table>${rows(now)}</table>` : '<div class="note">Nothing yet.</div>'}`;
-      if (r && r.lines) body += `<h3>Last month in full</h3><table>${rows(r.lines)}<tr><td><b>Net</b></td><td class="${r.net < 0 ? 'bad' : 'ok'}"><b>${r.net < 0 ? '−' : '+'}${fmtMoney(Math.abs(r.net))}</b></td></tr></table>`;
+      body += `<h3>This week so far</h3>${now.length ? `<table>${rows(now)}</table>` : '<div class="note">Nothing yet.</div>'}`;
+      if (r && r.lines) body += `<h3>Last week in full</h3><table>${rows(r.lines)}<tr><td><b>Net</b></td><td class="${r.net < 0 ? 'bad' : 'ok'}"><b>${r.net < 0 ? '−' : '+'}${fmtMoney(Math.abs(r.net))}</b></td></tr></table>`;
       body += '';
       body += perDayTable(e);
     } else if (tab === 'money') {
@@ -391,16 +418,30 @@ export class UI {
     const keep = tab === this._termTab ? (T.querySelector('.win') || {}).scrollTop || 0 : 0; this._termTab = tab;   // redraws keep the scroll (unless the tab changed)
     if (html !== this._termHtml) { this._termHtml = html; T.innerHTML = html; const w = T.querySelector('.win'); if (w) w.scrollTop = keep; }
   }
+  /** How many to trade, per material: a box to type into and a button that steps the amount (1, 5, 10, 25, 50, 100, 250) for a controller. */
+  tq(m) { return (this._tq ||= {})[m] ?? 10; }
+  qtyCell(m) { return `<td class="qtyc"><input class="tqty" data-m="${m}" inputmode="numeric" maxlength="5" value="${this.tq(m)}" aria-label="How many"><button data-act="tqstep" data-m="${m}" title="Step up: 1, 5, 10, 25, 50, 100, 250, then back to 1">+</button></td>`; }
+  tradeBtns(m) { const e = this.game.economy, q = this.tq(m), c = e.quote(m, q, 'buy'); return `<td><button data-act="order" data-m="${m}" data-live="1" class="${e.funds < c || !q ? 'cant' : ''}">Buy ${q}<small>−${fmtMoney(c)}</small></button></td><td><button data-act="sell" data-m="${m}" data-live="1" class="${e.stock[m] < q || !q ? 'cant' : ''}">Sell ${q}<small>+${fmtMoney(e.quote(m, q, 'sell'))}</small></button></td>`; }
+  stockBtns(m) { const g = this.game, P = g.player, q = this.tq(m), have = Math.floor(g.economy.stock[m] || 0), room = P.invRoom(), carry = P.inv[m] || 0; return `<td><button data-act="take" data-m="${m}" data-live="1" class="${have && room && q ? '' : 'cant'}">Take ${q}</button></td><td><button data-act="put" data-m="${m}" data-live="1" class="${carry && q ? '' : 'cant'}">Put ${Math.min(q, carry) || q} back</button></td>`; }
+  /** Typing in an amount: keep it, and redo that row's buttons (not the whole page, so the box keeps the cursor). */
+  qtyInput(el) {
+    const m = el.dataset.m, v = Math.min(9999, parseInt(String(el.value).replace(/\D/g, ''), 10) || 0); (this._tq ||= {})[m] = v; if (String(v) !== el.value && el.value !== '') el.value = v;
+    const row = el.closest('tr'); if (!row) return; const html = this.terminalTab === 'stock' ? this.stockBtns(m) : this.tradeBtns(m), tmp = document.createElement('tbody'); tmp.innerHTML = `<tr>${html}</tr>`;
+    const cells = [...tmp.firstChild.children], old = [...row.querySelectorAll('td')].filter((td) => td.querySelector('[data-live]')); old.forEach((td, i) => cells[i] && td.replaceWith(cells[i]));
+  }
   terminalClick(e) {
     const b = e.target.closest('button'); if (!b) return; const g = this.game, a = b.dataset.act; let r = null;
     if (a === 'close') return this.closeTerminal(); if (a === 'tab') { this.terminalTab = b.dataset.k; }
     if (a === 'permit') r = g.economy.requestPermit(b.dataset.id);
-    if (a === 'order') r = g.economy.orderMaterial(b.dataset.m, +b.dataset.q);
-    if (a === 'sell') r = g.economy.sellMaterial(b.dataset.m, +b.dataset.q);
+    const qn = b.dataset.live ? this.tq(b.dataset.m) : +b.dataset.q;   // (the amount in the row's box)
+    if (a === 'tqstep') { const S = [1, 5, 10, 25, 50, 100, 250], q = this.tq(b.dataset.m); this._tq[b.dataset.m] = S.find((x) => x > q) || 1; }
+    if ((a === 'order' || a === 'sell' || a === 'take' || a === 'put') && b.dataset.live && !qn) r = { ok: false, msg: 'Type how many first.' };
+    else if (a === 'order') r = g.economy.orderMaterial(b.dataset.m, qn);
+    else if (a === 'sell') r = g.economy.sellMaterial(b.dataset.m, qn);
     if (a === 'buy') r = g.player.buyGoods(this.counter, +b.dataset.i);
     if (a === 'storeall') r = g.player.storeAll(); if (a === 'packsites') r = g.player.packSites();
-    if (a === 'take') { const P = g.player, m = b.dataset.m, have = Math.floor(g.economy.stock[m] || 0), q = b.dataset.q === 'fill' ? Math.min(have, P.invRoom()) : Math.min(+b.dataset.q, have, P.invRoom()); if (q <= 0) r = { ok: false, msg: have ? 'Your backpack is full.' : 'There is none in the Stockyard.' }; else { g.economy.stock[m] -= q; P.invAdd(m, q); Sfx.play('pickup'); } }
-    if (a === 'put') { const P = g.player, m = b.dataset.m; if (P.inv[m]) { P.invTake(m, 1); g.economy.add(m, 1, false); Sfx.play('drop'); } else r = { ok: false, msg: 'You are not carrying any.' }; }
+    if (a === 'take' && !r) { const P = g.player, m = b.dataset.m, have = Math.floor(g.economy.stock[m] || 0), q = b.dataset.q === 'fill' ? Math.min(have, P.invRoom()) : Math.min(qn, have, P.invRoom()); if (q <= 0) r = { ok: false, msg: have ? 'Your backpack is full.' : 'There is none in the Stockyard.' }; else { g.economy.stock[m] -= q; P.invAdd(m, q); Sfx.play('pickup'); } }
+    if (a === 'put' && !r) { const P = g.player, m = b.dataset.m, n = Math.min(qn || 1, P.inv[m] || 0); if (n > 0) { P.invTake(m, n); g.economy.add(m, n, false); Sfx.play('drop'); } else r = { ok: false, msg: 'You are not carrying any.' }; }
     if (a === 'money') r = g.economy.moneyOp(b.dataset.op, b.dataset.arg);
     if (a === 'invite') { const n = +b.dataset.n; if (!g.economy.spend(500 * n, 'Invitations')) r = { ok: false, msg: 'Not enough funds.' }; else { g.population.invites += n; g.population.timer = Math.min(g.population.timer, 2); g.messages.push('Lift', `${n} resident(s) invited. They will arrive shortly.`); } }
     if (r && !r.ok) { this.toast(r.msg); Sfx.play('deny'); } else if (r && r.ok && (a === 'order' || a === 'sell')) Sfx.play('ui');
@@ -422,6 +463,13 @@ export class UI {
   }
   /** The card for a townsperson picked with Query: who they are, where they live and work, how they're doing. Stays (and
    *  keeps up to date) until closed; pins show them, their home and their work on the map. */
+  /** A carter out with the cart: where to, and what's on it. */
+  cartLine(s) {
+    const C = this.game.carting, c = C && s.carting && C.carts.find((q) => q.w === s); if (!c) return '';
+    const goods = Object.entries(c.load || {}).filter(([, n]) => n > 0).map(([m, n]) => `${n} ${MATERIALS[m] ? MATERIALS[m].name.toLowerCase() : m}`).join(', ') || 'nothing', site = `${c.s && c.s.def ? c.s.def.name : 'new building'} site`;
+    const where = c.stage === 'toYard' ? `to the Stockyard to load up ${goods} for the ${site}` : c.stage === 'toSite' ? `taking ${goods} from the Stockyard to the ${site}` : `back to the ${c.yard.def.name} (empty)`;
+    return `<div class="qline"><b>Carting</b> ${where}</div><div class="qline"><b>On the cart</b> ${c.stage === 'toSite' ? goods : 'nothing yet'}</div>`;
+  }
   simCard() {
     const s = this.qSim, q = $('query'), g = this.game; if (!s) return;
     const bar = (label, v, col) => `<div class="qbar"><span>${label}</span><i><b style="width:${Math.round(Math.max(0, Math.min(1, v)) * 100)}%;background:${col}"></b></i></div>`;
@@ -431,7 +479,7 @@ export class UI {
     const dyn = `<div class="qline">${s.gender === 'f' ? 'Female' : 'Male'}, ${Math.floor(s.age)} · ${s.trait}${s.quirk && s.quirk.label ? ' · ' + s.quirk.label : ''}</div>
       <div class="qline"><b>Job</b> ${s.roleName}${s.workplace ? ' at the ' + s.workplace.def.name : s.kind === 'child' ? ' (school and play)' : ''}</div>
       <div class="qline"><b>Home</b> ${s.home ? 'the ' + s.home.def.name : s.homeless ? 'sleeping rough' : s.kind === 'visitor' ? 'a day trip' : 'none yet'}${commute !== null ? ` · ${commute} m from work` : ''}</div>
-      <div class="qline"><b>Now</b> ${doing}${s.inside ? ' in the ' + s.inside.def.name : ''}</div>
+      <div class="qline"><b>Now</b> ${doing}${s.inside ? ' in the ' + s.inside.def.name : ''}</div>${this.cartLine(s)}
       ${bar('Mood', (s.mood + 1) / 2, s.mood > 0 ? '#5fd38a' : s.mood > -0.35 ? '#e8c04a' : '#e2574c')}${bar('Fed', 1 - s.hunger / 100, '#e8a04a')}${bar('Likes Sam', (s.samRel || 0) / 100, '#7aa8ff')}
       <div class="qline">${s.partner ? '<b>Partner</b> ' + s.partner.name + ' · ' : ''}${kids.length ? '<b>Children</b> ' + kids.join(', ') + ' · ' : ''}<b>Friends</b> ${fr}</div>`;
     // the buttons are made once per person (redrawing them twice a second would swallow clicks); only the details refresh
@@ -455,7 +503,9 @@ export class UI {
 
   // ---------- per-frame ----------
   update(dt) {
+    this.noticeKeys(dt);
     if (this.qSim) { const s = this.qSim, g = this.game; if (s.remove || g.mode !== 'god') { this.qSim = null; $('query').classList.add('hidden'); } else { if (this.qFollow) g.god.target.set(s.x, 0, s.z); if ((this.qT = (this.qT || 0) - dt) <= 0) { this.qT = 0.5; this.simCard(); } } }   // the query card keeps up
+    if (this.buildDirty && performance.now() - (this._bdT || 0) > 250) { this.buildDirty = false; this._bdT = performance.now(); this.refreshSub(); if (this.plan.open && this.plan.tab === 'build') this.plan.render(); }
     if (this.plan.open && this.plan.tab !== 'build') { this._planT = (this._planT || 0) - dt; if (this._planT <= 0) { this._planT = 1; this.plan.render(); } }
     const g = this.game;
     if (this.hoverTimer > 0) { this.hoverTimer -= dt; if (this.hoverTimer <= 0 || g.mode !== 'god') $('hover').classList.add('hidden'); }
@@ -466,8 +516,11 @@ export class UI {
     { const pp = $('pausedpill'), on = g.started && !g.ending && g.clock.speed === 0 && !this.modalOpen && !(g.introScene && g.introScene.live); if (pp && pp.classList.contains('hidden') === on) pp.classList.toggle('hidden', !on); }   // paused: say so, plainly, until it isn't
     this.acc += dt; if (this.acc < 0.25) return; this.acc = 0;
     const c = g.clock, P = g.population;
-    $('h-pop').textContent = P.count().toLocaleString(); $('h-funds').textContent = fmtMoney(g.economy.funds); $('h-month').textContent = MONTHS[c.month]; $('h-year').textContent = c.year; $('h-sims').textContent = `${P.sims.filter((s) => !s.hidden).length}${P.simCap < 100000 ? "/" + P.simCap : ""}`;
-    $('c-date').textContent = `${DAYS[c.weekday]} · ${MONTHS[c.month]} ${c.year}${this.game.seasons ? ' · ' + ({ Winter: '❄', Spring: '🌸', Summer: '☀', Autumn: '🍂' })[this.game.seasons.season] : ''}`; $('c-time').textContent = c.hhmm;
+    $('h-pop').textContent = P.count().toLocaleString(); $('h-funds').textContent = fmtMoney(g.economy.funds); $('h-month').textContent = `${c.day} ${MONTHS[c.month]}`; $('h-year').textContent = c.year; $('h-sims').textContent = `${P.sims.filter((s) => !s.hidden).length}${P.simCap < 100000 ? "/" + P.simCap : ""}`;
+    $('c-date').textContent = `${DAYS[c.weekday]} ${c.day} ${MONTHS[c.month]} ${c.year}${this.game.seasons ? ' · ' + ({ Winter: '❄', Spring: '🌸', Summer: '☀', Autumn: '🍂' })[this.game.seasons.season] : ''}`;
+    { const dk = c.year * 400 + c.month * 32 + c.day; if (this._calK !== dk) { this._calK = dk; const t = keyToday(c), nx = upcoming(c, 4).filter((k) => k.inDays > 0), soon = nx.find((k) => k.inDays <= 7), el = $('c-special');   // today's special day, or the next one this week
+      el.textContent = t ? `${t.icon} ${t.name}` : soon ? `${soon.icon} ${soon.name} ${soon.inDays === 1 ? 'tomorrow' : `in ${soon.inDays} days`}` : ''; el.classList.toggle('today', !!t);
+      $('c-date').title = `${dateText(c, true)}\nComing up: ${nx.map((k) => `${k.name} (${k.d} ${MONTH_NAMES[k.m]}${k.inDays === 1 ? ', tomorrow' : `, in ${k.inDays} days`})`).join('; ')}`; } } $('c-time').textContent = c.hhmm;
     for (const b of $('c-speed').children) b.classList.toggle('on', +b.dataset.s === c.speed);
     $('stock').innerHTML = Object.keys(MATERIALS).map((m) => { const r = g.economy.perDay(m).yesterday, u = g.economy.perDay(m, 'used').yesterday, net = Math.round(r - u); return `<div title="Yesterday: +${Math.round(r)} gathered or made, −${Math.round(u)} used"><span>${MATERIALS[m].name}</span> <b>${Math.floor(g.economy.stock[m])}</b>${r || u ? `<i class="${net < 0 ? 'neg' : ''}">${net >= 0 ? '+' : '−'}${Math.abs(net)}/d</i>` : ''}</div>`; }).join('');   // with yesterday's change
     $('h-tier').textContent = tierOf(P.count());

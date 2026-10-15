@@ -2,6 +2,7 @@ import { T } from '../world/World.js';
 import { MAP } from '../config.js';
 import { Sim } from '../sim/Sim.js';
 import { QUIRKS } from '../data/character.js';
+import { FAIR_SKINS } from '../data/people.js';
 
 const KEY = 'samcity-save-v1';
 const SAVE_V = 2;   // 2: the 8 m grid (older saves were on the small 4 m grid and can't be carried over)
@@ -47,7 +48,7 @@ export const hasSave = () => cache.has(idOf(slot));
 export const clearSave = (n = slot) => { const id = idOf(n); cache.delete(id); delete meta[id]; saveMeta(); tx('readwrite', (st) => st.delete(id)); try { localStorage.removeItem(keyOf(n)); } catch (e) { /* private mode */ } };
 /** A save as text (to download and send), and putting one back into a slot. */
 export const exportSlot = (n) => cache.get(idOf(n)) || null;
-export function importSlot(n, text, name) { const d = JSON.parse(text); if (!d || !d.sims || !d.economy) throw new Error('That file isn\'t a Sam City save.'); const s = JSON.stringify(d), id = idOf(n); cache.set(id, s); meta[id] = metaOf(s, name || 'Imported town'); saveMeta(); put(id, s); return d; }
+export function importSlot(n, text, name) { const d = JSON.parse(text); if (!d || !d.sims || !d.economy) throw new Error('That file isn\'t a Sam City 1995 save.'); const s = JSON.stringify(d), id = idOf(n); cache.set(id, s); meta[id] = metaOf(s, name || 'Imported town'); saveMeta(); put(id, s); return d; }
 /** Write the town to slot n (default: this game's slot). Returns false if it can't be saved right now. */
 function writeTo(g, n, name, auto) {
   if (g.demoMode || g.ending || !g.started || g.netVisitor) return false;
@@ -66,7 +67,7 @@ export function serialize(g) {
     v: SAVE_V, t: Date.now(), tech: g.tech.serialize(), clock: g.clock.serialize(), economy: g.economy.serialize(), story: g.story.serialize(), flags: g.flags,
     terrain: Array.from(w.terrain).join(''), roads: Array.from(w.road).join(''), zones: Array.from(w.zone).join(''),
     trees: g.terrain.trees.map((t) => (t.alive ? t.amount : 0)).join(''), nodes: g.resources.nodes.filter((n) => n.kind !== 'field').map((n) => +n.amount.toFixed(1)),
-    buildings: g.buildings.list.map((b) => ({ id: b.id, x0: b.x0, z0: b.z0, rot: b.rot, state: b.state, progress: b.progress, have: b.have, starter: b === g.starterHome, era: b.era, prio: b.prio, crew: b.crew, level: b.level || 0, buried: b.buried || 0 })), upgrades: g.upgrades.serialize(),
+    buildings: g.buildings.list.map((b) => ({ id: b.id, x0: b.x0, z0: b.z0, rot: b.rot, state: b.state, progress: b.progress, have: b.have, starter: b === g.starterHome, era: b.era, prio: b.prio, crew: b.crew, level: b.level || 0, buried: b.buried || 0, over: b.over })), upgrades: g.upgrades.serialize(),
     sims: sims.map((s) => ({ name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.baseLook || s.look, hunger: s.hunger, orient: s.orient, mood: s.moodBoost, actor: s.actor, talk: s.talkCount, gaveClue: !!s.gaveClue, samRel: s.samRel || 0, married: !!s.married, quirk: s.quirk ? s.quirk.id : undefined, tm: g.talk ? g.talk.saveMem(s) : undefined,
       home: s.home ? g.buildings.list.indexOf(s.home) : -1, work: s.workplace ? g.buildings.list.indexOf(s.workplace) : -1, role: s.role, partner: s.partner ? idOf.get(s.partner) : -1, parents: s.parents.map((p) => idOf.get(p)).filter((i) => i !== undefined), coupleDay: s.coupleDay || 0,
       rel: [...s.rel.entries()].map(([id, v]) => { const o = g.population.sims.find((q) => q.id === id); return o && idOf.has(o) ? [idOf.get(o), Math.round(v)] : null; }).filter(Boolean) })),
@@ -100,7 +101,7 @@ export function restore(g, d) {
   if (d.tech) g.tech.load(d.tech);   // buildings go up in the right architectural age
   for (const s of d.buildings) {
     if (s.id === 'tunnel') continue;   // older saves: the tunnel is gone
-    const b = B.place(s.id, s.x0, s.z0, s.rot, { instant: s.state === 'done', era: s.era ?? (d.tech ? d.tech.era : 0) });
+    const b = B.place(s.id, s.x0, s.z0, s.rot, { instant: s.state === 'done', era: s.era ?? (d.tech ? d.tech.era : 0), over: s.over });
     if (s.state !== 'done') { b.progress = s.progress; b.have = s.have || {}; B.refreshSite(b); if (s.prio !== undefined) b.prio = s.prio; if (s.crew) b.crew = s.crew; }
     if (s.level) g.upgrades.applyLevel(b, s.level); if (s.buried) b.buried = s.buried;
     if (s.id === 'lift') g.lift = b; if (s.id === 'surveyor') g.surveyor = b; if (s.starter) { g.starterHome = b; b.reservedForPlayer = true; if (b.spots.bed[0]) b.spots.bed[0].taken = 'player'; }
@@ -113,6 +114,7 @@ export function restore(g, d) {
   // citizens
   const sims = d.sims.map((s) => {
     const home = made[s.home]; const x = home ? home.doorIn.x : g.plaza.x, z = home ? home.doorIn.z : g.plaza.z;
+    if (s.look && s.look.skin !== undefined && !FAIR_SKINS.includes(s.look.skin)) s.look.skin = FAIR_SKINS[(s.name || '').length % FAIR_SKINS.length];   // (older saves: the look chosen for the setting)
     const sim = new Sim(g, { name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.look, x, z, inside: home || null, actor: s.actor });
     sim.hunger = s.hunger; sim.orient = s.orient; sim.moodBoost = s.mood || 0; sim.talkCount = s.talk || 0; sim.samRel = s.samRel || 0; sim.gaveClue = s.gaveClue; sim.coupleDay = s.coupleDay; sim.married = !!s.married; restoreTalk(g, sim, s); P.names.add(s.name); P.sims.push(sim); return sim;
   });

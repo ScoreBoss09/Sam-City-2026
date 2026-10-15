@@ -41,7 +41,14 @@ export class Service {
   /** OPEN / CLOSED on the shop door. */
   sign(b) {
     if (!b.ext || !b.doorPos) return; const open = !!b.open;
-    if (!b.signMesh) { const m = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.22), new THREE.MeshBasicMaterial({ map: this.tex(true), transparent: true })); m.position.set(doorOffset(b.def.w) + (b.def.w === 1 ? 0 : 0.5), 1.62, b.def.d * 2 + 0.2); b.ext.group.add(m); b.signMesh = m; }   // hung in the door
+    if (!b.signMesh) {   // hung on the outside of the door itself, so it swings open with it (it used to hang in the doorway, in mid air once the door was open)
+      const pv = b.ext.doors && b.ext.doors[0] && b.ext.doors[0].pivot, bb = new THREE.Box3();
+      if (pv) for (const c of pv.children) if (c.isMesh) { c.geometry.computeBoundingBox(); c.updateMatrix(); bb.union(c.geometry.boundingBox.clone().applyMatrix4(c.matrix)); }
+      const w = pv && !bb.isEmpty() ? Math.min(0.62, (bb.max.x - bb.min.x) * 0.85) : 0.62, m = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 0.355), new THREE.MeshBasicMaterial({ map: this.tex(true), transparent: true }));
+      if (pv && !bb.isEmpty()) { m.position.set((bb.min.x + bb.max.x) / 2, 1.38, bb.max.z + 0.008); pv.add(m); }
+      else { m.position.set(doorOffset(b.def.w) + (b.def.w === 1 ? 0 : 0.5), 1.62, b.def.d * 2 + 0.2); b.ext.group.add(m); }
+      b.signMesh = m;
+    }
     b.signMesh.material.map = this.tex(open); b.signMesh.material.needsUpdate = true;
   }
   tex(open) {

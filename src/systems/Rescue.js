@@ -37,7 +37,7 @@ export class Rescue {
   clinic() { return this.game.buildings.list.find((b) => b.state === 'done' && (b.def.heals || b.id === 'clinic' || b.id === 'surgery') && b.doorOut); }
   update(dt) {
     const g = this.game; if (!g.started || g.netVisitor) return; const k = Math.max(0.25, Math.min(4, g.clock.speed)); dt *= k;
-    if ((this.scanT -= dt) <= 0) { this.scanT = 2; for (const s of g.population.sims) if (s.injured && !s.rescue && !s.remove && (!s.hidden || s.dead) && !s.healAt) this.dispatch(s); }
+    if ((this.scanT -= dt) <= 0) { this.scanT = 2; for (const s of g.population.sims) if (s.injured && !s.rescue && !s.remove && (!s.hidden || s.dead) && !s.healAt && !(s.inside && s.inside.burning)) this.dispatch(s); }   // (nobody goes into a burning building for the dead)
     for (const j of this.jobs) this.step(j, dt);
     this.jobs = this.jobs.filter((j) => !j.done);
     for (const s of g.population.sims) if (s.healAt && g.elapsed > s.healAt) this.discharge(s);
@@ -45,12 +45,22 @@ export class Rescue {
   }
   /** The undertakers (in black, from the Lift) do the dead, and anyone from up the Lift who's hurt goes back up it with them. */
   undertakers(v) { return !!v.dead || (v.kind === 'guest' && v.liftCase); }
+  /** Two builders who can stop what they're doing, nearest first (null if there aren't two). */
+  builderPair(v) {
+    const L = this.game.population.sims.filter((s) => s.role === 'builder' && s.kind === 'resident' && !s.remove && !s.rescue && !(s.down > 0) && !s.dead && s.pose !== 'sleep' && !s.crook && !s.fight && !s.trapped && !s.fleeFire && !s.riding && !s.hidden).sort((a, b) => Math.hypot(a.x - v.x, a.z - v.z) - Math.hypot(b.x - v.x, b.z - v.z));
+    return L.length >= 2 ? L.slice(0, 2) : null;
+  }
   dispatch(v) {
-    const g = this.game, cl = this.clinic(), dead = !!v.dead, ut = this.undertakers(v), dest = dead ? g.buildings.church() || g.lift : ut ? g.lift : cl || g.lift;
-    const job = { v, dest, stage: 'go', t: 0, dead, ut }; v.rescue = job;
-    if (!ut && cl && g.tech && g.tech.age >= 3) { this.ambulance(job, cl); this.jobs.push(job); return; }
+    const g = this.game, cl = this.clinic(), dead = !!v.dead, rest = dead ? g.buildings.church() || cl : null;   // the dead rest at the church or chapel, else the clinic or surgery, until the funeral
+    const crew = dead && !rest ? this.builderPair(v) : null;   // nowhere in town to keep them: the builders take them up the Lift
+    const ut = !crew && this.undertakers(v), dest = dead ? rest || g.lift : ut ? g.lift : cl || g.lift;
+    const job = { v, dest, stage: 'go', t: 0, dead, ut, crew: !!crew }; v.rescue = job;
+    if (!ut && !dead && cl && g.tech && g.tech.age >= 3) { this.ambulance(job, cl); this.jobs.push(job); return; }
     let c = null;
-    if (ut) {
+    if (crew) {
+      [c, job.mate] = crew; const m = makeDeadCart(); g.scene.add(m); job.cart = { mesh: m, x: c.x - Math.sin(c.heading) * HITCH, z: c.z - Math.cos(c.heading) * HITCH, h: c.heading }; c.pulling = true;
+      for (const b of crew) { b.standUp && b.standUp(); b.rescue = job; } if (c.mesh.visible) g.social.say(c, pick(['Come on. Somebody has to.', 'Get the barrow. Gently, mind.', 'Not what I signed up for, this.']), 2.6);
+    } else if (ut) {
       const L = g.lift.doorOut, P = g.population.makePerson({ kind: 'visitor', gender: 'm' }); c = g.population.spawnAt(L.x, L.z, { name: 'Mr ' + P.surname, first: 'Mr', surname: P.surname, kind: 'guest', trait: 'busy', look: { ...P.look, shirt: 0x15151a, pants: 0x15151a, accessory: 'tie', hat: { type: 'bowler', color: 0x111111 } }, gender: 'm', age: 55 }); c.undertaker = true;
       const P2 = g.population.makePerson({ kind: 'visitor', gender: 'm' }); job.mate = g.population.spawnAt(L.x + 1, L.z, { name: 'Mr ' + P2.surname, first: 'Mr', surname: P2.surname, kind: 'guest', trait: 'busy', look: { ...P2.look, shirt: 0x15151a, pants: 0x15151a, accessory: 'tie' }, gender: 'm', age: 40 }); job.mate.undertaker = true;
       const m = makeDeadCart(); g.scene.add(m); job.cart = { mesh: m, x: L.x, z: L.z - HITCH, h: 0 }; c.pulling = true;
@@ -86,7 +96,7 @@ export class Rescue {
       j.grab = false; c.path = []; c.x = hx; c.z = hz; c.heading = k.h;
     }
     // with a cart, the puller stops a cart's length short and the body is lifted in; on foot, the carrier goes right up to them
-    const goal = j.stage === 'go' ? (v.hidden && v.home ? v.home.doorOut : v) : j.dest.doorOut, reach = j.stage === 'go' && j.cart ? 2.4 : 1.6;
+    const goal = j.stage === 'go' ? (v.hidden ? v.bodyAt || (v.home && v.home.doorOut) || v : v) : j.dest.doorOut, reach = j.stage === 'go' && j.cart ? 2.4 : 1.6;
     if (j.stage === 'load') {   // both bend down and lift the body in (the dead get the sheet)
       c.path = []; c.fightAnim = 'lift'; c.fightAnimT = 0.3; if (j.mate) { j.mate.fightAnim = 'lift'; j.mate.fightAnimT = 0.3; }
       if ((j.loadT -= dt) <= 0) { j.stage = 'carry'; c.speedK = 0.6; if (j.mate) j.mate.speedK = 0.6; v.inCart = { lieH: CART_LIE }; v.hidden = false; v.inside = null; j.cart.mesh.userData.sheet.visible = j.dead; if (v.leftCart) { g.scene.remove(v.leftCart); v.leftCart = null; } }
@@ -112,7 +122,7 @@ export class Rescue {
   }
   deliver(j) {
     const g = this.game, v = j.v, b = j.dest;
-    if (j.dead) { g.messages.push('St Sam\'s', b === g.lift ? `${v.name} has been taken up the Lift. Nobody says where it goes.` : `${v.name} is resting at the ${b.def.name} until the funeral.`); v.remove = true; }
+    if (j.dead) { g.messages.push(j.crew ? 'Builders' : 'St Sam\'s', b === g.lift ? (j.crew ? `The builders took ${v.name} up the Lift. There's no chapel, church or clinic in town to keep them until a funeral.` : `${v.name} has been taken up the Lift. Nobody says where it goes.`) : `${v.name} is resting at the ${b.def.name} until ${g.buildings.church() ? 'the funeral on Sunday' : 'Sunday, when they go up the Lift (there\'s no church or chapel for a service)'}.`); v.remove = true; }
     else if (j.ut) { g.messages.push('Lift', `${v.name} has been wheeled back up the Lift, hurt. They'll send someone else next time.`, 'warn'); v.remove = true; }
     else if (b === g.lift) { v.hidden = true; v.healAt = g.elapsed + 160; g.messages.push('Lift', `${v.name} has been taken up the Lift for treatment. (There's no clinic in town.)`, 'warn'); }
     else { v.hidden = true; v.healAt = g.elapsed + 50; v.healB = b; g.messages.push('Town', `${v.name} is being patched up at the ${b.def.name}.`); }
@@ -126,7 +136,7 @@ export class Rescue {
   finish(j, failed) {
     const g = this.game; j.done = true; if (j.ev) j.ev.live = false; const c = j.c, hurt = (s) => s && (s.down > 0 || s.injured);
     if (c) { c.rescue = null; c.speedK = 1; c.phase = 0; c.pulling = false; if (c.undertaker && !hurt(c)) c.remove = true; }
-    if (j.mate) { j.mate.rescue = null; if (!hurt(j.mate)) j.mate.remove = true; }
+    if (j.mate) { j.mate.rescue = null; j.mate.speedK = 1; j.mate.phase = 0; if (j.mate.undertaker && !hurt(j.mate)) j.mate.remove = true; }
     if (j.amb) g.scene.remove(j.amb.mesh);
     if (j.cart) {   // left where it stands: with the body in it (the next pair takes it away) or empty for a while
       const v = j.v, mesh = j.cart.mesh; if (v && v.inCart && !v.remove) v.leftCart = mesh; this.left.push({ mesh, t: v && v.inCart ? 9999 : 90, gone: () => !mesh.parent || (v && v.remove) }); j.cart = null;

@@ -7,6 +7,8 @@ import { Cricket } from './Cricket.js';
 import { Funerals } from './Funerals.js';
 import { Guests } from './Guests.js';
 import { Protests } from './Protests.js';
+import { today as keyToday } from '../data/calendar.js';
+import { KEYDAY_NEWS, BIRTHDAY_CARDS } from '../data/keydays.js';
 
 const WED = ['Don\'t they look lovely!', 'I always cry at weddings.', 'Who\'s got the confetti?', 'Speech! Speech!', 'Three cheers for the happy couple!', 'Lovely service, that.', 'Mind the vicar\'s hat!', 'Hip hip hooray!'];
 const WED_A = ['Free bar or I\'m going home.', 'Six months. I give it six months.', 'Best man\'s had a skinful already.', 'Agadoo at the reception, mark my words.', 'I\'ve got a fiver on them lasting.', 'Is that a mullet or a wedding hat?'];
@@ -53,7 +55,7 @@ export class Celebrations {
   }
   update(dt) {
     const g = this.game; if ((!g.started && !g.demoMode) || g.netVisitor) return;
-    this.wedding(dt); this.fireworksNight(dt); this.marketDay(dt); this.cricket.update(dt); this.funerals.update(dt); this.guests.update(dt); this.protests.update(dt); this.protests.tick(dt); this.events = this.events.filter((e) => e.live);
+    this.wedding(dt); this.fireworksNight(dt); this.keyDay(); this.marketDay(dt); this.cricket.update(dt); this.funerals.update(dt); this.guests.update(dt); this.protests.update(dt); this.protests.tick(dt); this.events = this.events.filter((e) => e.live);
     // crowd reactions
     this.crowdT = (this.crowdT || 0) - dt; if (this.crowdT > 0) return; this.crowdT = 0.8 + Math.random() * 1.2;
     for (const ev of [this.wed && this.wed.live && this.wed, this.bonfire && this.bonfire.live && this.bonfire]) {
@@ -121,6 +123,19 @@ export class Celebrations {
     this.wed = null;
   }
 
+  // ---------- the days the town keeps (src/data/calendar.js): a word in the morning; Sam's birthday brings cards ----------
+  keyDay() {
+    const g = this.game, c = g.clock; if (c.hour < 7 || this.keyDayDone === c.totalDays || g.demoMode) return; this.keyDayDone = c.totalDays;
+    const t = keyToday(c); if (!t) return;
+    g.messages.push('Town', `${t.icon} ${KEYDAY_NEWS[t.name] || `Today is ${t.name}${t.holiday ? ' (a bank holiday)' : ''}.`}`, 'good');
+    if (t.sam) {
+      g.ui.toast('🎂 Happy birthday, Sam!', 4500); g.flags.birthdays = (g.flags.birthdays || 0) + 1;
+      const friends = g.population.residents().filter((s) => (s.samRel || 0) >= 8 && s.age >= 12).sort((a, b) => (b.samRel || 0) - (a.samRel || 0)).slice(0, 3);
+      if (!friends.length) g.mail.send('The Planning Office', 'Happy birthday', 'Dear Sam,\n\nThe Planning Office wishes you a very happy birthday. Please continue to enjoy your stay.\n\nThe Planning Office');
+      friends.forEach((s, i) => g.mail.send(s.name, 'Happy birthday, Sam!', BIRTHDAY_CARDS[i % BIRTHDAY_CARDS.length].replace('{a}', s.first || s.name)));
+    }
+  }
+
   // ---------- Bonfire Night (5 November) and New Year's Eve ----------
   fireworksNight(dt) {
     const g = this.game, c = g.clock, fw = g.fireworks, bonfireDay = c.month === 10 && c.day === 5;
@@ -136,7 +151,7 @@ export class Celebrations {
       if (c.hour >= 19 && c.hour < 22.2) { bf.t -= dt; if (bf.t <= 0) { bf.t = 0.5 + Math.random() * 1.4; fw.launch(bf.fx, bf.fz); if (Math.random() < 0.25) setTimeout(() => fw.launch(bf.fx + 2, bf.fz - 1), 250); } }
     }
     // New Year: fireworks over the town from 23:30 on the last night of December until half past midnight
-    const nye = (c.month === 11 && c.day === 8 && c.hour >= 23.5) || (c.month === 0 && c.day === 1 && c.hour < 0.6 && c.totalDays > 0);
+    const nye = (c.month === 11 && c.day === 31 && c.hour >= 23.5) || (c.month === 0 && c.day === 1 && c.hour < 0.6 && c.totalDays > 0);
     if (nye && g.population.count() >= 1) {
       const s = this.site(), x = s ? s.cx : g.plaza.x, z = s ? s.cz : g.plaza.z; this.nyT = (this.nyT || 0) - dt;
       if (this.nyT <= 0) { this.nyT = c.month === 0 ? 0.25 + Math.random() * 0.4 : 0.6 + Math.random() * 1.2; fw.launch(x + (Math.random() - 0.5) * 16, z + (Math.random() - 0.5) * 16); }

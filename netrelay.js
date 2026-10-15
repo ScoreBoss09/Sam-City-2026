@@ -1,4 +1,4 @@
-// A tiny WebSocket relay for Sam City multiplayer (plain Node, no packages). Rooms by code: one host, any number of
+// A tiny WebSocket relay for Sam City 1995 multiplayer (plain Node, no packages). Rooms by code: one host, any number of
 // visitors. Messages from the host go to its visitors (or one of them, with "to"); messages from a visitor go to the host
 // (stamped with "from"). The relay doesn't understand the game at all; the host's browser runs the town.
 const crypto = require('crypto');

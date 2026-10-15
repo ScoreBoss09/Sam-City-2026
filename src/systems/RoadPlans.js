@@ -35,9 +35,11 @@ export class RoadPlans {
   /** Work done by a sim or Sam. Returns true when the tile became a road. */
   work(p, dt) {
     const g = this.game, w = g.world; if (this.plans.get(this.key(p.x, p.z)) !== p) return true;
+    // a tree on the tile is felled first (chop by chop, the timber goes to the Stockyard), then the path goes down
+    { const tree = g.terrain.trees.find((t) => t.alive && t.tx === p.x && t.tz === p.z); if (tree) { p.fellT = (p.fellT || 0) + dt; if (p.fellT >= 1.6) { p.fellT = 0; g.terrain.fallFrom = null; g.terrain.chopTree(tree); g.economy.add('timber', 1); g.particles && g.particles.burst(tree.x, 1.0, tree.z, 0x8a5a33, 4, 1.4, 0.6, 0.06); } p.felling = true; return false; } p.felling = false; }
     if (p.type === 2 && !p.paid) { if (g.economy.stock.stone < 1) return false; g.economy.stock.stone -= 1; p.paid = true; }
     p.progress += dt / WORK[p.type]; p.tile.scale.y = 1 + p.progress * 2; if (!p.ownMat) { p.ownMat = true; p.tile.material = p.tile.material.clone(); } p.tile.material.opacity = 0.55 + p.progress * 0.35;   // (its own material: changing the shared one made every planned tile on the island pulse)
-    if (p.progress >= 1) { let felled = 0; for (const t of g.terrain.trees) if (t.alive && t.tx === p.x && t.tz === p.z) { g.terrain.removeTree(t); felled++; } if (felled && g.depot) g.economy.add('timber', felled); this.drop(p); w.addRoad(p.x, p.z, p.type); g.flags.pathsBuilt = (g.flags.pathsBuilt || 0) + 1; return true; }
+    if (p.progress >= 1) { g.terrain.clearStumpsIn(p.x, p.z); this.drop(p); w.addRoad(p.x, p.z, p.type); g.flags.pathsBuilt = (g.flags.pathsBuilt || 0) + 1; return true; }
     return false;
   }
   /** Nearest unclaimed plan for a builder sim (paved ones only if there is stone). */

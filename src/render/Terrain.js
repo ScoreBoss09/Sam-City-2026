@@ -45,7 +45,12 @@ export class Terrain {
     // roads and building plots clear the trees standing on them
     const clear = (x0, z0, w, d) => { for (const t of this.trees || []) if (t.alive && t.tx >= x0 && t.tx < x0 + w && t.tz >= z0 && t.tz < z0 + d) this.removeTree(t); };
     world.events.on('tile', (x, z) => { if (world.road[world.idx(x, z)]) clear(x, z, 1, 1); });
-    world.events.on('building:added', (b) => clear(b.x0 - (b.def.special ? 1 : 0), b.z0 - (b.def.special ? 1 : 0), b.w + (b.def.special ? 2 : 0), b.d + (b.def.special ? 2 : 0)));
+    world.events.on('building:added', (b) => {
+      const x0 = b.x0 - (b.def.special ? 1 : 0), z0 = b.z0 - (b.def.special ? 1 : 0), w = b.w + (b.def.special ? 2 : 0), d = b.d + (b.def.special ? 2 : 0), G = this.game;
+      let wood = 0, n = 0; for (const t of this.trees || []) if (t.alive && t.tx >= x0 && t.tx < x0 + w && t.tz >= z0 && t.tz < z0 + d) { wood += t.amount || 3; n++; }
+      clear(x0, z0, w, d);
+      if (n && G && G.started && b.state === 'site' && G.economy) { G.economy.add('timber', wood); G.messages.push('Builders', `Plot cleared for the ${b.def.name}: ${n} tree${n > 1 ? 's' : ''} felled, ${wood} timber to the Stockyard.`, 'info'); }   // (the timber isn't lost)
+    });
     world.events.on('zone', () => { this.zDirty = true; });
     this.zDirty = true;
   }
@@ -194,6 +199,8 @@ export class Terrain {
   /** Stumps: remembered with the day they were made, so the night crew can clear them after a couple of days. */
   addStump(t) { this.stumpList.push({ t, x: t.x, z: t.z, day: this.today || 0 }); this.drawStumps(); }
   drawStumps() { this.stumpN = 0; for (const s of this.stumpList) { this._m.makeTranslation(s.x, 0.22, s.z); this.stumps.setMatrixAt(this.stumpN++, this._m); } this.stumps.count = this.stumpN; this.stumps.instanceMatrix.needsUpdate = true; }
+  /** No stumps left under a path or a new building: tiles [x0, z0] to [x1, z1] inclusive. */
+  clearStumpsIn(x0, z0, x1 = x0, z1 = z0) { const n = this.stumpList.length; this.stumpList = this.stumpList.filter((s) => { const tx = Math.floor(s.x / 8), tz = Math.floor(s.z / 8); return tx < x0 || tx > x1 || tz < z0 || tz > z1; }); if (this.stumpList.length !== n) this.drawStumps(); }
   clearStumps(beforeDay) { const n = this.stumpList.length; this.stumpList = this.stumpList.filter((s) => s.day > beforeDay); if (this.stumpList.length !== n) this.drawStumps(); return n - this.stumpList.length; }
   /** Put a felled tree back (the night crew), if its spot is still free. */
   regrow(t) {

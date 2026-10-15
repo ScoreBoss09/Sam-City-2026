@@ -1,7 +1,7 @@
 import { MONTHS } from '../core/Clock.js';
 import { Sfx } from '../core/Sfx.js';
 
-/** Letters delivered to the Postbox: monthly accounts, permit replies, news and notes from the neighbours. */
+/** Letters delivered to the Postbox: the weekly accounts, permit replies, news and notes from the neighbours. */
 export class Mail {
   constructor(game) { this.game = game; this.letters = []; this.welcomed = false; }
   get box() { return this.game.buildings.list.find((b) => b.id === 'postbox' && b.state === 'done') || null; }

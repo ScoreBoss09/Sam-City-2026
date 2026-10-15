@@ -3,7 +3,7 @@ import { TILE, UNIT, WALL_T, WALL_H } from '../config.js';
 import { BUILDINGS } from '../data/buildings.js';
 import { doorOffset, layoutFor } from '../data/layouts.js';
 import { Sfx } from '../core/Sfx.js';
-import { buildExterior, buildSite, buildInterior, furnitureColliders, upperColliders, roomColliders } from '../render/BuildingFactory.js';
+import { buildExterior, buildSite, buildRuin, buildInterior, furnitureColliders, upperColliders, roomColliders } from '../render/BuildingFactory.js';
 import { laneRect } from './Levels.js';
 import { styleDef } from '../data/ages.js';
 import { windowGlow } from '../render/Textures.js';
@@ -66,22 +66,24 @@ export class BuildingManager {
     return fallback;
   }
 
-  place(id, x0, z0, rot, { instant = false, era } = {}) {
-    const def = { ...BUILDINGS[id], id }; const geo = geometry(def, x0, z0, rot);
+  /** over: changes to the def for this one building (a ruin takes the size and look of what burned down). */
+  place(id, x0, z0, rot, { instant = false, era, over } = {}) {
+    const def = { ...BUILDINGS[id], id, ...(over || {}) }; const geo = geometry(def, x0, z0, rot);
     const b = {
       uid: this.nextUid++, id, def, x0, z0, w: geo.w, d: geo.d, rot, cx: geo.cx, cz: geo.cz, geo, toWorld: geo.toWorld,
       state: 'site', progress: 0, need: { ...(def.mat || {}) }, have: {}, reserved: {}, workers: [], residents: [], colliders: [],
       spots: { bed: [], work: [], idle: [], visit: [], pickup: [], terminal: [] }, ext: null, siteVis: null, interior: null, builders: 0,
     };
-    if (era !== undefined) b.era = era;
+    if (era !== undefined) b.era = era; if (over) b.over = over;
     b.doorOut = { x: geo.doorOut[0], z: geo.doorOut[1] }; b.doorTile = { x: geo.doorTile[0], z: geo.doorTile[1] };
     const dp = geo.toWorld(geo.off, def.d * UNIT / 2 - 0.3); b.doorPos = { x: dp[0], z: dp[1] };
     const di = geo.toWorld(geo.off, def.d * UNIT / 2 - 2.2); b.doorIn = { x: di[0], z: di[1] };
     this.world.buildings.set(b.uid, b); this.list.push(b); this.world.fill(b, !!def.park);
+    if (this.game && this.game.terrain && this.game.terrain.clearStumpsIn) this.game.terrain.clearStumpsIn(b.x0, b.z0, b.x0 + b.w - 1, b.z0 + b.d - 1);   // (no stumps poking up through the new floor)
     const needT = Object.values(b.need).reduce((a, v) => a + v, 0);
     if (instant || needT === 0 && !def.work) { this.finish(b); }
     else {
-      b.siteVis = buildSite(def); b.siteVis.group.position.set(b.cx, 0, b.cz); b.siteVis.group.rotation.y = rot * Math.PI / 2; this.scene.add(b.siteVis.group);
+      b.siteVis = def.ruin ? buildRuin(def) : buildSite(def); b.siteVis.group.position.set(b.cx, 0, b.cz); b.siteVis.group.rotation.y = rot * Math.PI / 2; this.scene.add(b.siteVis.group);
       b.siteVis.update(0, 0, needT || 1);
     }
     if (b.state === 'site' && this.game.construction) b.prio = this.game.construction.nextPrio();
@@ -114,6 +116,7 @@ export class BuildingManager {
     if (b.progress >= 0.999 && this.supply(b) >= 0.999) { if (b.upgradeOf) this.game.upgrades.complete(b); else this.finish(b); } return b.progress - before;
   }
   finish(b) {
+    if (b.def.ruin) { this.cleared(b); return; }
     { const f = this.game.flags, r = f.recent || (f.recent = []); if (!b.def.special && this.game.clock) { r.push({ id: b.id, name: b.def.name, day: this.game.clock.totalDays }); if (r.length > 10) r.shift(); } }   // for the townsfolk to talk about
     { const g = this.game, A = g.flags.asks; if (g.started && A && A[b.id]) { const who = g.population.sims.filter((s) => A[b.id].includes(s.id) && !s.remove); delete A[b.id];   // somebody asked for this
       if (who.length) { for (const s of who) { s.moodBoost += 0.25; s.samRel = Math.min(100, (s.samRel || 0) + 8); s.wishFor = null; if (s.mesh.visible && g.social) g.social.say(s, `A ${b.def.name}! I asked for that!`, 3); }
@@ -186,7 +189,7 @@ export class BuildingManager {
   }
   /** Build and place the outside of a finished building (in the style of its era). */
   mountExterior(b) {
-    const def = b.def, g = this.game; if (b.age === undefined) b.age = g.tech ? g.tech.age : 4; const ext = buildExterior(styleDef(def, b.age), b.uid, b.era ?? 0); b.ext = ext;
+    const def = b.def, g = this.game; if (b.age === undefined) b.age = g.tech ? g.tech.age : 4; const ext = buildExterior(styleDef(def, b.age), b.uid, b.era ?? 0); b.ext = ext; b.signMesh = null;   // (the OPEN sign goes back on the new door)
     ext.group.position.set(b.cx, 0, b.cz); ext.group.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.group);
     ext.roof.position.add(new THREE.Vector3(b.cx, 0, b.cz)); ext.roof.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.roof);
     if (!def.park && !def.special) { const W = def.w * UNIT, D = def.d * UNIT; const dec = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 5), contactMat()); dec.rotation.x = -Math.PI / 2; dec.position.y = 0.045; dec.renderOrder = 1; ext.group.add(dec); }
@@ -217,6 +220,13 @@ export class BuildingManager {
     this.world.events.emit('building:removed', b);
   }
 
+  /** The builders have cleared a burned-out ruin: a bit of brick and stone saved, and the plot is free again. */
+  cleared(b) {
+    const g = this.game, x = b.cx, z = b.cz, keep = Math.max(1, Math.round(b.def.w * b.def.d * 0.75)); this.remove(b);
+    if (g.economy) { g.economy.add('stone', keep); g.economy.add('brick', keep); }
+    if (g.particles) g.particles.burst(x, 1, z, 0x6a625a, 16, 3, 2.5, 0.25);
+    g.messages.push('Builders', `The builders have cleared the ${b.def.name.replace(/^Ruins/, 'ruins')}. The plot is free to build on again (${keep} stone and ${keep} brick saved from the rubble).`, 'good');
+  }
   church() { return this.list.find((b) => b.id === 'church' && b.state === 'done') || this.list.find((b) => b.id === 'chapel' && b.state === 'done') || null; }
   hospital() { return this.list.find((b) => b.id === 'clinic' && b.state === 'done') || this.list.find((b) => b.id === 'surgery' && b.state === 'done') || null; }
   /** Is anybody in there with the lights on? */
@@ -325,7 +335,7 @@ export class BuildingManager {
     // window lights: on while somebody in there is awake (or the place is open), off when they've gone to bed
     if (this._acc + dt > 0.25) {
       const glow = windowGlow(), h = g.clock.hour;
-      for (const b of this.list) { if (!b.glassMat || b.state !== 'done' || b.burning) continue; const want = glow > 0.05 && this.isLit(b, h) ? 1 : 0; b.litK += (want - b.litK) * 0.35; b.glassMat.emissiveIntensity = glow * 0.45 * (0.03 + 0.97 * b.litK); if (b.ext && b.ext.curtains) b.ext.curtains.visible = glow > 0.25 && (b.residents.some((s) => s.inside === b) || b === this.playerInside || (b.residents.length > 0 && (h >= 22.5 || h < 6.5))); }   // curtains drawn after dark while anyone's home
+      for (const b of this.list) { if (!b.glassMat || b.state !== 'done' || b.burning) continue; const want = glow > 0.05 && this.isLit(b, h) ? 1 : 0; b.litK += (want - b.litK) * 0.35; b.glassMat.emissiveIntensity = glow * 0.45 * (0.03 + 0.97 * b.litK); if (b.ext && b.ext.curtains) b.ext.curtains.visible = glow > 0.25 && (b.residents.length > 0 || b === this.playerInside || b === this.game.starterHome || b.reservedForPlayer); }   // curtains drawn at dusk in any home that's lived in (Sam's too), and left till morning: not opened the moment someone steps out
     }
     // warm interior light follows the player indoors
     this._acc = (this._acc || 0) + dt; this.t = (this.t || 0) + dt; const tick = this._acc > 0.25; if (tick) this._acc = 0;

@@ -3,7 +3,7 @@ import { TILE } from '../config.js';
 import { ROLES, GATHER } from '../data/buildings.js';
 import { makeCart, updateCart } from '../render/Carts.js';
 import { shiftOf, inHours } from '../data/hours.js';
-import { createRig } from '../render/SimRig.js';
+import { createRig, HAIR_STYLES_M, HAIR_STYLES_F } from '../render/SimRig.js';
 import { Animator } from '../render/Animator.js';
 import { pick, angleDiff } from '../util.js';
 import { Dog } from '../render/Dog.js';
@@ -22,6 +22,8 @@ const STYLES = {
   shy:      { speed: 2.55, bounce: 0.85, slouch: 0.6, swing: 0.6, fidget: 1.4, soc: 0.35, mood: 0.1 },
   busy:     { speed: 3.3,  bounce: 1.0, slouch: 0.1, swing: 1.1, fidget: 0.9, soc: 0.4, mood: 0.0 },
 };
+// what someone can be doing with their arms and still have a cigarette on the go
+const SMOKE_OK = new Set(['idle', 'listen', 'talk', 'drink', 'lookaround', 'browse', 'phone', 'clap', 'point', 'tidy', 'broom', 'clipboard', 'hammer', 'saw', 'guard']);
 const ROLE_UPPER = { cook: 'saw', carter: 'broom', porter: 'clipboard', mechanic: 'hammer', firefighter: 'tidy', entertainer: 'dj', publican: 'tidy', teacher: 'clipboard', brickmaker: 'saw', smith: 'hammer', shopkeeper: 'tidy', doctor: 'clipboard', guard: 'guard', engineer: 'panel', factory: 'lever', clerk: 'type', builder: 'hammer', baker: 'harvest', fryer: 'saw', vicar: 'read', librarian: 'browse', glassblower: 'panel', farmer: 'harvest', fisher: 'fish', lumberjack: 'saw', quarryman: 'hammer', forager: 'harvest' };
 const SEAT_UPPER = { desk: 'type', sofa: 'watch', bench: 'idle', dining: 'eat', waiting: 'read', pew: 'pray' };
 
@@ -151,6 +153,8 @@ export class Sim {
     const alert = (this.game.raids && this.game.raids.alert) || this.game.raidNight || this.game.deathmatch;
     if (this.moveJob && this.pose !== 'sleep') return 'transplant';
     if (this.crook) return 'crime';
+    if (this.trapped) return 'trapped';   // cut off by a fire (systems/Hazards.js)
+    if (this.fleeFire) return 'flee';
     if (this.game.hazards && this.game.hazards.fires.length && this.pose !== 'sleep' && !(this.down > 0)) { const H = this.game.hazards, fb = this.role === 'firefighter' ? H.fireFor(this) : H.volunteer(this); if (fb) { this.fireB = fb; return 'firefight'; } }
     if (this.fireB && !(this.game.hazards && this.game.hazards.fires.some((f) => f.b === this.fireB))) this.fireB = null;
     if (this.fight) return 'fight';
@@ -189,6 +193,7 @@ export class Sim {
     // mood drifts around the personality baseline
     this.moodBoost *= Math.exp(-dt * 0.02);
     this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + ((this.home && this.home.def.homeJoy) || 0) + Math.min(0.2, this.friendCount() * 0.04) + (this.kind !== 'visitor' ? g.buildings.townJoy() + g.economy.rateMood : 0);
+    this.smokeHabit(dt); this.salon(dt);
     // a few drinks at the pub: merry, then wobbly, then wanting a kebab and a fight (it wears off by morning)
     if (this.drinking && this.sitting && this.kind === 'resident' && this.age >= 18) this.drunk = Math.min(1, (this.drunk || 0) + dt * 0.011 * (this.trait === 'cheerful' ? 1.4 : this.trait === 'shy' || this.trait === 'busy' ? 0.6 : 1));
     else if (this.drunk > 0) { this.drunk = Math.max(0, this.drunk - dt * (this.pose === 'sleep' ? 0.02 : 0.0025)); if (this.drunk > 0.5 && !this.sitting && !this.chat && this.mesh.visible && !this.inside && Math.random() < dt * 0.05) { g.social.say(this, pick(DRUNK), 2.4); this.emote = { upper: pick(['cheer', 'wave', 'dance']), t: 1.6 }; } }
@@ -220,13 +225,15 @@ export class Sim {
       case 'transplant': this.game.resources.driveMove(this, dt); break;
       case 'fight': this.game.crime.driveFight(this, dt); break;
       case 'police': this.game.crime.driveCop(this, dt); break;
-      case 'firefight': this.game.hazards.driveCrew(this); break;
+      case 'firefight': this.game.hazards.driveCrew(this, dt); break;
+      case 'flee': this.game.hazards.driveFlee(this, dt); break;
+      case 'trapped': this.panic = true; this.path = []; break;
       case 'defend': break;
       case 'leave': this.doLeave(dt); break;
       default: break;
     }
     if (this.phase === 2 && !this.upstairs && !this.path.length && !this.sitting && (this.activity === 'work' || this.activity === 'home') && (this.upT = (this.upT || 0) - dt) <= 0) { this.upT = 8; this.goUpstairs(); }
-    if (this.hurry && this.activity !== 'work' && this.activity !== 'firefight') this.hurry = false;   // (people run to a fire)
+    if (this.hurry && this.activity !== 'work' && this.activity !== 'firefight' && this.activity !== 'flee') this.hurry = false;   // (people run to a fire, and away from one)
     if (this.hurry && this.phase === 2) this.hurry = false;
   }
   doShelter() {
@@ -246,7 +253,7 @@ export class Sim {
     if (this.mesh.visible) g.social.say(this, pick(DOWN_LINES), 2);
   }
   endActivity() {
-    this.panic = false; this.comeDown();
+    this.panic = false; this.comeDown(); if (this.roughAt) { const st = this.roughAt.seat; if (st && st.taken === this) st.taken = null; this.roughAt = null; this.roughLie = undefined; } if (this.bucketMesh && this.game.hazards) this.game.hazards.dropBucket(this); this.run = null;   // (up off the bench or out of the doorway; the bucket put down)
     if (this.pose === 'sleep') { this.pose = 'stand'; const s = this.bedSpot; if (s) { this.x = s.ax; this.z = s.az; } this.bedSpot = null; this.moodBoost -= 0.0; }
     this.standUp(); this.abortJob(); this.bag = false; this.drinking = false; this.bandT = 0; this.served = false; this.browseT = 0; this.svc = null; if (this.order && this.game.service) this.game.service.release(this);
   }
@@ -284,14 +291,28 @@ export class Sim {
     const sc = this.game.buildings.byDef('school')[0]; if (!sc) return this.doLeisure();
     if (this.phase === 0) { const seats = this.freeSeat(sc, ['desk']); if (seats.length) { const st = pick(seats); if (!this.goTo({ b: sc, x: st.x, z: st.z, seat: st })) this.phase = 2; } else { const i = pick(sc.spots.idle); if (!this.goTo({ b: sc, x: i.x, z: i.z })) this.phase = 2; } }
   }
-  /** Sleeping rough: a park bench, or a shop doorway with a bit of cardboard. */
+  /**
+   * Sleeping rough: a park bench, their own patch under a tree, or a shop doorway with a bit of cardboard. Each finds a
+   * spot nobody else has (never two in one doorway), and lies on the ground or along the bench, not at bed height.
+   */
   doRough() {
     const g = this.game;
     if (this.phase === 0) {
-      const parks = g.buildings.list.filter((b) => b.state === 'done' && b.def.park && b.spots.idle.length), shops = g.buildings.list.filter((b) => b.state === 'done' && (b.def.shopping || b.def.dining) && b.doorOut);
-      let d = null; if (parks.length && Math.random() < 0.5) { const p = pick(parks), s = pick(p.spots.idle); d = { b: p, x: s.x, z: s.z }; } else if (shops.length) { const b = pick(shops), [x, z] = b.toWorld((Math.random() < 0.5 ? -1 : 1) * Math.min(1.6, b.def.w * 2 - 0.8), b.def.d * 2 + 0.7); d = { x, z }; }
-      if (!d || !this.goTo(d)) this.phase = 2;
-    } else if (this.phase === 2 && !this.path.length && this.pose !== 'sleep') { this.pose = 'sleep'; this.vel = 0; }
+      const taken = g.population.sims.filter((q) => q !== this && q.roughAt && !q.remove).map((q) => q.roughAt), free = (x, z) => !taken.some((q) => Math.hypot(q.x - x, q.z - z) < 1.8);
+      const opts = [], near = (x, z) => Math.hypot(x - this.x, z - this.z);
+      for (const b of g.buildings.list) {
+        if (b.state !== 'done') continue;
+        if (b.def.park && b.spots.seat) for (const st of b.spots.seat) if (st.kind === 'bench' && !st.taken && free(st.x, st.z)) opts.push({ x: st.x, z: st.z, h: st.heading + Math.PI / 2, lieH: 0.52, seat: st, d: near(st.x, st.z) });
+        if ((b.def.shopping || b.def.dining) && b.doorOut) for (const side of [-1, 1]) { const [x, z] = b.toWorld(side * Math.min(1.7, b.def.w * 2 - 0.8), b.def.d * 2 + 0.75); if (free(x, z) && !g.world.collides(x, z, 0.3)) opts.push({ x, z, h: b.rot * Math.PI / 2 + Math.PI / 2, lieH: 0.14, d: near(x, z) + 4 }); }
+      }
+      for (const t of g.terrain.trees) { if (!t.alive || near(t.x, t.z) > 70) continue; const a = (t.idx * 2.39) % 6.28, x = t.x + Math.cos(a) * 1.4, z = t.z + Math.sin(a) * 1.4; if (free(x, z) && !g.world.collides(x, z, 0.4)) opts.push({ x, z, h: a, lieH: 0.14, d: near(x, z) + 10 }); }
+      opts.sort((a, b) => a.d - b.d); const spot = pick(opts.slice(0, 5));
+      if (!spot || !this.goTo({ x: spot.x, z: spot.z })) { this.phase = 2; return; }
+      this.roughAt = spot; if (spot.seat) spot.seat.taken = this;
+    } else if (this.phase === 2 && !this.path.length && this.pose !== 'sleep') {
+      const sp = this.roughAt; if (sp) { this.x = sp.x; this.z = sp.z; this.heading = sp.h; this.roughLie = sp.lieH; }
+      this.pose = 'sleep'; this.vel = 0;
+    }
   }
   doSleep() {
     const home = this.home; if (!home || home.state !== 'done') return;
@@ -320,7 +341,7 @@ export class Sim {
       if (parks.length) opts.push('park', 'park', 'bench'); if (shops.length) opts.push('shop', 'shop'); if (this.home && this.home.state === 'done') opts.push('home', 'sofa'); opts.push('street', 'street');
       if (pubs.length && h >= 17) opts.push('pub', 'pub', 'pub');
       if (g.transport && Object.values(g.transport.lines).some((L) => L && L.kind !== 'sky') && this.kind !== 'visitor' && h >= 8 && h < 20) opts.push('train', 'train');   // a trip on the railway or monorail
-      const qk = this.quirk && this.quirk.leisure, have = { park: parks.length, pub: pubs.length }; if (qk && adult && have[qk] !== 0) opts.push(qk, qk, qk);   // (an early bird with no park in town just goes for a walk) this.busk = false; this.jogging = false; if (church && g.clock.isSunday && h >= 9 && h < 12) opts.push('church', 'church', 'church', 'church'); if (pubs.length && g.clock.isSunday && h >= 12 && h < 17) opts.push('pub', 'pub', 'pub'); if (band && h >= 16 && h < 21) opts.push('band', 'band');   // (and on Sundays: dinner at the pub, or the beer garden)
+      const qk = this.quirk && this.quirk.leisure, home = this.home && this.home.state === 'done' && this.home.spots.idle.length ? this.home : null, have = { park: parks.length, pub: pubs.length, shop: shops.length, home: home ? 1 : 0 }; if (qk && adult && have[qk] !== 0) opts.push(qk, qk, qk); this.busk = false; this.jogging = false; if (church && g.clock.isSunday && h >= 9 && h < 12) opts.push('church', 'church', 'church', 'church'); if (pubs.length && g.clock.isSunday && h >= 12 && h < 17) opts.push('pub', 'pub', 'pub'); if (band && h >= 16 && h < 21) opts.push('band', 'band');   // (and on Sundays: dinner at the pub, or the beer garden)   // (a quirk with nowhere to go, a homebody with no home, an early bird with no park: something else)
       const c = pick(opts); let ok = false;
       if (this.partner && !this.partner.sleeping && this.partner.activity === 'leisure' && this.partner.dest && this.partner.inside === null && Math.random() < 0.55) { const d = this.partner.dest, ax = (Math.random() - 0.5) * 2.4, az = (Math.random() - 0.5) * 2.4; ok = this.goTo({ b: d.b, x: d.x + ax, z: d.z + az }); if (ok) { this.timer = 14 + Math.random() * 25; this.hurry = false; return; } }
       if (this.kind === 'child') this.hurry = Math.random() < 0.6;
@@ -330,13 +351,13 @@ export class Sim {
       }
       else if (c === 'park' && parks.length) { const p = pick(parks), s = pick(p.spots.idle); ok = this.goTo({ b: p, x: s.x, z: s.z }); }
       else if (c === 'bench' && parks.length) { const p = pick(parks), seats = this.freeSeat(p); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: p, x: s.x, z: s.z, seat: s }); } }
-      else if (c === 'shop') { const p = pick(shops), s = p && p.spots && pick(p.spots.visit || []); if (s) { ok = this.goTo({ b: p, x: s.x, z: s.z, face: p.rot * Math.PI / 2 + Math.PI }); this.shopping = true; } }
+      else if (c === 'shop') { const p = pick(shops); this.shopB = p; this.cutT = 0; this.cutDone = false; const s = p && p.spots && pick(p.spots.visit || []); if (s) { ok = this.goTo({ b: p, x: s.x, z: s.z, face: p.rot * Math.PI / 2 + Math.PI }); this.shopping = true; } }
       else if (c === 'pub') { const p = pick(pubs), seats = this.freeSeat(p, ['dining']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: p, x: st.x, z: st.z, seat: st }); this.drinking = ok; } }
       else if (c === 'church' && church) { const seats = this.freeSeat(church, ['pew']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: church, x: st.x, z: st.z, seat: st }); if (ok && Math.random() < 0.7) this.wear('sunday', g.clock.totalDays * 24 + 15); } }
       else if (c === 'train') { ok = g.transport.planTrip(this); if (ok) this.timer = 200; }
       else if (c === 'band' && band) { const a = Math.random() * 6.28, r = 3.6 + Math.random() * 2; ok = this.goTo({ x: band.cx + Math.cos(a) * r, z: band.cz + Math.sin(a) * r, face: Math.atan2(-Math.cos(a), -Math.sin(a)) }); if (ok) this.bandT = 1; }
-      else if (c === 'sofa') { const seats = this.freeSeat(this.home, ['sofa']); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: this.home, x: s.x, z: s.z, seat: s }); } }
-      else if (c === 'home') { const s = pick(this.home.spots.idle); ok = this.goTo({ b: this.home, x: s.x, z: s.z }); }
+      else if (c === 'sofa' && home) { const seats = this.freeSeat(home, ['sofa']); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: this.home, x: s.x, z: s.z, seat: s }); } }
+      else if (c === 'home' && home) { const s = pick(home.spots.idle); ok = this.goTo({ b: home, x: s.x, z: s.z }); }
       else ok = this.wander();
       if (!ok) this.phase = 2; this.timer = 14 + Math.random() * 28;
       if (c !== 'shop' && this.shopping) { this.shopping = false; this.bag = Math.random() < 0.7; }
@@ -393,10 +414,25 @@ export class Sim {
     }
   }
   workFacing(b, s) { return b.rot * Math.PI / 2 + Math.PI; }
+  /** Where a camp (or quarry, or farm) stacks what its workers bring in: beside the building, out front. */
+  yardSpot(wp) {
+    if (wp._yard) return wp._yard; const w = this.game.world, W = wp.def.w * 2, D = wp.def.d * 2;
+    const C = [[W + 1.3, D - 1.2], [-W - 1.3, D - 1.2], [W - 1.0, D + 1.5], [-W + 1.0, D + 1.5]].map(([lx, lz]) => wp.toWorld(lx, lz));
+    const ok = ([x, z]) => { const [tx, tz] = w.tileOf(x, z), o = w.inBounds(tx, tz) && w.buildingAt(tx, tz); return w.inBounds(tx, tz) && (!o || o === wp) && !w.road[w.idx(tx, tz)] && !w.collides(x, z, 0.5); };
+    const [x, z] = C.find(ok) || C[2]; return (wp._yard = { x, z });
+  }
+  /** The pile at that spot (piles come back from a save without knowing whose they are: claimed again here). */
+  yardPile(wp) { const y = this.yardSpot(wp), p = this.game.piles.list.find((q) => q.yard === wp || (!q.yard && Math.hypot(q.x - y.x, q.z - y.z) < 1.2)); if (p) p.yard = wp; return p || null; }
+  /**
+   * Gatherers (lumberjacks, quarrymen, foragers...) work from their camp: fill up from one tree or rock after another
+   * nearby, stack the load at the camp, and when the stack's big enough one of them barrows it to the Stockyard
+   * (two dozen at a go). A camp right by the Stockyard just takes it straight there.
+   */
   doGather(dt) {
     const g = this.game, R = g.resources, gd = GATHER[this.role], wp = this.workplace;
     if (!this.job) {
       this.jobCheck = (this.jobCheck || 0) - dt; if (this.jobCheck > 0) return; this.jobCheck = 2;
+      { const yp = g.depot && this.yardPile(wp); if (yp && g.piles.total(yp) >= 18 && !g.population.sims.some((q) => q.job && q.job.type === 'yardhaul' && q.job.pile === yp)) { this.job = { type: 'yardhaul', pile: yp, step: 0 }; this.phase = 0; this.idleSet = true; return; } }
       const node = R.findNode(gd.node, wp.cx, wp.cz, this); const stand = node && R.standPoint(node, this);
       if (node && stand) { if (!node.infinite) node.reserved = this; this.job = { type: 'gather', gd, node, stand, step: 0, units: 0, t: 0 }; this.phase = 0; this.idleSet = true; }
       else if (gd.node === 'field' && wp.fieldNodes && wp.fieldNodes.length) {   // nothing ripe: tend the crops (weeding, watering), which helps them along
@@ -407,22 +443,35 @@ export class Sim {
       return;
     }
     const j = this.job;
+    if (j.type === 'yardhaul') {   // the camp's stack, two dozen at a time on the barrow, to the Stockyard
+      const dep = g.depot, p = j.pile; if (!dep || (j.step === 0 && !g.piles.list.includes(p))) { this.abortJob(); return; }
+      if (j.step === 0) { if (this.phase === 0 && !this.goTo({ x: p.x, z: p.z + 1.0 })) { this.abortJob(); return; } if (this.phase === 2) { const [mat, n] = Object.entries(p.items).sort((a, b) => b[1] - a[1])[0] || []; if (!mat) { this.abortJob(); return; } const q = Math.min(24, n); p.items[mat] -= q; if (p.items[mat] <= 0) delete p.items[mat]; if (g.piles.total(p) <= 0) g.piles.remove(p); else g.piles.rebuild(p); j.mat = mat; j.qty = q; this.carry = { mat, qty: q }; this.phase = 0; if (!this.goTo({ x: dep.doorOut.x, z: dep.doorOut.z, face: dep.rot * Math.PI / 2 + Math.PI })) { this.abortJob(); return; } j.step = 1; } }
+      else if (j.step === 1 && this.phase === 2) { g.economy.add(j.mat, j.qty); this.carry = null; this.job = null; this.idleSet = false; this.phase = 0; this.moodBoost += 0.02; }
+      return;
+    }
     if (j.step === 0) { if (this.phase === 0) { const fc = Math.atan2(j.node.x - j.stand.x, j.node.z - j.stand.z); if (!this.goTo({ x: j.stand.x, z: j.stand.z, face: fc })) { this.abortJob(); return; } } if (this.phase === 2) j.step = 1; }
     else if (j.step === 1) {
       if (j.tend) { this.working = true; this.faceGoal = Math.atan2(j.node.x - this.x, j.node.z - this.z); j.node.amount = Math.min(j.node.max, j.node.amount + dt * 0.04); j.t += dt; if (j.t >= j.dur) { j.step = 4; } return; }
-      if (j.node.kind !== 'tree' && !j.node.infinite && j.node.amount < 1) { j.step = j.units > 0 ? 2 : 4; return; }
-      if (j.node.kind === 'tree' && !j.node.alive) { j.step = j.units > 0 ? 2 : 4; return; }
+      if ((j.node.kind !== 'tree' && !j.node.infinite && j.node.amount < 1) || (j.node.kind === 'tree' && !j.node.alive)) {   // this one's done: on to the next one close by until the load's full
+        if (j.units > 0 && j.units < gd.cap * (wp.def.carry || 1) && !j.tend) { if (j.node.reserved === this) j.node.reserved = null; const nx = R.findNode(gd.node, j.node.x, j.node.z, this), st = nx && Math.hypot(nx.x - j.node.x, nx.z - j.node.z) < 22 && R.standPoint(nx, this); if (st) { if (!nx.infinite) nx.reserved = this; j.node = nx; j.stand = st; j.step = 0; this.phase = 0; return; } }
+        j.step = j.units > 0 ? 2 : 4; return;
+      }
       this.working = true; this.faceGoal = Math.atan2(j.node.x - this.x, j.node.z - this.z); j.t += dt;
       if (j.t >= gd.time / (wp.def.toolSpeed || 1)) { j.t = 0; if (R.take(j.node)) { j.units += gd.per; this.carry = { mat: gd.mat, qty: j.units }; } if (j.units >= gd.cap * (wp.def.carry || 1)) j.step = 2; }
-    } else if (j.step === 2) {
-      const dep = g.depot; if (!dep) { this.abortJob(); return; } if (j.node && j.node.reserved === this) j.node.reserved = null; this.phase = 0;
-      if (!this.goTo({ x: dep.doorOut.x, z: dep.doorOut.z, face: dep.rot * Math.PI / 2 + Math.PI })) { this.abortJob(); return; } j.step = 3;
-    } else if (j.step === 3) { if (this.phase === 2) { g.economy.add(gd.mat, j.units); g.economy.gathered += j.units; this.carry = null; this.job = null; this.idleSet = false; this.phase = 0; } }
+    } else if (j.step === 2) {   // the Stockyard if it's handy, else the stack at the camp
+      const dep = g.depot, y = this.yardSpot(wp); if (j.node && j.node.reserved === this) j.node.reserved = null; this.phase = 0;
+      j.toYard = !dep || Math.hypot(this.x - dep.doorOut.x, this.z - dep.doorOut.z) > Math.hypot(this.x - y.x, this.z - y.z) + 20;
+      const to = j.toYard ? { x: y.x + (Math.random() - 0.5) * 0.6, z: y.z + 1.0 } : { x: dep.doorOut.x, z: dep.doorOut.z, face: dep.rot * Math.PI / 2 + Math.PI };
+      if (!this.goTo(to)) { if (!dep) { this.abortJob(); return; } j.toYard = false; if (!this.goTo({ x: dep.doorOut.x, z: dep.doorOut.z })) { this.abortJob(); return; } } j.step = 3;
+    } else if (j.step === 3) { if (this.phase === 2) {
+      if (j.toYard) { const y = this.yardSpot(wp), p = g.piles.add(y.x, y.z, { [gd.mat]: j.units }); p.yard = wp; } else g.economy.add(gd.mat, j.units);
+      g.economy.gathered += j.units; this.carry = null; this.job = null; this.idleSet = false; this.phase = 0; } }
     else if (j.step === 4) { if (j.node.reserved === this) j.node.reserved = null; this.job = null; this.idleSet = false; this.jobCheck = 3; }
   }
   abortJob() {
     const j = this.job; if (!j) return; const g = this.game;
     if (j.type === 'gather') { if (j.node && j.node.reserved === this) j.node.reserved = null; if (j.units > 0 && this.carry) g.economy.add(j.gd.mat, j.units); this.job = null; this.carry = null; this.idleSet = false; return; }
+    if (j.type === 'yardhaul') { if (j.qty && this.carry) g.piles.add(this.x, this.z, { [j.mat]: j.qty }); this.job = null; this.carry = null; this.idleSet = false; return; }   // (set down where they stood: the builders will fetch it)
     if (j.type === 'haul' && j.qty) { g.economy.stock[j.mat] += j.qty; j.site.reserved[j.mat] = Math.max(0, (j.site.reserved[j.mat] || 0) - j.qty); }
     if (j.type === 'build') j.site.builders = Math.max(0, (j.site.builders || 0) - 1);
     if (j.type === 'road' && j.plan.reserved === this) j.plan.reserved = null;
@@ -460,10 +509,10 @@ export class Sim {
       if (!g.roadPlans.has(p.x, p.z)) { this.job = null; this.idleSet = false; return; }
       if (j.step === 0) { if (!this.goTo({ x: p.cx + (Math.random() - 0.5) * 1.4, z: p.cz + (Math.random() - 0.5) * 1.4 })) { this.abortJob(); return; } j.step = 1; }
       else if (j.step === 1 && this.phase === 2) { j.step = 2; j.tool = 'dig'; this.faceGoal = Math.atan2(p.cx - this.x, p.cz - this.z); }
-      else if (j.step === 2) { this.working = true; if (g.roadPlans.work(p, dt * 0.9 * (wp.def.buildSpeed || 1))) { this.job = null; this.idleSet = false; } else { j.recheck = (j.recheck || 0) - dt; if (j.recheck <= 0) { j.recheck = 5; const f = c.focus(); if (f && f.kind !== 'roads' && (f.prio ?? 1e9) < (g.flags.roadPrio ?? 1e9)) { if (p.reserved === this) p.reserved = null; this.job = null; this.idleSet = false; } } } }
+      else if (j.step === 2) { this.working = true; j.tool = p.felling ? 'chop' : 'dig'; if (g.roadPlans.work(p, dt * 0.9 * (wp.def.buildSpeed || 1))) { this.job = null; this.idleSet = false; } else { j.recheck = (j.recheck || 0) - dt; if (j.recheck <= 0) { j.recheck = 5; const f = c.focus(); if (f && f.kind !== 'roads' && (f.prio ?? 1e9) < (g.flags.roadPrio ?? 1e9)) { if (p.reserved === this) p.reserved = null; this.job = null; this.idleSet = false; } } } }
     } else if (j.type === 'build') {
       if (j.step === 0) { const p = c.perimeterPoint(j.site, this); if (!this.goTo({ x: p.x, z: p.z })) { this.abortJob(); return; } j.step = 1; j.site.builders = (j.site.builders || 0) + 1; }
-      else if (j.step === 1 && this.phase === 2) { j.step = 2; j.tool = Math.random() < 0.7 ? 'hammer' : 'saw'; this.faceGoal = Math.atan2(j.site.cx - this.x, j.site.cz - this.z); }
+      else if (j.step === 1 && this.phase === 2) { j.step = 2; j.tool = j.site.def.ruin ? 'dig' : Math.random() < 0.7 ? 'hammer' : 'saw'; this.faceGoal = Math.atan2(j.site.cx - this.x, j.site.cz - this.z); }
       else if (j.step === 2) {
         const s = j.site; if (s.state !== 'site' || s.progress >= g.buildings.supply(s) - 0.0005) { s.builders = Math.max(0, (s.builders || 0) - 1); this.job = null; this.idleSet = false; return; }
         // something higher up the work list needs hands (and has room for them)? go and help there instead
@@ -477,13 +526,13 @@ export class Sim {
   decideAnim() {
     const g = this.game; let lower = 'stand', upper = 'idle', speaking = false;
     { const tp = this.trip && this.game.transport.pose(this); if (tp) return { lower: tp, upper: 'idle', speaking: false }; }
-    if (this.pose === 'sleep') return { lower: 'lie', upper: 'sleep' };
+    if (this.pose === 'sleep') return { lower: 'lie', upper: 'sleep', lieH: this.roughLie };   // (in bed, or rough: on the ground or a bench)
     if (this.down > 0) return { lower: 'lie', upper: 'sedated', lieH: this.inCart ? this.inCart.lieH : 0.15 };   // on the ground where they fell (or in the undertaker's cart), never at bed height in mid-air
     if (this.sitting) { lower = 'sit'; upper = SEAT_UPPER[this.sitting.kind] || 'idle'; if (upper === 'type' && this.role === 'engineer') upper = 'type'; if (this.sitting.kind === 'bench' && this.mood < 0) upper = 'phone'; }
     else if (this.moved || this.vel > 0.15) lower = 'walk';
     else if (this.working) lower = 'crouch';
     const gj = this.job && this.job.type === 'gather' ? this.job : null;
-    if (this.working) { if (gj && gj.step === 1) { upper = gj.gd.upper; lower = ['harvest', 'dig'].includes(upper) ? 'crouch' : 'stand'; } else if (this.job && this.job.tool === 'dig') { upper = 'dig'; lower = 'crouch'; } else upper = this.job && this.job.tool === 'saw' ? 'saw' : this.job && this.job.tool === 'dig' ? 'dig' : 'hammer'; }
+    if (this.working) { if (gj && gj.step === 1) { upper = gj.gd.upper; lower = ['harvest', 'dig'].includes(upper) ? 'crouch' : 'stand'; } else if (this.job && this.job.tool === 'dig') { upper = 'dig'; lower = 'crouch'; } else if (this.job && this.job.tool === 'chop') { upper = 'chop'; lower = 'stand'; } else upper = this.job && this.job.tool === 'saw' ? 'saw' : this.job && this.job.tool === 'dig' ? 'dig' : 'hammer'; }
     else if (this.pulling) upper = 'pull';   // hauling the undertaker's cart
     else if (this.carry && !this.sitting) upper = this.cart && this.cart.visible ? 'pull' : 'carry';
     else if (this.bag && lower === 'walk') upper = 'bag';
@@ -498,21 +547,48 @@ export class Sim {
     if (this.kind === 'raider') { if (this.atkT > 0) upper = this.weapon === 'pistol' ? 'aim' : 'strike'; else if (this.rstate === 'loot' && !this.moved) upper = 'carry'; }
     if (this.kind === 'security' && this.fireT > 0) upper = 'aim';
     if (this.sitting && this.drinking && !this.eating && upper === 'eat') upper = 'drink';
+    if (this.smokeT > 0 && this.kind !== 'child' && !this.bucketMesh && !this.panic && !this.working && !this.carry && !this.pulling && !this.eating && !this.fightAnim && SMOKE_OK.has(upper) && (upper !== 'drink' || (this.game.elapsed + this.id) % 24 < 11)) upper = 'smoke';   // (a pint in one hand and a fag on the go: they take turns)
     if (this.bandT && !this.moved && !this.chat && lower === 'stand') upper = (this.id + Math.floor(this.game.clock.hour * 4)) % 3 === 0 ? 'clap' : (this.id % 2 ? 'dance' : 'idle');
     if (this.emote && this.emote.t > 0) upper = this.emote.upper;
-    if (this.activity === 'firefight' && !this.moved) upper = 'point';
+    if (this.activity === 'firefight' && !this.moved && !this.run) upper = this.role === 'firefighter' || this.id % 3 ? 'point' : 'panic';
+    if ((this.activity === 'flee' && !this.moved) || this.activity === 'trapped') upper = this.trapped || (this.fleeFire && this.fleeFire.home) ? 'panic' : this.id % 2 ? 'point' : 'facepalm';
     if (this.digging && !this.moved) { upper = 'dig'; lower = 'crouch'; }
     if (this.busk && !this.moved && this.activity === 'leisure' && !this.chat) upper = this.busk === 'busk' ? 'airguitar' : this.busk === 'watch' ? 'lookaround' : upper;
     if (this.fightAnim) upper = this.fightAnim;
     if (this.cycling && this.moved) { lower = 'ride'; upper = 'handlebars'; }
     return { lower, upper, speaking, motor: this.vehLv === 2 };
   }
+  /** It's 1995: a lot of people smoke (builders most of all, and the pub's thick with it). Whether someone does is fixed by their name. */
+  get smoker() {
+    if (this._smk !== undefined && this._smkRole === this.role) return this._smk; this._smkRole = this.role;
+    let h = 0; for (const ch of this.name || '') h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const pct = this.role === 'builder' ? 82 : this.role === 'publican' ? 65 : ['carter', 'brickmaker', 'smith', 'miner', 'lumberjack', 'mechanic'].includes(this.role) ? 60 : 45;
+    return (this._smk = this.age >= 17 && this.kind !== 'child' && this.kind !== 'security' && h % 100 < pct);
+  }
+  /** Light up now and then: more often over a pint, and when a builder's stood about on site. One lasts a minute or so. */
+  /** In the chair at the hairdresser's: a few minutes with the scissors and they come out with a different do. */
+  salon(dt) {
+    const b = this.shopB; if (!this.shopping || this.cutDone || !b || b.id !== 'hairdresser' || this.phase !== 2 || this.path.length || !(this.inside === b || this.game.buildings.onBuilding(b, this.x, this.z))) return;
+    this.cutT = (this.cutT || 0) + dt * Math.max(0.25, this.game.clock.speed); if (this.cutT < 7) return; this.cutDone = true;
+    const g = this.game, L = this.baseLook || this.look, pool = (this.gender === 'f' ? HAIR_STYLES_F : HAIR_STYLES_M).filter((h) => h !== L.hairStyle && h !== 'bald'), hs = pick(pool);
+    const dye = Math.random() < 0.18 ? pick([0xe8c878, 0xb8462a, 0x2a1a12, 0xd8a050, 0x6a3a2a]) : L.hair;   // (Curl Up & Dye: now and then a new colour too)
+    const nl = { ...L, hairStyle: hs, hair: dye }; if (this.baseLook) this.baseLook = nl; this.look = this.baseLook ? { ...this.look, hairStyle: hs, hair: dye } : nl; this.rebuildMesh();
+    if (this.mesh.visible) { g.particles.burst(this.x, 1.7, this.z, L.hair, 8, 0.5, 0.8, 0.05); g.social.say(this, pick(['Ooh, I love it!', 'Is it too short? Be honest.', 'Very Jennifer Aniston, that.', 'My mum\'s going to hate it.', 'Ten years younger, me.', 'Same again in six weeks, love.']), 2.6); }
+    this.moodBoost += 0.06;
+  }
+  smokeHabit(dt) {
+    if (this.smokeT > 0) { this.smokeT -= dt; if (this.smokeT <= 0) this.smokeCD = 50 + Math.random() * 130; return; }
+    if ((this.smokeCD = (this.smokeCD || Math.random() * 60) - dt) > 0 || this.pose === 'sleep' || this.down > 0 || !this.smoker || this.hidden) return;
+    const pub = this.sitting && this.drinking, site = this.role === 'builder' && this.activity === 'work' && !this.working && !this.carry, idle = !this.moved && !this.working;
+    const per = pub ? 1 / 25 : site ? 1 / 18 : idle ? 1 / 80 : 1 / 220;
+    if (Math.random() < dt * per) this.smokeT = 40 + Math.random() * 50;
+  }
   sync(dt, init = false) {
     const g = this.game, m = this.mesh, U = this.upstairs, hidden = this.hidden || (U && !(g.mode === 'sim' && g.buildings.playerInside === U.b && Math.abs((g.player.floorY || 0) - U.y) < WALL_H * 1.2)) || (this.pose === 'sleep' && this.bedSpot && this.bedSpot.upstairs) || (this.inside && !this.inside.def.open && !g.buildings.canSeeInto(this.inside));
     if (this.dog && !init) this.dog.update(dt);   // before anything returns early: a dog left un-updated would stand frozen in the street for ever
     m.visible = !hidden; if (hidden && !init) { this.working = false; return; }
     m.position.set(this.x, (this.rideY || 0) + (this.sitting ? seatLift(this.sitting) : 0), this.z); m.rotation.y = this.heading;   // (a bar stool sits them higher)
-    const wpc = this.workplace && this.workplace.def.cart && (GATHER[this.role] || this.role === 'builder') && this.activity === 'work' ? this.workplace.def.cart : 0, useCart = !!(wpc && this.carry && !this.inside);
+    const wpc = this.workplace && (this.workplace.def.cart || (this.job && this.job.type === 'yardhaul')) && (GATHER[this.role] || this.role === 'builder') && this.activity === 'work' ? this.workplace.def.cart || 1 : 0, useCart = !!(wpc && this.carry && !this.inside);   // (hauling the camp's stack: a barrow)
     if (useCart && (!this.cart || this.cart.userData.level !== wpc)) { if (this.cart) m.remove(this.cart); this.cart = makeCart(wpc); this.cart.position.z = wpc >= 2 ? -1.5 : -1.25; m.add(this.cart); }
     if (this.cart) { this.cart.visible = useCart; if (useCart) updateCart(this.cart, this.carry.mat, this.carry.qty, this.moved ? this.dist || 0 : 0); }
     this.useCart = useCart;
@@ -520,7 +596,7 @@ export class Sim {
     const far = d > (g.mode === 'god' ? 64 : 42);
     if (far !== this.lowDetail || init) { this.lowDetail = far; this.rig.lod.visible = far; for (const p of this.rig.parts) p.visible = !far; if (!far) this.rig.lids.visible = false; }
     if (far && this.veh) { m.remove(this.veh); this.veh = null; this.vehLv = -1; }
-    if (far) { this.rig.lod.position.y = this.moved ? Math.abs(Math.sin(this.game.clock.hour * 900)) * 0.04 : 0; if (this.pose === 'sleep' || this.down > 0) { this.rig.lod.rotation.x = -Math.PI / 2; this.rig.lod.position.set(0, this.pose === 'sleep' ? 0.7 : this.inCart ? this.inCart.lieH : 0.15, 0.9); } else { this.rig.lod.rotation.x = 0; this.rig.lod.position.z = 0; } this.working = false; return; }
+    if (far) { this.rig.lod.position.y = this.moved ? Math.abs(Math.sin(this.game.clock.hour * 900)) * 0.04 : 0; if (this.pose === 'sleep' || this.down > 0) { this.rig.lod.rotation.x = -Math.PI / 2; this.rig.lod.position.set(0, this.pose === 'sleep' ? (this.roughLie ?? 0.7) : this.inCart ? this.inCart.lieH : 0.15, 0.9); } else { this.rig.lod.rotation.x = 0; this.rig.lod.position.z = 0; } this.working = false; return; }
     if (this.fightAnimT > 0) { this.fightAnimT -= dt; if (this.fightAnimT <= 0) this.fightAnim = this.fight ? 'fight' : null; }
     if (this.panicT > 0) { this.panicT -= dt; if (this.panicT <= 0) this.panic = false; }
     if (this.emote) { this.emote.t -= dt; if (this.emote.t <= 0) this.emote = null; }
@@ -541,6 +617,7 @@ export class Sim {
     const a = this.decideAnim(), carryCol = this.carry && !this.useCart ? ({ timber: 0xb5834a, brick: 0xa8442f, steel: 0x7b8794, glass: 0x7ec8e3 }[this.carry.mat]) : undefined;
     this.anim.update(dt, { ...a, dist: this.moved ? (this.dist || 0) : 0, speed: this.vel, run: this.vel > 3.6 || (this.hurry && this.vel > 2.8), turning: this.turning && !this.moved, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: this.mood, tired: this.tired, crateColor: carryCol,
       prop: this.kind === 'raider' && this.down <= 0 ? { handR: this.weapon } : this.kind === 'security' && this.fireT > 0 ? { handR: 'pistol' } : this.bag && a.lower === 'walk' ? { handR: 'bag' } : this.holding ? { handR: this.holding } : (this.look.cane && !this.sitting && this.pose !== 'sleep' && (a.upper === 'idle') ? { handR: 'cane' } : undefined), lean: this.vel > 0.5 ? 0 : 0 });
+    if (a.upper === 'smoke' && m.visible && Math.random() < dt * 0.3) { const c = g.camera.position; if ((c.x - this.x) ** 2 + (c.z - this.z) ** 2 < 600) g.particles.burst(this.x + Math.sin(this.heading) * 0.25, (m.position.y || 0) + (this.sitting ? 1.25 : 1.62), this.z + Math.cos(this.heading) * 0.25, 0xd8d8d8, 1, 0.25, 1.6, 0.09); }   // a puff of smoke (only close up)
     this.working = false;
     // the bike (if riding): the sim sits up on the saddle, the bike stays on the road
     const vl = this.cycling && !this.riding && !far ? this.game.transport.bikeLv : -1;

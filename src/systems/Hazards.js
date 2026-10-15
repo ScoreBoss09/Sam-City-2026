@@ -4,7 +4,8 @@ import { pick } from '../util.js';
 import { Sfx } from '../core/Sfx.js';
 import { TILE } from '../config.js';
 
-const bucketGeo = new THREE.CylinderGeometry(0.16, 0.12, 0.26, 8), bucketMat = new THREE.MeshStandardMaterial({ color: 0x8a8e96, metalness: 0.4, roughness: 0.5 });
+const bucketGeo = new THREE.CylinderGeometry(0.16, 0.12, 0.26, 8, 1, true), bucketMat = new THREE.MeshStandardMaterial({ color: 0x8a8e96, metalness: 0.4, roughness: 0.5, side: THREE.DoubleSide });
+const waterGeo = new THREE.CircleGeometry(0.15, 8).rotateX(-Math.PI / 2), waterMat = new THREE.MeshStandardMaterial({ color: 0x5aa8d8, roughness: 0.1 });
 /** A red fire engine with a ladder on the roof and a big brass bell. */
 function makeEngine() {
   const g = new THREE.Group(), add = (w, h, d, c, x, y, z, o = {}) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o })); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
@@ -51,7 +52,7 @@ export class Hazards {
     const pop = g.population.count(), fireRisk = (this.drought ? 0.004 : 0.0004) * Math.min(1, Math.max(0, pop - 25) / 40); if (Math.random() < gdt * fireRisk) this.ignite();   // hardly ever in a tiny village
     for (const f of this.fires) this.burn(f, dt, gdt);
     if (this.engines) { for (const E of this.engines) this.engineStep(E, Math.min(dt * Math.max(1, Math.min(4, g.clock.speed || 1)), 0.1)); this.engines = this.engines.filter((E) => !E.done); }
-    this.fires = this.fires.filter((f) => !f.out);
+    this.fires = this.fires.filter((f) => !f.out); this.smoulder(dt);
     // power cuts (electric age and later)
     if (this.powerCut > 0) { this.powerCut -= gdt; if (this.powerCut <= 0) { this.powerCut = 0; g.messages.push('The Electricity Board', 'Power restored. We apologise for any inconvenience.', 'good'); } }
   }
@@ -74,39 +75,92 @@ export class Hazards {
   }
   ignite(b) {
     const g = this.game; if (!b) { const L = g.buildings.list.filter((q) => q.state === 'done' && !q.def.park && !q.def.special && !q.def.open && !this.fires.some((f) => f.b === q)); if (!L.length) return; L.sort(() => Math.random() - 0.5); b = L.find((q) => q.def.roof === 'thatch' || ['timber', 'logs'].includes(q.def.wall)) || L[0]; }
-    const f = { b, t: 0, hp: 1, out: false, smokeT: 0 }; this.fires.push(f); g.markers && g.markers.add(b.cx, b.cz, '🔥', 'Fire', 400, null, () => !f.out);
-    f.src = this.waterNear(b);
-    g.messages.push('Fire!', `The ${b.def.name} is on fire!${g.buildings.count('firestation') ? ' The fire brigade is on its way.' : f.src ? ' There\'s no fire brigade: the neighbours are running a bucket chain from the well.' : ' There\'s no fire brigade and no well for buckets: build a Well, or better, a Fire Station.'}`, 'warn');
+    const f = { b, t: 0, hp: 1, out: false, smokeT: 0, trapped: [] }; this.fires.push(f); g.markers && g.markers.add(b.cx, b.cz, '🔥', 'Fire', 400, null, () => !f.out);
+    f.src = this.waterNear(b); f.perThrow = Math.min(0.1, 0.1 / Math.sqrt(Math.max(1, b.def.w * b.def.d)));
+    const brigade = g.buildings.count('firestation') > 0;
+    g.messages.push('Fire!', `The ${b.def.name} is on fire!${brigade ? ' The fire brigade is on its way.' : f.src ? ' There\'s no fire brigade: the neighbours are running buckets from the ' + f.src.def.name.toLowerCase() + '.' : ' There\'s no fire brigade and no well to fill buckets at. Nobody can fight it.'}`, 'warn');
     this.sendEngine(f); g.ui.toast(`🔥 Fire at the ${b.def.name}!`, 3600);
-    for (const s of b.residents.concat(b.workers)) if (s.inside === b) { s.panic = true; s.panicT = 20; s.goTo({ x: b.doorOut.x + (Math.random() - 0.5) * 6, z: b.doorOut.z + 3 }); }
+    // everyone inside gets out, the sleepers too (woken by the smoke)... nearly everyone
+    const night = g.clock.hour >= 22 || g.clock.hour < 6;
+    for (const s of g.population.sims) {
+      if (s.remove || s.dead || !(s.inside === b || (s.pose === 'sleep' && s.bedSpot && s.bedSpot.b === b))) continue;
+      const asleep = s.pose === 'sleep', up = asleep && s.bedSpot && s.bedSpot.upstairs;
+      s.endActivity(); s.activity = null; s.path = [];
+      if (f.trapped.length < 2 && Math.random() < (asleep ? (night ? 0.2 : 0.1) + (up ? 0.1 : 0) : 0.02)) { s.trapped = { f, t: 20 + Math.random() * 20 }; s.panic = true; f.trapped.push(s); continue; }   // cut off by the flames
+      s.fleeFire = { f, home: s.home === b }; s.panic = true; s.panicT = 0;
+    }
+    if (f.trapped.length) g.ui.toast(`🔥 ${f.trapped.map((s) => s.first).join(' and ')} ${f.trapped.length > 1 ? 'are' : 'is'} trapped inside!`, 4200);
   }
-  /** Fire crews nearby put it out; on its own it burns for a minute and the repairs cost a fortune. */
+  /** Fire crews nearby put it out; on its own it burns for a minute and the repairs cost a fortune, or with no water at all it burns to the ground. */
   burn(f, dt, gdt) {
-    const g = this.game, b = f.b; f.t += gdt * (f.fought ? 0.4 : 1); if (b.state !== 'done') { f.out = true; return; }
-    const H = (b.def.floors || 1) * 3.2 + 1;
-    f.smokeT -= dt; if (f.smokeT <= 0) { f.smokeT = 0.12; g.particles.burst(b.cx + (Math.random() - 0.5) * b.def.w * 3, H, b.cz + (Math.random() - 0.5) * b.def.d * 3, pick([0xff6a1a, 0xffb020, 0xe02a10]), 4, 1.6, 4, 0.2); if (Math.random() < 0.4) g.particles.burst(b.cx, H + 2, b.cz, 0x3a3a3a, 3, 1.2, 6, 0.4); }
+    const g = this.game, b = f.b; f.t += gdt * (f.fought ? 0.4 : 1); if (b.state !== 'done') { f.out = true; this.freeTrapped(f); return; }
+    const H = (b.def.floors || 1) * 3.2 + 1, big = !f.src && !f.engine ? Math.min(1, f.t / 60) : 0;   // (unfought, it takes hold)
+    f.smokeT -= dt; if (f.smokeT <= 0) { f.smokeT = 0.12 - big * 0.06; g.particles.burst(b.cx + (Math.random() - 0.5) * b.def.w * 3, H, b.cz + (Math.random() - 0.5) * b.def.d * 3, pick([0xff6a1a, 0xffb020, 0xe02a10]), 4 + Math.round(big * 4), 1.6 + big, 4 + big * 2, 0.2 + big * 0.1); if (Math.random() < 0.4 + big * 0.4) g.particles.burst(b.cx, H + 2, b.cz, 0x3a3a3a, 3, 1.2, 6, 0.4 + big * 0.2); }
     // inside, it's obvious: flames and smoke in the rooms, the windows glowing orange, the light flickering
     const P = g.player, inHere = g.buildings.playerInside === b, W2 = b.def.w * 2, D2 = b.def.d * 2;
     if ((inHere || Math.hypot(P.x - b.cx, P.z - b.cz) < 30) && Math.random() < dt * 14) { const [x, z] = b.toWorld((Math.random() - 0.5) * W2 * 1.6, (Math.random() - 0.5) * D2 * 1.6); g.particles.burst(x, 0.4 + Math.random() * 1.6, z, pick([0xff6a1a, 0xffb020, 0xe02a10]), 3, 0.9, 2.2, 0.16); if (Math.random() < 0.5) g.particles.burst(x, 2.3, z, 0x4a4a4a, 2, 0.5, 1.5, 0.35); }
     if (b.glassMat) { b.glassMat.emissive.setHex(0xff5a10); b.glassMat.emissiveIntensity = 0.7 + Math.sin(f.t * 9) * 0.25 + Math.random() * 0.15; f.lit = true; }
     b.burning = true; if (inHere && g.buildings.interiorLight) g.buildings.interiorLight.color.setHex(0xff6a20);
-    if (inHere && Math.random() < dt * 0.5) g.ui.toast('🔥 The building is on fire! Get out, or hold E to fight it.', 1800);
-    // the bucket chain (well to fire, buckets passed hand to hand) and the fire brigade (hoses off the engine)
-    const chain = this.chainOf(f), CE = f.src && this.chainEnds(f), inChain = chain.filter((s) => !s.path.length && s.chainAt && this.offLine(s, CE) < 4);   // stood on (or near) the line, not walking
-    const near = g.population.sims.filter((s) => s.activity === 'firefight' && s.fireB === b && !s.path.length && !chain.includes(s) && Math.hypot(s.x - b.cx, s.z - b.cz) < b.def.w * 4 + 6);
-    const E = f.engine, hoses = E && E.stage === 'spray' && E.water > 0;
-    for (const s of near) { s.faceGoal = Math.atan2(b.cx - s.x, b.cz - s.z); if ((hoses || !f.src) && Math.random() < dt * 8) g.particles.burst(s.x + Math.sin(s.heading) * 2, 1.6, s.z + Math.cos(s.heading) * 2, hoses ? 0x9fd8f0 : 0x8a8a8a, 3, 2.4, 2, 0.08); }
+    if (inHere && Math.random() < dt * 0.5) g.ui.toast(f.trapped.length ? '🔥 Somebody\'s trapped in here! Find them and get them out.' : '🔥 The building is on fire! Get out, or hold E to fight it.', 1800);
+    // the trapped: Sam finding them, or the fire brigade, gets them out; otherwise, in the end, the smoke does for them
+    for (const s of f.trapped.slice()) {
+      if (s.remove || s.dead) { f.trapped.splice(f.trapped.indexOf(s), 1); continue; }
+      const sam = inHere && Math.hypot(P.x - s.x, P.z - s.z) < 3.2, crew = f.engine && f.engine.stage === 'spray';
+      if (sam || crew) { this.free(f, s, sam ? 'sam' : 'brigade'); continue; }
+      if (f.t >= s.trapped.t) this.perish(f, s);
+    }
+    // the fire brigade (hoses off the engine), and neighbours: each runs with a bucket from the well to the fire and back
+    const crew = g.population.sims.filter((s) => s.activity === 'firefight' && s.fireB === b && !s.remove), E = f.engine, hoses = E && E.stage === 'spray' && E.water > 0;
+    const near = crew.filter((s) => s.role === 'firefighter' && !s.path.length && Math.hypot(s.x - b.cx, s.z - b.cz) < b.def.w * 4 + 6);
+    for (const s of near) { s.faceGoal = Math.atan2(b.cx - s.x, b.cz - s.z); if (hoses && Math.random() < dt * 8) g.particles.burst(s.x + Math.sin(s.heading) * 2, 1.6, s.z + Math.cos(s.heading) * 2, 0x9fd8f0, 3, 2.4, 2, 0.08); }
     if (hoses) { E.water -= gdt * 0.012; if (Math.random() < dt * 10) g.particles.burst(E.mesh.position.x, 2.4, E.mesh.position.z, 0x9fd8f0, 4, 3, 3, 0.1); }
-    this.buckets(f, inChain, dt);
-    const chainK = inChain.length >= 2 ? 0.012 * Math.max(0.4, 1 - Math.max(0, f.chainLen - 25) / 120) : 0;
-    f.hp -= gdt * (near.reduce((a, s) => a + (s.role === 'firefighter' ? (hoses ? 0.03 : 0.008) : f.src ? 0 : 0.004), 0) + inChain.length * chainK + (hoses ? 0.02 : 0)) + (f.samT > 0 ? gdt * 0.02 : 0); f.samT = Math.max(0, (f.samT || 0) - dt);
-    const crew = near.concat(inChain); f.fought = chain.length > 0 || near.length > 0 || !!f.engine;
+    f.hp -= gdt * (near.length * (hoses ? 0.03 : 0.008) + (hoses ? 0.02 : 0)) + (f.samT > 0 ? gdt * 0.02 : 0); f.samT = Math.max(0, (f.samT || 0) - dt);
+    f.fought = !!f.engine || crew.some((s) => s.role === 'firefighter' || (f.src && s.run)) || f.samT > 0;
     if (Math.random() < dt * 0.4 && g.mode === 'sim' && Math.hypot(g.player.x - b.cx, g.player.z - b.cz) < 40) Sfx.noise(0.6, { freq: 600, vol: 0.08, type: 'lowpass' });
-    if (f.hp <= 0 || f.out) this.douseEnd(f);
-    if (f.hp <= 0) { f.out = true; g.economy.lose(40, 'Fire damage'); g.messages.push('Fire brigade', `The fire at the ${b.def.name} is out. Minor smoke damage (£40).`, 'good'); for (const s of crew) s.moodBoost += 0.1; return; }
-    if (f.t > 75 && !f.out) { f.out = true; this.douseEnd(f); const cost = 150 + Math.floor(Math.random() * 350); g.economy.lose(cost, 'Fire damage'); for (const s of b.residents.concat(b.workers)) s.moodBoost -= 0.35; g.messages.push('Fire!', `The ${b.def.name} burned for an hour before the fire went out. Repairs: £${cost}.`, 'warn'); }
+    if (f.hp <= 0) { f.out = true; this.douseEnd(f); this.freeTrapped(f); g.economy.lose(40, 'Fire damage'); g.messages.push('Fire!', `The fire at the ${b.def.name} is out. Minor smoke damage (£40).${f.thrown ? ` ${f.thrown} buckets of water, all carried by hand.` : ''}`, 'good'); for (const s of crew) { s.moodBoost += 0.1; if (s.mesh.visible && Math.random() < 0.4) g.social.say(s, pick(['It\'s out!', 'Phew. My arms...', 'Teamwork, that.', 'Somebody put the kettle on.']), 2.4); } return; }
+    if (f.t > 75) {
+      const helpless = !f.src && !f.engine && !f.everFought && !f.fought; f.out = true; this.douseEnd(f);
+      if (helpless) { this.burnDown(f); return; }   // nothing to fight it with: it goes
+      this.freeTrapped(f); const cost = 150 + Math.floor(Math.random() * 350); g.economy.lose(cost, 'Fire damage'); for (const s of b.residents.concat(b.workers)) s.moodBoost -= 0.35; g.messages.push('Fire!', `The ${b.def.name} burned for an hour before the fire went out. Repairs: £${cost}.`, 'warn');
+    }
+    if (f.fought) f.everFought = true;
   }
-  douseEnd(f) { const b = f.b; b.burning = false; for (const m of f.bucketMeshes || []) this.game.scene.remove(m); f.bucketMeshes = null; if (f.engine) { this.homeEngine(f.engine); f.engine = null; } for (const s of this.game.population.sims) if (s.bucketMesh && (s.fireB === b || !s.fireB)) { s.bucketMesh.parent && s.bucketMesh.parent.remove(s.bucketMesh); s.bucketMesh = null; s.chainAt = null; } if (b.glassMat && f.lit) { b.glassMat.emissive.setHex(0xffc070); f.lit = false; } if (this.game.buildings.interiorLight) this.game.buildings.interiorLight.color.setHex(0xffe2b0); }
+  /** Out of the burning building alive. */
+  free(f, s, how) {
+    const g = this.game, i = f.trapped.indexOf(s); if (i >= 0) f.trapped.splice(i, 1); s.trapped = null; s.fleeFire = { f, home: s.home === f.b }; s.panic = true;
+    if (how === 'sam') { s.samRel = Math.min(100, (s.samRel || 0) + 25); s.moodBoost += 0.2; g.social.say(s, pick(['Sam! Thank God!', 'I couldn\'t find the door! Thank you!', 'Get me out of here!']), 3); g.messages.push('Fire!', `Sam found ${s.name} in the smoke and got them out alive.`, 'good'); }
+    else if (how === 'brigade') g.messages.push('Fire brigade', `The firefighters brought ${s.name} out alive.`, 'good');
+  }
+  freeTrapped(f) { for (const s of f.trapped.slice()) this.free(f, s, 'out'); }
+  /** Overcome by the smoke. Their body stays in the building until it's safe to bring them out (systems/Rescue.js). */
+  perish(f, s) {
+    const g = this.game, b = f.b, i = f.trapped.indexOf(s); if (i >= 0) f.trapped.splice(i, 1); s.trapped = null; s.fleeFire = null;
+    g.celebrations.funerals.die(s, { cause: `killed in the fire at the ${b.def.name}`, where: null });
+    s.hidden = true; s.inside = b; s.bodyAt = { x: b.doorOut.x, z: b.doorOut.z };
+    for (const o of g.population.sims) if (o.fleeFire && o.fleeFire.f === f && o.mesh.visible && Math.random() < 0.5) g.social.say(o, pick([`${s.first}! Where's ${s.first}?`, 'Oh God, no...', `${s.first}'s still in there!`]), 3);
+  }
+  /** Nothing to fight it with: it burns to the ground, and what's left is a builders' job before anything can go up there again. */
+  burnDown(f) {
+    const g = this.game, b = f.b, B = g.buildings, { x0, z0, rot } = b, d = b.def, home = b === g.starterHome, lost = b.residents.filter((s) => !s.dead).map((s) => s.first);
+    for (const s of f.trapped.slice()) this.perish(f, s);
+    if (home) { g.starterHome = null; }
+    if (g.buildings.playerInside === b) { g.player.x = b.doorOut.x; g.player.z = b.doorOut.z; }
+    B.remove(b);
+    const r = B.place('rubble', x0, z0, rot, { over: { name: `Ruins of the ${d.name}`, w: d.w, d: d.d, floors: d.floors || 1, wall: d.wall, roof: d.roof, work: Math.round(14 + d.w * d.d * 7) } });
+    r.prio = 0; r.smoulder = 150; (this.ruins || (this.ruins = [])).push(r);   // (top of the builders' list: nothing else can go there till it's cleared)
+    g.particles.burst(r.cx, 2, r.cz, 0x2a2a2a, 30, 4, 6, 0.5);
+    g.ui.notice(`The ${d.name} has burned down`, `With no well to fill buckets at and no Fire Station, nobody could fight the fire, and the ${d.name} burned to the ground.${home ? ' It was Sam\'s home: the next house to be finished will be his.' : ''}${lost.length ? `\n\n${lost.join(', ')} ${lost.length > 1 ? 'have' : 'has'} lost ${lost.length > 1 ? 'their home' : (b.residents.find((s) => s.first === lost[0]) || {}).gender === 'f' ? 'her home' : 'his home'}.` : ''}\n\nThe builders will clear the rubble (it's at the top of their work list), then the plot can be built on again.\n\nBuild a Well near the houses so the neighbours can fight fires with buckets, or better, a Fire Station.`, { icon: '🔥', from: 'Fire!' });
+  }
+  /** Ruins smoulder for a while. */
+  smoulder(dt) {
+    if (!this.ruins || !this.ruins.length) return; const g = this.game;
+    this.ruins = this.ruins.filter((r) => { r.smoulder -= dt; if (Math.random() < dt * 3 * Math.min(1, r.smoulder / 60)) g.particles.burst(r.cx + (Math.random() - 0.5) * r.def.w * 3, 0.6, r.cz + (Math.random() - 0.5) * r.def.d * 3, Math.random() < 0.15 ? 0xff6a1a : 0x4a4a4a, 2, 0.5, 3, 0.35); return r.smoulder > 0 && g.buildings.list.includes(r); });
+  }
+  douseEnd(f) {
+    const b = f.b; b.burning = false; if (f.engine) { this.homeEngine(f.engine); f.engine = null; }
+    for (const s of this.game.population.sims) if (s.fireB === b || (s.run && s.run.f === f)) { this.dropBucket(s); s.run = null; }
+    if (b.glassMat && f.lit) { b.glassMat.emissive.setHex(0xffc070); f.lit = false; } if (this.game.buildings.interiorLight) this.game.buildings.interiorLight.color.setHex(0xffe2b0);
+  }
   /** Sam with a bucket (hold E near the fire). */
   douse(b, dt, P) {
     const f = this.fires.find((q) => q.b === b); if (!f) return; f.samT = 0.3; P.faceGoal = Math.atan2(b.cx - P.x, b.cz - P.z); P.heading = Math.atan2(b.cx - P.x, b.cz - P.z);
@@ -115,54 +169,64 @@ export class Hazards {
   }
   /** Firefighters (and, with no fire brigade, neighbours with buckets): where's the fire? (called from Sim.wantActivity) */
   fireFor(s) { return this.fires.length ? this.fires[0].b : null; }
-  /** Neighbours with buckets. Word spreads: the longer it burns, the further away people come from. */
+  /** Neighbours with buckets. Word spreads: the longer it burns, the further away people come from. With no well, a few come and watch, helpless. */
   volunteer(s) {
-    if (!this.fires.length || s.kind !== 'resident' || s.age < 16 || s.age > 70 || s.fight || s.crook) return null;
+    if (!this.fires.length || s.kind !== 'resident' || s.age < 14 || s.age > 72 || s.fight || s.crook || s.fleeFire || s.trapped) return null;
     if (s.fireB) return this.fires.some((f) => f.b === s.fireB) ? s.fireB : null;
     const brigade = this.game.population.sims.some((q) => q.role === 'firefighter' && q.pose !== 'sleep');
-    for (const f of this.fires) { const n = this.game.population.sims.filter((q) => q.fireB === f.b).length; if (n < (brigade ? 2 : f.src ? 8 : 4) && Math.hypot(s.x - f.b.cx, s.z - f.b.cz) < (s.inside || s.hidden ? 22 : 45) + Math.min(80, f.t * 3)) { s.fireB = f.b; this.game.social.say(s, pick(['Fire! Get the buckets!', 'Form a chain!', 'Quick, water!']), 2); return f.b; } }
+    for (const f of this.fires) { const n = this.game.population.sims.filter((q) => q.fireB === f.b).length; if (n < (brigade ? 3 : f.src ? 12 : 4) && Math.hypot(s.x - f.b.cx, s.z - f.b.cz) < (s.inside || s.hidden ? 22 : 45) + Math.min(90, f.t * 3)) { s.fireB = f.b; this.game.social.say(s, pick(f.src ? ['Fire! Get a bucket!', 'Quick, to the well!', 'Water! Get water!'] : ['Fire! Somebody do something!', 'There\'s no water! Where\'s the well?', 'Oh my God, it\'s going up!']), 2); return f.b; } }
     return null;
   }
-  driveCrew(s) {
-    const b = s.fireB, f = b && this.fires.find((q) => q.b === b); if (!f) { s.fireB = null; s.chainAt = null; if (s.bucketMesh) { s.bucketMesh.parent && s.bucketMesh.parent.remove(s.bucketMesh); s.bucketMesh = null; } return; }
-    const chain = this.chainOf(f), i = chain.indexOf(s);
-    if (i >= 0) {   // a place in the bucket chain, evenly spaced from the well to the door
-      const A = this.chainEnds(f), at = this.alongChain(A, (i + 0.5) / chain.length);
-      if (!s.bucketMesh && s.rig && s.rig.armR && s.rig.armR.hand) { const m = new THREE.Mesh(bucketGeo, bucketMat); m.scale.setScalar(0.8); m.position.set(0, -0.18, 0); s.rig.armR.hand.add(m); s.bucketMesh = m; }   // everyone in the chain has a bucket
-      if (!s.chainAt || Math.hypot(s.chainAt.x - at.x, s.chainAt.z - at.z) > 1) { s.chainAt = at; s.crewRe = 0; }
-      const fresh = !s.crewGoal || Math.hypot(s.crewGoal.x - at.x, s.crewGoal.z - at.z) > 1.5;   // (drop wherever they were going before)
-      if (Math.hypot(s.x - at.x, s.z - at.z) > 1.5 && (fresh || (!s.path.length && (s.crewRe = (s.crewRe || 0) - 1) <= 0))) { s.crewRe = 30; s.crewGoal = at; s.path = []; s.goTo({ x: at.x, z: at.z }); s.hurry = true; }
-      if (!s.path.length) s.faceGoal = at.dir + (i % 2 ? Math.PI / 2 : -Math.PI / 2);   // side on, passing along the line
-      return;
+  /** A bucket in the right hand (with water in it when it's full). */
+  giveBucket(s) {
+    if (s.bucketMesh || !s.rig || !s.rig.armR || !s.rig.armR.hand) return; const m = new THREE.Mesh(bucketGeo, bucketMat); m.scale.setScalar(0.8); m.position.set(0, -0.2, 0.02); m.castShadow = true;
+    const w = new THREE.Mesh(waterGeo, waterMat); w.position.y = 0.1; w.visible = false; m.add(w); m.userData.water = w; s.rig.armR.hand.add(m); s.bucketMesh = m;
+  }
+  dropBucket(s) { if (s.bucketMesh) { s.bucketMesh.parent && s.bucketMesh.parent.remove(s.bucketMesh); s.bucketMesh = null; } }
+  driveCrew(s, dt = 0.016) {
+    const g = this.game, b = s.fireB, f = b && this.fires.find((q) => q.b === b); if (!f) { s.fireB = null; s.run = null; this.dropBucket(s); return; }
+    if (s.role !== 'firefighter' && f.src) { this.bucketRun(s, f, dt); return; }
+    // the brigade round the door; with no well, the neighbours stand back and watch it go
+    const back = s.role === 'firefighter' ? 3 : 8, goal = s.crewGoal; if (!goal || goal.f !== f) { const a = (Math.random() - 0.5) * 2.2, dx = b.doorOut.x - b.cx, dz = b.doorOut.z - b.cz, n = Math.hypot(dx, dz) || 1, ang = Math.atan2(dx / n, dz / n) + a; s.crewGoal = { f, x: b.doorOut.x + Math.sin(ang) * back, z: b.doorOut.z + Math.cos(ang) * back }; s.crewRe = 0; s.path = []; }
+    const p = s.crewGoal; if (!s.path.length && Math.hypot(s.x - p.x, s.z - p.z) > 1.6 && (s.crewRe = (s.crewRe || 0) - dt) <= 0) { s.crewRe = 5; s.goTo({ x: p.x, z: p.z }); s.hurry = true; }
+    if (!s.path.length) { s.faceGoal = Math.atan2(b.cx - s.x, b.cz - s.z); if (s.role !== 'firefighter' && Math.random() < dt * 0.06 && s.mesh.visible) g.social.say(s, pick(['If only we had a well...', 'It\'s no good, it\'s going.', 'Stand back! The roof!', 'Somebody fetch the fire brigade! Oh. We haven\'t got one.']), 2.6); }
+  }
+  /** One neighbour, one bucket: run to the well, fill it, run to the fire, throw it on, and back for more. */
+  bucketRun(s, f, dt) {
+    const g = this.game, b = f.b, W = f.src; this.giveBucket(s);
+    let r = s.run; if (!r || r.f !== f) { r = s.run = { f, st: 'well', t: 0, to: null, re: 0 }; s.path = []; }
+    const go = (p, k) => {   // run there (and keep at it if the route gets lost); true once arrived
+      if (Math.hypot(s.x - p.x, s.z - p.z) < k && !s.path.length) return true;
+      if (r.to !== p) { r.to = p; r.re = 0; s.path = []; }
+      if (!s.path.length && (r.re -= dt) <= 0) { r.re = 4; if (!s.goTo({ x: p.x, z: p.z })) { s.x += (p.x - s.x) * 0.02; s.z += (p.z - s.z) * 0.02; } } s.hurry = true; return false;
+    };
+    const water = s.bucketMesh && s.bucketMesh.userData.water;
+    if (r.st === 'well') {
+      const p = r.wp || (r.wp = this.ring(W.doorOut, W, 1.3, 2.0));
+      if (go(p, 1.4)) { r.st = 'fill'; r.t = 1.4; s.faceGoal = Math.atan2(W.cx - s.x, W.cz - s.z); s.fightAnim = 'lift'; s.fightAnimT = 1.3; }
+    } else if (r.st === 'fill') {
+      if ((r.t -= dt) <= 0) { r.st = 'fire'; r.wp = null; if (water) water.visible = true; r.fp = this.firePoint(b); if (s.mesh.visible && Math.random() < 0.15) g.social.say(s, pick(['Coming through!', 'Mind out!', 'Out the way!']), 1.6); }
+    } else if (r.st === 'fire') {
+      if (go(r.fp, 1.5)) { r.st = 'throw'; r.t = 0.6; s.faceGoal = Math.atan2(b.cx - s.x, b.cz - s.z); s.heading = s.faceGoal; s.fightAnim = 'slosh'; s.fightAnimT = 0.6; }
+    } else if (r.st === 'throw' && (r.t -= dt) <= 0) {
+      const fx = Math.sin(s.heading), fz = Math.cos(s.heading); if (water) water.visible = false;
+      g.particles.burst(s.x + fx * 1.2, 1.3, s.z + fz * 1.2, 0x9fd8f0, 10, 1.4, 2.4, 0.09); g.particles.burst(s.x + fx * 2.4, 1.6, s.z + fz * 2.4, 0xdedede, 5, 0.8, 3, 0.3);   // splash, and a hiss of steam
+      f.hp -= f.perThrow; f.thrown = (f.thrown || 0) + 1; r.st = 'well'; r.fp = null;
+      if (g.mode === 'sim' && Math.hypot(g.player.x - s.x, g.player.z - s.z) < 30) Sfx.noise(0.25, { freq: 1800, vol: 0.05, type: 'highpass' });
     }
-    const fresh = s.crewGoal !== b.doorOut; if (fresh) { s.crewGoal = b.doorOut; s.path = []; s.crewRe = 0; }
-    if (!s.path.length && Math.hypot(s.x - b.doorOut.x, s.z - b.doorOut.z) > 5 && (s.crewRe = (s.crewRe || 0) - 1) <= 0) { s.crewRe = 30; const a = Math.random() * Math.PI - Math.PI / 2; s.goTo({ x: b.doorOut.x + Math.sin(a) * 3, z: b.doorOut.z + Math.cos(a) * 2 }); s.hurry = true; }
   }
-  /** The nearest well (or Water Tower hydrant) to a building, or null. */
+  /** The nearest well (or Water Tower) to a building, or null. */
   waterNear(b) { let best = null, bd = 1e9; for (const q of this.game.buildings.list) if (q.state === 'done' && (q.id === 'well' || q.id === 'water') && q.doorOut) { const d = Math.hypot(q.cx - b.cx, q.cz - b.cz); if (d < bd) { bd = d; best = q; } } return best; }
-  /** Neighbours with buckets (not the brigade), if there's a well to fill them at. */
-  chainOf(f) { if (!f.src) return []; const L = this.game.population.sims.filter((s) => s.fireB === f.b && s.activity === 'firefight' && s.role !== 'firefighter' && !s.remove); for (const s of L) if (s.chainRank === undefined || s.chainFire !== f) { s.chainFire = f; s.chainRank = Math.hypot(s.x - f.src.cx, s.z - f.src.cz); } return L.sort((a, b) => a.chainRank - b.chainRank); }   // whoever's nearest the well takes the well end
-  /** The chain's route: the way you'd walk from the well to the burning building's door (round buildings, not through them). */
-  chainEnds(f) {
-    if (f.cp) return f.cp;
-    const w = this.game.world, a = { x: f.src.doorOut.x, z: f.src.doorOut.z }, e = { x: f.b.doorOut.x, z: f.b.doorOut.z }, [sx, sz] = w.tileOf(a.x, a.z), [tx, tz] = w.tileOf(e.x, e.z), p = w.findPath(sx, sz, tx, tz);
-    const pts = [a].concat(p ? p.slice(1, -1).map(([x, z]) => ({ x: (x + 0.5) * TILE, z: (z + 0.5) * TILE })) : [], [e]), cum = [0];
-    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z));
-    f.chainLen = cum[cum.length - 1]; return (f.cp = { pts, cum, a, b: e });
-  }
-  /** A point a fraction t of the way along the chain, and which way the line runs there. */
-  alongChain(A, t) {
-    const L = A.cum[A.cum.length - 1] * Math.max(0, Math.min(1, t)); let i = 1; while (i < A.pts.length - 1 && A.cum[i] < L) i++;
-    const p = A.pts[i - 1], q = A.pts[i], seg = A.cum[i] - A.cum[i - 1] || 1, k = (L - A.cum[i - 1]) / seg; return { x: p.x + (q.x - p.x) * k, z: p.z + (q.z - p.z) * k, dir: Math.atan2(q.x - p.x, q.z - p.z) };
-  }
-  offLine(s, A) { let best = 1e9; for (let i = 1; i < A.pts.length; i++) { const a = A.pts[i - 1], b = A.pts[i], vx = b.x - a.x, vz = b.z - a.z, L2 = vx * vx + vz * vz || 1, t = Math.max(0, Math.min(1, ((s.x - a.x) * vx + (s.z - a.z) * vz) / L2)); best = Math.min(best, Math.hypot(s.x - (a.x + vx * t), s.z - (a.z + vz * t))); } return best; }
-  /** Buckets going hand to hand up the line. */
-  buckets(f, inChain, dt) {
-    const g = this.game; if (inChain.length < 2 || !f.src) { for (const m of f.bucketMeshes || []) m.visible = false; return; }
-    if (!f.bucketMeshes) { f.bucketMeshes = [0, 1, 2, 3].map(() => { const m = new THREE.Mesh(bucketGeo, bucketMat); m.castShadow = true; g.scene.add(m); return m; }); f.bt = 0; }
-    const A = this.chainEnds(f); f.bt = (f.bt + dt / Math.max(2, f.chainLen / 6)) % 1;
-    f.bucketMeshes.forEach((m, i) => { const t = (f.bt + i / 4) % 1, hop = Math.abs(Math.sin(t * inChain.length * Math.PI)) * 0.25, q = this.alongChain(A, t); m.visible = true; m.position.set(q.x, 1.05 + hop, q.z); });
-    if (Math.random() < dt * 2) g.particles.burst(A.b.x, 1.4, A.b.z, 0x9fd8f0, 5, 2, 2.5, 0.08);   // thrown on at the door
+  /** A spot to stand at by a well (spread round it so they don't queue in one place). */
+  ring(p, q, r0, r1) { if (q.id !== 'well') return { x: p.x + (Math.random() - 0.5) * 2.4, z: p.z + (Math.random() - 0.5) * 2.4 }; const f = Math.atan2(p.x - q.cx, p.z - q.cz), a = f + (Math.random() - 0.5) * 2.4, r = r0 + Math.random() * (r1 - r0); return { x: q.cx + Math.sin(a) * r, z: q.cz + Math.cos(a) * r }; }   // (round the well itself; at a water tower, by its door)
+  /** Somewhere along the front of the burning building to throw from. */
+  firePoint(b) { const W = b.def.w * 4, D = b.def.d * 4, [x, z] = b.toWorld((Math.random() - 0.5) * Math.max(1, W - 1.6), D / 2 + 1.5 + Math.random() * 0.8); return { x, z }; }
+  /** Those who got out: away from the building, then they stand and watch (their own home: hands on head). */
+  driveFlee(s, dt) {
+    const g = this.game, ff = s.fleeFire, f = ff.f, b = f.b;
+    if (f.out && (ff.after = (ff.after ?? 8) - dt) <= 0 || s.dead) { s.fleeFire = null; s.panic = false; s.hurry = false; return; }
+    if (!ff.p) { const dx = b.doorOut.x - b.cx, dz = b.doorOut.z - b.cz, n = Math.hypot(dx, dz) || 1, a = (Math.random() - 0.5) * 1.6, ang = Math.atan2(dx / n, dz / n) + a, d = 6 + Math.random() * 4; ff.p = { x: b.doorOut.x + Math.sin(ang) * d, z: b.doorOut.z + Math.cos(ang) * d }; s.path = []; if (!s.goTo(ff.p)) { s.x = ff.p.x; s.z = ff.p.z; } s.hurry = true; if (s.mesh.visible) g.social.say(s, pick(['Fire! FIRE!', 'Get out! Everybody out!', 'Help!']), 2); }
+    if (!s.path.length) { s.faceGoal = Math.atan2(b.cx - s.x, b.cz - s.z); s.hurry = false; if (!f.out && Math.random() < dt * 0.08 && s.mesh.visible) g.social.say(s, pick(ff.home ? ['My house! Everything\'s in there!', 'All my things...', 'Not my house!'] : ['Is everyone out?', 'I can\'t believe it.', 'Thank God I woke up.']), 2.6); }
   }
   // ---------- the fire engine: out of the station, fill up at a well, drive to the fire, hose it; back for more ----------
   route(from, to) { const w = this.game.world, [sx, sz] = w.tileOf(from.x, from.z), [tx, tz] = w.tileOf(to.x, to.z), p = w.findPath(sx, sz, tx, tz, true); return p ? p.map(([x, z]) => ({ x: (x + 0.5) * TILE, z: (z + 0.5) * TILE })) : null; }

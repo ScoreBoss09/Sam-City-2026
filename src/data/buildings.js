@@ -45,10 +45,10 @@ export const ROLES = {
 
 // What gatherers do. node = resource kind they walk to; mat = what they bring back to the Stockyard.
 export const GATHER = {
-  lumberjack:  { node: 'tree',  mat: 'timber', per: 1, time: 1.8, cap: 6, upper: 'chop',    tool: 'axe' },
+  lumberjack:  { node: 'tree',  mat: 'timber', per: 2, time: 1.8, cap: 8, upper: 'chop',    tool: 'axe' },   // (a tree is three chops: six logs for a lumberjack)
   forager:     { node: 'berry', mat: 'food',   per: 2, time: 1.4, cap: 8, upper: 'harvest', tool: null, carryProp: 'basket' },
   fisher:      { node: 'fish',  mat: 'food',   per: 2, time: 2.4, cap: 6, upper: 'fish',    tool: 'rod' },
-  quarryman:   { node: 'rock',  mat: 'stone',  per: 1, time: 2.0, cap: 5, upper: 'mine',    tool: 'pick' },
+  quarryman:   { node: 'rock',  mat: 'stone',  per: 2, time: 2.0, cap: 8, upper: 'mine',    tool: 'pick' },
   farmer:      { node: 'field', mat: 'food',   per: 2, time: 1.6, cap: 8, upper: 'harvest', tool: 'sickle', carryProp: 'basket' },
   brickmaker:  { node: 'clay',  mat: 'brick',  per: 1, time: 2.0, cap: 5, upper: 'dig',     tool: 'shovel' },
   glassblower: { node: 'sand',  mat: 'glass',  per: 1, time: 2.4, cap: 4, upper: 'dig',     tool: 'shovel' },
@@ -343,7 +343,7 @@ export const BUILDINGS = {
   lockup: {
     name: 'The Lock-Up', cat: 'civic', w: 1, d: 1, floors: 1, wall: 'stone', roof: 'none', special_ext: 'lockup',
     mat: { stone: 8 }, work: 24, layout: 'none', permit: { cost: 250, pop: 6 }, tab: 'Civic',
-    blurb: 'A round stone tower (just like the one on the Everton badge). Drunks, vagrants and troublemakers spend the night here.',
+    blurb: 'A round stone tower with a domed roof and slit windows. Drunks, vagrants and troublemakers spend the night here.',
   },
   // ----- the high street and the estate, mid-90s -----
   butcher: {
@@ -517,7 +517,7 @@ export const BUILDINGS = {
   billboard: {
     name: 'Billboard', cat: 'park', w: 1, d: 1, floors: 0, park: 'billboard', joy: 0, needsRoad: false,
     mat: { timber: 2, steel: 1 }, work: 6, permit: { cost: 60, pop: 8 }, tab: 'Parks',
-    blurb: 'A big poster hoarding. Advertisers pay rent (a few quid a month), and the posters change every few days.', income: 0, rent: 12,
+    blurb: 'A big poster hoarding. Advertisers pay rent (a few quid a week), and the posters change every few days.', income: 0, rent: 12,
   },
   phonebox: {
     name: 'Phone Box', cat: 'park', w: 1, d: 1, floors: 0, park: 'phonebox', joy: 0.01,
@@ -539,6 +539,10 @@ export const BUILDINGS = {
     name: "Planning Office", cat: 'civic', w: 2, d: 2, floors: 1, wall: 'logs', roof: 'thatch', roofColor: 0xb89a4a,
     mat: { timber: 10, stone: 4 }, work: 16, layout: 'terminalhut', permit: { cost: 400, pop: 15 }, tab: 'Civic',
     blurb: 'The planning office. Its computer terminal handles permits, trade and the town report.',
+  },
+  rubble: {   // (what's left after a fire: placed by systems/Hazards.js with the burned building's size and look, then cleared by the builders)
+    name: 'Burned-out ruin', cat: 'ruin', ruin: true, w: 2, d: 2, floors: 1, needsRoad: false,
+    mat: {}, work: 40, permit: { cost: 0, pop: 0 }, blurb: 'Blackened walls and ash. The builders will clear it.',
   },
   lift: {
     name: 'Supply Lift', cat: 'special', w: 4, d: 3, floors: 1, wall: 'industrial', roof: 'none', open: true, special: true,

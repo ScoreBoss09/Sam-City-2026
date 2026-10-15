@@ -364,7 +364,8 @@ function buildExterior0(def, uid = 1, era = 2) {
       const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 2.4, 10), stdMat(0xaeb4bc)); tank.position.set(0, 1.5, 2.2); tank.castShadow = true; roof.add(tank);
     }
     if (def.roof === 'factory') {
-      for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(prism(2.8, 1.4, D - 0.6), stdMat(0x7a8088, { side: THREE.DoubleSide, flatShading: true })); s.position.set(-W / 2 + 2.4 + i * 3.6, 0.3, 0); s.castShadow = true; roof.add(s); }
+      const nR = Math.max(1, Math.floor((W - 1.2) / 3.6));   // as many sawtooth ridges as fit inside the parapet (four always overhung a 12 m building)
+      for (let i = 0; i < nR; i++) { const s = new THREE.Mesh(prism(2.8, 1.4, D - 0.6), stdMat(0x7a8088, { side: THREE.DoubleSide, flatShading: true })); s.position.set((i - (nR - 1) / 2) * 3.6, 0.3, 0); s.castShadow = true; roof.add(s); }
       for (let k = 0; k < 5; k++) box(roof, 1.0, 1.6, 1.0, k % 2 ? 0xf2f2ee : 0xb23a2d, W / 2 - 1.5, 0.35 + k * 1.6, -D / 2 + 1.5);
     }
     if (def.roof === 'tank') {
@@ -458,7 +459,7 @@ function rectMinus(R, holes) {
   return out;
 }
 
-/** The Lock-Up: a round stone tower with a little domed roof and slit windows, like the one on the Everton badge. */
+/** The Lock-Up: a round stone tower with a little domed roof and slit windows, the old village kind. */
 /** A 1970s multi-storey car park: bare concrete decks on columns, a ramp, and a space for every car (ext.spaces). */
 function buildCarPark(def) {
   const g = new THREE.Group(), roof = new THREE.Group(), cols = [], W = def.w * UNIT, D = def.d * UNIT, decks = 3, Hh = 2.8, spaces = [];
@@ -677,6 +678,39 @@ export function buildSite(def) {
   return { group: g, update, height: H };
 }
 
+/**
+ * What's left after a fire nobody could put out: blackened stubs of wall with ragged tops, a chimney stack still
+ * standing, fallen roof beams and heaps of ash and broken brick. It's a builders' job (a site on their work list):
+ * the walls come down and the heaps go as they clear it (update(progress)), then the plot is free to build on.
+ */
+export function buildRuin(def) {
+  const W = def.w * UNIT, D = def.d * UNIT, H = Math.max(2.4, (def.floors || 1) * WALL_H), g = new THREE.Group(), rnd = mulberry32((def.w * 131 + def.d * 17 + (def.floors || 1)) | 0);
+  const f = FACADES[def.wall] || FACADES.tan, wallC = new THREE.Color(f.base).lerp(new THREE.Color(0x14110f), 0.72).getHex();
+  box(g, W + 0.4, 0.12, D + 0.4, 0x1c1916, 0, -0.06, 0);   // scorched floor
+  const walls = new THREE.Group(), heaps = new THREE.Group(); g.add(walls, heaps);
+  // the walls: short runs, each its own height, the tops broken off unevenly (the door gap left open)
+  const run = (len, along, x0, z0, door) => {
+    const n = Math.max(2, Math.round(len / 0.9)), seg = len / n;
+    for (let i = 0; i < n; i++) {
+      const t = -len / 2 + seg * (i + 0.5); if (door && Math.abs(t - door) < 1.1) continue;
+      const h = 0.35 + rnd() * rnd() * H * 0.85, x = along ? x0 + t : x0, z = along ? z0 : z0 + t;
+      box(walls, along ? seg + 0.02 : WALL_T, h, along ? WALL_T : seg + 0.02, rnd() < 0.3 ? 0x0e0c0b : wallC, x, 0, z);
+    }
+  };
+  run(W, true, 0, D / 2 - WALL_T / 2, doorOffset(def.w)); run(W, true, 0, -D / 2 + WALL_T / 2); run(D, false, -W / 2 + WALL_T / 2, 0); run(D, false, W / 2 - WALL_T / 2, 0);
+  if (def.roof !== 'flat' && def.roof !== 'none') box(walls, 0.9, H + 1.2, 0.9, 0x4a2f26, W * 0.2, 0, -D * 0.12);   // the chimney stack outlasts everything
+  // fallen roof timbers, charred black, lying across the rubble at angles
+  const beams = 3 + Math.floor(rnd() * 3);
+  for (let i = 0; i < beams; i++) { const L = Math.min(W, D) * (0.4 + rnd() * 0.3), b = box(walls, 0.22, 0.22, L, 0x0b0a09, (rnd() - 0.5) * (W - L) * 0.8, 0.1 + rnd() * 0.4, (rnd() - 0.5) * (D - L) * 0.8); b.rotation.set((rnd() - 0.5) * 0.5, rnd() * Math.PI, (rnd() - 0.5) * 0.3); }   // (short enough to stay inside the walls whichever way they lie)
+  // heaps of ash and broken brick
+  const heapGeo = new THREE.DodecahedronGeometry(1, 0);
+  for (let i = 0; i < 5 + Math.floor(W * D / 12); i++) { const m = new THREE.Mesh(heapGeo, stdMat(i % 3 ? 0x2b2724 : wallC)); const r = 0.5 + rnd() * 0.9; m.scale.set(r, r * 0.38, r * (0.8 + rnd() * 0.4)); m.position.set((rnd() - 0.5) * (W - 1.2), 0, (rnd() - 0.5) * (D - 1.2)); m.rotation.y = rnd() * 6; m.castShadow = m.receiveShadow = true; heaps.add(m); }
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('Danger: fire damage', '#8a1a10') })); sign.position.set(-W / 2 + 1.4, 0.9, D / 2 + 0.35); g.add(sign);
+  for (const x of [-W / 2 + 0.4, -W / 2 + 2.4]) box(g, 0.08, 1.1, 0.08, 0xd8c8a0, x, 0, D / 2 + 0.3);
+  function update(progress) { const k = Math.max(0.04, 1 - progress); walls.scale.y = k; heaps.scale.set(Math.max(0.25, 1 - progress * 0.75), k, Math.max(0.25, 1 - progress * 0.75)); }
+  return { group: g, update, height: H };
+}
+
 // ---------- interior (built lazily) ----------
 /** What a piece of furniture was in the town's era: no tellies before the electricity, no home computers before the computer age. */
 const ERA_SWAP = [{ kitchen: 'range', tv: 'radio', tvunit: 'radio', hifi: 'gramophone', fridgefreezer: 'larder', washer: 'mangle', homepc: 'desk', terminal: 'ledger', reception: 'reception0' }, { homepc: 'desk', terminal: 'ledger', reception: 'reception0' }, {}];
@@ -797,9 +831,9 @@ function dressWalls(b, g) {
     const h = RC.intersectObject(b.ext.group, true).find((q) => q.object.isMesh); return h ? Math.max(0, Math.min(0.3, 1.2 - h.distance)) : 0;
   };
   // the ceiling's height above a spot in the room (a ray straight up), or the storey height
-  const ceilingAt = (x, z) => {
+  const ceilingAt = (x, z, above = 0) => {   // (above: ignore anything lower, like the door's lintel)
     if (!b.ext || !b.toWorld) return WALL_H; const [wx, wz] = b.toWorld(x, z); RC.set(new THREE.Vector3(wx, 2.0, wz), new THREE.Vector3(0, 1, 0)); RC.far = 4;
-    const h = RC.intersectObjects([b.ext.group, b.ext.roof].filter(Boolean), true).find((q) => q.object.isMesh); return h ? 2.0 + h.distance : WALL_H;
+    const h = RC.intersectObjects([b.ext.group, b.ext.roof].filter(Boolean), true).find((q) => q.object.isMesh && 2.0 + q.distance > above); return h ? 2.0 + h.distance : WALL_H;
   };
   // a window at this distance along a wall? (the facade's window pattern repeats every 4 m; the same test the pictures use)
   const windowAt = (u) => { const t = u % 4; return holes.some(([a, c]) => t > a - 0.3 && t < c + 0.3) || holes.some(([a, c]) => t + 4 > a - 0.3 && t + 4 < c + 0.3) || holes.some(([a, c]) => t - 4 > a - 0.3 && t - 4 < c + 0.3); };
@@ -834,7 +868,7 @@ function dressWalls(b, g) {
     }
     // no free wall for the clock (windows, tall shelving): it goes over the front door, inside, where a shop or an office would have it
     if (clock && kind !== 'home' && k === 0) {
-      clock = false; const zf = D / 2 - T - 0.025, room = ceilingAt(door, zf - 0.5) - 2.74 - 0.03;   // the gap between the top of the door and the ceiling
+      clock = false; const zf = D / 2 - T - 0.025, ceil = Math.min(...[-0.25, 0, 0.25].flatMap((o) => [ceilingAt(door + o, zf - 0.08, 2.6), ceilingAt(door + o, zf - 0.4, 2.6)])), room = ceil - 2.74 - 0.12;   // the gap between the top of the door and the lowest bit of ceiling over it (a good hand's width clear of it)
       if (room >= 0.3) hangClock(grp, door, 2.74 + Math.min(room, 0.42) / 2, zf, Math.PI, true, Math.min(1, room / 0.35));
       else {   // too low above the door (an upper floor): beside it, where the front has no window; a shop front is all glass, so a smaller clock over the door
         const side = def.shopping || def.dining ? undefined : [1.6, -1.6, 2.4, -2.4].map((o) => door + o).find((x) => Math.abs(x) < W / 2 - T - 0.4 && !windowAt(x + W / 2));
@@ -872,6 +906,15 @@ export function furnitureColliders(lay, b) {
 }
 
 // ---------- primitive-era pieces ----------
+let FIRE_GLOW = null;
+/** The warm pool of light round a campfire, drawn (one shared material: Decor turns it up at night). */
+export function fireGlowMat() {
+  if (FIRE_GLOW) return FIRE_GLOW;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 2, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,190,110,0.9)'); gr.addColorStop(0.35, 'rgba(255,140,50,0.45)'); gr.addColorStop(1, 'rgba(255,110,30,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (FIRE_GLOW = new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false }));
+}
 function buildCamp(def, g, roof, cols) {
   g.clear(); const W = def.w * UNIT, D = def.d * UNIT;
   const dirt = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.6, 0.12, 14), stdMat(0x8a7656)); dirt.position.y = 0.05; dirt.receiveShadow = true; g.add(dirt);
@@ -883,8 +926,10 @@ function buildCamp(def, g, roof, cols) {
   for (const [x, z] of [[-1.5, 0.2], [1.2, 0.9], [0.3, -1.4]]) { const pl = box(g, 0.07, 2.0, 0.07, 0x3a2a1a, x * 0.55, 0.0, z * 0.55); pl.rotation.z = (x > 0 ? -1 : 1) * 0.28; }
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 0.3, 8), stdMat(0x222222)); pot.position.y = 1.05; pot.castShadow = true; g.add(pot);
   for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4; const lg = box(g, 1.7, 0.4, 0.5, 0x6a4a2a, Math.cos(a) * 2.5, 0.0, Math.sin(a) * 2.5); lg.rotation.y = -a + Math.PI / 2; box(g, 0.2, 0.2, 0.52, 0x5a3a1c, Math.cos(a) * 2.5 + 0.6 * Math.sin(a), 0.4, Math.sin(a) * 2.5 - 0.6 * Math.cos(a)).rotation.y = -a + Math.PI / 2; }
+  // the glow it throws on the ground round it: the same on every campfire (no lamp needed), brighter at night (Decor sets it)
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), fireGlowMat()); glow.rotation.x = -Math.PI / 2; glow.position.y = 0.13; glow.renderOrder = 2; fl.add(glow);
   cols.push({ cx: 0, cz: 0, sx: 2.4, sz: 2.4 });
-  const update = (dt, t) => { const k = 1 + Math.sin(t * 17) * 0.12 + Math.sin(t * 29) * 0.08; f1.scale.set(1 + Math.sin(t * 13) * 0.08, k, 1); f2.scale.set(1, 1 + Math.sin(t * 23 + 1) * 0.2, 1); f3.scale.set(1, 1 + Math.sin(t * 19 + 2) * 0.25, 1); };
+  const update = (dt, t) => { glow.scale.setScalar(1 + Math.sin(t * 11) * 0.04); const k = 1 + Math.sin(t * 17) * 0.12 + Math.sin(t * 29) * 0.08; f1.scale.set(1 + Math.sin(t * 13) * 0.08, k, 1); f2.scale.set(1, 1 + Math.sin(t * 23 + 1) * 0.2, 1); f3.scale.set(1, 1 + Math.sin(t * 19 + 2) * 0.25, 1); };
   return { group: g, roof, colliders: cols, height: 1.2, update, fire: { x: 0, y: 1.0, z: 0 }, smokeSrc: { x: 0, y: 1.6, z: 0 } };
 }
 /** A red English pillar box on a little paved square, with a flag that pops up when there is post. */
