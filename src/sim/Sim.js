@@ -22,6 +22,8 @@ const STYLES = {
   shy:      { speed: 2.55, bounce: 0.85, slouch: 0.6, swing: 0.6, fidget: 1.4, soc: 0.35, mood: 0.1 },
   busy:     { speed: 3.3,  bounce: 1.0, slouch: 0.1, swing: 1.1, fidget: 0.9, soc: 0.4, mood: 0.0 },
 };
+// what someone can be doing with their arms and still have a cigarette on the go
+const SMOKE_OK = new Set(['idle', 'listen', 'talk', 'drink', 'lookaround', 'browse', 'phone', 'clap', 'point', 'tidy', 'broom', 'clipboard', 'hammer', 'saw', 'guard']);
 const ROLE_UPPER = { cook: 'saw', carter: 'broom', porter: 'clipboard', mechanic: 'hammer', firefighter: 'tidy', entertainer: 'dj', publican: 'tidy', teacher: 'clipboard', brickmaker: 'saw', smith: 'hammer', shopkeeper: 'tidy', doctor: 'clipboard', guard: 'guard', engineer: 'panel', factory: 'lever', clerk: 'type', builder: 'hammer', baker: 'harvest', fryer: 'saw', vicar: 'read', librarian: 'browse', glassblower: 'panel', farmer: 'harvest', fisher: 'fish', lumberjack: 'saw', quarryman: 'hammer', forager: 'harvest' };
 const SEAT_UPPER = { desk: 'type', sofa: 'watch', bench: 'idle', dining: 'eat', waiting: 'read', pew: 'pray' };
 
@@ -189,6 +191,7 @@ export class Sim {
     // mood drifts around the personality baseline
     this.moodBoost *= Math.exp(-dt * 0.02);
     this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + ((this.home && this.home.def.homeJoy) || 0) + Math.min(0.2, this.friendCount() * 0.04) + (this.kind !== 'visitor' ? g.buildings.townJoy() + g.economy.rateMood : 0);
+    this.smokeHabit(dt);
     // a few drinks at the pub: merry, then wobbly, then wanting a kebab and a fight (it wears off by morning)
     if (this.drinking && this.sitting && this.kind === 'resident' && this.age >= 18) this.drunk = Math.min(1, (this.drunk || 0) + dt * 0.011 * (this.trait === 'cheerful' ? 1.4 : this.trait === 'shy' || this.trait === 'busy' ? 0.6 : 1));
     else if (this.drunk > 0) { this.drunk = Math.max(0, this.drunk - dt * (this.pose === 'sleep' ? 0.02 : 0.0025)); if (this.drunk > 0.5 && !this.sitting && !this.chat && this.mesh.visible && !this.inside && Math.random() < dt * 0.05) { g.social.say(this, pick(DRUNK), 2.4); this.emote = { upper: pick(['cheer', 'wave', 'dance']), t: 1.6 }; } }
@@ -460,7 +463,7 @@ export class Sim {
       if (!g.roadPlans.has(p.x, p.z)) { this.job = null; this.idleSet = false; return; }
       if (j.step === 0) { if (!this.goTo({ x: p.cx + (Math.random() - 0.5) * 1.4, z: p.cz + (Math.random() - 0.5) * 1.4 })) { this.abortJob(); return; } j.step = 1; }
       else if (j.step === 1 && this.phase === 2) { j.step = 2; j.tool = 'dig'; this.faceGoal = Math.atan2(p.cx - this.x, p.cz - this.z); }
-      else if (j.step === 2) { this.working = true; if (g.roadPlans.work(p, dt * 0.9 * (wp.def.buildSpeed || 1))) { this.job = null; this.idleSet = false; } else { j.recheck = (j.recheck || 0) - dt; if (j.recheck <= 0) { j.recheck = 5; const f = c.focus(); if (f && f.kind !== 'roads' && (f.prio ?? 1e9) < (g.flags.roadPrio ?? 1e9)) { if (p.reserved === this) p.reserved = null; this.job = null; this.idleSet = false; } } } }
+      else if (j.step === 2) { this.working = true; j.tool = p.felling ? 'chop' : 'dig'; if (g.roadPlans.work(p, dt * 0.9 * (wp.def.buildSpeed || 1))) { this.job = null; this.idleSet = false; } else { j.recheck = (j.recheck || 0) - dt; if (j.recheck <= 0) { j.recheck = 5; const f = c.focus(); if (f && f.kind !== 'roads' && (f.prio ?? 1e9) < (g.flags.roadPrio ?? 1e9)) { if (p.reserved === this) p.reserved = null; this.job = null; this.idleSet = false; } } } }
     } else if (j.type === 'build') {
       if (j.step === 0) { const p = c.perimeterPoint(j.site, this); if (!this.goTo({ x: p.x, z: p.z })) { this.abortJob(); return; } j.step = 1; j.site.builders = (j.site.builders || 0) + 1; }
       else if (j.step === 1 && this.phase === 2) { j.step = 2; j.tool = Math.random() < 0.7 ? 'hammer' : 'saw'; this.faceGoal = Math.atan2(j.site.cx - this.x, j.site.cz - this.z); }
@@ -483,7 +486,7 @@ export class Sim {
     else if (this.moved || this.vel > 0.15) lower = 'walk';
     else if (this.working) lower = 'crouch';
     const gj = this.job && this.job.type === 'gather' ? this.job : null;
-    if (this.working) { if (gj && gj.step === 1) { upper = gj.gd.upper; lower = ['harvest', 'dig'].includes(upper) ? 'crouch' : 'stand'; } else if (this.job && this.job.tool === 'dig') { upper = 'dig'; lower = 'crouch'; } else upper = this.job && this.job.tool === 'saw' ? 'saw' : this.job && this.job.tool === 'dig' ? 'dig' : 'hammer'; }
+    if (this.working) { if (gj && gj.step === 1) { upper = gj.gd.upper; lower = ['harvest', 'dig'].includes(upper) ? 'crouch' : 'stand'; } else if (this.job && this.job.tool === 'dig') { upper = 'dig'; lower = 'crouch'; } else if (this.job && this.job.tool === 'chop') { upper = 'chop'; lower = 'stand'; } else upper = this.job && this.job.tool === 'saw' ? 'saw' : this.job && this.job.tool === 'dig' ? 'dig' : 'hammer'; }
     else if (this.pulling) upper = 'pull';   // hauling the undertaker's cart
     else if (this.carry && !this.sitting) upper = this.cart && this.cart.visible ? 'pull' : 'carry';
     else if (this.bag && lower === 'walk') upper = 'bag';
@@ -498,6 +501,7 @@ export class Sim {
     if (this.kind === 'raider') { if (this.atkT > 0) upper = this.weapon === 'pistol' ? 'aim' : 'strike'; else if (this.rstate === 'loot' && !this.moved) upper = 'carry'; }
     if (this.kind === 'security' && this.fireT > 0) upper = 'aim';
     if (this.sitting && this.drinking && !this.eating && upper === 'eat') upper = 'drink';
+    if (this.smokeT > 0 && this.kind !== 'child' && !this.working && !this.carry && !this.pulling && !this.eating && !this.fightAnim && SMOKE_OK.has(upper) && (upper !== 'drink' || (this.game.elapsed + this.id) % 24 < 11)) upper = 'smoke';   // (a pint in one hand and a fag on the go: they take turns)
     if (this.bandT && !this.moved && !this.chat && lower === 'stand') upper = (this.id + Math.floor(this.game.clock.hour * 4)) % 3 === 0 ? 'clap' : (this.id % 2 ? 'dance' : 'idle');
     if (this.emote && this.emote.t > 0) upper = this.emote.upper;
     if (this.activity === 'firefight' && !this.moved) upper = 'point';
@@ -506,6 +510,21 @@ export class Sim {
     if (this.fightAnim) upper = this.fightAnim;
     if (this.cycling && this.moved) { lower = 'ride'; upper = 'handlebars'; }
     return { lower, upper, speaking, motor: this.vehLv === 2 };
+  }
+  /** It's 1995: a lot of people smoke (builders most of all, and the pub's thick with it). Whether someone does is fixed by their name. */
+  get smoker() {
+    if (this._smk !== undefined && this._smkRole === this.role) return this._smk; this._smkRole = this.role;
+    let h = 0; for (const ch of this.name || '') h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const pct = this.role === 'builder' ? 82 : this.role === 'publican' ? 65 : ['carter', 'brickmaker', 'smith', 'miner', 'lumberjack', 'mechanic'].includes(this.role) ? 60 : 45;
+    return (this._smk = this.age >= 17 && this.kind !== 'child' && this.kind !== 'security' && h % 100 < pct);
+  }
+  /** Light up now and then: more often over a pint, and when a builder's stood about on site. One lasts a minute or so. */
+  smokeHabit(dt) {
+    if (this.smokeT > 0) { this.smokeT -= dt; if (this.smokeT <= 0) this.smokeCD = 50 + Math.random() * 130; return; }
+    if ((this.smokeCD = (this.smokeCD || Math.random() * 60) - dt) > 0 || this.pose === 'sleep' || this.down > 0 || !this.smoker || this.hidden) return;
+    const pub = this.sitting && this.drinking, site = this.role === 'builder' && this.activity === 'work' && !this.working && !this.carry, idle = !this.moved && !this.working;
+    const per = pub ? 1 / 25 : site ? 1 / 18 : idle ? 1 / 80 : 1 / 220;
+    if (Math.random() < dt * per) this.smokeT = 40 + Math.random() * 50;
   }
   sync(dt, init = false) {
     const g = this.game, m = this.mesh, U = this.upstairs, hidden = this.hidden || (U && !(g.mode === 'sim' && g.buildings.playerInside === U.b && Math.abs((g.player.floorY || 0) - U.y) < WALL_H * 1.2)) || (this.pose === 'sleep' && this.bedSpot && this.bedSpot.upstairs) || (this.inside && !this.inside.def.open && !g.buildings.canSeeInto(this.inside));
@@ -541,6 +560,7 @@ export class Sim {
     const a = this.decideAnim(), carryCol = this.carry && !this.useCart ? ({ timber: 0xb5834a, brick: 0xa8442f, steel: 0x7b8794, glass: 0x7ec8e3 }[this.carry.mat]) : undefined;
     this.anim.update(dt, { ...a, dist: this.moved ? (this.dist || 0) : 0, speed: this.vel, run: this.vel > 3.6 || (this.hurry && this.vel > 2.8), turning: this.turning && !this.moved, lookYaw: this.lookYaw, lookPitch: this.lookPitch, mood: this.mood, tired: this.tired, crateColor: carryCol,
       prop: this.kind === 'raider' && this.down <= 0 ? { handR: this.weapon } : this.kind === 'security' && this.fireT > 0 ? { handR: 'pistol' } : this.bag && a.lower === 'walk' ? { handR: 'bag' } : this.holding ? { handR: this.holding } : (this.look.cane && !this.sitting && this.pose !== 'sleep' && (a.upper === 'idle') ? { handR: 'cane' } : undefined), lean: this.vel > 0.5 ? 0 : 0 });
+    if (a.upper === 'smoke' && m.visible && Math.random() < dt * 0.3) { const c = g.camera.position; if ((c.x - this.x) ** 2 + (c.z - this.z) ** 2 < 600) g.particles.burst(this.x + Math.sin(this.heading) * 0.25, (m.position.y || 0) + (this.sitting ? 1.25 : 1.62), this.z + Math.cos(this.heading) * 0.25, 0xd8d8d8, 1, 0.25, 1.6, 0.09); }   // a puff of smoke (only close up)
     this.working = false;
     // the bike (if riding): the sim sits up on the saddle, the bike stays on the road
     const vl = this.cycling && !this.riding && !far ? this.game.transport.bikeLv : -1;

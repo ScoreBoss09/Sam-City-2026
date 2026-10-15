@@ -22,12 +22,16 @@ export class ConstructionSystem {
     else { const j = i + dir; if (j < 0 || j >= Q.length) return; set(Q[i], j + 1); set(Q[j], i + 1); }
     this.game.flags.prioN = Q.length + 2;
   }
-  /** Goods left on the Lift dock that nobody has claimed yet. */
-  dockPiles() { const g = this.game; if (!g.lift) return []; const d = g.logistics.dock(); return g.piles.list.filter((p) => Math.hypot(p.x - d.x, p.z - d.z) < 7 && g.piles.total(p) - (p.reserved || 0) > 0); }
+  /** Goods on the ground that nobody has claimed yet: deliveries on the Lift dock, and anything left lying about for a while (Sam's dropped load, what he couldn't carry). */
+  dockPiles(sim) {
+    const g = this.game, d = g.lift ? g.logistics.dock() : null, now = g.elapsed;
+    const L = g.piles.list.filter((p) => g.piles.total(p) - (p.reserved || 0) > 0 && ((d && Math.hypot(p.x - d.x, p.z - d.z) < 7) || now - (p.t0 ?? now) > 25));
+    return sim ? L.sort((a, b) => Math.hypot(a.x - sim.x, a.z - sim.z) - Math.hypot(b.x - sim.x, b.z - sim.z)) : L;
+  }
   requestTask(sim) {
     const g = this.game, B = g.buildings, depot = g.depot && g.depot.state === 'done' ? g.depot : null;
     // up to two builders at a time cart deliveries from the Lift dock to the Stockyard
-    if (depot && g.population.sims.filter((q) => q.job && q.job.type === 'fetch').length < 2) { const p = this.dockPiles()[0]; if (p) { const qty = this.haulSize(sim); p.reserved = (p.reserved || 0) + qty; return { type: 'fetch', pile: p, qty }; } }
+    if (depot && g.population.sims.filter((q) => q.job && q.job.type === 'fetch').length < 3) { const p = this.dockPiles(sim)[0]; if (p) { const qty = this.haulSize(sim); p.reserved = (p.reserved || 0) + qty; return { type: 'fetch', pile: p, qty }; } }
     // Everyone works down the list: the top job takes all the builders it can use (its crew: Auto is 2 to start, up to 6),
     // then the next, and so on. A job that's waiting for materials is skipped. "Jobs at once" stops them spreading out.
     let active = 0; const lim = g.flags.qFocus || 99;

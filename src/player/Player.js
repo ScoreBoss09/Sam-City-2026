@@ -438,7 +438,7 @@ export class Player {
       if (need && !g.buildings.count(need[0])) { consider({ kind: 'info', text: `${verb.split(' ')[0]}: you need a ${need[1]} to turn this into ${MATERIALS[mat].name.toLowerCase()}` }, d + 1.5); return; }
       consider(full ? { kind: 'info', text: 'Your backpack is full. Store it at the Stockyard, deliver it, or drop it (R).' } : { kind: 'gather', node, nk: kind, mat, time, per, upper, work: WORK_KIND[upper], text: verb }, d + 0.4, node.x, node.z);
     };
-    for (const t of g.terrain.trees) { if (!t.alive) continue; const d = Math.hypot(t.x - px, t.z - pz); if (d < 3.7) addGather(Object.assign(t, { kind: 'tree' }), 'tree', 'Chop tree', 'timber', 2.2, 1, 'chop', d); }
+    for (const t of g.terrain.trees) { if (!t.alive) continue; const d = Math.hypot(t.x - px, t.z - pz); if (d >= 3.7) continue; const facing = d > 0.2 ? ((t.x - px) * fx + (t.z - pz) * fz) / d : 1; addGather(Object.assign(t, { kind: 'tree' }), 'tree', 'Chop tree', 'timber', 2.2, 1, 'chop', d - (facing > 0.7 ? 1.1 : 0)); }   // (a tree Sam's facing beats a building site's prompt: trees at the edge of a site were impossible to chop)
     for (const n of R2.nodes) {
       if (n.amount < 1) continue; const d = Math.hypot(n.x - px, n.z - pz), reach = n.kind === 'field' ? 3.2 : 3.0; if (d > reach) continue;
       if (n.kind === 'rock') addGather(n, 'rock', 'Break rocks', 'stone', 2.6, 1, 'mine', d);

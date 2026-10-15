@@ -78,6 +78,7 @@ export class BuildingManager {
     const dp = geo.toWorld(geo.off, def.d * UNIT / 2 - 0.3); b.doorPos = { x: dp[0], z: dp[1] };
     const di = geo.toWorld(geo.off, def.d * UNIT / 2 - 2.2); b.doorIn = { x: di[0], z: di[1] };
     this.world.buildings.set(b.uid, b); this.list.push(b); this.world.fill(b, !!def.park);
+    if (this.game && this.game.terrain && this.game.terrain.clearStumpsIn) this.game.terrain.clearStumpsIn(b.x0, b.z0, b.x0 + b.w - 1, b.z0 + b.d - 1);   // (no stumps poking up through the new floor)
     const needT = Object.values(b.need).reduce((a, v) => a + v, 0);
     if (instant || needT === 0 && !def.work) { this.finish(b); }
     else {

@@ -1,14 +1,28 @@
 import * as THREE from 'three';
 import { MATERIALS } from '../data/buildings.js';
 
-/** Things Sam has dropped on the ground: a little stack of crates that can be picked up again. */
+/**
+ * Things dropped on the ground: a little stack of crates that can be picked up again. Builders carry anything left lying
+ * about to the Stockyard (Construction.dockPiles); hungry passers-by eat dropped food.
+ */
 export class Piles {
   constructor(game) { this.game = game; this.list = []; this.geo = new THREE.BoxGeometry(0.55, 0.42, 0.55); this.mats = {}; }
   mat(m) { return this.mats[m] || (this.mats[m] = new THREE.MeshStandardMaterial({ color: MATERIALS[m] ? MATERIALS[m].color : 0xb5834a, roughness: 0.85 })); }
   add(x, z, items) {
     const near = this.list.find((p) => Math.hypot(p.x - x, p.z - z) < 1.2);
     if (near) { for (const [m, n] of Object.entries(items)) near.items[m] = (near.items[m] || 0) + n; this.rebuild(near); return near; }
-    const p = { x, z, items: { ...items }, mesh: new THREE.Group() }; p.mesh.position.set(x, 0, z); this.game.scene.add(p.mesh); this.list.push(p); this.rebuild(p); return p;
+    const p = { x, z, items: { ...items }, mesh: new THREE.Group(), t0: this.game.elapsed || 0 }; p.mesh.position.set(x, 0, z); this.game.scene.add(p.mesh); this.list.push(p); this.rebuild(p); return p;
+  }
+  /** Now and then a hungry passer-by helps themselves to dropped food (there's no Stockyard for it, or nobody's fetched it yet). */
+  update(dt) {
+    if (!this.list.length || (this.t = (this.t || 0) - dt) > 0) return; this.t = 2; const g = this.game, now = g.elapsed;
+    for (const p of this.list.slice()) {
+      if (!(p.items.food > 0) || now - (p.t0 ?? now) < 25) continue;
+      const s = g.population.sims.find((q) => (q.kind === 'resident' || q.kind === 'child') && !q.hidden && !q.inside && !q.down && q.hunger > 35 && !q.carry && Math.hypot(q.x - p.x, q.z - p.z) < 6); if (!s) continue;
+      const n = Math.min(p.items.food, Math.ceil(s.hunger / 25)); p.items.food -= n; s.hunger = Math.max(0, s.hunger - n * 25); if (!p.items.food) delete p.items.food;
+      if (s.mesh.visible && g.social) g.social.say(s, ['Ooh, free food!', 'Waste not, want not.', 'Someone\'s dropped their dinner. Lovely.'][Math.floor(Math.random() * 3)], 2.2);
+      if (this.total(p) <= 0) this.remove(p); else this.rebuild(p);
+    }
   }
   total(p) { return Object.values(p.items).reduce((a, b) => a + b, 0); }
   rebuild(p) {
