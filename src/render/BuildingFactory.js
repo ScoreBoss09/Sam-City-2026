@@ -490,47 +490,74 @@ function buildCarPark(def) {
   return { group: g, roof, colliders: cols, height: decks * Hh, doors: [], spaces };
 }
 /** Dressed stone blocks in courses (a canvas, shared): for the Lock-Up's round wall. */
-let LOCK_TEX = null;
-function lockStone() {
-  if (LOCK_TEX) return LOCK_TEX; const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), rnd = mulberry32(1779);
-  x.fillStyle = '#8e887a'; x.fillRect(0, 0, 128, 128);
-  for (let row = 0; row < 8; row++) { const y = row * 16, off = row % 2 ? 0 : 16; for (let col = -1; col < 5; col++) { const bx = col * 32 + off, v = 150 + Math.floor(rnd() * 40), t = Math.floor(rnd() * 12) - 6; x.fillStyle = `rgb(${v + t},${v - 2},${v - 14 + t})`; x.fillRect(bx + 1, y + 1, 30, 14); x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(bx + 1, y + 11, 30, 4); } }
+const LOCK_TEX = {};
+/** Red sandstone in courses (k 'wall': big dressed blocks; 'roof': the cone's smaller, darker, mossy courses; 'dress': the paler stone of the door surround and the band). */
+function lockStone(k = 'wall') {
+  if (LOCK_TEX[k]) return LOCK_TEX[k]; const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), rnd = mulberry32(1787 + k.length);
+  const roof = k === 'roof', bh = roof ? 12 : 16, base = roof ? [112, 88, 74] : k === 'dress' ? [176, 140, 122] : [170, 130, 120];
+  x.fillStyle = roof ? '#2e241e' : '#7a6058'; x.fillRect(0, 0, 128, 128);
+  for (let row = 0; row < 128 / bh; row++) {
+    const y = row * bh, off = row % 2 ? 0 : (roof ? 9 : 16); let bx = -off;
+    while (bx < 128) { const w = (roof ? 16 : 22) + Math.floor(rnd() * (roof ? 12 : 18)), v = Math.floor(rnd() * 40) - 20, grey = !roof && rnd() < 0.25 ? 14 : 0, r = base[0] + v - grey, gg = base[1] + v * 0.8 + grey * 0.3, b = base[2] + v * 0.7 + grey * 0.6;   // (some blocks greyer, as weathered sandstone goes)
+      x.fillStyle = `rgb(${r},${gg},${b})`; x.fillRect(bx + (roof ? 2 : 1), y + (roof ? 2 : 1), w - (roof ? 3 : 2), bh - (roof ? 3 : 2));
+      x.fillStyle = 'rgba(0,0,0,0.12)'; x.fillRect(bx + 1, y + bh - 4, w - 2, 3);   // weathered under-edge
+      if (rnd() < (roof ? 0.35 : 0.08)) { x.fillStyle = roof ? 'rgba(70,90,40,0.55)' : 'rgba(60,40,30,0.35)'; x.fillRect(bx + 2 + rnd() * (w - 8), y + 2 + rnd() * (bh - 6), 4 + rnd() * 6, 2 + rnd() * 3); }   // moss on the roof, dark patches on the wall
+      bx += w; }
+  }
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter;
-  return (LOCK_TEX = t);
+  return (LOCK_TEX[k] = t);
+}
+/** The date cut into the stone over the door. */
+function lockDate() {
+  if (LOCK_TEX.date) return LOCK_TEX.date; const c = document.createElement('canvas'); c.width = 128; c.height = 48; const x = c.getContext('2d');
+  x.fillStyle = '#b48e7c'; x.fillRect(0, 0, 128, 48); x.strokeStyle = '#8a6a5a'; x.lineWidth = 3; x.strokeRect(3, 3, 122, 42);
+  x.font = 'bold 30px Georgia, "Times New Roman", serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#e2c4b0'; x.fillText('1787', 65, 27); x.fillStyle = '#3a2620'; x.fillText('1787', 64, 25);   // cut in, catching the light on the lower edge
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (LOCK_TEX.date = t);
 }
 /**
- * The Lock-Up: a round village lock-up in dressed stone, an iron-strapped oak door in an arched surround, little barred
- * windows, a plaque over the door, a lantern, and a lead dome with a ball on top.
+ * The Lock-Up (1787): a round red-sandstone tower with a moulded band round the top and a cone of stone courses for a
+ * roof, a finial on the point. One iron door in a pale stone surround, the date cut over it, a flagstone in front.
+ * The door opens (Sam presses C; anyone going in or out opens it) and inside is the cell: a stone bench round the
+ * back, straw, a bucket, an iron ring in the wall and one slit of a window. Whoever's been locked up is in there.
  */
 function buildLockup(def) {
-  const g = new THREE.Group(), roof = new THREE.Group(), cols = [], W = def.w * UNIT, R = W * 0.36, H = 4.2;
-  box(g, W + 0.4, 0.25, W + 0.4, 0x9a9b9c, 0, -0.15, 0);
-  // the round wall: stone courses all round (the texture wraps the circumference in blocks of a sensible size)
-  const tg = new THREE.CylinderGeometry(R, R * 1.06, H, 20, 1, true), uv = tg.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.round(2 * Math.PI * R / 1.6), uv.getY(i) * Math.round(H / 0.8));
-  const sm = new THREE.MeshStandardMaterial({ map: lockStone(), roughness: 0.95 }), tower = new THREE.Mesh(tg, sm); tower.position.y = H / 2; tower.castShadow = tower.receiveShadow = true; g.add(tower);
-  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.12, R * 1.16, 0.45, 20), stdMat(0x7e786c)); plinth.position.y = 0.22; g.add(plinth);
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.07, R * 1.07, 0.22, 20), stdMat(0xa29c8e)); band.position.y = H - 0.05; g.add(band);   // the cornice
-  // the dome: lead, with a ball finial and a little weathervane
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(R * 1.02, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), stdMat(0x5e646c, { roughness: 0.6 })); dome.position.y = H + 0.05; roof.add(dome);
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), stdMat(0x3a3e44)); ball.position.y = H + R * 1.02 + 0.12; roof.add(ball);
-  box(roof, 0.04, 0.6, 0.04, 0x222222, 0, H + R * 1.02 + 0.2, 0); box(roof, 0.5, 0.12, 0.02, 0x222222, 0.12, H + R * 1.02 + 0.6, 0);
-  // the door: oak planks with three iron straps and a ring, in a stone arch, up two steps
-  const fz = R * 1.0; box(g, 1.5, 0.15, 0.6, 0x8a8478, 0, 0, fz + 0.25); box(g, 1.3, 0.15, 0.4, 0x8a8478, 0, 0.15, fz + 0.12);
-  box(g, 0.24, 2.3, 0.3, 0x9e9888, -0.68, 0.3, fz); box(g, 0.24, 2.3, 0.3, 0x9e9888, 0.68, 0.3, fz);
-  const arch = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.13, 6, 12, Math.PI), stdMat(0x9e9888)); arch.position.set(0, 2.6, fz); g.add(arch);
-  box(g, 1.1, 2.3, 0.12, 0x4a3420, 0, 0.3, fz + 0.04); for (const y of [0.7, 1.45, 2.2]) box(g, 1.12, 0.09, 0.05, 0x1e1e20, 0, y, fz + 0.12);
-  for (const x of [-0.42, -0.14, 0.14, 0.42]) for (const y of [0.75, 1.5, 2.25]) box(g, 0.04, 0.04, 0.03, 0x111111, x, y, fz + 0.15);   // studs
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.018, 6, 12), stdMat(0x1e1e20)); ring.position.set(0.32, 1.25, fz + 0.16); g.add(ring);
-  // the plaque over the door, and a lantern beside it
-  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.28), new THREE.MeshBasicMaterial({ map: signTexture('LOCK-UP  1779', '#2a2620', '#e8dcc0') })); plaque.position.set(0, 3.15, fz + 0.12); g.add(plaque);
-  box(g, 0.05, 0.05, 0.3, 0x1e1e20, 0.95, 2.45, fz + 0.1); box(g, 0.2, 0.3, 0.2, 0x1e1e20, 0.95, 2.18, fz + 0.28); box(g, 0.15, 0.22, 0.15, 0xffd88a, 0.95, 2.22, fz + 0.28, { emissive: 0xffb84a, emissiveIntensity: 0.9 });
-  // little barred windows round the back
-  for (const a of [Math.PI * 0.5 + 0.9, Math.PI * 1.5 - 0.9, Math.PI * 1.5, Math.PI * 0.5]) {
-    const x = Math.sin(a) * R, z = Math.cos(a) * R; if (z > R * 0.6) continue; const win = new THREE.Group(); win.position.set(x, 2.6, z); win.rotation.y = a; g.add(win);
-    box(win, 0.42, 0.55, 0.12, 0x141414, 0, 0, 0.02); box(win, 0.56, 0.08, 0.2, 0x9e9888, 0, 0.55, 0.03); box(win, 0.56, 0.08, 0.2, 0x9e9888, 0, -0.08, 0.03); for (const bx of [-0.12, 0, 0.12]) box(win, 0.03, 0.55, 0.03, 0x2a2a2c, bx, 0, 0.1);
-  }
-  cols.push({ cx: 0, cz: 0, sx: R * 1.8, sz: R * 1.8 });
-  return { group: g, roof, colliders: cols, height: H + 1, doors: [] };
+  const g = new THREE.Group(), roof = new THREE.Group(), cols = [], R = 1.85, T = 0.34, H = 3.0, RH = 3.4, DW = 0.96, DH = 2.05, a = Math.asin((DW / 2 + 0.04) / R), ai = Math.asin((DW / 2 + 0.04) / (R - T));
+  const sand = (k, rx, ry, side = THREE.FrontSide) => { const tx = lockStone(k).clone(); tx.needsUpdate = true; tx.repeat.set(rx, ry); return new THREE.MeshStandardMaterial({ map: tx, roughness: 0.95, side }); };
+  const C = 2 * Math.PI * R, wallM = sand('wall', Math.round(C / 1.5), H / 1.45), innerM = sand('wall', Math.round(C / 2.6), H / 2.6, THREE.BackSide), dressM = sand('dress', 1, 1);
+  // the round wall, open where the door is; the stone over the door; the inside face
+  const ring = (r0, r1, h, t0, tl, m, y) => { const geo = new THREE.CylinderGeometry(r0, r1, h, 32, 1, true, t0, tl), mesh = new THREE.Mesh(geo, m); mesh.position.y = y; mesh.castShadow = mesh.receiveShadow = true; g.add(mesh); return mesh; };
+  ring(R, R * 1.025, H, a, Math.PI * 2 - 2 * a, wallM, H / 2); ring(R - T, R - T, H, ai, Math.PI * 2 - 2 * ai, innerM, H / 2);
+  ring(R, R * (1 + 0.025 * (1 - (DH + H) / 2 / H)), H - DH, -a, 2 * a, wallM, (DH + H) / 2); ring(R - T, R - T, H - DH, -ai, 2 * ai, innerM, (DH + H) / 2);
+  { const top = new THREE.Mesh(new THREE.RingGeometry(R - T, R, 32), stdMat(0x7a5a4c, { side: THREE.DoubleSide })); top.rotation.x = -Math.PI / 2; top.position.y = H; g.add(top); }
+  // the plinth course, the moulded band round the top (two steps), the cone of stone and its finial
+  { const p = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.04, R * 1.06, 0.28, 32, 1, true, a + 0.05, Math.PI * 2 - 2 * a - 0.1), dressM); p.position.y = 0.14; g.add(p); }
+  const band = (r0, r1, h, y) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, h, 32), dressM); m.position.y = y; m.castShadow = true; roof.add(m); };
+  band(R + 0.22, R + 0.06, 0.16, H + 0.02); band(R + 0.24, R + 0.24, 0.1, H + 0.15);
+  { const cone = new THREE.Mesh(new THREE.ConeGeometry(R + 0.16, RH, 32, 1, true), sand('roof', 14, 8)); cone.position.y = H + 0.2 + RH / 2; cone.castShadow = true; roof.add(cone); }
+  { const f = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, 0.3, 10), dressM); f.position.y = H + 0.2 + RH - 0.05; roof.add(f); const k = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), dressM); k.position.y = H + 0.2 + RH + 0.16; roof.add(k); }
+  { const ceil = new THREE.Mesh(new THREE.ConeGeometry(R - T + 0.02, RH * 0.8, 24, 1, true), sand('roof', 7, 4, THREE.BackSide)); ceil.position.y = H + RH * 0.4; g.add(ceil); }   // the inside of the cone, seen from in the cell
+  // the door surround: pale dressed jambs and lintel standing proud of the wall, the reveals through it, the date over the top
+  const fz = R * Math.cos(a) + 0.02, jx = DW / 2 + 0.13;
+  for (const s of [-1, 1]) { box(g, 0.26, DH + 0.05, 0.12, 0xb08a76, s * jx, 0.1, fz + 0.04); box(g, 0.06, DH, T + 0.06, 0x8a6a5a, s * (DW / 2 + 0.03), 0, R - T / 2 - 0.02); }
+  box(g, DW + 0.56, 0.3, 0.14, 0xb08a76, 0, DH + 0.05, fz + 0.05); box(g, DW + 0.08, 0.1, T + 0.06, 0x8a6a5a, 0, DH - 0.02, R - T / 2 - 0.02);
+  { const date = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.29), new THREE.MeshBasicMaterial({ map: lockDate() })); date.position.set(0, DH + 0.2, fz + 0.125); g.add(date); }
+  box(g, 1.5, 0.08, 1.15, 0x9a8e84, 0.05, -0.03, R + 0.62); box(g, 0.7, 0.085, 0.55, 0x8e847a, 0.4, -0.03, R + 0.9);   // two worn flags in front of the step
+  // the door: an iron plate on its hinges, a long handle, rivets, a grille to look in through
+  const pivot = new THREE.Group(); pivot.userData.keep = true; pivot.position.set(-DW / 2 + 0.02, 0.05, R * Math.cos(a) - 0.06); g.add(pivot);
+  { const L = new THREE.Group(); pivot.add(L); box(L, DW - 0.04, DH - 0.06, 0.06, 0x24272b, DW / 2 - 0.02, 0, 0); for (const y of [0.3, 1.0, 1.7]) box(L, DW - 0.1, 0.06, 0.08, 0x1a1c1f, DW / 2 - 0.02, y, 0.005);
+    box(L, 0.04, 0.42, 0.06, 0x111214, DW - 0.18, 0.95, 0.06); for (const y of [0.3, 1.0, 1.7]) for (const xx of [0.1, DW / 2, DW - 0.14]) box(L, 0.035, 0.035, 0.04, 0x0e0f10, xx, y + 0.01, 0.045);
+    box(L, 0.3, 0.2, 0.065, 0x0a0a0a, DW / 2, 1.55, 0.002); for (const xx of [-0.08, 0, 0.08]) box(L, 0.025, 0.2, 0.08, 0x2a2c30, DW / 2 + xx, 1.55, 0.01); }
+  // inside: the floor, a stone bench round the back, straw, a bucket, an iron ring, the slit window
+  { const fl = new THREE.Mesh(new THREE.CircleGeometry(R - T + 0.02, 24), stdMat(0x6e625a)); fl.rotation.x = -Math.PI / 2; fl.position.y = 0.03; g.add(fl); }
+  const bz = -(R - T) + 0.3; box(g, 1.7, 0.42, 0.5, 0x8a6a5a, 0, 0, bz); box(g, 1.74, 0.06, 0.54, 0xa07e6c, 0, 0.42, bz);
+  for (const [sx, sz, r] of [[-0.5, 0.35, 0.3], [0.2, 0.55, -0.4], [0.7, 0.1, 0.9]]) { const st = box(g, 0.7, 0.05, 0.4, 0xc8a85a, sx, 0.03, sz); st.rotation.y = r; }
+  { const bk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 0.3, 10), stdMat(0x5a4a3a)); bk.position.set(1.05, 0.18, -0.35); g.add(bk); }
+  { const rg = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.02, 6, 12), stdMat(0x1e1e20)); rg.position.set(-1.2, 1.2, -0.75); rg.rotation.y = 0.9; g.add(rg); }
+  { const az = Math.PI + 0.25, sx = Math.sin(az) * (R - T / 2), sz = Math.cos(az) * (R - T / 2), w = new THREE.Group(); w.position.set(sx, 2.25, sz); w.rotation.y = az; g.add(w); box(w, 0.14, 0.5, T + 0.08, 0x141414, 0, -0.25, 0); box(w, 0.03, 0.5, 0.03, 0x2a2a2c, 0, -0.25, 0); }
+  // colliders: the wall as a ring of short blocks with a gap for the door
+  for (let i = 0; i < 18; i++) { const th = (i + 0.5) / 18 * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(th), Math.cos(th))) < a + 0.12) continue; const rr = R - T / 2; cols.push({ cx: Math.sin(th) * rr, cz: Math.cos(th) * rr, sx: 0.62, sz: 0.62, h: H + 1 }); }
+  cols.push({ cx: 0, cz: bz, sx: 1.7, sz: 0.5, h: 0.45 });   // (the bench: low enough to sit or stand on)
+  return { group: g, roof, colliders: cols, height: H + RH + 0.5, doors: [{ pivot, open: -1.45 }], bench: { x: 0, z: bz } };
 }
 
 /** Set by mods (render/Models.js) so buildings can be blocky models. */

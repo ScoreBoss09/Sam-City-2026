@@ -353,7 +353,7 @@ export const BUILDINGS = {
   lockup: {
     name: 'The Lock-Up', cat: 'civic', w: 1, d: 1, floors: 1, wall: 'stone', roof: 'none', special_ext: 'lockup',
     mat: { stone: 8 }, work: 24, layout: 'none', permit: { cost: 250, pop: 6 }, tab: 'Civic',
-    blurb: 'A round stone tower with a domed roof and slit windows. Drunks, vagrants and troublemakers spend the night here.',
+    blurb: 'A round red-sandstone lock-up with a stone cone for a roof, 1787 cut over its iron door. Drunks, vagrants and troublemakers spend the night inside.',
   },
   // ----- the high street and the estate, mid-90s -----
   butcher: {
