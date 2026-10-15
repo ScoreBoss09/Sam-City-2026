@@ -33,7 +33,7 @@ export class Groundskeepers {
     const g = this.game, at = g.lift.doorOut;
     this.crew.forEach((s, i) => {
       const q = this.jobs[i], j = q[0];
-      if (!j) { if (Math.hypot(s.x - at.x, s.z - at.z) < 2) s.remove = true; else if (!s.path.length) s.goTo({ x: at.x, z: at.z }); return; }
+      if (!j) { if (!s.leaving) g.population.depart(s); return; }   // done: back down the Lift (in the cage, like everyone)
       if (Math.hypot(s.x - j.x, s.z - j.z) < 1.8) { s.digWork = (s.digWork || 0) + dt; s.digging = true; if (s.digWork > 2.5) { s.digWork = 0; s.digging = false; j.fn(); q.shift(); g.particles.burst(j.x, 0.3, j.z, 0x6a5a3a, 6, 0.6, 0.4, 0.06); } }
       else if (!s.path.length || (s.re = (s.re || 0) - dt) <= 0) { s.re = 4; if (!s.goTo({ x: j.x, z: j.z })) q.shift(); }
     });

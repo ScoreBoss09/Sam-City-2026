@@ -364,7 +364,8 @@ function buildExterior0(def, uid = 1, era = 2) {
       const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 2.4, 10), stdMat(0xaeb4bc)); tank.position.set(0, 1.5, 2.2); tank.castShadow = true; roof.add(tank);
     }
     if (def.roof === 'factory') {
-      for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(prism(2.8, 1.4, D - 0.6), stdMat(0x7a8088, { side: THREE.DoubleSide, flatShading: true })); s.position.set(-W / 2 + 2.4 + i * 3.6, 0.3, 0); s.castShadow = true; roof.add(s); }
+      const nR = Math.max(1, Math.floor((W - 1.2) / 3.6));   // as many sawtooth ridges as fit inside the parapet (four always overhung a 12 m building)
+      for (let i = 0; i < nR; i++) { const s = new THREE.Mesh(prism(2.8, 1.4, D - 0.6), stdMat(0x7a8088, { side: THREE.DoubleSide, flatShading: true })); s.position.set((i - (nR - 1) / 2) * 3.6, 0.3, 0); s.castShadow = true; roof.add(s); }
       for (let k = 0; k < 5; k++) box(roof, 1.0, 1.6, 1.0, k % 2 ? 0xf2f2ee : 0xb23a2d, W / 2 - 1.5, 0.35 + k * 1.6, -D / 2 + 1.5);
     }
     if (def.roof === 'tank') {
@@ -872,6 +873,15 @@ export function furnitureColliders(lay, b) {
 }
 
 // ---------- primitive-era pieces ----------
+let FIRE_GLOW = null;
+/** The warm pool of light round a campfire, drawn (one shared material: Decor turns it up at night). */
+export function fireGlowMat() {
+  if (FIRE_GLOW) return FIRE_GLOW;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 2, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,190,110,0.9)'); gr.addColorStop(0.35, 'rgba(255,140,50,0.45)'); gr.addColorStop(1, 'rgba(255,110,30,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (FIRE_GLOW = new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false }));
+}
 function buildCamp(def, g, roof, cols) {
   g.clear(); const W = def.w * UNIT, D = def.d * UNIT;
   const dirt = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.6, 0.12, 14), stdMat(0x8a7656)); dirt.position.y = 0.05; dirt.receiveShadow = true; g.add(dirt);
@@ -883,8 +893,10 @@ function buildCamp(def, g, roof, cols) {
   for (const [x, z] of [[-1.5, 0.2], [1.2, 0.9], [0.3, -1.4]]) { const pl = box(g, 0.07, 2.0, 0.07, 0x3a2a1a, x * 0.55, 0.0, z * 0.55); pl.rotation.z = (x > 0 ? -1 : 1) * 0.28; }
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 0.3, 8), stdMat(0x222222)); pot.position.y = 1.05; pot.castShadow = true; g.add(pot);
   for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4; const lg = box(g, 1.7, 0.4, 0.5, 0x6a4a2a, Math.cos(a) * 2.5, 0.0, Math.sin(a) * 2.5); lg.rotation.y = -a + Math.PI / 2; box(g, 0.2, 0.2, 0.52, 0x5a3a1c, Math.cos(a) * 2.5 + 0.6 * Math.sin(a), 0.4, Math.sin(a) * 2.5 - 0.6 * Math.cos(a)).rotation.y = -a + Math.PI / 2; }
+  // the glow it throws on the ground round it: the same on every campfire (no lamp needed), brighter at night (Decor sets it)
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), fireGlowMat()); glow.rotation.x = -Math.PI / 2; glow.position.y = 0.13; glow.renderOrder = 2; fl.add(glow);
   cols.push({ cx: 0, cz: 0, sx: 2.4, sz: 2.4 });
-  const update = (dt, t) => { const k = 1 + Math.sin(t * 17) * 0.12 + Math.sin(t * 29) * 0.08; f1.scale.set(1 + Math.sin(t * 13) * 0.08, k, 1); f2.scale.set(1, 1 + Math.sin(t * 23 + 1) * 0.2, 1); f3.scale.set(1, 1 + Math.sin(t * 19 + 2) * 0.25, 1); };
+  const update = (dt, t) => { glow.scale.setScalar(1 + Math.sin(t * 11) * 0.04); const k = 1 + Math.sin(t * 17) * 0.12 + Math.sin(t * 29) * 0.08; f1.scale.set(1 + Math.sin(t * 13) * 0.08, k, 1); f2.scale.set(1, 1 + Math.sin(t * 23 + 1) * 0.2, 1); f3.scale.set(1, 1 + Math.sin(t * 19 + 2) * 0.25, 1); };
   return { group: g, roof, colliders: cols, height: 1.2, update, fire: { x: 0, y: 1.0, z: 0 }, smokeSrc: { x: 0, y: 1.6, z: 0 } };
 }
 /** A red English pillar box on a little paved square, with a flag that pops up when there is post. */

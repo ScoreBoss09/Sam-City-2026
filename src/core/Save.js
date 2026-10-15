@@ -2,6 +2,7 @@ import { T } from '../world/World.js';
 import { MAP } from '../config.js';
 import { Sim } from '../sim/Sim.js';
 import { QUIRKS } from '../data/character.js';
+import { FAIR_SKINS } from '../data/people.js';
 
 const KEY = 'samcity-save-v1';
 const SAVE_V = 2;   // 2: the 8 m grid (older saves were on the small 4 m grid and can't be carried over)
@@ -113,6 +114,7 @@ export function restore(g, d) {
   // citizens
   const sims = d.sims.map((s) => {
     const home = made[s.home]; const x = home ? home.doorIn.x : g.plaza.x, z = home ? home.doorIn.z : g.plaza.z;
+    if (s.look && s.look.skin !== undefined && !FAIR_SKINS.includes(s.look.skin)) s.look.skin = FAIR_SKINS[(s.name || '').length % FAIR_SKINS.length];   // (older saves: the look chosen for the setting)
     const sim = new Sim(g, { name: s.name, first: s.first, surname: s.surname, gender: s.gender, age: s.age, kind: s.kind, trait: s.trait, look: s.look, x, z, inside: home || null, actor: s.actor });
     sim.hunger = s.hunger; sim.orient = s.orient; sim.moodBoost = s.mood || 0; sim.talkCount = s.talk || 0; sim.samRel = s.samRel || 0; sim.gaveClue = s.gaveClue; sim.coupleDay = s.coupleDay; sim.married = !!s.married; restoreTalk(g, sim, s); P.names.add(s.name); P.sims.push(sim); return sim;
   });

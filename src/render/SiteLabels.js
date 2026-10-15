@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { MATERIALS } from '../data/buildings.js';
 
+const V = new THREE.Vector3();
 /** Floating signs over construction sites: what is still missing and how far the build has got. */
 export class SiteLabels {
   constructor(game) { this.game = game; this.t = 0; }
@@ -13,6 +14,9 @@ export class SiteLabels {
       const sc = god ? Math.max(8, g.god.dist * 0.16) : 3.2, far = !god && Math.hypot(b.cx - P.x, b.cz - P.z) > 45, m = b.label.material;
       b.label.scale.set(sc, sc / 4, 1); b.label.position.set(b.cx, god ? 6 + sc * 0.2 : Math.max(4.2, (b.def.floors || 1) * 3.2 + 1.2), b.cz);
       b.label.visible = god || (!inside && !far); if (m.depthTest === god) { m.depthTest = !god; m.needsUpdate = true; }
+      // a fixed drawing order where signs overlap (lower on screen in front, then by building), so two signs at about the same
+      // distance don't swap places from frame to frame as the camera moves
+      if (god && b.label.visible) { V.copy(b.label.position).project(g.camera); b.label.renderOrder = 30 + Math.round((1 - V.y) * 40) * 1000 + (b.uid % 1000); } else b.label.renderOrder = 30;
     }
     this.t -= dt; if (this.t > 0) return; this.t = 0.4;
     for (const b of g.buildings.list) {

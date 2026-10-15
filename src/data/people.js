@@ -4,10 +4,10 @@ export const FEMALE = ['Olivia', 'Amelia', 'Emily', 'Isla', 'Ava', 'Mia', 'Grace
 export const SURNAMES = ['Smith', 'Jones', 'Taylor', 'Brown', 'Wilson', 'Evans', 'Roberts', 'Johnson', 'Walker', 'Wright', 'Robinson', 'Thompson', 'White', 'Hughes', 'Edwards', 'Green', 'Hall', 'Wood', 'Harris', 'Lewis', 'Clarke', 'Baker', 'Cooper', 'Fletcher', 'Archer', 'Turner', 'Mason', 'Fisher', 'Hill', 'Ward', 'Bennett', 'Carter', 'Marsh', 'Pearce', 'Hargreaves', 'Ashworth', 'Whitaker', 'Holloway', 'Thornton', 'Garner', 'Pickering', 'Sutton', 'Bradshaw', 'Atkinson', 'Chapman', 'Dawson', 'Fox', 'Grant', 'Hartley', 'Kemp'];
 // mostly pale/olive with some diversity, like a modern English town
 export const SKINS = [0xf6d9c2, 0xf3d0b5, 0xefc7a8, 0xe8bd9a, 0xe0b48f, 0xd6a77f, 0xc68e63, 0xa87550, 0x8a5a3a, 0x6e4529];
-/** Skin tone for a new townsperson: the village is overwhelmingly fair-skinned English folk (about 98%). */
+/** Skin tone for a new townsperson: fair-skinned English village folk (the look chosen for the 1995 setting). */
 export const FAIR_SKINS = [0xf8dcc6, 0xf6d9c2, 0xf3d0b5, 0xf0cbb0, 0xefc7a8, 0xeac0a0, 0xe8bd9a, 0xe4b894, 0xe0b48f];
 export const OTHER_SKINS = [0xd6a77f, 0xc68e63, 0xa87550, 0x8a5a3a, 0x6e4529];
-export function pickSkin(r = Math.random) { const a = r() < 0.98 ? FAIR_SKINS : OTHER_SKINS; return a[Math.floor(r() * a.length)]; }
+export function pickSkin(r = Math.random) { return FAIR_SKINS[Math.floor(r() * FAIR_SKINS.length)]; }
 export const HAIRS = [0x2a1d12, 0x3b2a1a, 0x4a3320, 0x4a3320, 0x6b4a2a, 0x6b4a2a, 0x8a5a2a, 0x9a6a3a, 0xc9a24a, 0xdcc07a, 0xe6d08e, 0x7a2e1e, 0xa8431f, 0xb85a2a, 0x151515];
 export const GREY_HAIRS = [0xb9b9b9, 0xd8d8d8, 0x9a9a9a];
 export const TOPS_M = [0x3f5f8f, 0x8a3b32, 0x4f6f4a, 0x7a6a4a, 0x5a5f69, 0x2f4f6a, 0xb8a27a, 0x6b4a3a, 0x9aa5ad, 0x445a3a];

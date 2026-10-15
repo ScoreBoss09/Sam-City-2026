@@ -132,7 +132,8 @@ export class GodControls {
     const n = this.nodeAt(tx, tz); if (n) return n.label; const t = w.terrain[w.idx(tx, tz)]; return ['Water', 'Open land', 'Forest', 'Beach'][t];
   }
   queryAt(p, tx, tz) {
-    const g = this.game; const s = g.population.nearest(p.x, p.z, Math.max(3, Math.min(9, this.dist * 0.035))); if (s) return { sim: s };   // (easier to hit from high up)
+    const g = this.game, r = Math.max(3, Math.min(9, this.dist * 0.035)); const s = g.population.nearest(p.x, p.z, r); if (s) return { sim: s };   // (easier to hit from high up)
+    if (g.carting) { const c = g.carting.carts.find((q) => q.w && !q.w.remove && Math.hypot(q.mesh.position.x - p.x, q.mesh.position.z - p.z) < r); if (c) return { sim: c.w }; }   // a horse and cart: its carter (who's sat up on it)
     const b = g.world.buildingAt(tx, tz); if (b) return { b }; const n = this.nodeAt(tx, tz); if (n) return { node: n }; return { tile: [tx, tz] };
   }
   /** A resource on this tile: what it is and what it gives. */

@@ -186,7 +186,7 @@ export class BuildingManager {
   }
   /** Build and place the outside of a finished building (in the style of its era). */
   mountExterior(b) {
-    const def = b.def, g = this.game; if (b.age === undefined) b.age = g.tech ? g.tech.age : 4; const ext = buildExterior(styleDef(def, b.age), b.uid, b.era ?? 0); b.ext = ext;
+    const def = b.def, g = this.game; if (b.age === undefined) b.age = g.tech ? g.tech.age : 4; const ext = buildExterior(styleDef(def, b.age), b.uid, b.era ?? 0); b.ext = ext; b.signMesh = null;   // (the OPEN sign goes back on the new door)
     ext.group.position.set(b.cx, 0, b.cz); ext.group.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.group);
     ext.roof.position.add(new THREE.Vector3(b.cx, 0, b.cz)); ext.roof.rotation.y = b.rot * Math.PI / 2; this.scene.add(ext.roof);
     if (!def.park && !def.special) { const W = def.w * UNIT, D = def.d * UNIT; const dec = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 5), contactMat()); dec.rotation.x = -Math.PI / 2; dec.position.y = 0.045; dec.renderOrder = 1; ext.group.add(dec); }
@@ -325,7 +325,7 @@ export class BuildingManager {
     // window lights: on while somebody in there is awake (or the place is open), off when they've gone to bed
     if (this._acc + dt > 0.25) {
       const glow = windowGlow(), h = g.clock.hour;
-      for (const b of this.list) { if (!b.glassMat || b.state !== 'done' || b.burning) continue; const want = glow > 0.05 && this.isLit(b, h) ? 1 : 0; b.litK += (want - b.litK) * 0.35; b.glassMat.emissiveIntensity = glow * 0.45 * (0.03 + 0.97 * b.litK); if (b.ext && b.ext.curtains) b.ext.curtains.visible = glow > 0.25 && (b.residents.some((s) => s.inside === b) || b === this.playerInside || (b.residents.length > 0 && (h >= 22.5 || h < 6.5))); }   // curtains drawn after dark while anyone's home
+      for (const b of this.list) { if (!b.glassMat || b.state !== 'done' || b.burning) continue; const want = glow > 0.05 && this.isLit(b, h) ? 1 : 0; b.litK += (want - b.litK) * 0.35; b.glassMat.emissiveIntensity = glow * 0.45 * (0.03 + 0.97 * b.litK); if (b.ext && b.ext.curtains) b.ext.curtains.visible = glow > 0.25 && (b.residents.length > 0 || b === this.playerInside || b === this.game.starterHome || b.reservedForPlayer); }   // curtains drawn at dusk in any home that's lived in (Sam's too), and left till morning: not opened the moment someone steps out
     }
     // warm interior light follows the player indoors
     this._acc = (this._acc || 0) + dt; this.t = (this.t || 0) + dt; const tick = this._acc > 0.25; if (tick) this._acc = 0;

@@ -461,6 +461,13 @@ export class UI {
   }
   /** The card for a townsperson picked with Query: who they are, where they live and work, how they're doing. Stays (and
    *  keeps up to date) until closed; pins show them, their home and their work on the map. */
+  /** A carter out with the cart: where to, and what's on it. */
+  cartLine(s) {
+    const C = this.game.carting, c = C && s.carting && C.carts.find((q) => q.w === s); if (!c) return '';
+    const goods = Object.entries(c.load || {}).filter(([, n]) => n > 0).map(([m, n]) => `${n} ${MATERIALS[m] ? MATERIALS[m].name.toLowerCase() : m}`).join(', ') || 'nothing', site = `${c.s && c.s.def ? c.s.def.name : 'new building'} site`;
+    const where = c.stage === 'toYard' ? `to the Stockyard to load up ${goods} for the ${site}` : c.stage === 'toSite' ? `taking ${goods} from the Stockyard to the ${site}` : `back to the ${c.yard.def.name} (empty)`;
+    return `<div class="qline"><b>Carting</b> ${where}</div><div class="qline"><b>On the cart</b> ${c.stage === 'toSite' ? goods : 'nothing yet'}</div>`;
+  }
   simCard() {
     const s = this.qSim, q = $('query'), g = this.game; if (!s) return;
     const bar = (label, v, col) => `<div class="qbar"><span>${label}</span><i><b style="width:${Math.round(Math.max(0, Math.min(1, v)) * 100)}%;background:${col}"></b></i></div>`;
@@ -470,7 +477,7 @@ export class UI {
     const dyn = `<div class="qline">${s.gender === 'f' ? 'Female' : 'Male'}, ${Math.floor(s.age)} · ${s.trait}${s.quirk && s.quirk.label ? ' · ' + s.quirk.label : ''}</div>
       <div class="qline"><b>Job</b> ${s.roleName}${s.workplace ? ' at the ' + s.workplace.def.name : s.kind === 'child' ? ' (school and play)' : ''}</div>
       <div class="qline"><b>Home</b> ${s.home ? 'the ' + s.home.def.name : s.homeless ? 'sleeping rough' : s.kind === 'visitor' ? 'a day trip' : 'none yet'}${commute !== null ? ` · ${commute} m from work` : ''}</div>
-      <div class="qline"><b>Now</b> ${doing}${s.inside ? ' in the ' + s.inside.def.name : ''}</div>
+      <div class="qline"><b>Now</b> ${doing}${s.inside ? ' in the ' + s.inside.def.name : ''}</div>${this.cartLine(s)}
       ${bar('Mood', (s.mood + 1) / 2, s.mood > 0 ? '#5fd38a' : s.mood > -0.35 ? '#e8c04a' : '#e2574c')}${bar('Fed', 1 - s.hunger / 100, '#e8a04a')}${bar('Likes Sam', (s.samRel || 0) / 100, '#7aa8ff')}
       <div class="qline">${s.partner ? '<b>Partner</b> ' + s.partner.name + ' · ' : ''}${kids.length ? '<b>Children</b> ' + kids.join(', ') + ' · ' : ''}<b>Friends</b> ${fr}</div>`;
     // the buttons are made once per person (redrawing them twice a second would swallow clicks); only the details refresh
