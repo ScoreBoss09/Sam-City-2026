@@ -617,7 +617,8 @@ export class Player {
     if (fx.lotto) { const r = Math.random(), w = r < 0.01 ? 500 : r < 0.05 ? 50 : r < 0.18 ? 10 : 0; if (w) { g.economy.earn(w, 'Scratchcards'); Sfx.play('cash'); } g.ui.toast(w ? `Scratch, scratch... £${w}! It could be you, and it was.` : 'Scratch, scratch... nothing. Not even a free ticket.', 2600); }
     { const n = name.toLowerCase(); this.holding = /pint|lager|bitter|cider|stout|shandy|snakebite|ale\b|guinness|half/.test(n) ? 'pint' : /chips|cod|haddock|fish|kebab|saveloy|pie|curry|burger|sausage/.test(n) ? 'chips' : /tea|coffee|cuppa|hot choc/.test(n) ? 'cup' : /video|vhs|film/.test(n) ? 'video' : /popcorn/.test(n) ? 'popcorn' : /ticket/.test(n) ? 'ticket' : 'bag'; this.holdT = 45; }   // and Sam walks off with it
     Sfx.play('cash'); if (c.who && c.who.mesh && c.who.mesh.visible) g.social.say(c.who, pick(['Ta, love.', 'There you go, Sam.', 'Cheers, Sam.', 'Anything else?', 'Mind how you go.', 'Lovely.']), 2);
-    if (!fx.lotto) g.ui.toast(`You buy ${name}.${fx.note ? ' ' + fx.note : ''}`, 2400);
+    if (fx.camera) g.ui.notice(`You bought ${name}`, `${fx.note || ''}\n\nWhen somebody famous is in town, talk to them: you can have your photo taken together, and they'll sign it. The photos go in the Album in your Journal (${g.input.padActive ? 'D-pad ←' : 'J'}).`, { icon: '📷', from: 'Receipt' });   // (worth reading properly)
+    else if (!fx.lotto) g.ui.toast(`You buy ${name}.${fx.note ? ' ' + fx.note : ''}`, 2400);
     return { ok: true };
   }
   /** Drink wears off; very drunk Sam stumbles now and then, and the police take an interest in a drunk on wheels. */

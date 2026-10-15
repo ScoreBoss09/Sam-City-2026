@@ -238,7 +238,7 @@ button.padfocus, #planmenu button.padfocus, #planmenu .card.built.padfocus, .sub
 #title .optbtn, #title .slot { text-align: left; font-size: 13px; }
 #title .slot.del { align-self: flex-end; font-size: 11px; padding: 3px 10px; margin-top: -4px; }
 /* the wake-up scene */
-body.cutscene #app > *:not(#view):not(#intro):not(#fade) { visibility: hidden !important; }
+body.cutscene #app > *:not(#view):not(#intro):not(#fade):not(#cine):not(#notice) { visibility: hidden !important; }
 #intro { position: absolute; inset: 0; z-index: 80; pointer-events: none; }
 #intro .lid { position: absolute; left: -15%; right: -15%; height: 50%; background: #0d0605; filter: blur(26px); transition: none; }
 #intro .lid.top { top: -8%; border-radius: 0 0 50% 50% / 0 0 30% 30%; } #intro .lid.bot { bottom: -8%; border-radius: 50% 50% 0 0 / 30% 30% 0 0; }
@@ -348,3 +348,15 @@ body.cutscene #app > *:not(#view):not(#intro):not(#fade) { visibility: hidden !i
 #journal .album figcaption { margin-top: 5px; font-size: 12px; line-height: 1.25; } #journal .album figcaption b { display: block; } #journal .album figcaption small { color: #6a5a3a; font-size: 10px; }
 #photoview { position: absolute; inset: 0; z-index: 80; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
 #photoview img { max-width: 92vw; max-height: 88vh; box-shadow: 0 8px 30px rgba(0,0,0,.6); transform: rotate(-1deg); }
+
+/* cutscenes: letterbox bars, a caption card (what's happening) or a line of speech */
+#cine { position: absolute; inset: 0; z-index: 80; pointer-events: none; }
+#cine .bar { position: absolute; left: 0; right: 0; height: 11%; background: #000; animation: cinebar .5s ease-out both; } #cine .bar.top { top: 0; } #cine .bar.bot { bottom: 0; }
+@keyframes cinebar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+#cine .cap { position: absolute; left: 0; right: 0; bottom: 13%; display: grid; justify-items: center; gap: 6px; padding: 0 max(16px, 6vw); text-align: center; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.9); opacity: 0; transition: opacity .35s; }
+#cine .cap.card, #cine .cap.say { opacity: 1; }
+#cine .cap .ttl { font: 700 15px var(--ui-head, 'Trebuchet MS', sans-serif); letter-spacing: .16em; text-transform: uppercase; color: var(--accent, #ffd23f); }
+#cine .cap .txt { font: 600 20px/1.45 var(--ui-font, 'Trebuchet MS', sans-serif); max-width: 58ch; }
+#cine .cap.card .ttl { font-size: 26px; letter-spacing: .08em; }
+#cine .skip { position: absolute; right: 28px; bottom: 3%; color: #fff; font: 600 13px var(--ui-font, sans-serif); letter-spacing: .08em; opacity: 0; transition: opacity .25s; } #cine .skip.on { opacity: .85; }
+#cine .skip .key { display: inline-block; padding: 2px 8px; border: 1px solid rgba(255,255,255,.6); border-radius: 5px; margin-right: 6px; }
