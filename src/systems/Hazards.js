@@ -6,9 +6,10 @@ import { TILE } from '../config.js';
 
 const bucketGeo = new THREE.CylinderGeometry(0.16, 0.12, 0.26, 8, 1, true), bucketMat = new THREE.MeshStandardMaterial({ color: 0x8a8e96, metalness: 0.4, roughness: 0.5, side: THREE.DoubleSide });
 const waterGeo = new THREE.CircleGeometry(0.15, 8).rotateX(-Math.PI / 2), waterMat = new THREE.MeshStandardMaterial({ color: 0x5aa8d8, roughness: 0.1 });
+const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1), EMATS = new Map(), ENGINE_MAT = (c, o) => { const k = c + JSON.stringify(o); let m = EMATS.get(k); if (!m) EMATS.set(k, (m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o }))); return m; };
 /** A red fire engine with a ladder on the roof and a big brass bell. */
 function makeEngine() {
-  const g = new THREE.Group(), add = (w, h, d, c, x, y, z, o = {}) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o })); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+  const g = new THREE.Group(), add = (w, h, d, c, x, y, z, o = {}) => { const m = new THREE.Mesh(UNIT_BOX, ENGINE_MAT(c, o)); m.scale.set(w, h, d); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
   add(2.2, 1.5, 5.6, 0xc8202a, 0, 1.35, -0.3); add(2.2, 1.3, 1.6, 0xc8202a, 0, 1.25, 2.9); add(1.9, 0.55, 0.08, 0x9fd8f0, 0, 1.55, 3.71, { emissive: 0x1a3a4a }); add(2.0, 0.2, 7.0, 0x2a2a2a, 0, 0.55, 0.3);
   for (const x of [-0.45, 0.45]) add(0.08, 0.08, 5.0, 0xd8d8d8, x, 2.2, -0.4, { metalness: 0.6 }); for (let i = 0; i < 10; i++) add(0.9, 0.06, 0.06, 0xd8d8d8, 0, 2.2, -2.8 + i * 0.5, { metalness: 0.6 });   // the ladder
   add(0.3, 0.3, 0.3, 0xd8a83a, 0.8, 2.05, 2.6, { metalness: 0.8, roughness: 0.3 });   // the bell

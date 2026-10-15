@@ -48,7 +48,7 @@ export class Glass {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w.u1 - w.u0, w.y1 - w.y0), mat), mid = (w.u0 + w.u1) / 2, y = w.fl * WALL_H + (w.y0 + w.y1) / 2, o = WALL_T / 2 - 0.03;
     if (f === 0) m.position.set(mid - W / 2, y, D / 2 - o); else if (f === 1) { m.position.set(mid - W / 2, y, -D / 2 + o); m.rotation.y = Math.PI; }
     else if (f === 2) { m.position.set(-W / 2 + o, y, mid - D / 2); m.rotation.y = -Math.PI / 2; } else { m.position.set(W / 2 - o, y, mid - D / 2); m.rotation.y = Math.PI / 2; }
-    m.renderOrder = 2; b.ext.group.add(m);
+    m.renderOrder = 2; m.userData.keep = true; b.ext.group.add(m);   // (it gets mended: never part of the district's batch)
     g.particles.burst(e.x - d.x * 0.3, e.y, e.z - d.z * 0.3, 0xd8eef8, 16, 2.4, 2.2, 0.05);
     const P = g.player, dist = Math.hypot(P.x - e.x, P.z - e.z); if (dist < 60) { const v = Math.max(0.15, 1 - dist / 60); Sfx.noise(0.35, { freq: 2800, vol: 0.3 * v, type: 'highpass' }); for (let i = 0; i < 4; i++) Sfx.tone(2400 + Math.random() * 1800, 0.06, { type: 'sine', vol: 0.03 * v, delay: 0.08 + i * 0.07 }); }
     for (const q of g.population.sims) if (q.inside === b && !(q.down > 0) && q.mesh.visible && Math.random() < 0.5) { g.social.say(q, pick(['My window!', 'What the...!', 'Who did that?!', 'Get down!']), 2); break; }

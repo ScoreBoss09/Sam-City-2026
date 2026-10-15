@@ -6,12 +6,13 @@ import { MATERIALS } from '../data/buildings.js';
 import { Sfx } from '../core/Sfx.js';
 
 /** Delivery trucks: spawn at the Lift, drive along roads to the depot, unload, return. */
+const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);   // (one box for every lorry: a delivery a day never leaves geometry behind)
 export class Logistics {
   constructor(game) { this.game = game; this.trucks = []; this.queue = []; }
   /** Where goods are left when no truck can take them: just in front of the Lift. */
   dock() { const L = this.game.lift, dx = L.doorOut.x - L.cx, dz = L.doorOut.z - L.cz, d = Math.hypot(dx, dz) || 1; return { x: L.doorOut.x + dx / d * 2.6 + 3, z: L.doorOut.z + dz / d * 2.6 }; }
   makeTruck(color) {
-    const g = new THREE.Group(), add = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stdMat(c)); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+    const g = new THREE.Group(), add = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(UNIT_BOX, stdMat(c)); m.scale.set(w, h, d); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
     add(2.2, 2.4, 4.4, color, 0, 1.9, -0.6); add(2.2, 1.6, 1.6, 0x2c3e50, 0, 1.4, 2.1); add(1.9, 0.6, 0.1, 0x9fd8f0, 0, 1.9, 2.92);
     for (const [x, z] of [[-1.0, 2], [1.0, 2], [-1.0, -1.8], [1.0, -1.8]]) { const w = add(0.4, 0.9, 0.9, 0x111111, x, 0.45, z); }
     add(2.0, 0.2, 5.8, 0x333333, 0, 0.6, 0);

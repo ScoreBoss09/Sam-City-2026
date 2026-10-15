@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { stdMat } from './BuildingFactory.js';
+import { stdMat, colorize, mergeByMaterial } from './BuildingFactory.js';
+/** A carriage is dozens of boxes that never move apart: baked into a handful of meshes (one per material). */
+const bake = (g) => { colorize(g); mergeByMaterial(g); return g; };
 
 /**
  * Low-poly vehicles through the ages: penny-farthings, bicycles and motorbikes (ridden by Sam and the townsfolk),
@@ -100,7 +102,7 @@ export function makeTrainCar(kind, lead) {
     for (const z of [2.3, -2.3]) for (const x of [-0.9, 0.9]) wheel(g, 0.4, 0.06, 0x1a1a1a, x, 0.42, z, 0);
     if (lead && kind === 'electric') { bx(g, 1.6, 0.6, 0.1, 0x9fd8f0, 0, 2.0, 3.22); bx(g, 0.05, 0.9, 0.05, 0x333333, 0, 2.8, 0); }
   }
-  return g;
+  return bake(g);
 }
 const carGlass = new THREE.MeshStandardMaterial({ color: 0x9fd8f0, transparent: true, opacity: 0.22, roughness: 0.1, depthWrite: false });
 /**
@@ -128,7 +130,7 @@ export function makeCarriage(kind, lead) {
   if (!mono) for (const z of [2.3, -2.3]) for (const x of [-0.9, 0.9]) wheel(g, 0.4, 0.06, 0x1a1a1a, x, 0.42, z, 0);
   if (kind === 'electric' && lead) bx(g, 0.05, 0.9, 0.05, 0x333333, 0, 3.0, 0);
   g.userData = { floor: F, len: L, halfW: W / 2 - 0.15, seats };
-  return g;
+  return bake(g);
 }
 /** A sky-lift gondola hanging from its cable (cable at y = 0). */
 export function makeGondola(color = 0xd04030) {
@@ -138,7 +140,7 @@ export function makeGondola(color = 0xd04030) {
   for (const [x, z, w, d] of [[0, S / 2, S, 0.06], [0, -S / 2, S, 0.06], [S / 2, 0, 0.06, S], [-S / 2, 0, 0.06, S]]) { bx(g, w, 0.7, d, color, x, F + 0.35, z); const gl = new THREE.Mesh(unit, carGlass); gl.scale.set(Math.max(w, 0.03), 1.2, Math.max(d, 0.03)); gl.position.set(x, F + 1.3, z); g.add(gl); }
   for (const [x, z] of [[S / 2, S / 2], [-S / 2, S / 2], [S / 2, -S / 2], [-S / 2, -S / 2]]) bx(g, 0.08, 2.0, 0.08, color, x, F + 1.0, z);
   g.userData = { floor: F, len: S - 0.2, halfW: S / 2 - 0.15, seats: [[0.45, 0.45], [-0.45, 0.45], [0.45, -0.45], [-0.45, -0.45]].map(([x, z]) => ({ x, z, face: Math.atan2(-x, -z) })) };
-  return g;
+  return bake(g);
 }
 
 /** Street lamps through the ages: 0 lantern on a post, 1 oil lamp on an iron bracket, 2 gas lamp, 3 sodium, 4 modern. */

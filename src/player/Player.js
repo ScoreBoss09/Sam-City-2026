@@ -697,6 +697,7 @@ export class Player {
       else if (carrying && this.invTotal() >= 6) upper = 'carry';
       else if (g.ui.terminalB) upper = 'type';
       else if (g.ui.dialogue) upper = 'listen';
+      else if ((this.holding === 'pint' || this.holding === 'cup') && !this.moved && (g.elapsed % 7) < 2.4) upper = 'drink';   // (now and then a sip of what he bought)
       if (this.emoteT > 0 && lower !== 'crouch') { upper = this.emoteName || 'wave'; if (this.moved && ['dance', 'airguitar', 'macarena', 'robot', 'runningman', 'bow', 'whigfield', 'riverdance', 'pogo', 'kungfu', 'liam'].includes(upper)) upper = 'cheer'; }
       if (this.jumpT > 0) { lower = 'jump'; if (!(this.emoteT > 0)) upper = 'jump'; }
       if (this.swingT > 0) upper = 'strike';

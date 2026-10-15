@@ -196,6 +196,7 @@ export class BuildingManager {
     ext.group.traverse((o) => { if (o.isMesh) o.matrixAutoUpdate = true; });
     if (b.glassMat) b.glassMat.dispose();
     if (ext.glass && ext.glass.length) { b.glassMat = ext.glass[0].material.clone(); for (const m of ext.glass) m.material = b.glassMat; b.litK = 0; }   // its own lights
+    if (g.townBatch) g.townBatch.dirty(b);   // (its district's batch needs the new outside)
     return ext;
   }
   /** Throw away every built interior (they're rebuilt as they come into view, one a frame): after the made models have loaded, so rooms built before then get them too. */
@@ -311,7 +312,7 @@ export class BuildingManager {
       const mine = b === inside, py = pl.floorY || 0, R = pl.ride && pl.ride.b === b ? Math.round(Math.max(pl.ride.to, pl.ride.from) / WALL_H) : 0, lvl = mine ? Math.max(Math.floor((py + 0.6) / WALL_H), R) : 99, P = b.ext.plan;   // in the lift: the floor you're going to is already there
       b.ext.roof.visible = !mine || !!(P && P.roof && py > P.H - 0.6);
       const cp = g.camera.position, far = (cp.x - b.cx) ** 2 + (cp.z - b.cz) ** 2 + cp.y * cp.y > 110 * 110;   // far off: skip the glass and the upstairs (draw calls)
-      const LV = b.ext.levels; if (LV) for (let k = 1; k < LV.length; k++) LV[k].visible = (!far || (P.roof && k === P.n)) && k <= lvl + 1;   // the roof itself is always drawn
+      const LV = b.ext.levels; if (LV) for (let k = 1; k < LV.length; k++) LV[k].visible = (!(far || b._batched) || (P.roof && k === P.n)) && k <= lvl + 1;   // (drawn from its district's batch: the floors inside go too)   // the roof itself is always drawn
       const RD = b.ext.roofDoor; if (RD) { const want = b.roofDoorOpen ? 1 : 0; RD.open += (want - RD.open) * Math.min(1, dt * 6); RD.pivot.rotation.y = RD.open * 1.5; if (b.roofDoorOpen && g.elapsed > (b.roofDoorT || 0) && !(mine && py > P.H - 0.6 && Math.hypot(pl.x - b.cx, pl.z - b.cz) < 30)) b.roofDoorOpen = false; }
       if (b.ext.glass && b.ext._far !== far) { b.ext._far = far; for (const m of b.ext.glass) m.visible = !far; }
       if (b.ext.liftCab) b.ext.liftCab.position.y = 0.08 + (b.liftY || 0);
