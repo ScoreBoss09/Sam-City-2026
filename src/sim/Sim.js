@@ -173,6 +173,8 @@ export class Sim {
     if (this.kind === 'security') return 'guard';
     if (this.leaving) return 'leave';
     if (this.carting) return 'work';   // out with the Carter's Yard cart
+    if (this.escort) return 'escorted';   // in the constable's custody, walking where he walks
+    if (this.cellsUntil) { const c = this.game.clock; if (c.totalDays * 24 + c.hour < this.cellsUntil) return 'locked'; this.game.crime.release(this); }   // a night in the cells
     if (this.lockedT) { if (this.game.elapsed < this.lockedT) return 'locked'; this.lockedT = 0; this.hidden = false; const lk = this.lockup; if (lk && lk.doorOut) { this.x = lk.doorOut.x; this.z = lk.doorOut.z; } this.lockup = null; }
     // everyone keeps their own hours: early birds, night owls, children in bed by eight
     const bed = this.bedH ?? 22, wake = this.wakeH ?? 6, night = bed >= 24 ? h >= bed - 24 && h < wake : h >= bed || h < wake;
@@ -206,7 +208,7 @@ export class Sim {
     // a few drinks at the pub: merry, then wobbly, then wanting a kebab and a fight (it wears off by morning)
     if (this.drinking && (this.sitting || (this.phase === 2 && this.inside)) && this.kind === 'resident' && this.age >= 18) this.drunk = Math.min(1, (this.drunk || 0) + dt * 0.011 * (this.trait === 'cheerful' ? 1.4 : this.trait === 'shy' || this.trait === 'busy' ? 0.6 : 1));
     else if (this.drunk > 0) { this.drunk = Math.max(0, this.drunk - dt * (this.pose === 'sleep' ? 0.02 : 0.0025)); if (this.drunk > 0.5 && !this.sitting && !this.chat && this.mesh.visible && !this.inside && Math.random() < dt * 0.05) { g.social.say(this, pick(DRUNK), 2.4); this.emote = { upper: pick(['cheer', 'wave', 'dance']), t: 1.6 }; } }
-    if (this.drunk > 0.45 && !this.inside && !this.sitting && !this.chat && !(this.down > 0) && !this.cycling && this.kind !== 'child' && this.mesh.visible) this.tipsy(dt);
+    if (this.drunk > 0.45 && !this.inside && !this.sitting && !this.chat && !(this.down > 0) && !this.cycling && !this.escort && this.kind !== 'child' && this.mesh.visible) this.tipsy(dt);
     if (this.homeless && this.activity === 'leisure' && !this.chat && this.mesh.visible && !this.sitting && Math.random() < dt * 0.03) { g.social.say(this, pick(this.drunk > 0.4 ? ['WHAT? What are you looking at?', 'They took everything. Everything!', 'It\'s all a set, you know. All of it. Ha!'] : ['Spare some change?', 'Any spare change, love?', 'Big Issue! Big Issue!', 'Got 20p for a cup of tea?', 'Bless you. Have a nice day.']), 2.6); this.emote = { upper: 'wave', t: 1.4 }; }
     if (this.outfit && this.outfitUntil && g.clock.totalDays * 24 + h > this.outfitUntil && this.activity !== 'event') this.wear(null);
     if (this.down > 0) return;
@@ -222,6 +224,7 @@ export class Sim {
       case 'sleep': this.doSleep(); break;
       case 'rough': this.doRough(); break;
       case 'locked': break;
+      case 'escorted': this.game.crime.followCop(this, dt); break;
       case 'eat': this.doEat(dt); break;
       case 'school': this.doSchool(); break;
       case 'home': this.doHome(); break;
@@ -589,7 +592,8 @@ export class Sim {
   }
   /** Out of the pub the worse for wear: a sing-song, a little dance on the spot, and now and then flat on their back. */
   tipsy(dt) {
-    const g = this.game, k = this.drunk;
+    const g = this.game, k = this.drunk, h = g.clock.hour;
+    if (k > 0.78 && !this.disorderly && !this.escort && (h >= 21 || h < 3) && this.kind === 'resident' && Math.random() < dt * 0.012) { this.disorderly = { t: g.elapsed }; g.social.say(this, pick(['Come on then! Who wants some?!', 'What are YOU looking at?!', 'I\'ll have the lot of you!', 'This is MY town!']), 2.6); this.emote = { upper: 'fight', t: 3 }; g.particles.burst(this.x, 0.5, this.z, 0x6a6a6a, 6, 1, 2, 0.1); if (g.markers) g.markers.add(this.x, this.z, '🍺', 'Drunk and disorderly', 600, this, () => !!this.disorderly && !this.remove); g.messages.push('Police', `${this.name} is drunk and disorderly outside, shouting the odds.`, 'quiet'); }   // (the police will come for them)
     if (this.moved && k > 0.65 && Math.random() < dt * 0.025 * (k - 0.55) * 10) { this.knockDown(2 + Math.random() * 2); g.social.say(this, pick(['Whoops!', 'Who moved the pavement?', 'I\'m fine! I\'m fine.', 'Oof.']), 2.2); return; }   // down they go
     if (!this.moved && !this.emote && Math.random() < dt * 0.06 * k) { this.emote = { upper: pick(['dance', 'threelions', 'whigfield', 'airguitar', 'cheers', 'dance']), t: 3 + Math.random() * 3 }; if (Math.random() < 0.7) g.social.say(this, pick(['🎵 Wonderwall... la la la... 🎵', '🎵 Three lions on a shirt... 🎵', '🎵 Saturday night, I feel the air is getting hot... 🎵', '🎵 I\'m forever blowing bubbles... 🎵', '🎵 Don\'t look back in anger... 🎵', '🎵 Come on Eileen! 🎵', '🎵 Sweet Caroline! Bah bah bah! 🎵']), 2.8); }
   }

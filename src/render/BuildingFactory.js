@@ -459,7 +459,6 @@ function rectMinus(R, holes) {
   return out;
 }
 
-/** The Lock-Up: a round stone tower with a little domed roof and slit windows, the old village kind. */
 /** A 1970s multi-storey car park: bare concrete decks on columns, a ramp, and a space for every car (ext.spaces). */
 function buildCarPark(def) {
   const g = new THREE.Group(), roof = new THREE.Group(), cols = [], W = def.w * UNIT, D = def.d * UNIT, decks = 3, Hh = 2.8, spaces = [];
@@ -472,16 +471,48 @@ function buildCarPark(def) {
   for (const [x, z] of [[-W / 2 + 0.3, -D / 2 + 0.3], [W / 2 - 0.3, -D / 2 + 0.3], [-W / 2 + 0.3, D / 2 - 0.3], [W / 2 - 0.3, D / 2 - 0.3]]) cols.push({ cx: x, cz: z, sx: 0.5, sz: 0.5, h: decks * Hh });
   return { group: g, roof, colliders: cols, height: decks * Hh, doors: [], spaces };
 }
+/** Dressed stone blocks in courses (a canvas, shared): for the Lock-Up's round wall. */
+let LOCK_TEX = null;
+function lockStone() {
+  if (LOCK_TEX) return LOCK_TEX; const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), rnd = mulberry32(1779);
+  x.fillStyle = '#8e887a'; x.fillRect(0, 0, 128, 128);
+  for (let row = 0; row < 8; row++) { const y = row * 16, off = row % 2 ? 0 : 16; for (let col = -1; col < 5; col++) { const bx = col * 32 + off, v = 150 + Math.floor(rnd() * 40), t = Math.floor(rnd() * 12) - 6; x.fillStyle = `rgb(${v + t},${v - 2},${v - 14 + t})`; x.fillRect(bx + 1, y + 1, 30, 14); x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(bx + 1, y + 11, 30, 4); } }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter;
+  return (LOCK_TEX = t);
+}
+/**
+ * The Lock-Up: a round village lock-up in dressed stone, an iron-strapped oak door in an arched surround, little barred
+ * windows, a plaque over the door, a lantern, and a lead dome with a ball on top.
+ */
 function buildLockup(def) {
-  const g = new THREE.Group(), roof = new THREE.Group(), cols = [], W = def.w * UNIT, R = W * 0.36, sm = stdMat(0xb4ae9e);
+  const g = new THREE.Group(), roof = new THREE.Group(), cols = [], W = def.w * UNIT, R = W * 0.36, H = 4.2;
   box(g, W + 0.4, 0.25, W + 0.4, 0x9a9b9c, 0, -0.15, 0);
-  const tower = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 1.05, 4.6, 14), sm); tower.position.y = 2.3; tower.castShadow = true; tower.receiveShadow = true; g.add(tower);
-  for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; if (i % 2) box(g, 0.5, 0.5, 0.35, 0xa8a292, Math.cos(a) * R, 4.6, Math.sin(a) * R).rotation.y = -a; }   // battlements
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(R * 0.8, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), stdMat(0x5a5e66)); dome.position.y = 4.6; roof.add(dome); box(roof, 0.1, 0.8, 0.1, 0x2a2a2a, 0, 5.8, 0);
-  box(g, 1.0, 2.0, 0.2, 0x3a2a1a, 0, 0, R - 0.02); box(g, 1.2, 0.2, 0.25, 0x8d8a82, 0, 2.0, R);   // a heavy door
-  for (const a of [0.8, 2.4, 4.0]) box(g, 0.12, 0.6, 0.15, 0x1a1a1a, Math.cos(a) * R, 2.8, Math.sin(a) * R).rotation.y = -a;   // slit windows
+  // the round wall: stone courses all round (the texture wraps the circumference in blocks of a sensible size)
+  const tg = new THREE.CylinderGeometry(R, R * 1.06, H, 20, 1, true), uv = tg.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.round(2 * Math.PI * R / 1.6), uv.getY(i) * Math.round(H / 0.8));
+  const sm = new THREE.MeshStandardMaterial({ map: lockStone(), roughness: 0.95 }), tower = new THREE.Mesh(tg, sm); tower.position.y = H / 2; tower.castShadow = tower.receiveShadow = true; g.add(tower);
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.12, R * 1.16, 0.45, 20), stdMat(0x7e786c)); plinth.position.y = 0.22; g.add(plinth);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.07, R * 1.07, 0.22, 20), stdMat(0xa29c8e)); band.position.y = H - 0.05; g.add(band);   // the cornice
+  // the dome: lead, with a ball finial and a little weathervane
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(R * 1.02, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), stdMat(0x5e646c, { roughness: 0.6 })); dome.position.y = H + 0.05; roof.add(dome);
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), stdMat(0x3a3e44)); ball.position.y = H + R * 1.02 + 0.12; roof.add(ball);
+  box(roof, 0.04, 0.6, 0.04, 0x222222, 0, H + R * 1.02 + 0.2, 0); box(roof, 0.5, 0.12, 0.02, 0x222222, 0.12, H + R * 1.02 + 0.6, 0);
+  // the door: oak planks with three iron straps and a ring, in a stone arch, up two steps
+  const fz = R * 1.0; box(g, 1.5, 0.15, 0.6, 0x8a8478, 0, 0, fz + 0.25); box(g, 1.3, 0.15, 0.4, 0x8a8478, 0, 0.15, fz + 0.12);
+  box(g, 0.24, 2.3, 0.3, 0x9e9888, -0.68, 0.3, fz); box(g, 0.24, 2.3, 0.3, 0x9e9888, 0.68, 0.3, fz);
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.13, 6, 12, Math.PI), stdMat(0x9e9888)); arch.position.set(0, 2.6, fz); g.add(arch);
+  box(g, 1.1, 2.3, 0.12, 0x4a3420, 0, 0.3, fz + 0.04); for (const y of [0.7, 1.45, 2.2]) box(g, 1.12, 0.09, 0.05, 0x1e1e20, 0, y, fz + 0.12);
+  for (const x of [-0.42, -0.14, 0.14, 0.42]) for (const y of [0.75, 1.5, 2.25]) box(g, 0.04, 0.04, 0.03, 0x111111, x, y, fz + 0.15);   // studs
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.018, 6, 12), stdMat(0x1e1e20)); ring.position.set(0.32, 1.25, fz + 0.16); g.add(ring);
+  // the plaque over the door, and a lantern beside it
+  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.28), new THREE.MeshBasicMaterial({ map: signTexture('LOCK-UP  1779', '#2a2620', '#e8dcc0') })); plaque.position.set(0, 3.15, fz + 0.12); g.add(plaque);
+  box(g, 0.05, 0.05, 0.3, 0x1e1e20, 0.95, 2.45, fz + 0.1); box(g, 0.2, 0.3, 0.2, 0x1e1e20, 0.95, 2.18, fz + 0.28); box(g, 0.15, 0.22, 0.15, 0xffd88a, 0.95, 2.22, fz + 0.28, { emissive: 0xffb84a, emissiveIntensity: 0.9 });
+  // little barred windows round the back
+  for (const a of [Math.PI * 0.5 + 0.9, Math.PI * 1.5 - 0.9, Math.PI * 1.5, Math.PI * 0.5]) {
+    const x = Math.sin(a) * R, z = Math.cos(a) * R; if (z > R * 0.6) continue; const win = new THREE.Group(); win.position.set(x, 2.6, z); win.rotation.y = a; g.add(win);
+    box(win, 0.42, 0.55, 0.12, 0x141414, 0, 0, 0.02); box(win, 0.56, 0.08, 0.2, 0x9e9888, 0, 0.55, 0.03); box(win, 0.56, 0.08, 0.2, 0x9e9888, 0, -0.08, 0.03); for (const bx of [-0.12, 0, 0.12]) box(win, 0.03, 0.55, 0.03, 0x2a2a2c, bx, 0, 0.1);
+  }
   cols.push({ cx: 0, cz: 0, sx: R * 1.8, sz: R * 1.8 });
-  return { group: g, roof, colliders: cols, height: 5, doors: [] };
+  return { group: g, roof, colliders: cols, height: H + 1, doors: [] };
 }
 
 /** Set by mods (render/Models.js) so buildings can be blocky models. */
