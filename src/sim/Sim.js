@@ -184,6 +184,7 @@ export class Sim {
     if (this.crook) return 'crime';
     if (this.trapped) return 'trapped';   // cut off by a fire (systems/Hazards.js)
     if (this.fleeFire) return 'flee';
+    if (this.plot) return 'plot';   // somewhere the story needs them (systems/Plot.js)
     if (this.game.hazards && this.game.hazards.fires.length && (this.pose !== 'sleep' || this.bunk) && !(this.down > 0)) { const H = this.game.hazards, fb = this.role === 'firefighter' ? H.fireFor(this) : H.volunteer(this); if (fb) { this.fireB = fb; return 'firefight'; } }
     if (this.fireB && !(this.game.hazards && this.game.hazards.fires.some((f) => f.b === this.fireB))) this.fireB = null;
     if (this.fight) return 'fight';
@@ -224,7 +225,7 @@ export class Sim {
     if (this.mood < -0.6 && this.kind === 'resident' && !this.leaving) { this.sadT += dt; if (this.sadT > 220) { this.leaving = true; g.messages.push('Lift', `${this.name} has packed up and left for good.`, 'warn'); } } else this.sadT = Math.max(0, this.sadT - dt * 0.5);
     // mood drifts around the personality baseline
     this.moodBoost *= Math.exp(-dt * 0.02);
-    this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + ((this.home && this.home.def.homeJoy) || 0) + Math.min(0.2, this.friendCount() * 0.04) + (this.kind !== 'visitor' ? g.buildings.townJoy() + g.economy.rateMood : 0);
+    this.mood = this.style.mood + this.moodBoost + (this.tired ? -0.2 : 0) + (h > 17 && h < 21 ? 0.15 : 0) - (this.activity === 'work' && h > 15 ? 0.1 : 0) - Math.max(0, this.hunger - 60) / 90 - (!this.home && this.kind !== 'visitor' ? 0.3 : 0) + (this.partner ? 0.12 : 0) + ((this.home && this.home.def.homeJoy) || 0) + Math.min(0.2, this.friendCount() * 0.04) + (this.kind !== 'visitor' ? g.buildings.townJoy() + g.economy.rateMood - (g.flags.liftDown ? 0.3 : 0) : 0);
     this.smokeHabit(dt); this.salon(dt);
     // a few drinks at the pub: merry, then wobbly, then wanting a kebab and a fight (it wears off by morning)
     if (this.drinking && (this.sitting || (this.phase === 2 && this.inside)) && this.kind === 'resident' && this.age >= 18) this.drunk = Math.min(1, (this.drunk || 0) + dt * 0.011 * (this.trait === 'cheerful' ? 1.4 : this.trait === 'shy' || this.trait === 'busy' ? 0.6 : 1));

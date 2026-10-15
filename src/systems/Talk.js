@@ -247,7 +247,7 @@ export class Talk {
       }
     } else if (topic === 'work') text = this.workLine(s);
     else if (topic === 'news') {
-      const slip = g.story.slipLine(); page = g.story.pageFor(s);
+      const slip = g.story.slipLine(s); page = g.story.pageFor(s);
       text = slip && Math.random() < 0.6 ? slip : this.gossip(s);
       if (page) text += '  ...Here, take this. Found it in the bins behind the office. Didn\'t get it from me, alright?';
     } else if (topic === 'about') {

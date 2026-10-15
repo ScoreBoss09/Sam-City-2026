@@ -1,5 +1,6 @@
 // Celebrity visitors (all made up, any resemblance is entirely coincidental). Mods can add their own (docs/MODDING.md).
-//   name, title (how the town describes them), gender, age, look overrides, sign (what they write), lines, hint (always whispers the truth)
+//   name, title (how the town describes them), gender, age, look overrides, sign (what they write), lines, hint (always whispers the truth),
+//   tip (optional: what they whisper to Sam when the minder isn't looking; otherwise one of the story's own)
 export const GUESTS = [
   { name: 'Dean Moss', title: 'England\'s number nine', gender: 'm', age: 27, look: { shirt: 0xf4f4f4, shirt2: 0x1a2a6a, pants: 0x1a2a6a, hairStyle: 'short' }, sign: 'To Sam, keep your eye on the ball! Deano x', lines: ['Football\'s coming home, lads!', 'Cheers, cheers. No, I won\'t do keepy-uppies.', 'Lovely little town, this.'] },
   { name: 'Kelly Starr', title: 'The pop star (number one with "Love Machine Girl")', gender: 'f', age: 22, look: { shirt: 0xff60a0, pants: 0x1a1a1a, skirt: true, hairStyle: 'long', hair: 0xf0d060 }, sign: 'Sam! Girl power! Kelly xxx', lines: ['Hiya! Hiya! Love you all!', 'Zig-a-zig... no, that\'s someone else.', 'New single out Monday!'] },

@@ -98,7 +98,7 @@ export class Economy extends Emitter {
     for (const q of this.pending) { q.t -= dt; if (q.t <= 0 && this.permits[q.id] === 'pending') { this.permits[q.id] = 'approved'; if (this.game.ui) this.game.ui.buildDirty = true;   // (any build menu that's open shows it straight away)
       this.game.messages.push('Planning Office', `${BUILDINGS[q.id].name} APPROVED. It is now in your build menu.`, 'good'); this.game.mail.send('The Planning Office', `Permit approved: ${BUILDINGS[q.id].name}`, `Dear Sam,\n\nWe are pleased to approve your application for a ${BUILDINGS[q.id].name}. You will find it in the planning view under Buildings.\n\n${BUILDINGS[q.id].blurb || ''}\n\nYours faithfully,\nThe Planning Office`); this.emit('permits'); } }
     this.pending = this.pending.filter((q) => q.t > 0);
-    for (const o of this.orders) { o.eta -= dt; if (o.eta <= 0 && !o.sent) { o.sent = true; this.game.logistics.dispatch(o); } }
+    for (const o of this.orders) { o.eta -= dt; if (o.eta <= 0 && !o.sent && !this.game.flags.liftDown) { o.sent = true; this.game.logistics.dispatch(o); } }
     this.orders = this.orders.filter((o) => !o.done);
   }
   deliverToDepot(o) { this.stock[o.mat] += o.qty; o.done = true; this.emit('stock'); this.game.messages.push('Logistics', `Delivered ${o.qty} ${MATERIALS[o.mat].name} to the Stockyard.`, 'good'); }

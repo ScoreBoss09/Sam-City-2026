@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Markers } from './systems/Markers.js';
 import { Birds } from './render/Birds.js';
 import { NightFlyers } from './render/NightFlyers.js';
+import { Plot } from './systems/Plot.js';
 import { Transport } from './systems/Transport.js';
 import { Crime } from './systems/Crime.js';
 import { StreetLights } from './systems/StreetLights.js';
@@ -120,7 +121,7 @@ export class Game {
     const d = this.lift.doorOut; this.plaza = { x: d.x, z: d.z + 8 };
     for (const t of this.terrain.trees) if (t.alive && Math.hypot(t.x - this.lift.trigger.x, t.z - this.lift.trigger.z) < 14) this.terrain.removeTree(t);   // the Lift yard is kept clear
     this.tools.build(d.x + 8, d.z + 13);
-    this.security.init(); this.wildlife = new Wildlife(this); this.birds = new Birds(this); this.nightFlyers = new NightFlyers(this); this.curios = new Curios(this);
+    this.security.init(); this.wildlife = new Wildlife(this); this.birds = new Birds(this); this.nightFlyers = new NightFlyers(this); this.plot = new Plot(this); this.curios = new Curios(this);
     this.player.teleport(d.x + 2, d.z + 17, 0); this.player.yaw = Math.PI;
     this.god.target.set(d.x + 4, 0, d.z + 22); this.god.dist = 105; this.god.pitch = 1.05;
   }
@@ -150,9 +151,10 @@ export class Game {
   /** A new game opens on the wake-up scene instead of instructions. */
   playIntro() { this.introScene.start(); }
   loadSave(from) { const d = SaveGame.load(from); if (!d) return false; try { SaveGame.restore(this, d); this.ui.toast('Game loaded', 2000); return true; } catch (e) { console.error('load failed', e); return false; } }
-  escape() {
-    if (this.ending) return; this.ending = true; this.ui.fade(1, ''); this.input.unlock(); this.messages.push('Sam (thought)', 'The gate is open. Keep walking.', 'story');
-    setTimeout(() => { this.ui.fade(0); this.ui.showEnding(); }, 2500);
+  /** Out of Sam City: route is how (ride: the unguarded Lift; blast: down the ladder; stairs: through the overseers' door). */
+  escape(route = 'ride') {
+    if (this.ending) return; this.ending = true; this.flags.escapeRoute = route; this.ui.fade(1, ''); this.input.unlock(); this.messages.push('Sam (thought)', 'Keep walking. Don\'t look back.', 'story');
+    setTimeout(() => { this.ui.fade(0); this.ui.showEnding(route); }, 2500);
   }
 
   /** Run one town system: tell the watchdog which one (so a freeze names it) and note any call that takes over 250 ms. */
@@ -234,7 +236,7 @@ export class Game {
     if (!this.introScene.live && !this.cutscene.live) this.player.update(gdt, dt); this.perf.lap('Sam');
     for (const s of this.population.sims) s.sync(dt); this.social.render(dt); this.pauseScene.update(dt); this.net.update(dt); this.combat.update(dt);
     this.perf.lap('people anim');
-    this.buildings.update(dt); this.tools.update(dt); this.story.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.townBatch.update(dt); this.workgame.update(dt); this.particles.update(dt); this.piles.update(dt * Math.max(0, this.clock.speed)); this.resources.animate(dt); this.mail.update(); this.challenges.update(dt); this.weather.update(dt); if (!this.seasons && this.decor) this.seasons = new Seasons(this); if (this.seasons) this.seasons.update(dt); if (this.started) this.favours.update(dt * this.clock.speed); if (this.curios) this.curios.update(dt); if (this.started) this.events.update(dt); this.celebrations.update(dt); this.liftRides.update(this.clock.speed > 0 ? dt : 0); this.fireworks.update(dt); this.atmosphere.flash = Math.max(this.fireworks.flash || 0, this.weather.flash || 0); this.atmosphere.flashCol = (this.weather.flash || 0) > (this.fireworks.flash || 0) ? 0xdfe8ff : this.fireworks.flashCol; if (this.wildlife) this.wildlife.update(dt); this.birds.update(dt); if (this.nightFlyers) this.nightFlyers.update(dt);
+    this.buildings.update(dt); this.tools.update(dt); this.story.update(dt); this.plot.update(dt); this.ui.update(dt); this.minimap.update(dt); this.siteLabels.update(dt); this.townBatch.update(dt); this.workgame.update(dt); this.particles.update(dt); this.piles.update(dt * Math.max(0, this.clock.speed)); this.resources.animate(dt); this.mail.update(); this.challenges.update(dt); this.weather.update(dt); if (!this.seasons && this.decor) this.seasons = new Seasons(this); if (this.seasons) this.seasons.update(dt); if (this.started) this.favours.update(dt * this.clock.speed); if (this.curios) this.curios.update(dt); if (this.started) this.events.update(dt); this.celebrations.update(dt); this.liftRides.update(this.clock.speed > 0 ? dt : 0); this.fireworks.update(dt); this.atmosphere.flash = Math.max(this.fireworks.flash || 0, this.weather.flash || 0); this.atmosphere.flashCol = (this.weather.flash || 0) > (this.fireworks.flash || 0) ? 0xdfe8ff : this.fireworks.flashCol; if (this.wildlife) this.wildlife.update(dt); this.birds.update(dt); if (this.nightFlyers) this.nightFlyers.update(dt);
 
     this.perf.lap('town systems');
     // camera

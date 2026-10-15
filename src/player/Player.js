@@ -377,6 +377,7 @@ export class Player {
       if (!this.third && d > 0.8 && (dx * fx + dz * fz) / d < 0.3) continue;
       consider({ kind: 'sim', sim: s, text: `Talk to ${s.name} (${s.roleName})` }, d - 0.5, undefined, undefined, [s.x, s.z]);
     }
+    if (g.plot) for (const t of g.plot.targets(px, pz)) consider(t, t.d, t.x, t.z);   // the story: a word with someone, a fuse, a ladder
     if (g.raids.pickup && !this.weapon) { const q = g.raids.pickup, d = Math.hypot(q.x - px, q.z - pz); if (d < 2.6) consider({ kind: 'weapon', text: 'Take the militia club  (F to swing)' }, d - 1, undefined, undefined, [q.x, q.z]); }
     for (const it of g.tools.items) { if (it.taken) continue; const d = Math.hypot(it.x - px, it.z - pz); if (d < 2.5) consider({ kind: 'tool', item: it, text: `Pick up the ${TOOLS[it.id]}` }, d - 2, undefined, undefined, [it.x, it.z]); }
     { const cu = g.curios && g.curios.near(px, pz, 2.2); if (cu) consider({ kind: 'curio', item: cu, text: `Pick up something shiny...` }, Math.hypot(cu.x - px, cu.z - pz) - 1.5, undefined, undefined, [cu.x, cu.z]); }
@@ -485,6 +486,7 @@ export class Player {
     else if (t.kind === 'terminal' && e) { Sfx.play('ui'); g.ui.openTerminal(t.b); }
     else if (t.kind === 'post' && e) { Sfx.play('ui'); g.ui.openTerminal(t.b, 'post'); }
     else if (t.kind === 'hatch' && e) { Sfx.play('ui'); g.ui.openTerminal(t.b, 'hatch'); }
+    else if (t.kind === 'act' && e) { Sfx.play('ui'); t.act(); }
     else if (t.kind === 'phone' && e) this.phoneCall();
     else if (t.kind === 'bet' && e) this.placeBet();
     else if (t.kind === 'depot' && e) this.useDepot();
