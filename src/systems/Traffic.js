@@ -12,7 +12,7 @@ export class Traffic {
   setNight(n) { carLights(n); }
   makeCar() { return makeCarMesh(pick(COLORS), Math.random() < 0.25); }
   pickRoute(car) {
-    const w = this.game.world, roads = []; for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) if (w.road[w.idx(x, z)]) roads.push([x, z]);
+    const w = this.game.world, roads = []; for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) if (w.drive(w.idx(x, z))) roads.push([x, z]);
     if (roads.length < 6) return null; const sx = Math.floor(car.x / TILE), sz = Math.floor(car.z / TILE);
     for (let k = 0; k < 6; k++) { const t = pick(roads); if (Math.abs(t[0] - sx) + Math.abs(t[1] - sz) < 8) continue; const path = w.findPath(sx, sz, t[0], t[1], true); if (path && path.length > 1) return path.slice(1).map(([x, z]) => ({ x: (x + 0.5) * TILE, z: (z + 0.5) * TILE })); }
     return null;

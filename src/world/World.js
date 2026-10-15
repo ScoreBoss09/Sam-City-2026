@@ -84,6 +84,8 @@ export class World {
   }
 
   // ---- roads & zones
+  /** Can a vehicle use this tile? Dirt tracks and paved roads, not the plaza (paving for people). */
+  drive(i) { const r = this.road[i]; return r === 1 || r === 2; }
   canRoad(x, z, type = 1) { const i = this.idx(x, z); return this.isLand(x, z) && !this.occ[i] && !this.res[i] && this.road[i] < type; }
   addRoad(x, z, type = 1) {
     if (!this.canRoad(x, z, type)) return false;
@@ -199,13 +201,13 @@ export class World {
     for (let r = 0; r <= 5; r++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
       if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
       const tx = x + dx, tz = z + dz;
-      if (roadOnly ? (this.inBounds(tx, tz) && this.road[this.idx(tx, tz)]) : this.walkable(tx, tz)) return [tx, tz];
+      if (roadOnly ? (this.inBounds(tx, tz) && this.drive(this.idx(tx, tz))) : this.walkable(tx, tz)) return [tx, tz];
     }
     return null;
   }
   findPath(sx, sz, ex, ez, roadOnly = false) {
     if (!Number.isFinite(sx + sz + ex + ez)) return null;
-    const ok = (x, z) => this.inBounds(x, z) && (roadOnly ? this.road[this.idx(x, z)] > 0 : this.walkable(x, z));
+    const ok = (x, z) => this.inBounds(x, z) && (roadOnly ? this.drive(this.idx(x, z)) : this.walkable(x, z));
     if (!ok(sx, sz)) { const n = this.nearestWalkable(sx, sz, roadOnly); if (!n) return null; [sx, sz] = n; }
     if (!ok(ex, ez)) { const n = this.nearestWalkable(ex, ez, roadOnly); if (!n) return null; [ex, ez] = n; }
     const g = this._g, f = this._f, came = this._came, st = this._state;

@@ -33,8 +33,8 @@ export class Cars {
   kerb(b) {
     const w = this.game.world, [tx0, tz0] = w.tileOf(b.doorOut.x, b.doorOut.z); let best = null, bd = 1e9;
     for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) {
-      const tx = tx0 + dx, tz = tz0 + dz; if (!w.inBounds(tx, tz) || !w.road[w.idx(tx, tz)]) continue;
-      const cx = (tx + 0.5) * TILE, cz = (tz + 0.5) * TILE, alongX = (w.inBounds(tx - 1, tz) && w.road[w.idx(tx - 1, tz)]) || (w.inBounds(tx + 1, tz) && w.road[w.idx(tx + 1, tz)]);
+      const tx = tx0 + dx, tz = tz0 + dz; if (!w.inBounds(tx, tz) || !w.drive(w.idx(tx, tz))) continue;
+      const cx = (tx + 0.5) * TILE, cz = (tz + 0.5) * TILE, alongX = (w.inBounds(tx - 1, tz) && w.drive(w.idx(tx - 1, tz))) || (w.inBounds(tx + 1, tz) && w.drive(w.idx(tx + 1, tz)));
       for (const side of [-1, 1]) for (const k of [-1, 1]) {
         const x = alongX ? cx + k * 2.1 : cx + side * 2.9, z = alongX ? cz + side * 2.9 : cz + k * 2.1, key = Math.round(x) + ',' + Math.round(z); if (this.used.has(key)) continue;
         const d = Math.hypot(x - b.doorOut.x, z - b.doorOut.z); if (d < bd) { bd = d; best = { x, z, h: alongX ? (k > 0 ? Math.PI / 2 : -Math.PI / 2) : (k > 0 ? 0 : Math.PI), key }; }
@@ -67,7 +67,7 @@ export class Cars {
   start(c, s, to) { if (!s.goTo({ x: c.x, z: c.z })) return; c.trip = { s, to, stage: 'walk' }; c.driver = s; }
   route(c, b) {
     const w = this.game.world, [sx, sz] = w.tileOf(c.x, c.z), [tx, tz] = w.tileOf(b.doorOut.x, b.doorOut.z);
-    let goal = null, bd = 1e9; for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) { const x = tx + dx, z = tz + dz; if (w.inBounds(x, z) && w.road[w.idx(x, z)] && Math.abs(dx) + Math.abs(dz) < bd) { bd = Math.abs(dx) + Math.abs(dz); goal = [x, z]; } }
+    let goal = null, bd = 1e9; for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) { const x = tx + dx, z = tz + dz; if (w.inBounds(x, z) && w.drive(w.idx(x, z)) && Math.abs(dx) + Math.abs(dz) < bd) { bd = Math.abs(dx) + Math.abs(dz); goal = [x, z]; } }
     if (!goal) return null; const p = w.findPath(sx, sz, goal[0], goal[1], true); return p ? p.slice(1).map(([x, z]) => ({ x: (x + 0.5) * TILE, z: (z + 0.5) * TILE })) : null;
   }
   drive(c, dt) {

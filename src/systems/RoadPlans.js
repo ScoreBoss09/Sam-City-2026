@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { TILE } from '../config.js';
 
-const WORK = { 1: 3.2, 2: 5.5 };   // builder-seconds of digging per tile (dirt / paved)
+const WORK = { 1: 3.2, 2: 5.5, 3: 4.5 };   // builder-seconds of work per tile (dirt / paved / plaza)
 
 /**
  * Ordered-but-unbuilt paths. God mode only draws the plan (tan stakes); somebody (Sam with a shovel, or a builder sim)
@@ -12,6 +12,7 @@ export class RoadPlans {
     this.game = game; this.plans = new Map(); this.group = new THREE.Group(); game.scene.add(this.group);
     this.mat = new THREE.MeshBasicMaterial({ color: 0xe8c987, transparent: true, opacity: 0.55, depthWrite: false });
     this.matPaved = new THREE.MeshBasicMaterial({ color: 0xbfc6cf, transparent: true, opacity: 0.55, depthWrite: false });
+    this.matPlaza = new THREE.MeshBasicMaterial({ color: 0xe0b98a, transparent: true, opacity: 0.55, depthWrite: false });
     this.stakeMat = new THREE.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.9 }); this.flagMat = new THREE.MeshBasicMaterial({ color: 0xff5a3a });
     this.stakeGeo = new THREE.BoxGeometry(0.12, 0.9, 0.12); this.flagGeo = new THREE.BoxGeometry(0.4, 0.22, 0.03); this.tileGeo = new THREE.BoxGeometry(TILE - 0.5, 0.06, TILE - 0.5);
   }
@@ -25,7 +26,7 @@ export class RoadPlans {
   plan(x, z, type = 1) {
     const w = this.game.world; if (!w.canRoad(x, z, type) || this.has(x, z)) return false;
     const p = { x, z, type, progress: 0, reserved: null, paid: false, cx: (x + 0.5) * TILE, cz: (z + 0.5) * TILE }, m = new THREE.Group();
-    const t = new THREE.Mesh(this.tileGeo, type === 2 ? this.matPaved : this.mat); t.position.y = 0.06; m.add(t);
+    const t = new THREE.Mesh(this.tileGeo, type === 3 ? this.matPlaza : type === 2 ? this.matPaved : this.mat); t.position.y = 0.06; m.add(t);
     for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const s = new THREE.Mesh(this.stakeGeo, this.stakeMat); s.position.set(sx * (TILE / 2 - 0.5), 0.45, sz * (TILE / 2 - 0.5)); m.add(s); if (sx === 1 && sz === 1) { const f = new THREE.Mesh(this.flagGeo, this.flagMat); f.position.set(sx * (TILE / 2 - 0.5) - 0.2, 0.85, sz * (TILE / 2 - 0.5)); m.add(f); } }
     m.position.set(p.cx, 0, p.cz); p.mesh = m; p.tile = t; this.group.add(m); this.plans.set(this.key(x, z), p); return p;
   }
@@ -37,7 +38,7 @@ export class RoadPlans {
     const g = this.game, w = g.world; if (this.plans.get(this.key(p.x, p.z)) !== p) return true;
     // a tree on the tile is felled first (chop by chop, the timber goes to the Stockyard), then the path goes down
     { const tree = g.terrain.trees.find((t) => t.alive && t.tx === p.x && t.tz === p.z); if (tree) { p.fellT = (p.fellT || 0) + dt; if (p.fellT >= 1.6) { p.fellT = 0; g.terrain.fallFrom = null; g.terrain.chopTree(tree); g.economy.add('timber', 1); g.particles && g.particles.burst(tree.x, 1.0, tree.z, 0x8a5a33, 4, 1.4, 0.6, 0.06); } p.felling = true; return false; } p.felling = false; }
-    if (p.type === 2 && !p.paid) { if (g.economy.stock.stone < 1) return false; g.economy.stock.stone -= 1; p.paid = true; }
+    if (p.type >= 2 && !p.paid) { if (g.economy.stock.stone < 1) return false; g.economy.stock.stone -= 1; p.paid = true; }
     p.progress += dt / WORK[p.type]; p.tile.scale.y = 1 + p.progress * 2; if (!p.ownMat) { p.ownMat = true; p.tile.material = p.tile.material.clone(); } p.tile.material.opacity = 0.55 + p.progress * 0.35;   // (its own material: changing the shared one made every planned tile on the island pulse)
     if (p.progress >= 1) { g.terrain.clearStumpsIn(p.x, p.z); this.drop(p); w.addRoad(p.x, p.z, p.type); g.flags.pathsBuilt = (g.flags.pathsBuilt || 0) + 1; return true; }
     return false;
@@ -45,7 +46,7 @@ export class RoadPlans {
   /** Nearest unclaimed plan for a builder sim (paved ones only if there is stone). */
   next(sim) {
     let best = null, bd = 1e9; const stone = this.game.economy.stock.stone;
-    for (const p of this.plans.values()) { if (p.reserved && p.reserved !== sim) continue; if (p.type === 2 && !p.paid && stone < 1) continue; const d = Math.hypot(p.cx - sim.x, p.cz - sim.z); if (d < bd) { bd = d; best = p; } }
+    for (const p of this.plans.values()) { if (p.reserved && p.reserved !== sim) continue; if (p.type >= 2 && !p.paid && stone < 1) continue; const d = Math.hypot(p.cx - sim.x, p.cz - sim.z); if (d < bd) { bd = d; best = p; } }
     return best;
   }
   clear() { for (const p of [...this.plans.values()]) this.drop(p); }

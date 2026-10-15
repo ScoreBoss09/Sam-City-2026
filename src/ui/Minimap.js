@@ -27,7 +27,7 @@ export class Minimap {
     const g = this.game, w = g.world, x = this.bctx, s = 12;
     for (let tz = 0; tz < MAP; tz++) for (let tx = 0; tx < MAP; tx++) {
       const i = w.idx(tx, tz); x.fillStyle = TERRAIN[w.terrain[i]] || TERRAIN[T.LAND]; x.fillRect(tx * s, tz * s, s, s);
-      if (w.road[i]) { x.fillStyle = w.road[i] === 2 ? '#9aa0a8' : '#b8946a'; x.fillRect(tx * s + 2, tz * s + 2, s - 4, s - 4); for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (w.inBounds(tx + dx, tz + dz) && w.road[w.idx(tx + dx, tz + dz)]) x.fillRect(tx * s + 2 + dx * 3, tz * s + 2 + dz * 3, s - 4, s - 4); }
+      if (w.road[i]) { x.fillStyle = w.road[i] === 3 ? '#d8b88a' : w.road[i] === 2 ? '#9aa0a8' : '#b8946a'; x.fillRect(tx * s + 2, tz * s + 2, s - 4, s - 4); for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (w.inBounds(tx + dx, tz + dz) && w.road[w.idx(tx + dx, tz + dz)]) x.fillRect(tx * s + 2 + dx * 3, tz * s + 2 + dz * 3, s - 4, s - 4); }
     }
     for (const p of g.roadPlans.plans.values()) { x.strokeStyle = '#ffe1a0'; x.lineWidth = 1.5; x.setLineDash([3, 3]); x.strokeRect(p.x * s + 2, p.z * s + 2, s - 4, s - 4); x.setLineDash([]); }
     for (const b of g.buildings.list) {
