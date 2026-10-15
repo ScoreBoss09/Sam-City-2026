@@ -153,6 +153,8 @@ export class Sim {
     const alert = (this.game.raids && this.game.raids.alert) || this.game.raidNight || this.game.deathmatch;
     if (this.moveJob && this.pose !== 'sleep') return 'transplant';
     if (this.crook) return 'crime';
+    if (this.trapped) return 'trapped';   // cut off by a fire (systems/Hazards.js)
+    if (this.fleeFire) return 'flee';
     if (this.game.hazards && this.game.hazards.fires.length && this.pose !== 'sleep' && !(this.down > 0)) { const H = this.game.hazards, fb = this.role === 'firefighter' ? H.fireFor(this) : H.volunteer(this); if (fb) { this.fireB = fb; return 'firefight'; } }
     if (this.fireB && !(this.game.hazards && this.game.hazards.fires.some((f) => f.b === this.fireB))) this.fireB = null;
     if (this.fight) return 'fight';
@@ -223,13 +225,15 @@ export class Sim {
       case 'transplant': this.game.resources.driveMove(this, dt); break;
       case 'fight': this.game.crime.driveFight(this, dt); break;
       case 'police': this.game.crime.driveCop(this, dt); break;
-      case 'firefight': this.game.hazards.driveCrew(this); break;
+      case 'firefight': this.game.hazards.driveCrew(this, dt); break;
+      case 'flee': this.game.hazards.driveFlee(this, dt); break;
+      case 'trapped': this.panic = true; this.path = []; break;
       case 'defend': break;
       case 'leave': this.doLeave(dt); break;
       default: break;
     }
     if (this.phase === 2 && !this.upstairs && !this.path.length && !this.sitting && (this.activity === 'work' || this.activity === 'home') && (this.upT = (this.upT || 0) - dt) <= 0) { this.upT = 8; this.goUpstairs(); }
-    if (this.hurry && this.activity !== 'work' && this.activity !== 'firefight') this.hurry = false;   // (people run to a fire)
+    if (this.hurry && this.activity !== 'work' && this.activity !== 'firefight' && this.activity !== 'flee') this.hurry = false;   // (people run to a fire, and away from one)
     if (this.hurry && this.phase === 2) this.hurry = false;
   }
   doShelter() {
@@ -249,7 +253,7 @@ export class Sim {
     if (this.mesh.visible) g.social.say(this, pick(DOWN_LINES), 2);
   }
   endActivity() {
-    this.panic = false; this.comeDown();
+    this.panic = false; this.comeDown(); if (this.bucketMesh && this.game.hazards) this.game.hazards.dropBucket(this); this.run = null;
     if (this.pose === 'sleep') { this.pose = 'stand'; const s = this.bedSpot; if (s) { this.x = s.ax; this.z = s.az; } this.bedSpot = null; this.moodBoost -= 0.0; }
     this.standUp(); this.abortJob(); this.bag = false; this.drinking = false; this.bandT = 0; this.served = false; this.browseT = 0; this.svc = null; if (this.order && this.game.service) this.game.service.release(this);
   }
@@ -323,7 +327,7 @@ export class Sim {
       if (parks.length) opts.push('park', 'park', 'bench'); if (shops.length) opts.push('shop', 'shop'); if (this.home && this.home.state === 'done') opts.push('home', 'sofa'); opts.push('street', 'street');
       if (pubs.length && h >= 17) opts.push('pub', 'pub', 'pub');
       if (g.transport && Object.values(g.transport.lines).some((L) => L && L.kind !== 'sky') && this.kind !== 'visitor' && h >= 8 && h < 20) opts.push('train', 'train');   // a trip on the railway or monorail
-      const qk = this.quirk && this.quirk.leisure, have = { park: parks.length, pub: pubs.length }; if (qk && adult && have[qk] !== 0) opts.push(qk, qk, qk);   // (an early bird with no park in town just goes for a walk) this.busk = false; this.jogging = false; if (church && g.clock.isSunday && h >= 9 && h < 12) opts.push('church', 'church', 'church', 'church'); if (pubs.length && g.clock.isSunday && h >= 12 && h < 17) opts.push('pub', 'pub', 'pub'); if (band && h >= 16 && h < 21) opts.push('band', 'band');   // (and on Sundays: dinner at the pub, or the beer garden)
+      const qk = this.quirk && this.quirk.leisure, home = this.home && this.home.state === 'done' && this.home.spots.idle.length ? this.home : null, have = { park: parks.length, pub: pubs.length, shop: shops.length, home: home ? 1 : 0 };   // (a homebody with no home, a shopper with no shops: something else) if (qk && adult && have[qk] !== 0) opts.push(qk, qk, qk);   // (an early bird with no park in town just goes for a walk) this.busk = false; this.jogging = false; if (church && g.clock.isSunday && h >= 9 && h < 12) opts.push('church', 'church', 'church', 'church'); if (pubs.length && g.clock.isSunday && h >= 12 && h < 17) opts.push('pub', 'pub', 'pub'); if (band && h >= 16 && h < 21) opts.push('band', 'band');   // (and on Sundays: dinner at the pub, or the beer garden)
       const c = pick(opts); let ok = false;
       if (this.partner && !this.partner.sleeping && this.partner.activity === 'leisure' && this.partner.dest && this.partner.inside === null && Math.random() < 0.55) { const d = this.partner.dest, ax = (Math.random() - 0.5) * 2.4, az = (Math.random() - 0.5) * 2.4; ok = this.goTo({ b: d.b, x: d.x + ax, z: d.z + az }); if (ok) { this.timer = 14 + Math.random() * 25; this.hurry = false; return; } }
       if (this.kind === 'child') this.hurry = Math.random() < 0.6;
@@ -338,8 +342,8 @@ export class Sim {
       else if (c === 'church' && church) { const seats = this.freeSeat(church, ['pew']); if (seats.length) { const st = pick(seats); ok = this.goTo({ b: church, x: st.x, z: st.z, seat: st }); if (ok && Math.random() < 0.7) this.wear('sunday', g.clock.totalDays * 24 + 15); } }
       else if (c === 'train') { ok = g.transport.planTrip(this); if (ok) this.timer = 200; }
       else if (c === 'band' && band) { const a = Math.random() * 6.28, r = 3.6 + Math.random() * 2; ok = this.goTo({ x: band.cx + Math.cos(a) * r, z: band.cz + Math.sin(a) * r, face: Math.atan2(-Math.cos(a), -Math.sin(a)) }); if (ok) this.bandT = 1; }
-      else if (c === 'sofa') { const seats = this.freeSeat(this.home, ['sofa']); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: this.home, x: s.x, z: s.z, seat: s }); } }
-      else if (c === 'home') { const s = pick(this.home.spots.idle); ok = this.goTo({ b: this.home, x: s.x, z: s.z }); }
+      else if (c === 'sofa' && home) { const seats = this.freeSeat(home, ['sofa']); if (seats.length) { const s = pick(seats); ok = this.goTo({ b: this.home, x: s.x, z: s.z, seat: s }); } }
+      else if (c === 'home' && home) { const s = pick(home.spots.idle); ok = this.goTo({ b: home, x: s.x, z: s.z }); }
       else ok = this.wander();
       if (!ok) this.phase = 2; this.timer = 14 + Math.random() * 28;
       if (c !== 'shop' && this.shopping) { this.shopping = false; this.bag = Math.random() < 0.7; }
@@ -466,7 +470,7 @@ export class Sim {
       else if (j.step === 2) { this.working = true; j.tool = p.felling ? 'chop' : 'dig'; if (g.roadPlans.work(p, dt * 0.9 * (wp.def.buildSpeed || 1))) { this.job = null; this.idleSet = false; } else { j.recheck = (j.recheck || 0) - dt; if (j.recheck <= 0) { j.recheck = 5; const f = c.focus(); if (f && f.kind !== 'roads' && (f.prio ?? 1e9) < (g.flags.roadPrio ?? 1e9)) { if (p.reserved === this) p.reserved = null; this.job = null; this.idleSet = false; } } } }
     } else if (j.type === 'build') {
       if (j.step === 0) { const p = c.perimeterPoint(j.site, this); if (!this.goTo({ x: p.x, z: p.z })) { this.abortJob(); return; } j.step = 1; j.site.builders = (j.site.builders || 0) + 1; }
-      else if (j.step === 1 && this.phase === 2) { j.step = 2; j.tool = Math.random() < 0.7 ? 'hammer' : 'saw'; this.faceGoal = Math.atan2(j.site.cx - this.x, j.site.cz - this.z); }
+      else if (j.step === 1 && this.phase === 2) { j.step = 2; j.tool = j.site.def.ruin ? 'dig' : Math.random() < 0.7 ? 'hammer' : 'saw'; this.faceGoal = Math.atan2(j.site.cx - this.x, j.site.cz - this.z); }
       else if (j.step === 2) {
         const s = j.site; if (s.state !== 'site' || s.progress >= g.buildings.supply(s) - 0.0005) { s.builders = Math.max(0, (s.builders || 0) - 1); this.job = null; this.idleSet = false; return; }
         // something higher up the work list needs hands (and has room for them)? go and help there instead
@@ -501,10 +505,11 @@ export class Sim {
     if (this.kind === 'raider') { if (this.atkT > 0) upper = this.weapon === 'pistol' ? 'aim' : 'strike'; else if (this.rstate === 'loot' && !this.moved) upper = 'carry'; }
     if (this.kind === 'security' && this.fireT > 0) upper = 'aim';
     if (this.sitting && this.drinking && !this.eating && upper === 'eat') upper = 'drink';
-    if (this.smokeT > 0 && this.kind !== 'child' && !this.working && !this.carry && !this.pulling && !this.eating && !this.fightAnim && SMOKE_OK.has(upper) && (upper !== 'drink' || (this.game.elapsed + this.id) % 24 < 11)) upper = 'smoke';   // (a pint in one hand and a fag on the go: they take turns)
+    if (this.smokeT > 0 && this.kind !== 'child' && !this.bucketMesh && !this.panic && !this.working && !this.carry && !this.pulling && !this.eating && !this.fightAnim && SMOKE_OK.has(upper) && (upper !== 'drink' || (this.game.elapsed + this.id) % 24 < 11)) upper = 'smoke';   // (a pint in one hand and a fag on the go: they take turns)
     if (this.bandT && !this.moved && !this.chat && lower === 'stand') upper = (this.id + Math.floor(this.game.clock.hour * 4)) % 3 === 0 ? 'clap' : (this.id % 2 ? 'dance' : 'idle');
     if (this.emote && this.emote.t > 0) upper = this.emote.upper;
-    if (this.activity === 'firefight' && !this.moved) upper = 'point';
+    if (this.activity === 'firefight' && !this.moved && !this.run) upper = this.role === 'firefighter' || this.id % 3 ? 'point' : 'panic';
+    if ((this.activity === 'flee' && !this.moved) || this.activity === 'trapped') upper = this.trapped || (this.fleeFire && this.fleeFire.home) ? 'panic' : this.id % 2 ? 'point' : 'facepalm';
     if (this.digging && !this.moved) { upper = 'dig'; lower = 'crouch'; }
     if (this.busk && !this.moved && this.activity === 'leisure' && !this.chat) upper = this.busk === 'busk' ? 'airguitar' : this.busk === 'watch' ? 'lookaround' : upper;
     if (this.fightAnim) upper = this.fightAnim;

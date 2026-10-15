@@ -540,6 +540,10 @@ export const BUILDINGS = {
     mat: { timber: 10, stone: 4 }, work: 16, layout: 'terminalhut', permit: { cost: 400, pop: 15 }, tab: 'Civic',
     blurb: 'The planning office. Its computer terminal handles permits, trade and the town report.',
   },
+  rubble: {   // (what's left after a fire: placed by systems/Hazards.js with the burned building's size and look, then cleared by the builders)
+    name: 'Burned-out ruin', cat: 'ruin', ruin: true, w: 2, d: 2, floors: 1, needsRoad: false,
+    mat: {}, work: 40, permit: { cost: 0, pop: 0 }, blurb: 'Blackened walls and ash. The builders will clear it.',
+  },
   lift: {
     name: 'Supply Lift', cat: 'special', w: 4, d: 3, floors: 1, wall: 'industrial', roof: 'none', open: true, special: true,
     mat: {}, work: 0, layout: 'none',

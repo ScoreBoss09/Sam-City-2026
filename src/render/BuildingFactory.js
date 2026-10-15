@@ -678,6 +678,39 @@ export function buildSite(def) {
   return { group: g, update, height: H };
 }
 
+/**
+ * What's left after a fire nobody could put out: blackened stubs of wall with ragged tops, a chimney stack still
+ * standing, fallen roof beams and heaps of ash and broken brick. It's a builders' job (a site on their work list):
+ * the walls come down and the heaps go as they clear it (update(progress)), then the plot is free to build on.
+ */
+export function buildRuin(def) {
+  const W = def.w * UNIT, D = def.d * UNIT, H = Math.max(2.4, (def.floors || 1) * WALL_H), g = new THREE.Group(), rnd = mulberry32((def.w * 131 + def.d * 17 + (def.floors || 1)) | 0);
+  const f = FACADES[def.wall] || FACADES.tan, wallC = new THREE.Color(f.base).lerp(new THREE.Color(0x14110f), 0.72).getHex();
+  box(g, W + 0.4, 0.12, D + 0.4, 0x1c1916, 0, -0.06, 0);   // scorched floor
+  const walls = new THREE.Group(), heaps = new THREE.Group(); g.add(walls, heaps);
+  // the walls: short runs, each its own height, the tops broken off unevenly (the door gap left open)
+  const run = (len, along, x0, z0, door) => {
+    const n = Math.max(2, Math.round(len / 0.9)), seg = len / n;
+    for (let i = 0; i < n; i++) {
+      const t = -len / 2 + seg * (i + 0.5); if (door && Math.abs(t - door) < 1.1) continue;
+      const h = 0.35 + rnd() * rnd() * H * 0.85, x = along ? x0 + t : x0, z = along ? z0 : z0 + t;
+      box(walls, along ? seg + 0.02 : WALL_T, h, along ? WALL_T : seg + 0.02, rnd() < 0.3 ? 0x0e0c0b : wallC, x, 0, z);
+    }
+  };
+  run(W, true, 0, D / 2 - WALL_T / 2, doorOffset(def.w)); run(W, true, 0, -D / 2 + WALL_T / 2); run(D, false, -W / 2 + WALL_T / 2, 0); run(D, false, W / 2 - WALL_T / 2, 0);
+  if (def.roof !== 'flat' && def.roof !== 'none') box(walls, 0.9, H + 1.2, 0.9, 0x4a2f26, W * 0.2, 0, -D * 0.12);   // the chimney stack outlasts everything
+  // fallen roof timbers, charred black, lying across the rubble at angles
+  const beams = 3 + Math.floor(rnd() * 3);
+  for (let i = 0; i < beams; i++) { const L = Math.min(W, D) * (0.4 + rnd() * 0.3), b = box(walls, 0.22, 0.22, L, 0x0b0a09, (rnd() - 0.5) * (W - L) * 0.8, 0.1 + rnd() * 0.4, (rnd() - 0.5) * (D - L) * 0.8); b.rotation.set((rnd() - 0.5) * 0.5, rnd() * Math.PI, (rnd() - 0.5) * 0.3); }   // (short enough to stay inside the walls whichever way they lie)
+  // heaps of ash and broken brick
+  const heapGeo = new THREE.DodecahedronGeometry(1, 0);
+  for (let i = 0; i < 5 + Math.floor(W * D / 12); i++) { const m = new THREE.Mesh(heapGeo, stdMat(i % 3 ? 0x2b2724 : wallC)); const r = 0.5 + rnd() * 0.9; m.scale.set(r, r * 0.38, r * (0.8 + rnd() * 0.4)); m.position.set((rnd() - 0.5) * (W - 1.2), 0, (rnd() - 0.5) * (D - 1.2)); m.rotation.y = rnd() * 6; m.castShadow = m.receiveShadow = true; heaps.add(m); }
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('Danger: fire damage', '#8a1a10') })); sign.position.set(-W / 2 + 1.4, 0.9, D / 2 + 0.35); g.add(sign);
+  for (const x of [-W / 2 + 0.4, -W / 2 + 2.4]) box(g, 0.08, 1.1, 0.08, 0xd8c8a0, x, 0, D / 2 + 0.3);
+  function update(progress) { const k = Math.max(0.04, 1 - progress); walls.scale.y = k; heaps.scale.set(Math.max(0.25, 1 - progress * 0.75), k, Math.max(0.25, 1 - progress * 0.75)); }
+  return { group: g, update, height: H };
+}
+
 // ---------- interior (built lazily) ----------
 /** What a piece of furniture was in the town's era: no tellies before the electricity, no home computers before the computer age. */
 const ERA_SWAP = [{ kitchen: 'range', tv: 'radio', tvunit: 'radio', hifi: 'gramophone', fridgefreezer: 'larder', washer: 'mangle', homepc: 'desk', terminal: 'ledger', reception: 'reception0' }, { homepc: 'desk', terminal: 'ledger', reception: 'reception0' }, {}];
