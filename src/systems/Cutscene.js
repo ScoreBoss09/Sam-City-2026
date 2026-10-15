@@ -10,7 +10,8 @@ import * as THREE from 'three';
  *
  * cam is fixed, or a function of the seconds into that shot. Scenes asked for while one is playing wait their turn.
  * A shot can ask Sam something: { ask: { q: 'Who says it', opts: [{ t: 'An answer', on: () => {...} }, ...] } } holds the
- * shot until one is picked (1-3, arrows and Enter, a click, or the d-pad and ✕); skipping the scene picks the first.
+ * shot until one is picked (1-3, arrows and Enter, a click, or the d-pad and ✕); skipping the scene picks the first
+ * (or ask.def). An answer whose on() returns 'end' ends the scene there.
  * say can be a function (worked out when the shot starts: a reply to the answer before). rec: true is seen through the
  * TV camera's viewfinder. tick(dt, shot) on the scene runs every frame it plays.
  */
@@ -18,7 +19,7 @@ export class Cutscene {
   constructor(game) { this.game = game; this.live = null; this.queue = []; this.pos = new THREE.Vector3(); this.look = new THREE.Vector3(); }
   play(scene) { if (this.live) { this.queue.push(scene); return; } this.start(scene); }
   start(scene) {
-    const g = this.game; this.live = scene; this.i = -1; this.t = 0; this.skipT = 0; this.first = true;
+    const g = this.game; this.live = scene; this.i = -1; this.t = 0; this.skipT = 0; this.first = true; this.endNow = false;
     this.speed = g.clock.speed; if (!g.clock.speed) g.clock.speed = 1;   // the world has to move for the scene to happen
     this.mode = g.mode; if (g.mode !== 'sim') g.setMode('sim'); this.fov0 = g.camera.fov; g.input.unlock(); document.body.classList.add('cutscene');
     const o = this.el = document.createElement('div'); o.id = 'cine';
@@ -57,7 +58,7 @@ export class Cutscene {
     }
     if (this.asking && this.answered < 0) this.t = Math.min(this.t, s.dur * 0.95);   // (held till Sam answers)
     else if (this.asking && this.t < this.answeredAt + 0.7) this.t = Math.min(this.t, s.dur * 0.95);   // (a moment to see the pick)
-    else if (this.asking) { if (s.cut) this.first = true; this.next(); return; }
+    else if (this.asking) { if (this.endNow) { this.endNow = false; this.i = this.live.shots.length; this.end(); return; } if (s.cut) this.first = true; this.next(); return; }
     if (this.t >= s.dur) { if (s.cut) this.first = true; this.next(); }
   }
   drawOpts() {
@@ -74,12 +75,12 @@ export class Cutscene {
   /** Sam's answer to the question on screen. */
   answer(i) {
     const A = this.asking; if (!A || this.answered >= 0 || !A.opts[i]) return; this.answered = i; this.sel = i; this.answeredAt = this.t; this.drawOpts();
-    try { A.opts[i].on && A.opts[i].on(); } catch (e) { console.warn('cutscene answer', e); }
+    try { if (A.opts[i].on && A.opts[i].on() === 'end') this.endNow = true; } catch (e) { console.warn('cutscene answer', e); }   // (an answer that returns 'end' ends the scene)
   }
   /** Skipped: every shot's start still happens (handing over a club, say), then the end. */
   skipAll() {
-    const S = this.live.shots; if (this.asking && this.answered < 0) this.answer(0);
-    for (let j = this.i + 1; j < S.length; j++) { if (S[j].at) try { S[j].at(); } catch (e) { /* skip */ } const A = S[j].ask; if (A && A.opts[0] && A.opts[0].on) try { A.opts[0].on(); } catch (e) { /* skip */ } }   // (questions not reached yet get the first answer)
+    const S = this.live.shots; if (this.asking && this.answered < 0) this.answer(this.asking.def ?? 0);
+    for (let j = this.i + 1; j < S.length; j++) { if (S[j].at) try { S[j].at(); } catch (e) { /* skip */ } const A = S[j].ask, o = A && A.opts[A.def ?? 0]; if (o && o.on) try { o.on(); } catch (e) { /* skip */ } }   // (questions not reached yet get their default answer: the first, unless def says)
     this.i = S.length; this.end();
   }
   end() {

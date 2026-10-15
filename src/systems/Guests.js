@@ -13,7 +13,7 @@ export class Guests {
   update(dt) {
     const g = this.game, c = g.clock; if (!g.started) return;
     // a visit every couple of weeks, in the daytime, once the town is big enough to be worth the trip
-    if (!this.v && c.hour >= 10 && c.hour < 15 && g.population.count() >= 15 && c.totalDays - (g.flags.lastGuest ?? -6) >= 10 && Math.random() < dt * 0.002) this.arrive();
+    if (!this.v && !g.flags.liftDown && c.hour >= 10 && c.hour < 15 && g.population.count() >= 15 && c.totalDays - (g.flags.lastGuest ?? -6) >= 10 && Math.random() < dt * 0.002) this.arrive();
     if (this.v) this.tour(dt);
     this.pitch(dt);
   }

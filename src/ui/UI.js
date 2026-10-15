@@ -496,9 +496,16 @@ export class UI {
     Sfx.play('ui'); this.simCard();
   }
 
-  showEnding() {
-    const e = $('ending'); e.classList.remove('hidden');
-    e.innerHTML = `<div class="box"><h1>OUTSIDE</h1><p class="tag">The Lift climbs for a long time. The doors open onto a car park under a real sky: real wind, real rain, no cue cards.<br>Sam City was a set. You were the star.<br><br>Thanks for playing this prototype.</p><button id="btn-keep">Keep playing in the set</button></div>`;
+  /** The way out: how Sam left (ride, blast or stairs), the date it really is, and what Sam leaves behind. */
+  showEnding(route = 'ride') {
+    const g = this.game, e = $('ending'), now = new Date(), date = `${now.getDate()} ${now.toLocaleString('en-GB', { month: 'long' })} 2026`; e.classList.remove('hidden');
+    const how = {
+      ride: 'The cage sinks for a long time. Then doors, a corridor of strip lights, a fire exit, and a car park under a real sky: real wind, real rain, no cue cards.',
+      blast: 'Down the ladder, rung after rung, into the dark under Sam City. A service tunnel, a fire door, and then rain on your face: a car park under a real sky. A bus goes past with an advert on the side for something called Netflix.',
+      stairs: 'Through the door marked EXIT: a corridor, a lift that goes the right way, a lobby, revolving doors, and the street. It\'s raining. Everybody is looking down at a little glowing slab in their hand. A billboard over the road says SAM CITY 1995 · STILL ON AIR.',
+    }[route] || '';
+    const pop = g.population.count(), built = g.buildings.list.filter((b) => b.state === 'done' && !b.def.special).length, days = g.clock.totalDays || 0;
+    e.innerHTML = `<div class="box"><h1>OUTSIDE</h1><p class="tag">${how}<br><br>The date on the bus shelter says <b>${date}</b>. It isn't 1995. It hasn't been 1995 for thirty-one years.<br>Sam City was a set. You were the star.</p><p class="tag small">${days} days in Sam City · ${pop} people · ${built} buildings, every one of them raised by hand</p><button id="btn-keep">Keep playing in the set</button></div>`;
     $('btn-keep').onclick = () => { e.classList.add('hidden'); this.game.ending = false; this.game.flags.escaped = true; this.game.player.teleport(this.game.plaza.x, this.game.plaza.z); this.fade(0); };
   }
 

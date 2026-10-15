@@ -193,14 +193,15 @@ export class Population {
     this.timer -= dt; this.visitorTimer -= dt;
     const power = g.buildings.count('power') > 0, water = g.buildings.count('water') > 0, parks = g.buildings.list.filter((b) => b.def.park && b.state === 'done').length;
     const rate = clamp(1 + (power ? 0.5 : 0) + (water ? 0.3 : 0) + parks * 0.1, 1, 2.5);
-    if (this.timer <= 0) {
+    const noLift = !!g.flags.liftDown;   // (blown up: nobody comes down, nobody goes up)
+    if (this.timer <= 0 && !noLift) {
       this.timer = (this.invites > 0 ? 4 : 26) / rate;
       // with no jobs going, people still move in, just less often: retired couples, people who work off the island, the unemployed
       const can = this.freeBeds() > 0 && g.economy.stock.food >= 3 && (this.vacancies().length > 0 || this.count() < 4 || this.invites > 0 || Math.random() < 0.4);
       this.why = this.freeBeds() <= 0 ? 'no free beds' : g.economy.stock.food < 3 ? 'not enough food in the Stockyard' : this.sims.length >= this.simCap ? 'this computer is busy (the town grows again when it has headroom)' : !this.vacancies().length ? 'no jobs going (they still come, but slowly)' : '';
       if (can && this.sims.length < this.simCap) { this.arrive(); if (this.invites > 0) this.invites--; }
     }
-    if (this.visitorTimer <= 0) {
+    if (this.visitorTimer <= 0 && !noLift) {
       const telly = (g.flags.tellyTill || 0) > g.clock.totalDays;   // (on the telly: sightseers come to have a look)
       this.visitorTimer = (50 + Math.random() * 40) / (1 + 0.5 * Math.min(2, g.buildings.count('busstop'))) / (telly ? 2 : 1);
       const vis = this.sims.filter((s) => s.kind === 'visitor').length;

@@ -72,7 +72,8 @@ export class Happenings {
     if (day) opts.push(['morris', this.morrisWeight(c, pop)], ['streetparty', summer && (sat || sun) && !g.flags.partyDay ? 1.2 : 0], ['carboot', sun && h < 13 ? 1.5 : 0], ['watermain', age >= 2 ? 0.6 : 0]);
     if (mornin && age >= 3) opts.push(['milkfloat', 2]);
     opts.push(['chimney', pop < 25 ? 0 : winter ? 0.8 : 0.2], ['stagelight', stage >= 3 && days >= 28 && !g.flags.stagelight ? 0.6 : 0]);
-    const live = opts.filter((o) => o[1] > 0); if (!kind && !live.length) return; const k = kind || g.population.weighted(live); this.count++; g.flags.happenings = this.count;
+    const NOLIFT = new Set(['pig', 'protest', 'lottery', 'snowballs', 'prang', 'powercut', 'watermain', 'chimney', 'stagelight', 'streetparty']);   // (what can still happen with the Lift in pieces)
+    const live = opts.filter((o) => o[1] > 0 && (!g.flags.liftDown || NOLIFT.has(o[0]))); if (!kind && !live.length) return; const k = kind || g.population.weighted(live); this.count++; g.flags.happenings = this.count;
     const seen = (g.flags.seenEv ||= {}); this.quiet = QUIET_ONCE_SEEN.has(k) && !!seen[k];
     const fn = this[k]; if (fn) { this.marks = []; const r = fn.call(this); this.quiet = false; if (r) this.firstTime(k); if (r) this.live.push(r); for (const m of this.marks) if (r) { const was = m.alive; m.alive = () => !r.done && this.live.includes(r) && (!was || was()); m.until = this.game.elapsed + 3600; } this.marks = null; }   // its map icon goes the moment it's over
   }
