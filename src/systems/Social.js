@@ -129,7 +129,7 @@ export class Social {
     const g = this.game, cam = g.camera.position, godFar = g.mode === 'god' && g.god.dist > 85, p = g.player;
     // only the few nearest speakers show their bubble (a crowd all talking at once is just noise); none but the one Sam's talking to during a chat
     const talk = g.ui.dialogue && g.ui.dialogue.sim, near = g.population.sims.filter((s) => s.bubble && !s.remove && (!talk || s === talk)).map((s) => [s, (s.x - cam.x) ** 2 + (s.z - cam.z) ** 2]).filter(([, d]) => g.mode === 'god' || d < 900).sort((a, b) => a[1] - b[1]).slice(0, g.mode === 'god' ? 6 : 3), shown = new Set(near.map(([s]) => s));
-    const noTags = (g.combat && g.combat.on) || p.aiming;   // no name tags over the sights
+    const noTags = (g.combat && g.combat.on) || p.aiming || (g.cutscene && g.cutscene.live);   // no name tags over the sights (or in a cutscene)
     for (const s of g.population.sims) {
       const b = s.bubble; const vis = !s.mesh.visible || godFar;
       if (b) {

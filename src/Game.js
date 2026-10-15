@@ -89,7 +89,7 @@ export class Game {
   constructor(canvas, opts = {}) {
     this.canvas = canvas; this.flags = {}; this.mode = 'sim'; this.ending = false; this.fps = 60; this.glitch = 0; this.started = false; this.renderScale = opts.scale || 0.6;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-    this.watchdog = new Watchdog(this); this.glass = new Glass(this); this.decals = new Decals(this); this.photos = new Photos(this); this.models = new ModelLib(this);   // checked models (tools/assets/check.mjs) Watchdog.watchContext(this, canvas);   // a freeze or a graphics-card reset always gets explained
+    this.watchdog = new Watchdog(this); this.glass = new Glass(this); this.decals = new Decals(this); this.photos = new Photos(this); this.models = new ModelLib(this); Watchdog.watchContext(this, canvas);   // checked models (tools/assets/check.mjs); a freeze or a graphics-card reset always gets explained
     this.post = new Post(this.renderer, { enabled: opts.post !== false });
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(70, 1, 0.3, 600);

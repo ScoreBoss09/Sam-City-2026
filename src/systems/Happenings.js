@@ -10,6 +10,7 @@ import { today as keyToday } from '../data/calendar.js';
 const FIRST = {
   morris: ['Morris dancers', 'A side of morris men has come up the Lift: bells on their shins, hankies and sticks. They\'ll dance in the street for a while, then go.'],
   icecream: ['The ice-cream van', 'Greensleeves on the chimes. On warm days the van does a round of the streets: 99s with a flake, and Sam can buy one too.'],
+  documentary: ['A film crew', 'A presenter and a camera crew from Pennine Television have come down the Lift. They\'re making a programme about the town, and they\'ll want a word with Sam.'],
   carboot: ['The boot sale', 'Sunday morning: sellers come up from the Lift and lay out tables of bric-a-brac. Have a rummage: there are bargains, and odd things you won\'t find in the shops.'],
 };
 const QUIET_ONCE_SEEN = new Set(['morris', 'icecream', 'milkfloat']);   // wanderers: once Sam's seen them, no icon over them
@@ -23,6 +24,26 @@ const TILE = 8, BOX = new THREE.BoxGeometry(1, 1, 1);   // one shared box: props
  * Ice-cream vans, an escaped pig for Sam to catch, protest marches, a lottery winner buying everyone a pint, a TV crew
  * that won't explain itself, a stage light falling out of the sky, snowball fights, car prangs, chimney fires, power cuts.
  */
+const WEEKDAY = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+// the documentary's interview: three questions, three answers each (and what the presenter makes of them)
+const DOC_Q = [
+  { q: 'Sam, a year ago this was an empty field. How did it all start?', a: [
+    ['One spade, a lot of tea, and a lot of help.', 'Modest, too. Your neighbours tell me you never stop working.', 'modest'],
+    ['I had a plan: a home and a job for everyone who comes down that Lift.', 'A home and a job for everyone. A few politicians could learn from that.', 'vision'],
+    ['Honestly? I woke up by the Lift one morning and just got on with it.', 'You woke up... by the... ha! Right. (She glances off camera.) We\'ll, er, cut that bit.', 'odd'],
+  ] },
+  { q: 'Some people say Sam City is a bit... odd. Nobody seems sure where that Lift actually goes. What do you say to them?', a: [
+    ['Odd\'s good. Odd brings the tourists in.', 'Ha! I can see the posters now. "Sam City: it\'s a bit odd."', 'tourist'],
+    ['There\'s nothing odd about Sam City. It\'s as normal as anywhere.', 'As normal as anywhere. Absolutely. (The sound recordist coughs.)', 'normal'],
+    ['You came down in it. You tell me where it goes.', 'We, er... came in on the M62. Like everybody does. Next question!', 'odd'],
+  ] },
+  { q: 'And what\'s next for Sam City?', a: [
+    ['More homes. Everybody deserves a roof over their head.', 'More homes. You heard it here first.', 'homes'],
+    ['A pub on every corner and a chippy on every street!', 'The viewers are going to love you.', 'pubs'],
+    ['Something tall. I want to see what\'s above the clouds.', 'Above the... clouds. (A long pause.) Lovely. Lovely stuff.', 'odd'],
+  ] },
+];
+const DOC_SIGN = { modest: 'a town built with one spade and a lot of tea', vision: 'a town with a home and a job for everyone who comes', odd: 'a town that nobody, not even its founder, quite remembers starting' };
 const CREW = ['Keep rolling, keep rolling...', 'Camera two, tighter on Sam!', 'Act natural, everyone.', 'We\'re just... doing a documentary. About bins.', 'Nothing to see here!'];
 
 export class Happenings {
@@ -31,6 +52,8 @@ export class Happenings {
     const g = this.game; if (!g.started || g.ending) return; const gdt = dt * Math.max(0, g.clock.speed);
     this.timer -= gdt; if (this.timer <= 0) { this.timer = (160 + Math.random() * 200) / (1 + g.population.count() / 45); this.fire(); }   // rare in a small village, busier as the town grows
     for (const h of this.live) if (h.update) h.update(dt);
+    this.airCheck(); this.viewerCheck();
+    if (g.flags.docAired && g.clock.totalDays - g.flags.docAired <= 2 && g.mode === 'sim' && Math.random() < dt * 0.04) { const s = this.near(g.player.x, g.player.z, 12).find((q) => q.kind === 'resident' && q.mesh.visible && !q.chat && !q.bubble); if (s) { g.social.say(s, pick(['Saw you on the telly, Sam!', 'You were on the box! My mum taped it.', 'Britain\'s Newest Town! We\'re famous!', 'You looked taller on the telly.', 'Our Kevin was in the background, waving!']), 2.6); s.emote = { upper: 'wave', t: 1.6 }; } }   // (the morning after)
     this.live = this.live.filter((h) => { if (h.done) { if (h.end) h.end(); return false; } return true; });
   }
   /** Pick something that suits the time, the season and the age, and start it. */
@@ -42,7 +65,7 @@ export class Happenings {
     const farm = g.buildings.list.find((b) => b.state === 'done' && ['farm', 'allotment', 'stables'].includes(b.id));
     // a slow burner: a quiet village at first; trouble and fuss come with a bigger town (and its problems)
     const pop = g.population.count(), troubled = g.population.sims.filter((s) => s.homeless || s.mood < -0.4 || s.drunk > 0.6).length, news = g.buildings.count('newsagent') > 0;
-    if (day) opts.push(['pig', farm && days - (g.flags.pigDay ?? -99) >= 12 ? 0.25 : 0], ['protest', pop >= 25 && !(g.celebrations && g.celebrations.protests.p) ? (c.isSunday ? 1.6 : 0.6) + troubled * 0.05 : 0], ['tvcrew', stage >= 2 && days >= 16 ? 0.7 : 0], ['lottery', news && pop >= 15 && days - (g.flags.lottoDay ?? -99) >= 10 ? 0.5 : 0]);
+    if (day) opts.push(['pig', farm && days - (g.flags.pigDay ?? -99) >= 12 ? 0.25 : 0], ['protest', pop >= 25 && !(g.celebrations && g.celebrations.protests.p) ? (c.isSunday ? 1.6 : 0.6) + troubled * 0.05 : 0], ['tvcrew', stage >= 2 && days >= 16 ? 0.7 : 0], ['documentary', !g.flags.docDone && days >= 12 && pop >= 15 && h >= 10 && h < 17 && !(g.weather && g.weather.rain > 0.3) && !(g.raids && g.raids.state === 'active') && days - (g.flags.docMissed ?? -99) >= 8 && !this.live.some((q) => q.kind === 'documentary') ? 1.5 : 0], ['lottery', news && pop >= 15 && days - (g.flags.lottoDay ?? -99) >= 10 ? 0.5 : 0]);
     if (day && winter && g.seasons && g.seasons.snow > 0.3) opts.push(['snowballs', 3]);   // (only when there's snow lying to make them with)
     if (age >= 3) opts.push(['prang', pop >= 20 ? 1 : 0], ['powercut', g.tech.era >= 1 && pop >= 20 ? 0.6 : 0]);
     const sun = c.isSunday, sat = c.weekday === 5, mornin = h >= 5 && h < 8;
@@ -152,6 +175,98 @@ export class Happenings {
     const g = this.game, P = g.player, p = this.spot(20), crew = this.near(p.x, p.z, 50).filter((s) => s.kind === 'resident').slice(0, 2); if (!crew.length) return null;
     this.say('🎥 A TV crew is filming in town. Nobody will say what for.', 'info', false); this.mark(crew[0], '🎥', 'TV crew', 70, crew[0]); let t = 0;
     return { update: (dt) => { t += dt; for (const s of crew) { if (!s.path.length && Math.random() < dt * 0.5) s.goTo({ x: P.x + (Math.random() - 0.5) * 8, z: P.z + (Math.random() - 0.5) * 8 }); s.emote = { upper: Math.hypot(P.x - s.x, P.z - s.z) < 4 ? 'shush' : 'earpiece', t: 1 }; if (Math.random() < dt * 0.15 && s.mesh.visible) g.social.say(s, pick(CREW), 2.2); } }, get done() { return t > 70; } };
+  }
+  /**
+   * The documentary (once): a presenter, a camera operator and a sound recordist from Pennine Television come down the
+   * Lift, film a piece to camera in the street, then come and find Sam for an interview (a cutscene where Sam picks the
+   * answers), and the presenter signs off to camera. It goes out a couple of nights later, and the town's on the telly.
+   */
+  documentary() {
+    const g = this.game, P = g.player, u = Math.random() < 0.5 ? 'f' : 'm'; let p = this.spot(26); for (let k = 0; k < 12 && Math.hypot(p.x - P.x, p.z - P.z) < 12; k++) p = this.spot(26);   // (along the street from Sam, not on top of him)
+    const [pre] = this.extras(p, 1, { gender: u, shirt: u === 'f' ? 0x8a2a3a : 0x2a3a5a, longSleeve: true, pants: 0x2a2a30, hat: null, dialect: null }, 2), [cam] = this.extras(p, 1, { shirt: 0x3a4a3a, longSleeve: true, hat: { type: 'cap', color: 0x1a1a1a }, dialect: null }, 2), [snd] = this.extras(p, 1, { shirt: 0x6a5a48, hat: { type: 'phones' }, dialect: null }, 2);
+    const crew = [pre, cam, snd], st = { phase: 'arrive', t: 0, wait: 0, line: 0, lineT: 2, ans: [], tries: 0 }; cam.crewPose = 'tvcam'; pre.jobTitle = 'TV presenter'; cam.jobTitle = 'Camera operator'; snd.jobTitle = 'Sound recordist';
+    this.say(`📺 A documentary crew from Pennine Television has come down the Lift: ${pre.name} and a camera crew. They're making a programme about the town, and they want a word with Sam.`, 'info', true); this.mark(pre, '🎥', 'Documentary crew', 600, pre);
+    const say = (s, t, d = 3.4) => { if (s.mesh.visible) g.social.say(s, t, d); }, face = (s, x, z) => { s.faceGoal = Math.atan2(x - s.x, z - s.z); }, free = (x, z) => { const w = g.world, [tx, tz] = w.tileOf(x, z); return w.inBounds(tx, tz) && w.isLand(tx, tz) && !w.buildingAt(tx, tz) && !w.collides(x, z, 0.35); };
+    const stand = (s, x, z, fx, fz) => { s.path = []; s.dest = null; s.glide = null; s.x = x; s.z = z; s.vel = 0; s.heading = Math.atan2(fx - x, fz - z); s.faceGoal = s.heading; };
+    const pop = g.population.count(), homes = g.buildings.list.filter((b) => b.state === 'done' && b.def.cat === 'res').length, pubs = ['tavern', 'local', 'irish', 'wmc'].reduce((n, id) => n + g.buildings.count(id), 0), hr = g.clock.hour;
+    const PIECE = [`Good ${hr < 12 ? 'morning' : 'afternoon'} from Sam City. A year ago, this was an empty field.`, `Today it's home to ${pop} people, ${homes} homes and ${pubs ? pubs + (pubs > 1 ? ' pubs' : ' pub') : 'not a single pub. Yet'}.`, 'And it all started with one man and a spade. His name is Sam.', 'Nobody seems quite sure where he came from. So we\'ve come to ask him.'];
+    // the piece to camera: the presenter in the street, the camera three paces off, the boom over her head, people waving behind
+    const setUp = () => {
+      let a = Math.random() * Math.PI * 2; for (let k = 0; k < 12; k++, a += Math.PI / 6) { const cx = pre.x + Math.sin(a) * 3.2, cz = pre.z + Math.cos(a) * 3.2, sx = pre.x + Math.sin(a + Math.PI / 2) * 2, sz = pre.z + Math.cos(a + Math.PI / 2) * 2; if (free(cx, cz) && free(sx, sz)) break; }
+      st.camAt = { x: pre.x + Math.sin(a) * 3.2, z: pre.z + Math.cos(a) * 3.2 }; st.sndAt = { x: pre.x + Math.sin(a + Math.PI / 2) * 2, z: pre.z + Math.cos(a + Math.PI / 2) * 2 }; st.preAt = { x: pre.x, z: pre.z };
+      cam.goTo({ x: st.camAt.x, z: st.camAt.z }); snd.goTo({ x: st.sndAt.x, z: st.sndAt.z }); pre.path = []; pre.dest = null;
+      for (const s of this.near(pre.x, pre.z, 30).filter((q) => (q.kind === 'resident' || q.kind === 'child') && q.activity !== 'work').slice(0, 4)) { const b = 3.5 + Math.random() * 2, l = (Math.random() - 0.5) * 4, x = pre.x - Math.sin(a) * b + Math.cos(a) * l, z = pre.z - Math.cos(a) * b - Math.sin(a) * l; if (free(x, z)) { s.goTo({ x, z, face: a }); s.emote = { upper: 'wave', t: 8 + Math.random() * 6 }; } }   // (onlookers, waving at the camera behind her)
+    };
+    const ready = () => !g.cutscene.live && !(g.introScene && g.introScene.live) && !g.ui.dialogue && !g.ui.modalOpen && !g.ui.terminalB && g.mode === 'sim' && !P.mounted && !P.ride && !P.transit && !P.sleeping && !(P.sedated > 0) && !(P.down > 0) && !P.dead && !g.buildings.playerInside && !(g.raids && g.raids.state === 'active');
+    const h = { kind: 'documentary', st, crew, update: (dt) => {
+      dt *= Math.min(1, Math.max(0, g.clock.speed)); st.t += dt; if (crew.some((s) => s.remove)) { st.phase = 'gone'; return; }
+      if (st.phase === 'arrive') { st.wait += dt; if (!this.arrived(crew, p, 5, st.wait) && !(st.wait > 30 && Math.hypot(pre.x - p.x, pre.z - p.z) < 6)) return; st.phase = 'setup'; st.t = 0; setUp(); return; }   // (a straggler catches up in the set-up)
+      if (st.phase === 'setup') { if (st.t < 8 && (cam.path.length || snd.path.length)) return; stand(cam, cam.x, cam.z, pre.x, pre.z); stand(snd, snd.x, snd.z, pre.x, pre.z); face(pre, cam.x, cam.z); pre.heading = pre.faceGoal; snd.crewPose = 'boom'; pre.crewPose = 'mic'; pre.eyeOn = cam; st.phase = 'piece'; st.t = 0; st.line = 0; st.lineT = 1.5; say(cam, 'Rolling... and... go.', 2); return; }
+      if (st.phase === 'piece') {
+        face(pre, cam.x, cam.z); face(cam, pre.x, pre.z); face(snd, pre.x, pre.z);
+        if ((st.lineT -= dt) <= 0) { if (st.line < PIECE.length) { say(pre, PIECE[st.line++], 3.6); st.lineT = 4; } else { say(cam, 'Lovely. That\'s the one. Let\'s find Sam.', 2.6); pre.crewPose = null; pre.eyeOn = null; snd.crewPose = null; st.phase = 'find'; st.t = 0; st.tries = 0; } }
+        return;
+      }
+      if (st.phase === 'find') {
+        if (st.t > 300) { st.phase = 'gone'; g.flags.docMissed = g.clock.totalDays; this.say('📺 The documentary crew couldn\'t find Sam and went back up the Lift. (They\'ll use the footage of the bins.)'); return; }
+        const d = Math.hypot(P.x - pre.x, P.z - pre.z);
+        if ((st.lineT -= dt) <= 0) { st.lineT = 2.5; if (g.buildings.playerInside) { pre.path = []; if (st.tries++ % 6 === 0) say(pre, 'We\'ll wait for Sam out here.', 2.4); } else if (d > 2.6) pre.goTo({ x: P.x + (pre.x - P.x) / d * 1.4, z: P.z + (pre.z - P.z) / d * 1.4 });
+          for (const [s, o] of [[cam, 1.6], [snd, -1.6]]) { const hx = pre.x - Math.sin(pre.heading) * 1.8 + Math.cos(pre.heading) * o, hz = pre.z - Math.cos(pre.heading) * 1.8 - Math.sin(pre.heading) * o; if (Math.hypot(s.x - hx, s.z - hz) > 2.5) s.goTo({ x: hx, z: hz }); } }   // (the crew trail along behind)
+        if (d < 9 && d > 3.5 && !st.called) { st.called = true; say(pre, 'Sam! Sam! Have you got a minute? Pennine Television!', 3); pre.emote = { upper: 'wave', t: 2 }; }
+        if (d < 3.6 && ready()) { st.phase = 'interview'; this.interview(crew, st); }
+        return;
+      }
+      if (st.phase === 'wrap') { if (st.t > 6) { st.phase = 'gone'; } }
+    }, get done() { return st.phase === 'gone'; }, end: () => { for (const s of crew) { s.crewPose = null; s.eyeOn = null; g.population.depart(s); } if (g.player.onCamera) g.player.onCamera = false; } };
+    return h;
+  }
+  /** The interview itself: Sam's answers, the presenter's sign-off to camera, and a wrap. */
+  interview([pre, cam, snd], st) {
+    const g = this.game, P = g.player, w = g.world, free = (x, z) => { const [tx, tz] = w.tileOf(x, z); return w.inBounds(tx, tz) && w.isLand(tx, tz) && !w.buildingAt(tx, tz) && !w.collides(x, z, 0.35); };
+    // where everyone stands: the presenter a pace from Sam, the camera off to one side, the boom op beside it (out of shot)
+    let a = Math.atan2(pre.x - P.x, pre.z - P.z), L = null;
+    for (let k = 0; k < 16 && !L; k++) { const b = a + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8), fx = Math.sin(b), fz = Math.cos(b), sx = -fz, sz = fx, mx = P.x + fx * 0.65, mz = P.z + fz * 0.65;
+      for (const sd of [1, -1]) { const q = { fx, fz, sx: sx * sd, sz: sz * sd, mx, mz, px: P.x + fx * 1.3, pz: P.z + fz * 1.3, cx: mx + sx * sd * 3, cz: mz + sz * sd * 3, ox: mx + sx * sd * 2.1 + fx * 1.7, oz: mz + sz * sd * 2.1 + fz * 1.7 }; if (free(q.px, q.pz) && free(q.cx, q.cz) && free(q.ox, q.oz)) { L = q; break; } } }
+    if (!L) { const fx = Math.sin(a), fz = Math.cos(a), mx = P.x + fx * 0.65, mz = P.z + fz * 0.65; L = { fx, fz, sx: -fz, sz: fx, mx, mz, px: P.x + fx * 1.3, pz: P.z + fz * 1.3, cx: mx - fz * 3, cz: mz + fx * 3, ox: mx - fz * 2.1 + fx * 1.7, oz: mz + fx * 2.1 + fz * 1.7 }; }
+    const stand = (s, x, z, tx, tz) => { s.path = []; s.dest = null; s.glide = null; s.x = x; s.z = z; s.vel = 0; s.heading = Math.atan2(tx - x, tz - z); s.faceGoal = s.heading; };
+    const place = () => { stand(pre, L.px, L.pz, P.x, P.z); pre.eyeOn = P; cam.eyeOn = { x: L.mx, z: L.mz, y: 1.6 }; snd.eyeOn = pre; stand(cam, L.cx, L.cz, L.mx, L.mz); stand(snd, L.ox, L.oz, pre.x, pre.z); P.heading = Math.atan2(pre.x - P.x, pre.z - P.z); P.yaw = P.heading + Math.PI; P.speed = 0; P.vx = P.vz = 0; P.onCamera = true; cam.crewPose = 'tvcam'; snd.crewPose = 'boom'; pre.crewPose = 'mic'; };
+    const head = (x, z, y = 1.68) => [x, y, z], dcx = L.mx - L.cx, dcz = L.mz - L.cz, dn = Math.hypot(dcx, dcz) || 1, lens = (k = 0.75) => [L.cx + dcx / dn * k, 1.75, L.cz + dcz / dn * k];
+    const ots = (a, b, sd) => ({ pos: [a.x - (b.x - a.x) * 1.55 + L.sx * sd, 1.92, a.z - (b.z - a.z) * 1.55 + L.sz * sd], look: head(b.x, b.z, 1.6), fov: 36 });   // over one shoulder onto the other face
+    const viewfinder = (fov = 44) => () => ({ pos: lens(), look: head(L.mx, L.mz, 1.5), fov }), onSam = () => ots(pre, P, 1.3), onPre = () => ots(P, pre, 1.05);
+    const ans = st.ans, who = pre.name, shots = [];
+    shots.push({ dur: 4.5, cut: true, title: 'Britain\'s Newest Town', text: 'Pennine Television, on location in Sam City', at: place, cam: (t) => ({ pos: [L.cx + (L.cx - L.mx) * 0.9 + L.fx * 1.5, 2.3 - t * 0.05, L.cz + (L.cz - L.mz) * 0.9 + L.fz * 1.5], look: head(L.mx, L.mz, 1.25), fov: 50 }) });
+    DOC_Q.forEach((Q, i) => {
+      shots.push({ dur: 6, rec: true, cut: true, snap: true, cam: viewfinder(), at: () => { pre.crewPose = 'mic'; },
+        ask: { who, q: Q.q, opts: Q.a.map(([t, , tag]) => ({ t, on: () => { ans[i] = { t, tag, k: Q.a.findIndex((x) => x[0] === t) }; pre.crewPose = 'micout'; } })) } });
+      shots.push({ dur: 3.6, cut: true, say: () => ['Sam', '"' + (ans[i] ? ans[i].t : Q.a[0][0]) + '"'], cam: onSam, at: () => { pre.crewPose = 'micout'; st.samTalk = true; } });
+      shots.push({ dur: 4.2, cut: true, say: () => [who, Q.a[ans[i] ? ans[i].k : 0][1].replace('(She', pre.gender === 'f' ? '(She' : '(He')], cam: onPre, at: () => { pre.crewPose = 'mic'; st.samTalk = false; } });
+    });
+    // the sign-off: she turns to the camera
+    shots.push({ dur: 6.5, rec: true, cut: true, snap: true, say: () => [who, `"So there you have it: Sam City, ${DOC_SIGN[(ans[0] && ans[0].tag) || 'modest']}. For Pennine Television, I'm ${pre.name}. Goodnight."`], cam: () => ({ pos: lens(0.8), look: head(pre.x, pre.z, 1.62), fov: 30 }), at: () => { st.samTalk = false; pre.crewPose = 'mic'; pre.heading = pre.faceGoal = Math.atan2(cam.x - pre.x, cam.z - pre.z); pre.eyeOn = { x: cam.x, z: cam.z, y: 1.7 }; } });
+    shots.push({ dur: 3.4, cut: true, say: () => [cam.name, '"And... cut! That\'s a wrap, everybody. Thanks, Sam."'], cam: (t) => ({ pos: [L.mx - L.sx * 5 + L.fx * 2.5, 2.2, L.mz - L.sz * 5 + L.fz * 2.5], look: head(L.mx, L.mz, 1.2), fov: 48 }), at: () => { cam.crewPose = null; snd.crewPose = null; pre.crewPose = null; pre.eyeOn = null; cam.emote = { upper: 'thumbsup', t: 2.5 }; pre.emote = { upper: 'wave', t: 2 }; } });
+    g.cutscene.play({ shots, tick: (dt) => { for (const s of [pre, cam, snd]) { s.path = []; s.vel = 0; } P.speed = 0; P.moved = false; P.emoteName = 'talk'; P.emoteT = st.samTalk ? 0.3 : 0; P.syncMesh(dt); },
+      onEnd: () => { P.onCamera = false; for (const s of [pre, cam, snd]) s.eyeOn = null; P.emoteT = 0; st.phase = 'wrap'; st.t = 0; this.aired(ans); } });
+  }
+  /** After the interview: the letter from the producer, and the night it goes out. */
+  aired(ans) {
+    const g = this.game, c = g.clock, tags = ans.map((a) => a && a.tag), odd = tags.filter((t) => t === 'odd').length, day = WEEKDAY[(c.weekday + 2) % 7];
+    g.flags.docDone = c.totalDays; g.flags.docAir = c.totalDays + 2; g.flags.docOdd = odd; g.flags.docTags = tags; if (tags[2] === 'odd') g.flags.docTower = true;
+    for (const s of g.population.residents()) s.moodBoost += tags[0] === 'modest' ? 0.15 : 0.06;
+    if (tags[0] === 'vision') g.population.invites += 3;
+    g.mail.send('Pennine Television', 'Britain\'s Newest Town', `Dear Sam,\n\nThank you for giving us your time. Everybody at Pennine thought you were a natural.\n\nThe programme goes out this ${day} at 9 o'clock. Do tell the whole town to watch!\n\nBest wishes,\nThe Britain's Newest Town team`);
+    g.messages.push('Pennine Television', `That's a wrap! The documentary goes out on ${day} night at 9 o'clock.`, 'quiet');
+  }
+  /** The night it's on: half the town watches, the other half hears about it in the pub. */
+  airCheck() {
+    const g = this.game, f = g.flags, c = g.clock; if (!f.docAir || f.docAired || c.totalDays < f.docAir || (c.totalDays === f.docAir && c.hour < 21)) return;
+    f.docAired = c.totalDays; f.tellyTill = c.totalDays + 10; const tags = f.docTags || [];
+    g.messages.push('Town news', '📺 Sam City is on the telly tonight: "Britain\'s Newest Town", on Pennine Television. Half the town\'s crowded round a set somewhere.', 'info'); g.ui.toast('📺 Sam City is on the telly tonight!', 3600);
+    for (const s of g.population.residents()) s.moodBoost += 0.1; g.population.invites += tags.includes('tourist') ? 3 : 1;
+  }
+  /** The morning after, if Sam said odd things on the telly: a letter with no name on it (somebody else has been wondering too). */
+  viewerCheck() {
+    const g = this.game, f = g.flags, c = g.clock; if (!f.docAired || f.docViewer || (f.docOdd || 0) < 2 || c.totalDays <= f.docAired || c.hour < 8) return; f.docViewer = c.totalDays;
+    g.mail.send('A viewer', 'I saw your programme', 'Sam,\n\nI watched you on the television last night. You asked the right questions. Where does the Lift go? What is above the clouds?\n\nKeep asking. Just don\'t ask out loud.\n\nA friend');
   }
   /** People who appear for a happening and go when it's over (they never wander off on their own). */
   /** Visiting performers: they come down the Lift and walk to the spot (call arrived() before starting the show). */

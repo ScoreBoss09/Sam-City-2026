@@ -97,7 +97,7 @@ export function createRig(look = {}) {
   if (L.facial === 'stubble') hd.box(hwid - 0.02, 0.1, 0.012, 0, 0.06, 0.152, shade(L.skin, 0.8));
   if (L.facial === 'moustache' || L.facial === 'beard') hd.box(0.14, 0.035, 0.03, 0, 0.1, 0.165, hc);
   if (L.facial === 'beard') hd.box(hwid + 0.01, 0.12, 0.05, 0, 0.04, 0.14, hc).box(hwid + 0.01, 0.14, 0.2, 0, 0.1, -0.02, hc);
-  const capped = !!(L.hat && L.hat.type !== 'mask'), masked = !!(L.hat && L.hat.type === 'mask');   // (a hat: the hair stays under it, nothing poking up through the crown or the brim)
+  const capped = !!(L.hat && L.hat.type !== 'mask' && L.hat.type !== 'phones'), masked = !!(L.hat && L.hat.type === 'mask');   // (a hat: the hair stays under it, nothing poking up through the crown or the brim)
   if (hs !== 'bald' && !masked) {
     const hh = L.hat && (L.hat.type === 'flat' || L.hat.type === 'bowler') ? 0 : 1;
     if (capped) hd.box(hwid + 0.02, 0.05, 0.32, 0, 0.33, 0, hc); else hd.box(hwid + 0.02, 0.1, 0.32, 0, 0.35, 0, hc);
@@ -134,6 +134,7 @@ export function createRig(look = {}) {
     if (h.type === 'mask') hd.box(0.345, 0.37, 0.335, 0, 0.17, 0, 0x1c1c20).box(0.23, 0.07, 0.01, 0, 0.2, 0.172, L.skin).box(0.035, 0.05, 0.014, -0.07, 0.2, 0.18, 0x111111).box(0.035, 0.05, 0.014, 0.07, 0.2, 0.18, 0x111111);
     if (h.type === 'model' && HAT_MODELS[h.model]) for (const [w, hh, d, c, x, y, z] of HAT_MODELS[h.model]) hd.box(w, hh, d, x, 0.34 + y + hh / 2, z, c);   // a mod's hat, sat on the crown
     if (h.type === 'chef') hd.box(0.3, 0.2, 0.3, 0, 0.45, 0, 0xffffff);
+    if (h.type === 'phones') hd.box(0.05, 0.04, 0.08, -0.17, 0.4, 0, 0x1a1a1c).box(0.05, 0.04, 0.08, 0.17, 0.4, 0, 0x1a1a1c).box(0.36, 0.035, 0.08, 0, 0.43, 0, 0x1a1a1c).box(0.05, 0.13, 0.12, -0.18, 0.2, 0, 0x2a2a2e).box(0.05, 0.13, 0.12, 0.18, 0.2, 0, 0x2a2a2e);   // the sound man's cans
   }
   if (L.glasses) hd.box(0.28, 0.02, 0.01, 0, 0.21, 0.162, 0x222222).box(0.095, 0.075, 0.01, -0.075, 0.2, 0.163, 0x6a8fb5).box(0.095, 0.075, 0.01, 0.075, 0.2, 0.163, 0x6a8fb5);
   j.headMesh = hd.mesh(); j.head.add(j.headMesh);
@@ -210,7 +211,15 @@ const PROPS = {
   rifle: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.12, 0.05, 0x2a2a2e, 0, -0.04, 0.02); pbox(g, 0.06, 0.09, 0.55, 0x30333a, 0, 0.04, 0.2); pbox(g, 0.03, 0.03, 0.3, 0x222428, 0, 0.05, 0.62); pbox(g, 0.05, 0.1, 0.25, 0x3a3d44, 0, 0.0, -0.18); pbox(g, 0.04, 0.14, 0.06, 0x222428, 0, -0.06, 0.24); return g; },
   tube: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.12, 0.05, 0x2a2a2e, 0, -0.04, 0.02); pbox(g, 0.12, 0.12, 1.0, 0x4a5a3a, 0, 0.08, 0.15); return g; },
   papers: () => { const g = new THREE.Group(); pbox(g, 0.22, 0.3, 0.02, 0xf6f6f0, 0, 0, 0); return g; },
+  // the documentary crew's kit: a shoulder camera (on the spine, sat on the right shoulder), the boom, the presenter's mic
+  tvcam: () => { const g = new THREE.Group(); pbox(g, 0.17, 0.22, 0.46, 0x2a2c30, 0, 0, 0); pbox(g, 0.13, 0.13, 0.2, 0x111214, 0, -0.01, 0.32); pbox(g, 0.15, 0.15, 0.03, 0x1a1a1c, 0, -0.01, 0.43); pbox(g, 0.1, 0.1, 0.01, 0x3a5a8a, 0, -0.01, 0.446);
+    pbox(g, 0.04, 0.05, 0.3, 0x1a1a1c, 0, 0.14, 0.02); pbox(g, 0.06, 0.06, 0.12, 0x1a1a1c, -0.13, 0.07, 0.16); pbox(g, 0.03, 0.04, 0.06, 0x111111, -0.13, 0.07, 0.08); pbox(g, 0.03, 0.03, 0.15, 0x777a80, 0.02, 0.15, 0.28);
+    pbox(g, 0.12, 0.08, 0.1, 0x4a4c50, 0, 0.0, -0.27); const tally = new THREE.Mesh(pboxGeo(0.025, 0.025, 0.025), new THREE.MeshBasicMaterial({ color: 0xff2020 })); tally.position.set(0.06, 0.12, 0.2); g.add(tally); return g; },   // body, lens and hood, the handle, the viewfinder by his eye, the battery on the back, the red light that says it's recording
+  boom: () => { const g = new THREE.Group(), pole = new THREE.Group(); pole.rotation.x = -0.14; g.add(pole); pbox(pole, 0.035, 0.035, 2.5, 0x9aa0a8, 0, 0, 0.85); pbox(pole, 0.045, 0.045, 0.5, 0x2a2a2e, 0, 0, -0.25);
+    const mic = new THREE.Group(); mic.position.set(0, -0.05, 2.08); pole.add(mic); pbox(mic, 0.02, 0.16, 0.02, 0x2a2a2e, 0, -0.08, 0); const fur = pbox(mic, 0.14, 0.13, 0.36, 0x8a8478, 0, -0.2, 0.06); fur.rotation.x = 0.55; return g; },   // the pole out over the presenter, the furry windshield hanging off the end
+  mic: () => { const g = new THREE.Group(); pbox(g, 0.035, 0.18, 0.035, 0x1a1a1c, 0, 0.02, 0.03); pbox(g, 0.06, 0.06, 0.06, 0x8a8e94, 0, 0.13, 0.03); pbox(g, 0.075, 0.05, 0.075, 0x2a5ab0, 0, 0.06, 0.03); pbox(g, 0.077, 0.02, 0.077, 0xf2c94c, 0, 0.06, 0.03); return g; },   // with the channel's flag on it
 };
+const CHEST_AT = { tvcam: [0.27, 0.68, 0.05], boom: [0.0, 1.08, 0.22] };
 /** Attach (or hide) a prop on a slot: 'handR' | 'handL' | 'chest'. */
 export function setProp(rig, slot, name, color) {
   const key = slot; const cur = rig.props[key];
@@ -219,7 +228,7 @@ export function setProp(rig, slot, name, color) {
   if (!name) return;
   const C = rig.propCache || (rig.propCache = {}), ck = slot + ':' + name, obj = C[ck] || (C[ck] = PROPS[name]()); if (name === 'crate' && color != null) obj.children[0].material = pm(color);   // (a prop put down and picked up again is the same object, not a new one)
   const parent = slot === 'handR' ? rig.armR.hand : slot === 'handL' ? rig.armL.hand : rig.spine;
-  if (slot === 'chest') obj.position.set(0, 0.28, 0.33);
+  if (slot === 'chest') obj.position.set(...(CHEST_AT[name] || [0, 0.28, 0.33]));
   if (name === 'pistol' || name === 'rifle' || name === 'tube') obj.rotation.x = Math.PI / 2;   // a gun lies along the forearm (barrel out past the fingers), so a raised arm points it where you're aiming
   parent.add(obj); rig.props[key] = { name, obj };
 }
