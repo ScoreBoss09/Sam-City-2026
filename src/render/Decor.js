@@ -65,7 +65,7 @@ export class Decor {
   rebuild() {
     this.dirty = false; const w = this.game.world, m = new THREE.Matrix4(), c = new THREE.Color(), q = new THREE.Quaternion();
     let nl = 0, nt = 0, nb = 0; this.lampPos = []; const free = (x, z) => w.isLand(x, z) && !w.road[w.idx(x, z)] && !w.occ[w.idx(x, z)];
-    const roadAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] > 0, paved = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] === 2;
+    const roadAt = (x, z) => w.inBounds(x, z) && w.drive(w.idx(x, z)), paved = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] === 2;
     for (let z = 0; z < MAP; z++) for (let x = 0; x < MAP; x++) {
       const i = w.idx(x, z);
       if (w.road[i]) {

@@ -4,7 +4,7 @@ import { BUILDINGS } from '../data/buildings.js';
 import { ZONE } from '../world/World.js';
 import { clamp } from '../util.js';
 
-const ROAD_COST = { dirt: 2, paved: 20 };
+const ROAD_COST = { dirt: 2, paved: 20, plaza: 12 }, ROAD_TYPE = { dirt: 1, paved: 2, plaza: 3 }, ROAD_SUB = { 1: 'dirt', 2: 'paved', 3: 'plaza' }, ROAD_NAME = { 1: 'Dirt track', 2: 'Paved road', 3: 'Plaza' };
 
 /** God mode: orbit/pan camera over the city plus the planning tools (road, zone, build, bulldoze, query). */
 export class GodControls {
@@ -113,12 +113,12 @@ export class GodControls {
   }
   paint(tx, tz) {
     const g = this.game, w = g.world; if (!w.inBounds(tx, tz)) return; const key = tx + ',' + tz; if (this.lastTile === key) return; this.lastTile = key; const id = this.tool.id;
-    if (id === 'road') { const type = this.tool.sub === 'paved' ? 2 : 1; if (type === 2 && g.population.count() < 15) { g.ui.toast('Paving needs 15 residents.'); return; } const old = g.roadPlans.get(tx, tz); if (old && old.type >= type) return; if (w.canRoad(tx, tz, type)) { if (g.economy.spend(ROAD_COST[type === 2 ? 'paved' : 'dirt'], 'Roads and paths')) { if (old) g.roadPlans.drop(old); g.roadPlans.plan(tx, tz, type); g.flags.pathOrdered = true; } else g.ui.toast('Not enough funds.'); } }
+    if (id === 'road') { const type = ROAD_TYPE[this.tool.sub] || 1; if (type === 2 && g.population.count() < 15) { g.ui.toast('Paving needs 15 residents.'); return; } if (type === 3 && g.population.count() < 10) { g.ui.toast('A plaza needs 10 residents.'); return; } const old = g.roadPlans.get(tx, tz); if (old && old.type >= type) return; if (w.canRoad(tx, tz, type)) { if (g.economy.spend(ROAD_COST[ROAD_SUB[type]], 'Roads and paths')) { if (old) g.roadPlans.drop(old); g.roadPlans.plan(tx, tz, type); g.flags.pathOrdered = true; } else g.ui.toast('Not enough funds.'); } }
     else if (id === 'zone') { const z = { res: ZONE.RES, com: ZONE.COM, ind: ZONE.IND, none: ZONE.NONE }[this.tool.sub || 'res']; w.setZone(tx, tz, z); }
     else if (id === 'bulldoze') {
       const T = g.tools; if (T && !T.gone && Math.floor(T.x / TILE) === tx && Math.floor(T.z / TILE) === tz) { T.clearAway(true); return; }
       const b = w.buildingAt(tx, tz), rp = g.roadPlans.get(tx, tz);
-      if (rp) { g.economy.earn(ROAD_COST[rp.type === 2 ? 'paved' : 'dirt'], 'Roads and paths'); g.roadPlans.drop(rp); }
+      if (rp) { g.economy.earn(ROAD_COST[ROAD_SUB[rp.type]], 'Roads and paths'); g.roadPlans.drop(rp); }
       else if (b) { if (b.def.special) { g.ui.toast('That cannot be demolished.'); return; } g.buildings.remove(b); g.messages.push('Planning Office', `${b.def.name} demolished.`); }
       else if (w.road[w.idx(tx, tz)]) { if (!this.roadTouchesDoor(tx, tz) || true) w.removeRoad(tx, tz); }
       else if (w.zone[w.idx(tx, tz)]) w.setZone(tx, tz, 0);
@@ -127,8 +127,8 @@ export class GodControls {
   roadTouchesDoor() { return false; }
   describe(tx, tz) {
     const w = this.game.world, b = w.buildingAt(tx, tz); if (b) return `${b.def.name}${b.state === 'site' ? ` (building ${Math.round(b.progress * 100)}%)` : ''}`;
-    const rp = this.game.roadPlans.get(tx, tz); if (rp) return `Planned ${rp.type === 2 ? 'paved road' : 'dirt path'} (${Math.round(rp.progress * 100)}% dug)`;
-    if (w.road[w.idx(tx, tz)]) return w.road[w.idx(tx, tz)] === 2 ? 'Paved road' : 'Dirt track'; const z = w.zone[w.idx(tx, tz)]; if (z) return ['', 'Residential zone', 'Commercial zone', 'Industrial zone'][z];
+    const rp = this.game.roadPlans.get(tx, tz); if (rp) return `Planned ${rp.type === 3 ? 'plaza' : rp.type === 2 ? 'paved road' : 'dirt path'} (${Math.round(rp.progress * 100)}% ${rp.type === 3 ? 'laid' : 'dug'})`;
+    if (w.road[w.idx(tx, tz)]) return (ROAD_NAME[w.road[w.idx(tx, tz)]] || 'Dirt track') + (w.road[w.idx(tx, tz)] === 3 ? ': paving for people, no cars' : ''); const z = w.zone[w.idx(tx, tz)]; if (z) return ['', 'Residential zone', 'Commercial zone', 'Industrial zone'][z];
     const n = this.nodeAt(tx, tz); if (n) return n.label; const t = w.terrain[w.idx(tx, tz)]; return ['Water', 'Open land', 'Forest', 'Beach'][t];
   }
   queryAt(p, tx, tz) {

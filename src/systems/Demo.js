@@ -20,6 +20,8 @@ export function generateDemo(g) {
   for (const b of B.byDef('cycleshop')) { b.def.vehicle = 2; b.level = 2; }
   for (let z = 6; z < 36; z++) for (let x = 4; x < 37; x++) if (w.road[w.idx(x, z)] === 2 && (x + z) % 2 === 0) g.lamps.tiles.add(x + ',' + z); g.lamps.dirty = true;
   for (const [id, x, z] of [['stockyard', 20, 14], ['surveyor', 24, 14], ['campfire', 18, 17], ['hut', 12, 14]]) if (!B.byDef(id).length) for (const [dx, dz] of ring) if (place(id, x + dx, z + dz)) break;
+  // a plaza in front of the pub and the chippy: paving, tables out, no cars (the streets themselves stay as they are)
+  for (const id of ['tavern', 'chippy']) for (const b of B.byDef(id)) { const d = b.doorTile; if (d) for (let dz = -1; dz <= 1; dz++) for (let dx = -2; dx <= 2; dx++) { const x = d.x + dx, z = d.z + dz, i = w.inBounds(x, z) && w.idx(x, z); if (i !== false && w.isLand(x, z) && !w.occ[i] && !w.res[i] && w.road[i] !== 2) { w.road[i] = 0; w.addRoad(x, z, 3); } } }
   for (const it of g.tools.items) { g.tools.take(it); g.player.tools.add(it.id); }
   const zones = [['cottage', 0.18], ['bungalow', 0.06], ['semi', 0.06], ['shack', 0.04], ['hut', 0.06], ['cabin', 0.1], ['townhouse', 0.12], ['shop', 0.14], ['forager', 0.04], ['fisher', 0.04], ['park', 0.06], ['school', 0.02], ['apartments', 0.04]];
   for (let i = 0; i < 900; i++) { const x = 4 + Math.floor(Math.random() * 33), z = 6 + Math.floor(Math.random() * 30); let r = Math.random(), id = 'cottage'; for (const [k, p] of zones) { if ((r -= p) < 0) { id = k; break; } } if (id === 'school' && B.count('school')) id = 'cottage'; place(id, x, z); }

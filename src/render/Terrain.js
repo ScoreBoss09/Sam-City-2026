@@ -61,7 +61,7 @@ export class Terrain {
   paintTile(tx, tz) {
     const w = this.world, i = w.idx(tx, tz), t = w.terrain[i];
     const img = this.ctx.createImageData(PX, PX), d = img.data;
-    const roadAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] > 0, pavedAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] === 2;
+    const roadAt = (x, z) => w.inBounds(x, z) && w.drive(w.idx(x, z)), pavedAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] === 2, plazaAt = (x, z) => w.inBounds(x, z) && w.road[w.idx(x, z)] === 3;
     const N = roadAt(tx, tz - 1), S = roadAt(tx, tz + 1), E = roadAt(tx + 1, tz), W = roadAt(tx - 1, tz);
     let base, amt = 18;
     if (t === T.WATER) {
@@ -73,14 +73,21 @@ export class Terrain {
     base = t === T.FOREST ? rgb(0x2f5d2c) : t === T.SAND ? rgb(0xd9c28a) : rgb(0x5d9a48);
     const rs = w.res[i] ? w.nodeSeeds[w.res[i] - 1] : null; if (rs && rs.kind === 'clay') base = rgb(0xb0794a);
     if (rs && rs.kind === 'ore') base = rgb(0x6d6a60);
-    const isRoad = w.road[i] > 0, paved = w.road[i] === 2;
+    const isRoad = w.road[i] > 0, paved = w.road[i] === 2, plaza = w.road[i] === 3;
     const defCat = isRoad ? null : (rs && rs.kind === 'clay' ? 'clay' : rs && rs.kind === 'ore' ? 'rock' : t === T.FOREST ? 'forest' : t === T.SAND ? 'sand' : 'grass');
     const conns = (N ? 1 : 0) + (S ? 1 : 0) + (E ? 1 : 0) + (W ? 1 : 0);
     for (let py = 0; py < PX; py++) for (let px = 0; px < PX; px++) {
       let c = base, a = amt, cat = defCat, mult = 1;
       const o = (py * PX + px) * 4;
       const H = PX / 2, ax = px - H + 0.5, az = py - H + 0.5;   // pixel offset from the tile centre
-      if (isRoad && !paved) {
+      if (plaza) {
+        // the plaza: sandstone flags in a running bond, each a shade of its own, with a darker edging stone wherever the paving stops
+        const pN = plazaAt(tx, tz - 1), pS = plazaAt(tx, tz + 1), pE = plazaAt(tx + 1, tz), pW = plazaAt(tx - 1, tz), gx = tx * PX + px, gz = tz * PX + py;
+        const edge = (!pN && py < 2) || (!pS && py >= PX - 2) || (!pW && px < 2) || (!pE && px >= PX - 2);
+        const row = Math.floor(gz / 6), fx = Math.floor((gx + (row % 2) * 4) / 8), joint = gz % 6 === 0 || (gx + (row % 2) * 4) % 8 === 0;
+        if (edge) { c = rgb(0x8a7a64); a = 6; } else if (joint) { c = rgb(0xa89a82); a = 4; } else { const v = hash(fx * 13 + 7, row * 17 + 3); c = v < 0.33 ? rgb(0xd8c4a0) : v < 0.66 ? rgb(0xcfb894) : rgb(0xe2cfae); a = 7; }
+        cat = null;
+      } else if (isRoad && !paved) {
         // a dirt cart track about 4.5 m wide down the middle (and out along each connection), grass verges either side
         // paths laid side by side (or in a block) join up into one wide track: a quarter of the tile fills in wherever the
         // neighbours on both of its sides and the diagonal between them are path too
