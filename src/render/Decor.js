@@ -41,7 +41,7 @@ export class Decor {
   smokeActive(b) {
     const g = this.game, h = g.clock.hour, d = b.def;
     if (d.park === 'camp') return true; if (d.roof === 'factory' || d.roof === 'plant') return b.workers.length > 0 && h > 7.5 && h < 18;
-    if (d.beds) return b.residents.length > 0 && (h < 9.5 || h >= 16); if (d.id === 'tavern') return h >= 11; return b.workers.length > 0 && h > 7.5 && h < 17;
+    if (d.beds) return b.residents.length > 0 && (h < 9.5 || h >= 16); if (d.id === 'tavern' || d.id === 'local' || d.id === 'irish') return h >= 11; return b.workers.length > 0 && h > 7.5 && h < 17;
   }
   update(dt) {
     if (this.dirty) { this.timer -= dt; if (this.timer <= 0) this.rebuild(); }

@@ -28,7 +28,7 @@ export class Traffic {
       if (v && Math.random() < 0.5) { v.knockDown(6, true); live.drunk = 0; g.messages.push('Police', `Hit and run! ${v.first} was clipped by a car weaving all over the road. ${g.crime && g.crime.cops().length ? '' : 'There are no police to catch the driver.'}`, 'warn'); if (g.markers) g.markers.add(v.x, v.z, '🚑', 'Hit and run', 60); }
       return;
     }
-    const pubs = g.buildings.list.some((b) => b.state === 'done' && (b.id === 'tavern' || b.id === 'nightclub' || b.id === 'wmc'));
+    const pubs = g.buildings.list.some((b) => b.state === 'done' && (b.id === 'tavern' || b.id === 'local' || b.id === 'irish' || b.id === 'nightclub' || b.id === 'wmc'));
     if (pubs && (h >= 22.5 || h < 2) && Math.random() < 0.25) { const c = pick(this.cars.filter((q) => !q.horse && q.path.length)); if (c) c.drunk = 45; }
   }
   update(dt) {

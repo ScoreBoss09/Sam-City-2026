@@ -105,8 +105,18 @@ export const BUILDINGS = {
   },
   tavern: {
     name: 'The Red Lion', dining: true, income: 90, joy: 0.04, cat: 'com', w: 3, d: 3, floors: 2, wall: 'tudor', roof: 'gable', roofColor: 0x7a5a44,
-    mat: { timber: 18, stone: 12 }, work: 50, jobs: { publican: 2, cook: 1 }, layout: 'tavern', permit: { cost: 600, pop: 12 }, tab: 'Food',
-    blurb: 'The pub. Pub grub from the kitchen, warm beer, a dartboard, a beer garden out the back and a function room upstairs for do\'s. Raises mood.',
+    mat: { timber: 18, stone: 12 }, work: 50, jobs: { publican: 2, cook: 1, entertainer: 1 }, layout: 'tavern', permit: { cost: 600, pop: 12 }, tab: 'Food',
+    blurb: 'The pub. Pub grub from the kitchen, warm beer, a dartboard, a beer garden out the back, and upstairs the function room: a knees-up round the old piano every night. Raises mood.',
+  },
+  local: {
+    name: 'The Dog & Duck', dining: true, income: 45, joy: 0.03, cat: 'com', w: 2, d: 2, floors: 1, wall: 'brick', roof: 'gable', roofColor: 0x5a4a3e,
+    mat: { timber: 10, stone: 6 }, work: 30, jobs: { publican: 1 }, layout: 'snug', permit: { cost: 350, pop: 8 }, tab: 'Food',
+    blurb: 'A little backstreet local. Six regulars, a three-legged dog, a fire and a pint of mild. Same faces every night, and that\'s how they like it.',
+  },
+  irish: {
+    name: 'O\'Malley\'s', dining: true, income: 75, joy: 0.05, cat: 'com', w: 3, d: 2, floors: 1, wall: 'white', roof: 'gable', roofColor: 0x2a4a34,
+    mat: { timber: 12, brick: 10 }, work: 40, jobs: { publican: 1, entertainer: 1 }, layout: 'irishpub', permit: { cost: 900, pop: 20 }, tab: 'Food',
+    blurb: 'An Irish pub: stout, a fiddler in the corner from seven and somebody doing Riverdance by nine. Open till midnight.',
   },
   shop: {
     name: 'General Store', shopping: true, income: 70, cat: 'com', w: 2, d: 2, floors: 1, wall: 'tudor', roof: 'gable', roofColor: 0x7a4a37,
@@ -292,7 +302,7 @@ export const BUILDINGS = {
   nightclub: {
     name: 'Ritzy Nightclub', cat: 'com', w: 3, d: 2, floors: 1, wall: 'grey', roof: 'flat', roofColor: 0x2a1a3a, dining: true, income: 120, joy: 0.05,
     mat: { brick: 14, steel: 4, glass: 2 }, work: 44, jobs: { publican: 1, entertainer: 1 }, layout: 'nightclub', permit: { cost: 2200, pop: 36 }, tab: 'Commerce',
-    blurb: 'Sticky carpets, a smoke machine, Alcopops and Vengaboys at 1am. No trainers.',
+    blurb: 'Sticky carpets, a smoke machine, Alcopops and Vengaboys at 1am. Doors at nine, chucking out at two. No trainers.',
   },
   cinema: {
     name: 'Odium Cinema', cat: 'com', w: 3, d: 3, floors: 2, wall: 'civic', roof: 'flat', roofColor: 0x6a2a2a, shopping: true, income: 110, joy: 0.06,
@@ -305,9 +315,9 @@ export const BUILDINGS = {
     blurb: 'Tyres, exhausts and a sharp intake of breath. "That\'ll be the big end, mate."',
   },
   firestation: {
-    name: 'Fire Station', cat: 'civic', w: 3, d: 2, floors: 2, wall: 'brick', roof: 'flat', roofColor: 0xb02a20, joy: 0.02,
-    mat: { brick: 16, steel: 6, glass: 2 }, work: 52, jobs: { firefighter: 3 }, layout: 'firestation', permit: { cost: 600, pop: 6 }, tab: 'Civic',
-    blurb: 'A shiny red engine, a pole nobody is allowed to slide down, and a charity calendar every Christmas.',
+    name: 'Fire Station', cat: 'civic', w: 3, d: 2, floors: 2, wall: 'brick', roof: 'flat', roofColor: 0xb02a20, joy: 0.02, bay: true,
+    mat: { brick: 16, steel: 6, glass: 2 }, work: 52, jobs: { firefighter: 4 }, layout: 'firestation', permit: { cost: 600, pop: 6 }, tab: 'Civic',
+    blurb: 'A shiny red engine behind a roller door, a pole down from the crew room, and a charity calendar every Christmas. The night watch sleeps upstairs until the bells go down.',
   },
   leisure: {
     name: 'Leisure Centre', cat: 'civic', w: 3, d: 3, floors: 1, wall: 'white', roof: 'flat', roofColor: 0x2a6aa8, joy: 0.06,
@@ -557,7 +567,7 @@ export const BUILDINGS = {
 export const TOOL_MENUS = {
   build: [
     ['Homes', ['shack', 'caravan', 'hut', 'cabin', 'bungalow', 'cottage', 'semi', 'terrace', 'townhouse', 'maisonettes', 'flats', 'apartments']],
-    ['Food', ['forager', 'allotment', 'fisher', 'bakery', 'butcher', 'farm', 'harbour', 'cafe', 'chippy', 'kebab', 'curryhouse', 'tavern', 'wmc']],
+    ['Food', ['forager', 'allotment', 'fisher', 'bakery', 'butcher', 'farm', 'harbour', 'cafe', 'chippy', 'kebab', 'curryhouse', 'local', 'tavern', 'irish', 'wmc']],
     ['Industry', ['lumbercamp', 'quarry', 'contractor', 'brickworks', 'glassworks', 'foundry', 'factory']],
     ['Transport', ['stables', 'cycleshop', 'garage', 'carpark', 'railstation', 'monostation', 'skylift']],
     ['Civic', ['stockyard', 'postbox', 'surveyor', 'villagehall', 'postoffice', 'school', 'library', 'chapel', 'church', 'townhall', 'surgery', 'clinic', 'watchhouse', 'lockup', 'police', 'firestation', 'youthclub', 'secondary', 'leisure']],

@@ -63,7 +63,7 @@ export class Upgrades {
   }
   /** A cart parked beside the yard once it has carts. */
   cartProp(b) {
-    if (!b.def.cart || !b.ext) return; const c = makeCart(b.def.cart); c.position.set(b.def.w * UNIT / 2 + 0.9, 0, b.def.d * UNIT / 2 - 1.2); c.rotation.y = 0.3; b.ext.group.add(c); b.ext.cart = c;
+    if (!b.def.cart || !b.ext) return; const c = makeCart(b.def.cart); c.position.set(b.def.w * UNIT / 2 + 0.9, 0, b.def.d * UNIT / 2 - 1.2); c.rotation.y = 0.3; b.ext.group.add(c); b.ext.cart = c; if (this.game.townBatch) this.game.townBatch.dirty(b);
   }
   /** Poles and planks around the building while the work goes on. */
   scaffold(b) {

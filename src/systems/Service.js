@@ -12,7 +12,7 @@ import { doorOffset } from '../data/layouts.js';
 //  - where there are tables and a kitchen (the café, the curry house, pub grub): a diner sits, a waiter comes and
 //    takes the order, the cook cooks it (steam from the kitchen), the waiter brings the plate, they eat, the waiter
 //    brings the bill and they pay.
-const GOODS = { tavern: 'pint', wmc: 'pint', nightclub: 'pint', snooker: 'pint', offy: 'bag', chippy: 'chips', kebab: 'chips', cafe: 'cup', bakery: 'bag', butcher: 'bag', video: 'video', records: 'bag', cinema: 'popcorn', newsagent: 'bag', supermarket: 'bag', shop: 'bag', toyshop: 'bag', poundshop: 'bag', bookies: 'ticket', railstation: 'ticket', monostation: 'ticket', skylift: 'ticket', bowling: 'ticket', laserquest: 'ticket' };
+const GOODS = { tavern: 'pint', local: 'pint', irish: 'pint', wmc: 'pint', nightclub: 'pint', snooker: 'pint', offy: 'bag', chippy: 'chips', kebab: 'chips', cafe: 'cup', bakery: 'bag', butcher: 'bag', video: 'video', records: 'bag', cinema: 'popcorn', newsagent: 'bag', supermarket: 'bag', shop: 'bag', toyshop: 'bag', poundshop: 'bag', bookies: 'ticket', railstation: 'ticket', monostation: 'ticket', skylift: 'ticket', bowling: 'ticket', laserquest: 'ticket' };
 const PROP_OF = { pint: 'pint', chips: 'chips', food: 'chips', cup: 'cup', bag: 'bag', ticket: 'ticket', video: 'video', popcorn: 'popcorn', paper: 'papers', cash: 'ticket' };
 const STAY = { pint: true, cup: true, plate: true, notepad: true };   // put down when they leave the building
 const plateGeo = new THREE.CylinderGeometry(0.16, 0.14, 0.03, 12), plateMat = new THREE.MeshStandardMaterial({ color: 0xf8f8f8, roughness: 0.4 }), foodGeo = new THREE.BoxGeometry(0.16, 0.05, 0.12), foodMat = new THREE.MeshStandardMaterial({ color: 0x9a5a2a });

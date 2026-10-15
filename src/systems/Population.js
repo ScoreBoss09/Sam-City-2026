@@ -249,6 +249,7 @@ export class Population {
           if (b.id <= a.id) continue; let dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz); if (d >= R) continue;
           if (d < 0.001) { dx = Math.random() - 0.5; dz = Math.random() - 0.5; d = Math.hypot(dx, dz); } const f = (R - d) * 0.5 * k / d;
           if (a.ghostT > 0 || b.ghostT > 0) continue;   // someone squeezing past a crowd
+          if (a.partner === b && d > 0.3) continue;   // a couple can stand close
           if (!a.frozen) push(a, -dx, -dz, a.chat ? f * 0.35 : f); if (!b.frozen) push(b, dx, dz, b.chat ? f * 0.35 : f);
         }
       }

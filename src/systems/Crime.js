@@ -90,7 +90,7 @@ export class Crime {
   }
   /** A fight between two townsfolk; at night outside the pub or nightclub if there is one. */
   brawl(venue) {
-    const g = this.game, pubs = g.buildings.list.filter((b) => b.state === 'done' && (b.id === 'tavern' || b.id === 'nightclub'));
+    const g = this.game, pubs = g.buildings.list.filter((b) => b.state === 'done' && (b.id === 'tavern' || b.id === 'local' || b.id === 'irish' || b.id === 'nightclub'));
     const site = venue && pubs.length ? pick(pubs) : null;
     const pool = g.population.sims.filter((s) => s.kind === 'resident' && s.age >= 18 && s.age < 60 && !s.inside && !s.fight && !s.crook && s.activity !== 'police' && s.pose !== 'sleep' && !(s.down > 0) && !s.hidden && (!site || Math.hypot(s.x - site.cx, s.z - site.cz) < 40));
     pool.sort((a, b) => ((b.drunk || 0) > 0.5) - ((a.drunk || 0) > 0.5) || (b.trait === 'grumpy') - (a.trait === 'grumpy') || (b.temper || 0) - (a.temper || 0));
@@ -228,13 +228,51 @@ export class Crime {
     g.messages.push('Police report', `${who} caught a ${c.type}!${c.loot || c.items ? ' The loot has been returned.' : ''} (+£${reward})`, 'good'); if (bySam) g.ui.toast(`You caught the ${c.type}! +£${reward}${c.loot ? `, £${c.loot} back` : ''}.`, 3000);
   }
 
+  // ---------- drunk and disorderly: arrested, walked to the cells, out in the morning ----------
+  cells() { const B = this.game.buildings.list; return B.find((b) => b.id === 'lockup' && b.state === 'done') || B.find((b) => (b.id === 'police' || b.id === 'watchhouse') && b.state === 'done') || null; }
+  /** A constable takes a drunk in: to the Lock-Up (or the station's cells) for the night. */
+  nick(q, cop) {
+    const g = this.game, to = this.cells(); q.disorderly = null; q.fight = null; q.fightAnim = null; q.standUp(); q.path = []; q.phase = 0;
+    if (!to) { g.social.say(cop, 'Go home and sleep it off. Go on.', 2.4); q.drunk = Math.min(q.drunk, 0.6); return; }   // (nowhere to put them)
+    q.escort = { cop, to }; cop.escorting = q; cop.path = []; g.social.say(cop, pick(['Right, you\'re coming with me.', 'Drunk and disorderly. Come on, sunshine.', 'Night in the cells for you, my lad.', 'Hands where I can see them.']), 2.6);
+    g.social.say(q, pick(['I\'ve only had a couple!', 'Get off me! I know my rights!', 'Officer, I love you. I really do.', 'It wasn\'t me!']), 2.6);
+    g.messages.push('Police', `${cop.roleName || 'PC'} ${cop.surname || cop.first} has arrested ${q.name} for being drunk and disorderly.`, 'quiet'); this.stats.drunks = (this.stats.drunks || 0) + 1;
+  }
+  /** The prisoner walks a step behind the constable. */
+  followCop(q, dt) {
+    const e = q.escort, cop = e && e.cop; if (!e || !cop || cop.remove || cop.escorting !== q || (cop.down > 0) || cop.activity !== 'police') { q.escort = null; if (cop && cop.escorting === q) cop.escorting = null; return; }   // (his shift's over, or he's down: they're let go)
+    q.hurry = false; q.emote = { upper: 'crossarms', t: 0.5 }; const bx = cop.x - Math.sin(cop.heading) * 1.1, bz = cop.z - Math.cos(cop.heading) * 1.1;
+    if (Math.hypot(bx - q.x, bz - q.z) > 1.4 && ((q.followT = (q.followT || 0) - dt) <= 0 || !q.path.length)) { q.followT = 0.8; q.goTo({ x: bx, z: bz }); }
+  }
+  walkPrisoner(cop, dt) {
+    const g = this.game, q = cop.escorting, e = q && q.escort; if (!q || !e || q.remove) { cop.escorting = null; return; }
+    const d = e.to.doorOut || e.to; cop.hurry = false;
+    if (Math.hypot(cop.x - d.x, cop.z - d.z) > 2.2) { if ((cop.repath || 0) <= 0 || !cop.path.length) { cop.repath = 2; cop.goTo({ x: d.x, z: d.z }); } if (Math.hypot(q.x - cop.x, q.z - cop.z) > 7) cop.path = []; return; }   // (waits if the prisoner lags)
+    if (Math.hypot(q.x - cop.x, q.z - cop.z) > 3) return;
+    cop.escorting = null; q.escort = null; q.path = [];
+    if (e.toLift) { g.population.depart(q); g.messages.push('Police', `${cop.roleName || 'PC'} ${cop.surname || cop.first} walked ${q.name} up to the Lift. Not welcome back in a hurry.`, 'quiet'); return; }
+    const c = g.clock; q.lockup = e.to; q.cellsUntil = (c.hour < 7 ? c.totalDays * 24 + 7 : (c.totalDays + 1) * 24 + 7); q.hidden = true; q.inside = e.to; q.x = e.to.cx; q.z = e.to.cz; q.drinking = false;
+    g.social.say(cop, pick(['In you go. Sleep it off.', 'Breakfast is at seven. Don\'t get excited.', 'Mind your head.']), 2.2);
+  }
+  /** Seven in the morning: out they come with a sore head. A local goes home; anyone else is walked up to the Lift by a constable, or makes their own way up it. */
+  release(q) {
+    const g = this.game, lk = q.lockup; q.cellsUntil = 0; q.lockup = null; q.hidden = false; q.inside = null; q.drunk = 0; q.moodBoost -= 0.15;
+    if (lk && lk.doorOut) { q.x = lk.doorOut.x; q.z = lk.doorOut.z; }
+    if (q.mesh.visible) g.social.say(q, pick(['Oh, my head...', 'Never again.', 'What happened last night?', 'Where\'s my shoe?']), 2.6);
+    if (q.home || q.kind === 'resident') { g.messages.push('Police', `${q.name} slept it off in the ${lk ? lk.def.name : 'cells'} and has gone home with a sore head.`, 'quiet'); return; }
+    const cop = this.cops().find((c) => !c.escorting && Math.hypot(c.x - q.x, c.z - q.z) < 120);
+    if (cop) { q.escort = { cop, to: g.lift, toLift: true }; cop.escorting = q; } else g.population.depart(q);   // (on their own, up the Lift)
+  }
+
   // ---------- the police (called from Sim.think for constables on shift) ----------
   driveCop(s, dt) {
     const g = this.game, P = g.player; s.repath = (s.repath || 0) - dt; s.speedK = (s.workplace && s.workplace.def.policeSpeed) || 1;
+    if (s.escorting) { this.walkPrisoner(s, dt); return; }   // a prisoner to take in (or up to the Lift)
     // the most pressing job: a crook seen in the act, a fight, or Sam if he's wanted
     let tgt = null, bd = 1e9; const consider = (o, d) => { if (d < bd) { bd = d; tgt = o; } };
     for (const q of g.population.sims) {
       if (q.crook && q.crook.seen && q.crook.state !== 'arrested' && !q.inside) consider(q, Math.hypot(q.x - s.x, q.z - s.z));
+      else if (q.disorderly && !q.escort && !q.inside && !q.remove) consider(q, Math.hypot(q.x - s.x, q.z - s.z) + 8);
       else if (q.fight && !q.inside) consider(q, Math.hypot(q.x - s.x, q.z - s.z) + 5);
     }
     if (this.wanted > 0 && g.mode === 'sim' && !P.transit) consider(P, Math.hypot(P.x - s.x, P.z - s.z) - 10 * this.wanted);
@@ -243,6 +281,7 @@ export class Crime {
       const d = Math.hypot(tgt.x - s.x, tgt.z - s.z);
       if (d < 1.5 && tgt !== P) {
         if (tgt.crook) { tgt.knockDown(3); this.collar(tgt, s, false); }
+        else if (tgt.disorderly) this.nick(tgt, s);
         else if (tgt.fight) { const f = tgt.fight.foe; g.social.say(s, this.age >= 3 ? 'Break it up, lads!' : 'Now then! Break it up!', 2.2); this.endFight(tgt, false); if (f && f !== P && f.fight) this.endFight(f, false); }
       }
       return;

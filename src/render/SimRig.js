@@ -135,10 +135,10 @@ export function createRig(look = {}) {
   if (L.glasses) hd.box(0.28, 0.02, 0.01, 0, 0.21, 0.162, 0x222222).box(0.095, 0.075, 0.01, -0.075, 0.2, 0.163, 0x6a8fb5).box(0.095, 0.075, 0.01, 0.075, 0.2, 0.163, 0x6a8fb5);
   j.headMesh = hd.mesh(); j.head.add(j.headMesh);
   // face parts that animate
-  j.lids = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.07, 0.02), new THREE.MeshStandardMaterial({ color: L.skin, roughness: 0.9 })); j.lids.position.set(0, 0.2, 0.162); j.lids.visible = false; j.head.add(j.lids);
+  j.lids = new THREE.Mesh(pboxGeo(0.17, 0.07, 0.02), new THREE.MeshStandardMaterial({ color: L.skin, roughness: 0.9 })); j.lids.position.set(0, 0.2, 0.162); j.lids.visible = false; j.head.add(j.lids);
   const mc = new THREE.MeshBasicMaterial({ color: F ? (L.lips || 0xa8404a) : 0x5a1f1f });
-  j.mouth = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.025, 0.012), mc); j.mouth.position.set(0, 0.075, 0.153); j.head.add(j.mouth);
-  j.mouthL = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.025, 0.012), mc); j.mouthR = j.mouthL.clone(); j.head.add(j.mouthL, j.mouthR);
+  j.mouth = new THREE.Mesh(pboxGeo(0.09, 0.025, 0.012), mc); j.mouth.position.set(0, 0.075, 0.153); j.head.add(j.mouth);
+  j.mouthL = new THREE.Mesh(pboxGeo(0.025, 0.025, 0.012), mc); j.mouthR = j.mouthL.clone(); j.head.add(j.mouthL, j.mouthR);
   // arms & legs
   const lt = B.lt, sx = 0.3 * B.sw * (F ? 0.93 : 1) + (lt - 1) * 0.04;
   const arm = (side) => {
@@ -166,7 +166,9 @@ export function createRig(look = {}) {
 }
 
 // ---------- props ----------
-const pbox = (g, w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), pm(c)); m.position.set(x, y, z); g.add(m); return m; };
+/** Held props are taken up and put down all day (a pint, a fag, a phone): their boxes are shared, never made afresh. */
+const PBOX = new Map(), pboxGeo = (w, h, d) => { const k = w + ',' + h + ',' + d; let q = PBOX.get(k); if (!q) PBOX.set(k, (q = new THREE.BoxGeometry(w, h, d))); return q; };
+const pbox = (g, w, h, d, c, x, y, z) => { const m = new THREE.Mesh(pboxGeo(w, h, d), pm(c)); m.position.set(x, y, z); g.add(m); return m; };
 const PROPS = {
   hammer: () => { const g = new THREE.Group(); pbox(g, 0.04, 0.34, 0.04, 0x8a5a33, 0, -0.1, 0.02); pbox(g, 0.06, 0.07, 0.18, 0x707880, 0, 0.08, 0.02); return g; },
   crate: () => { const g = new THREE.Group(); pbox(g, 0.5, 0.4, 0.5, 0xb5834a, 0, 0, 0); pbox(g, 0.52, 0.06, 0.52, 0x8a6236, 0, 0.12, 0); return g; },
@@ -195,6 +197,10 @@ const PROPS = {
   video: () => { const g = new THREE.Group(); pbox(g, 0.11, 0.19, 0.03, 0x1a2a8a, 0, 0.0, 0.02); pbox(g, 0.1, 0.06, 0.032, 0xd8342c, 0, 0.04, 0.02); return g; },
   popcorn: () => { const g = new THREE.Group(); pbox(g, 0.12, 0.16, 0.12, 0xd8342c, 0, 0.0, 0); pbox(g, 0.13, 0.05, 0.13, 0xf8f0c8, 0, 0.1, 0); return g; },
   cup: () => { const g = new THREE.Group(); pbox(g, 0.07, 0.08, 0.07, 0xf4f4f4, 0, 0.0, 0); pbox(g, 0.1, 0.01, 0.1, 0xf4f4f4, 0, -0.045, 0); return g; },
+  wine: () => { const g = new THREE.Group(); pbox(g, 0.012, 0.09, 0.012, 0xeaf2f4, 0, -0.05, 0); pbox(g, 0.05, 0.008, 0.05, 0xeaf2f4, 0, -0.095, 0); pbox(g, 0.06, 0.06, 0.06, 0x8a1a2a, 0, 0.02, 0); return g; },
+  shortglass: () => { const g = new THREE.Group(); pbox(g, 0.06, 0.07, 0.06, 0xd89a3a, 0, 0, 0); return g; },
+  stout: () => { const g = new THREE.Group(); pbox(g, 0.08, 0.13, 0.08, 0x1a0e0a, 0, 0.0, 0); pbox(g, 0.082, 0.035, 0.082, 0xf2e8d0, 0, 0.075, 0); return g; },   // the black stuff, with a head on it
+  fiddle: () => { const g = new THREE.Group(); pbox(g, 0.2, 0.05, 0.34, 0x9a4a1a, 0, 0.02, 0.08); pbox(g, 0.05, 0.03, 0.26, 0x2a1a10, 0, 0.04, 0.36); pbox(g, 0.012, 0.012, 0.6, 0xe8dcc0, 0.12, 0.07, 0.1).rotation.y = 0.5; return g; },
   mug2: () => { const g = new THREE.Group(); pbox(g, 0.08, 0.12, 0.08, 0xc99a4a, 0, 0.0, 0); return g; },
   club: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.62, 0.05, 0x6e4a2a, 0, -0.1, 0.03); pbox(g, 0.09, 0.2, 0.09, 0x5a3a20, 0, 0.18, 0.03); return g; },
   pistol: () => { const g = new THREE.Group(); pbox(g, 0.05, 0.12, 0.05, 0x2a2a2e, 0, -0.04, 0.02); pbox(g, 0.045, 0.05, 0.22, 0x3a3d44, 0, 0.04, 0.12); return g; },
@@ -208,7 +214,7 @@ export function setProp(rig, slot, name, color) {
   if (cur && cur.name === name) { if (name === 'crate' && color != null) cur.obj.children[0].material = pm(color); return; }
   if (cur) { cur.obj.parent && cur.obj.parent.remove(cur.obj); delete rig.props[key]; }
   if (!name) return;
-  const obj = PROPS[name](); if (name === 'crate' && color != null) obj.children[0].material = pm(color);
+  const C = rig.propCache || (rig.propCache = {}), ck = slot + ':' + name, obj = C[ck] || (C[ck] = PROPS[name]()); if (name === 'crate' && color != null) obj.children[0].material = pm(color);   // (a prop put down and picked up again is the same object, not a new one)
   const parent = slot === 'handR' ? rig.armR.hand : slot === 'handL' ? rig.armL.hand : rig.spine;
   if (slot === 'chest') obj.position.set(0, 0.28, 0.33);
   if (name === 'pistol' || name === 'rifle' || name === 'tube') obj.rotation.x = Math.PI / 2;   // a gun lies along the forearm (barrel out past the fingers), so a raised arm points it where you're aiming
