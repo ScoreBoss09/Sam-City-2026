@@ -158,7 +158,7 @@ const LAYOUTS = {
   },
   firestation(def) {
     const l = empty(), W = def.w * UNIT, D = def.d * UNIT;
-    l.furniture.push({ t: 'firetruck', x: -W / 4, z: 0, r: 0 }, { t: 'locker', x: W / 2 - 0.6, z: -D / 2 + 0.6, r: 0 }, { t: 'locker', x: W / 2 - 1.6, z: -D / 2 + 0.6, r: 0 }, { t: 'table', x: W / 4 + 0.4, z: 0.6, r: 0 }, { t: 'board', x: W / 4, z: -D / 2 + 0.2, r: 0 });
+    l.furniture.push({ t: 'locker', x: W / 2 - 0.6, z: -D / 2 + 0.6, r: 0 }, { t: 'locker', x: W / 2 - 1.6, z: -D / 2 + 0.6, r: 0 }, { t: 'table', x: W / 4 + 0.4, z: 0.6, r: 0 }, { t: 'board', x: W / 4, z: -D / 2 + 0.2, r: 0 });
     l.work.push({ x: -W / 4 + 1.6, z: 0.4 }, { x: W / 4 - 0.6, z: 0.6 }, { x: W / 4 + 1.4, z: 0.6 }); l.idle.push({ x: W / 4, z: 2.2 }); return l;
   },
   leisure(def) {

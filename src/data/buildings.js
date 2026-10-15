@@ -305,9 +305,9 @@ export const BUILDINGS = {
     blurb: 'Tyres, exhausts and a sharp intake of breath. "That\'ll be the big end, mate."',
   },
   firestation: {
-    name: 'Fire Station', cat: 'civic', w: 3, d: 2, floors: 2, wall: 'brick', roof: 'flat', roofColor: 0xb02a20, joy: 0.02,
-    mat: { brick: 16, steel: 6, glass: 2 }, work: 52, jobs: { firefighter: 3 }, layout: 'firestation', permit: { cost: 600, pop: 6 }, tab: 'Civic',
-    blurb: 'A shiny red engine, a pole nobody is allowed to slide down, and a charity calendar every Christmas.',
+    name: 'Fire Station', cat: 'civic', w: 3, d: 2, floors: 2, wall: 'brick', roof: 'flat', roofColor: 0xb02a20, joy: 0.02, bay: true,
+    mat: { brick: 16, steel: 6, glass: 2 }, work: 52, jobs: { firefighter: 4 }, layout: 'firestation', permit: { cost: 600, pop: 6 }, tab: 'Civic',
+    blurb: 'A shiny red engine behind a roller door, a pole down from the crew room, and a charity calendar every Christmas. The night watch sleeps upstairs until the bells go down.',
   },
   leisure: {
     name: 'Leisure Centre', cat: 'civic', w: 3, d: 3, floors: 1, wall: 'white', roof: 'flat', roofColor: 0x2a6aa8, joy: 0.06,

@@ -212,7 +212,7 @@ export function setProp(rig, slot, name, color) {
   if (cur && cur.name === name) { if (name === 'crate' && color != null) cur.obj.children[0].material = pm(color); return; }
   if (cur) { cur.obj.parent && cur.obj.parent.remove(cur.obj); delete rig.props[key]; }
   if (!name) return;
-  const C = rig.propCache || (rig.propCache = {}), ck = slot + ':' + name, obj = C[ck] || (C[ck] = PROPS[name]());   // (the same one again, not a new one each time) if (name === 'crate' && color != null) obj.children[0].material = pm(color);
+  const C = rig.propCache || (rig.propCache = {}), ck = slot + ':' + name, obj = C[ck] || (C[ck] = PROPS[name]()); if (name === 'crate' && color != null) obj.children[0].material = pm(color);   // (a prop put down and picked up again is the same object, not a new one)
   const parent = slot === 'handR' ? rig.armR.hand : slot === 'handL' ? rig.armL.hand : rig.spine;
   if (slot === 'chest') obj.position.set(0, 0.28, 0.33);
   if (name === 'pistol' || name === 'rifle' || name === 'tube') obj.rotation.x = Math.PI / 2;   // a gun lies along the forearm (barrel out past the fingers), so a raised arm points it where you're aiming

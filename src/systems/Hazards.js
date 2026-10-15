@@ -3,6 +3,7 @@ import { T } from '../world/World.js';
 import { pick } from '../util.js';
 import { Sfx } from '../core/Sfx.js';
 import { TILE } from '../config.js';
+import { colorize, mergeByMaterial } from '../render/BuildingFactory.js';
 
 const bucketGeo = new THREE.CylinderGeometry(0.16, 0.12, 0.26, 8, 1, true), bucketMat = new THREE.MeshStandardMaterial({ color: 0x8a8e96, metalness: 0.4, roughness: 0.5, side: THREE.DoubleSide });
 const waterGeo = new THREE.CircleGeometry(0.15, 8).rotateX(-Math.PI / 2), waterMat = new THREE.MeshStandardMaterial({ color: 0x5aa8d8, roughness: 0.1 });
@@ -16,7 +17,7 @@ function makeEngine() {
   add(0.5, 0.18, 0.3, 0x2a5aff, 0, 1.98, 3.0, { emissive: 0x2a5aff, emissiveIntensity: 0.8 });   // blue light
   for (const [x, z] of [[-1.05, 2.4], [1.05, 2.4], [-1.05, -1.6], [1.05, -1.6], [-1.05, -2.6], [1.05, -2.6]]) add(0.35, 0.9, 0.9, 0x111111, x, 0.45, z);
   for (const x of [-1.12, 1.12]) add(0.06, 0.6, 3.6, 0xe8e2c8, x, 1.3, -0.6);   // rolled hoses
-  return g;
+  colorize(g); mergeByMaterial(g); return g;   // (a handful of meshes, not thirty)
 }
 
 /**
@@ -51,6 +52,7 @@ export class Hazards {
     const slow = (W && W.blizzard ? 0.68 : 1) * (this.flood > 0.3 ? 0.85 : 1); if (W) W.slow = slow;
     // fires
     const pop = g.population.count(), fireRisk = (this.drought ? 0.004 : 0.0004) * Math.min(1, Math.max(0, pop - 25) / 40); if (Math.random() < gdt * fireRisk) this.ignite();   // hardly ever in a tiny village
+    this.stations(dt);
     for (const f of this.fires) this.burn(f, dt, gdt);
     if (this.engines) { for (const E of this.engines) this.engineStep(E, Math.min(dt * Math.max(1, Math.min(4, g.clock.speed || 1)), 0.1)); this.engines = this.engines.filter((E) => !E.done); }
     this.fires = this.fires.filter((f) => !f.out); this.smoulder(dt);
@@ -187,6 +189,21 @@ export class Hazards {
   driveCrew(s, dt = 0.016) {
     const g = this.game, b = s.fireB, f = b && this.fires.find((q) => q.b === b); if (!f) { s.fireB = null; s.run = null; this.dropBucket(s); return; }
     if (s.role !== 'firefighter' && f.src) { this.bucketRun(s, f, dt); return; }
+    if (s.role === 'firefighter') {
+      const E = f.engine;
+      if (s.aboard) { const A = s.aboard; if (A.done || !this.engines.includes(A)) { s.aboard = null; s.hidden = false; } else { s.x = A.mesh.position.x; s.z = A.mesh.position.z; return; } }   // riding in the cab
+      if (E && E.stage === 'muster' && E.st === s.workplace) {
+        const bb = E.bb;
+        if (s.woke && g.elapsed - s.woke < 1.2 && bb) {   // straight out of bed and down the pole
+          if (!s.sliding) { s.sliding = true; s.x = bb.pole.x; s.z = bb.pole.z; s.path = []; s.rideY = 3.1; g.social.say(s, pick(['Bells! Go go go!', 'Boots! Where are my boots?', 'Shout! Everybody up!']), 1.8); }
+          s.rideY = Math.max(0, 3.1 * (1 - (g.elapsed - s.woke) / 1.0)); s.emote = { upper: 'handsup', t: 0.3 }; return;
+        }
+        if (s.sliding) { s.sliding = false; s.rideY = 0; }
+        const m = E.mesh, a = m.rotation.y + Math.PI / 2 * (s.id % 2 ? 1 : -1), dx = m.position.x + Math.sin(a) * 1.5, dz = m.position.z + Math.cos(a) * 1.5;
+        if (Math.hypot(s.x - dx, s.z - dz) < 1.6) { s.aboard = E; E.crew.push(s); s.hidden = true; s.path = []; return; }   // up into the cab
+        if (!s.path.length || (s.crewRe = (s.crewRe || 0) - dt) <= 0) { s.crewRe = 1.5; s.goTo({ b: E.st, x: dx, z: dz }); } s.hurry = true; return;
+      }
+    }
     // the brigade round the door; with no well, the neighbours stand back and watch it go
     const back = s.role === 'firefighter' ? 3 : 8, goal = s.crewGoal; if (!goal || goal.f !== f) { const a = (Math.random() - 0.5) * 2.2, dx = b.doorOut.x - b.cx, dz = b.doorOut.z - b.cz, n = Math.hypot(dx, dz) || 1, ang = Math.atan2(dx / n, dz / n) + a; s.crewGoal = { f, x: b.doorOut.x + Math.sin(ang) * back, z: b.doorOut.z + Math.cos(ang) * back }; s.crewRe = 0; s.path = []; }
     const p = s.crewGoal; if (!s.path.length && Math.hypot(s.x - p.x, s.z - p.z) > 1.6 && (s.crewRe = (s.crewRe || 0) - dt) <= 0) { s.crewRe = 5; s.goTo({ x: p.x, z: p.z }); s.hurry = true; }
@@ -229,26 +246,64 @@ export class Hazards {
     if (!ff.p) { const dx = b.doorOut.x - b.cx, dz = b.doorOut.z - b.cz, n = Math.hypot(dx, dz) || 1, a = (Math.random() - 0.5) * 1.6, ang = Math.atan2(dx / n, dz / n) + a, d = 6 + Math.random() * 4; ff.p = { x: b.doorOut.x + Math.sin(ang) * d, z: b.doorOut.z + Math.cos(ang) * d }; s.path = []; if (!s.goTo(ff.p)) { s.x = ff.p.x; s.z = ff.p.z; } s.hurry = true; if (s.mesh.visible) g.social.say(s, pick(['Fire! FIRE!', 'Get out! Everybody out!', 'Help!']), 2); }
     if (!s.path.length) { s.faceGoal = Math.atan2(b.cx - s.x, b.cz - s.z); s.hurry = false; if (!f.out && Math.random() < dt * 0.08 && s.mesh.visible) g.social.say(s, pick(ff.home ? ['My house! Everything\'s in there!', 'All my things...', 'Not my house!'] : ['Is everyone out?', 'I can\'t believe it.', 'Thank God I woke up.']), 2.6); }
   }
+  // ---------- the fire station: the engine in its bay, the roller door, the night watch asleep upstairs ----------
+  /** Where things are at a station, in the world: the engine's spot in the bay, the street in front of the bay door, the foot of the pole. */
+  bayOf(st) {
+    const B = st.ext && st.ext.bay; if (!B) return null; const [x, z] = st.toWorld(B.x, -0.25), [fx, fz] = st.toWorld(B.x, st.def.d * 2 + 3.2), [px, pz] = B.pole ? st.toWorld(B.pole.x, B.pole.z) : [st.doorIn.x, st.doorIn.z];
+    return { x, z, fx, fz, h: st.rot * Math.PI / 2, pole: { x: px, z: pz } };
+  }
+  stations(dt) {
+    const g = this.game, P = this.parked || (this.parked = new Map());
+    for (const [st, m] of P) if (!g.buildings.list.includes(st) || st.state !== 'done' || !st.ext || !st.ext.bay) { g.scene.remove(m); P.delete(st); }   // (knocked down or rebuilt)
+    for (const st of g.buildings.list) {
+      if (st.id !== 'firestation' || st.state !== 'done' || !st.ext || !st.ext.bay) continue;
+      const out = (this.engines || []).some((E) => E.st === st && !E.done);
+      if (!P.has(st) && !out) { const bb = this.bayOf(st), m = makeEngine(); m.position.set(bb.x, 0, bb.z); m.rotation.y = bb.h; g.scene.add(m); P.set(st, m); }   // the engine, at home in its bay
+      const D = st.ext.bayDoor; if (D) { const want = st.bayOpen ? 1 : 0, k = (st.bayK = (st.bayK || 0) + (want - (st.bayK || 0)) * Math.min(1, dt * 1.4)); D.userData.slats.scale.y = Math.max(0.05, 1 - k); }   // rolls up into the top
+      if (st.alarmT > 0) { st.alarmT -= dt; if (g.mode === 'sim' && Math.hypot(g.player.x - st.cx, g.player.z - st.cz) < 70 && (st.ring = (st.ring || 0) - dt) <= 0) { st.ring = 0.18; Sfx.tone(st.ringHi ? 1480 : 1180, 0.12, { type: 'square', vol: 0.025 }); st.ringHi = !st.ringHi; } }   // the bells going down
+    }
+  }
+  /** The night watch turns in: upstairs at the station (out of sight), in the bunks, boots by the bed. */
+  bunk(s) {
+    const st = s.workplace; if (!st || st.state !== 'done') return; const bb = this.bayOf(st), at = bb ? bb.pole : st.doorIn;
+    if (s.bunk) return;
+    if (s.phase === 0) { if (!s.goTo({ b: st, x: at.x, z: at.z })) s.phase = 2; return; }
+    if (s.phase === 2 && !s.path.length) { s.bunk = true; s.hidden = true; s.pose = 'sleep'; s.vel = 0; }
+  }
   // ---------- the fire engine: out of the station, fill up at a well, drive to the fire, hose it; back for more ----------
   route(from, to) { const w = this.game.world, [sx, sz] = w.tileOf(from.x, from.z), [tx, tz] = w.tileOf(to.x, to.z), p = w.findPath(sx, sz, tx, tz, true); return p ? p.map(([x, z]) => ({ x: (x + 0.5) * TILE, z: (z + 0.5) * TILE })) : null; }
   sendEngine(f) {
     const g = this.game, st = g.buildings.list.filter((q) => q.state === 'done' && q.id === 'firestation' && q.doorOut).sort((a, c) => Math.hypot(a.cx - f.b.cx, a.cz - f.b.cz) - Math.hypot(c.cx - f.b.cx, c.cz - f.b.cz))[0]; if (!st) return;
-    const src = this.waterNear(st) || f.src, mesh = makeEngine(); mesh.position.set(st.doorOut.x, 0, st.doorOut.z); g.scene.add(mesh);
-    const E = { mesh, st, src, water: src ? 0 : 1, stage: src ? 'toWell' : 'toFire', path: null, wait: 0, f }; E.path = this.route(st.doorOut, src ? src.doorOut : f.b.doorOut) || []; f.engine = E; (this.engines || (this.engines = [])).push(E);
+    const src = this.waterNear(st) || f.src, bb = this.bayOf(st), P = this.parked || (this.parked = new Map());
+    let mesh = P.get(st); if (mesh) P.delete(st); else { mesh = makeEngine(); g.scene.add(mesh); if (bb) { mesh.position.set(bb.x, 0, bb.z); mesh.rotation.y = bb.h; } else mesh.position.set(st.doorOut.x, 0, st.doorOut.z); }
+    const E = { mesh, st, src, bb, water: src ? 0 : 1, stage: 'muster', next: src ? 'toWell' : 'toFire', path: [], wait: 0, f, crew: [], t: 0 }; f.engine = E; (this.engines || (this.engines = [])).push(E);
+    st.bayOpen = true; st.alarmT = 9; g.messages.push('Fire brigade', 'The bells go down at the Fire Station: the crew are on their way.', 'quiet');   // the alarm, the door going up, the crew down the pole
     if (!src) g.messages.push('Fire brigade', 'No well or water tower to fill the engine at. It\'s going on what\'s in the tank.', 'warn');
   }
-  homeEngine(E) { E.stage = 'home'; E.f = null; E.path = this.route(E.mesh.position, E.st.doorOut) || []; }
+  homeEngine(E) {
+    E.stage = 'home'; E.f = null; const bb = E.bb; E.path = (this.route(E.mesh.position, bb ? { x: bb.fx, z: bb.fz } : E.st.doorOut) || []).concat(bb ? [{ x: bb.fx, z: bb.fz }, { x: bb.x, z: bb.z, park: true }] : []); if (bb) E.st.bayOpen = true;
+    for (const s of E.crew) this.dismount(E, s); E.crew = [];
+  }
+  /** Out of the cab and onto the street beside the engine. */
+  dismount(E, s) { if (s.aboard !== E) return; s.aboard = null; s.hidden = false; const m = E.mesh, a = m.rotation.y + Math.PI / 2 * (s.id % 2 ? 1 : -1); s.x = m.position.x + Math.sin(a) * 1.8; s.z = m.position.z + Math.cos(a) * 1.8; s.path = []; }
   engineStep(E, dt) {
-    const g = this.game, m = E.mesh; if (E.wait > 0) { E.wait -= dt; if (E.stage === 'fill' && Math.random() < dt * 6) g.particles.burst(m.position.x, 2.2, m.position.z, 0x9fd8f0, 3, 0.6, 1.5, 0.08); return; }
+    const g = this.game, m = E.mesh; E.t += dt;
+    if (E.stage === 'muster') {   // the bells, the door going up, the crew aboard (or off without the stragglers after a quarter of a minute)
+      const st = E.st, due = g.population.sims.filter((s) => s.role === 'firefighter' && s.workplace === st && s.activity === 'firefight' && !s.remove && Math.hypot(s.x - st.cx, s.z - st.cz) < 30);
+      if ((E.t > 4 && (st.bayK || 0) > 0.85 && due.every((s) => s.aboard === E)) || E.t > 16) { E.stage = E.next; const from = E.bb ? { x: E.bb.fx, z: E.bb.fz } : m.position; E.path = (E.bb ? [{ x: E.bb.fx, z: E.bb.fz }] : []).concat(this.route(from, E.stage === 'toWell' ? E.src.doorOut : E.f.b.doorOut) || []); }
+      return;
+    }
+    if (E.wait > 0) { E.wait -= dt; if (E.stage === 'fill' && Math.random() < dt * 6) g.particles.burst(m.position.x, 2.2, m.position.z, 0x9fd8f0, 3, 0.6, 1.5, 0.08); return; }
     const p = E.path[0];
-    if (p) { const dx = p.x - m.position.x, dz = p.z - m.position.z, d = Math.hypot(dx, dz), step = 13 * dt; if (d > 0.1) { let da = Math.atan2(dx, dz) - m.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da)); m.rotation.y += da * Math.min(1, dt * 6); } if (d <= step) { m.position.x = p.x; m.position.z = p.z; E.path.shift(); } else { m.position.x += dx / d * step; m.position.z += dz / d * step; }
+    if (E.bb && E.stage !== 'home' && E.st.bayOpen && Math.hypot(m.position.x - E.bb.x, m.position.z - E.bb.z) > 16) E.st.bayOpen = false;   // out and away: the door comes down behind it
+    if (p) { const dx = p.x - m.position.x, dz = p.z - m.position.z, d = Math.hypot(dx, dz), step = (E.bb && Math.hypot(m.position.x - E.bb.x, m.position.z - E.bb.z) < 9 ? 5 : 13) * dt; if (d > 0.1) { let da = Math.atan2(dx, dz) - m.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da)); m.rotation.y += da * Math.min(1, dt * 6); } if (d <= step) { m.position.x = p.x; m.position.z = p.z; E.path.shift(); } else { m.position.x += dx / d * step; m.position.z += dz / d * step; }
       if (E.stage !== 'home' && g.mode === 'sim' && Math.hypot(g.player.x - m.position.x, g.player.z - m.position.z) < 60 && (E.bell = (E.bell || 0) - dt) <= 0) { E.bell = 0.35; Sfx.tone(1250, 0.12, { type: 'triangle', vol: 0.03 }); }   // ding-ding-ding
       return; }
     if (E.stage === 'toWell') { E.stage = 'fill'; E.wait = 3; E.water = 1; }
     else if (E.stage === 'fill') { E.stage = 'toFire'; E.path = this.route(m.position, E.f ? E.f.b.doorOut : E.st.doorOut) || []; }
-    else if (E.stage === 'toFire') E.stage = 'spray';
+    else if (E.stage === 'toFire') { E.stage = 'spray'; for (const s of E.crew) this.dismount(E, s); E.crew = []; }   // everybody out
     else if (E.stage === 'spray' && E.water <= 0 && E.src) { E.stage = 'toWell'; E.path = this.route(m.position, E.src.doorOut) || []; }
-    else if (E.stage === 'home') { E.done = true; g.scene.remove(m); }
+    else if (E.stage === 'home') { E.done = true; if (E.bb && g.buildings.list.includes(E.st)) { (this.parked || (this.parked = new Map())).set(E.st, m); m.rotation.y = E.bb.h; E.st.bayOpen = false; } else g.scene.remove(m); }   // backed into the bay, and the door comes down
   }
   cutPower() { const g = this.game; this.powerCut = 60 + Math.random() * 60; g.messages.push('The Electricity Board', 'Power cut! Engineers are on their way. Candles in the kitchen drawer.', 'warn'); g.ui.toast('🕯️ Power cut!', 3000); }
   serialize() { return { dryDays: this.dryDays, drought: this.drought }; }

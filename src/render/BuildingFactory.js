@@ -237,8 +237,20 @@ function buildExterior0(def, uid = 1, era = 2) {
   // (stallriser below, fascia above, painted pilasters at the ends), so you see the shop from the street and the street from the shop
   const shopFront = (def.shopping || def.dining) && !def.special && W >= 4, GF = Math.min(H, WALL_H), WB = 0.55, WT = 2.15;
   const fronts = [[l0, l1, l0 + 0.35, l1 - 0.25], [r0, r1, r0 + 0.25, r1 - 0.35]].map(([s0, s1, a, b]) => ({ s0, s1, a, b, open: shopFront && b - a >= 0.9 && GF >= WT + 0.3 }));
+  if (def.bay && l1 - l0 >= 4.6) fronts[0].bay = true;   // the fire station: an engine bay where the left-hand front would be
   const frameC = { 0: 0x3a2a1a, 1: 0x2a3a2a, 2: 0x1a2a4a }[era] ?? 0x2a2a2e;
+  let bayDoor = null, bay = null;
   for (const f of fronts) {
+    if (f.bay) {   // brick piers, a lintel with the sign on it, and a red roller door that rolls up into the top when the engine goes out
+      const a = f.s0 + 0.55, b = f.s1 - 0.45, BH = 2.95, bw = b - a, bc = (a + b) / 2;
+      addWall(g, cols, mat, (f.s0 + a) / 2, fz, a - f.s0, T, H); addWall(g, cols, mat, (b + f.s1) / 2, fz, f.s1 - b, T, H); addWall(g, [], mat, bc, fz, bw, T, H - BH, BH);
+      box(g, bw + 0.3, 0.14, T + 0.1, 0xe8e2d2, bc, BH - 0.07, fz);
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(3.4, bw - 0.4), 0.5), new THREE.MeshBasicMaterial({ map: signTexture('FIRE STATION', '#b0201c') })); sign.position.set(bc, BH + 0.42, fz + T / 2 + 0.02); g.add(sign);
+      bayDoor = new THREE.Group(); bayDoor.userData.keep = true; bayDoor.position.set(bc, BH, fz + T / 2 - 0.06); g.add(bayDoor);
+      const slats = new THREE.Group(); bayDoor.add(slats); box(slats, bw, BH, 0.06, 0xc8201c, 0, -BH, 0); for (let k = 1; k < 12; k++) box(slats, bw, 0.03, 0.08, 0x8a1410, 0, -BH + k * BH / 12, 0); box(slats, bw, 0.12, 0.09, 0x2a2a2a, 0, -BH, 0);
+      bayDoor.userData.slats = slats; cols.push({ cx: bc, cz: fz, sx: bw, sz: T, h: BH });
+      bay = { x: bc, w: bw, h: BH, z: fz }; continue;
+    }
     if (!f.open) { addWall(g, cols, mat, (f.s0 + f.s1) / 2, fz, f.s1 - f.s0, T, H); continue; }
     cols.push({ cx: (f.s0 + f.s1) / 2, cz: fz, sx: f.s1 - f.s0, sz: T, h: H + 0.5 });   // still a wall to walk into
     const w = f.b - f.a, cx = (f.a + f.b) / 2;
@@ -249,6 +261,12 @@ function buildExterior0(def, uid = 1, era = 2) {
     const n = era < 2 ? Math.max(2, Math.round(w / 0.45)) : Math.max(1, Math.round(w / 1.6)); for (let i = 1; i < n; i++) box(g, 0.05, WT - WB, 0.08, frameC, f.a + i * w / n, WB, fz);   // glazing bars
     if (era < 2) box(g, w, 0.05, 0.08, frameC, cx, 1.4, fz);
     box(g, w, 0.04, T + 0.12, 0xe8e2d2, cx, WB, fz);   // sill
+  }
+  if (def.bay) {   // the brass pole down from the crew's room upstairs, through a hole in the ceiling, and a blue lamp over the door
+    const px = W / 2 - T - 0.9, pz = D / 2 - T - 1.4, pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, H, 8), stdMat(0xd8b048, { metalness: 0.6, roughness: 0.3 })); pole.position.set(px, H / 2, pz); g.add(pole);
+    const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.02, 14), stdMat(0x101010)); hole.position.set(px, WALL_H - 0.03, pz); g.add(hole);
+    box(g, 0.3, 0.3, 0.25, 0x2a5aff, door, 2.75, fz + 0.2, { emissive: 0x2a5aff, emissiveIntensity: 0.9 });
+    if (bay) bay.pole = { x: px, z: pz };
   }
   if (H > 2.6) addWall(g, [], mat, door, fz, dw, T, H - 2.6, 2.6);               // lintel
   box(g, 0.12, 2.6, 0.5, 0x2a2d33, door - dw / 2, 0, fz); box(g, 0.12, 2.6, 0.5, 0x2a2d33, door + dw / 2, 0, fz); box(g, dw, 0.12, 0.5, 0x2a2d33, door, 2.55, fz);
@@ -380,7 +398,7 @@ function buildExterior0(def, uid = 1, era = 2) {
   { const sx = mx < 0.06 ? (W - 0.14) / W : 1, sz = mz < 0.06 ? (D - 0.14) / D : 1; if (sx !== 1 || sz !== 1) { g.scale.set(sx, 1, sz); roof.scale.set(sx, 1, sz); } }   // fills its plot exactly: pull the walls in a touch so they don't fight next door's
   ALIGN = null;
   const levels = plan ? buildLevels(def, plan, g, cols, roof) : null;
-  return { group: g, roof, colliders: cols, height: H, doors, plan, curtains, levels: levels && levels.groups, liftCab: levels && levels.cab, roofDoor: levels && levels.roofDoor, roofCols, shell: !!shell, shopWins: fronts.filter((f) => f.open).map((f) => [f.a, f.b]), door: [door - dw / 2, door + dw / 2] };
+  return { group: g, roof, colliders: cols, height: H, doors, plan, curtains, bayDoor, bay, levels: levels && levels.groups, liftCab: levels && levels.cab, roofDoor: levels && levels.roofDoor, roofCols, shell: !!shell, shopWins: fronts.filter((f) => f.open).map((f) => [f.a, f.b]), door: [door - dw / 2, door + dw / 2] };
 }
 
 /** Floors, ceilings, staircases and the lift shaft of a building with storeys you can walk up to (see Levels.js). */

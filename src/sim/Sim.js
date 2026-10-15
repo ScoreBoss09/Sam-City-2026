@@ -164,7 +164,7 @@ export class Sim {
     if (this.crook) return 'crime';
     if (this.trapped) return 'trapped';   // cut off by a fire (systems/Hazards.js)
     if (this.fleeFire) return 'flee';
-    if (this.game.hazards && this.game.hazards.fires.length && this.pose !== 'sleep' && !(this.down > 0)) { const H = this.game.hazards, fb = this.role === 'firefighter' ? H.fireFor(this) : H.volunteer(this); if (fb) { this.fireB = fb; return 'firefight'; } }
+    if (this.game.hazards && this.game.hazards.fires.length && (this.pose !== 'sleep' || this.bunk) && !(this.down > 0)) { const H = this.game.hazards, fb = this.role === 'firefighter' ? H.fireFor(this) : H.volunteer(this); if (fb) { this.fireB = fb; return 'firefight'; } }
     if (this.fireB && !(this.game.hazards && this.game.hazards.fires.some((f) => f.b === this.fireB))) this.fireB = null;
     if (this.fight) return 'fight';
     if (this.kind === 'raider') return 'raid';
@@ -185,7 +185,7 @@ export class Sim {
     const onShift = this.activity === 'work' && this.workplace && ((h >= 12 && h < 14) || this.shiftNow) && this.hunger < (this.shiftNow ? 88 : 70);   // (shift workers have a bite at work rather than shut up shop)
     if (!night && !onShift && this.eatCD <= 0 && (this.hunger >= 64 || (this.hunger >= 36 && this.mealWindow(h)))) return 'eat';
     const sun = this.game.clock.isSunday, wp = this.workplace, sh = wp && wp.state === 'done' && this.kind === 'resident' && this.age < 66 && (!sun || sundayShift(wp)) ? shiftOf(wp, this) : null;
-    this.shiftNow = !!(sh && inHours(h, sh)); if (this.shiftNow) return 'work';   // pubs, chippies, the nightclub...: their own hours, whatever the time
+    this.shiftNow = !!(sh && inHours(h, sh)); if (this.shiftNow) return this.role === 'firefighter' && (h >= 23 || h < 6.5) && this.game.hazards ? 'bunk' : 'work';   // (the night watch sleeps upstairs at the station till the bells go down)   // pubs, chippies, the nightclub...: their own hours, whatever the time
     if (night) return this.home ? 'sleep' : this.homeless ? 'rough' : 'leisure';   // Sunday: no school, and only the pubs, cafés, hotels, church and emergency services open
     if (this.kind === 'child') { const sc = this.game.buildings.byDef('school')[0]; return sc && !sun && h >= 8.5 && h < 15 ? 'school' : (h < 8 && this.home ? 'home' : 'leisure'); }
     if (h < (this.role === 'builder' ? 7 : 8)) return 'home';
@@ -240,6 +240,7 @@ export class Sim {
       case 'police': this.game.crime.driveCop(this, dt); break;
       case 'firefight': this.game.hazards.driveCrew(this, dt); break;
       case 'flee': this.game.hazards.driveFlee(this, dt); break;
+      case 'bunk': this.game.hazards.bunk(this); break;
       case 'trapped': this.panic = true; this.path = []; break;
       case 'defend': break;
       case 'leave': this.doLeave(dt); break;
@@ -266,7 +267,7 @@ export class Sim {
     if (this.mesh.visible) g.social.say(this, pick(DOWN_LINES), 2);
   }
   endActivity() {
-    this.panic = false; this.comeDown(); { const dd = this.dest; if (dd && dd.seat && dd.seat.taken === this && this.sitting !== dd.seat) dd.seat.taken = null; } if (this.roughAt) { const st = this.roughAt.seat; if (st && st.taken === this) st.taken = null; this.roughAt = null; this.roughLie = undefined; } if (this.bucketMesh && this.game.hazards) this.game.hazards.dropBucket(this); this.run = null;   // (up off the bench or out of the doorway; the bucket put down)
+    this.panic = false; this.comeDown(); if (this.bunk) { this.bunk = false; this.hidden = false; this.woke = this.game.elapsed; } { const dd = this.dest; if (dd && dd.seat && dd.seat.taken === this && this.sitting !== dd.seat) dd.seat.taken = null; } if (this.roughAt) { const st = this.roughAt.seat; if (st && st.taken === this) st.taken = null; this.roughAt = null; this.roughLie = undefined; } if (this.bucketMesh && this.game.hazards) this.game.hazards.dropBucket(this); this.run = null;   // (up off the bench or out of the doorway; the bucket put down)   // (up out of a bunk at the fire station: down the pole)
     if (this.pose === 'sleep') { this.pose = 'stand'; const s = this.bedSpot; if (s) { this.x = s.ax; this.z = s.az; } this.bedSpot = null; this.moodBoost -= 0.0; }
     this.standUp(); this.abortJob(); this.bag = false; this.drinking = false; this.bandT = 0; this.served = false; this.browseT = 0; this.svc = null; if (this.order && this.game.service) this.game.service.release(this);
   }

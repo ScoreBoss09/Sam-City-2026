@@ -8,7 +8,8 @@ export const HOURS = {
 export function inHours(h, w) { if (!w) return false; const [o, c] = w; return c > 24 ? h >= o || h < c - 24 : h >= o && h < c; }
 /** This worker's own shift at their workplace's hours (or null if the place keeps office hours). */
 export function shiftOf(b, sim) {
-  const w = b && HOURS[b.id]; if (!w) return null; const [o, c] = w, span = c - o; if (span >= 24) { if (b.workers.length < 2) return [8, 20]; const n = b.workers.length, i = Math.max(0, b.workers.indexOf(sim)), len = 24 / Math.min(3, n), s = (i % Math.min(3, n)) * len; return [s, s + len]; }   // round the clock: shifts
+  const w = b && HOURS[b.id]; if (!w) return null; const [o, c] = w, span = c - o;
+  if (b.id === 'firestation') return b.workers.indexOf(sim) % 2 ? [20, 32] : [8, 20];   // two watches: days, and nights (asleep upstairs unless the bells go down) if (span >= 24) { if (b.workers.length < 2) return [8, 20]; const n = b.workers.length, i = Math.max(0, b.workers.indexOf(sim)), len = 24 / Math.min(3, n), s = (i % Math.min(3, n)) * len; return [s, s + len]; }   // round the clock: shifts
   const n = b.workers.length, i = b.workers.indexOf(sim); if (n < 2 || span <= 9) return w;
   const mid = o + span / 2; return i % 2 === 0 ? [o, mid + 0.5] : [mid - 0.5, c];   // early and late, with a handover
 }
