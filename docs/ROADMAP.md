@@ -217,8 +217,9 @@ Status: [ ] to do, [~] partly done, [x] done (see notes).
 186. [x] Lots of smokers (builders and the pub most of all); dropped goods picked up and used or taken to the Stockyard; trees by sites can be chopped and a path over a tree fells it first; no stumps under paths or new buildings.
 187. [x] Rough sleepers each find their own bench, patch under a tree or shop doorway and lie on it, not stacked in mid-air. Snowball fights only when there's snow. Hairdressers give their customers a new do.
 188. [x] Fixed: controller presses in menus and notices (a line of code had been turned into a comment), Sunday church and pub outings, the god tools' ghost building, the library clock in the ceiling, campfire glow jumping in god mode, site labels flickering, the brickworks' extra roof, log cabin curtains, door signs floating, the homeless-homebody crash, white townsfolk (owner's choice).
-189. [ ] God mode draw calls (building exteriors batched per district).
+189. [x] God mode draw calls: buildings away from the camera drawn a district at a time (about 2.5 times fewer draw calls), carriages and the fire engine baked into a few pieces, leaks of props and bike geometry plugged. `?nobatch` to compare.
 190. [ ] Wildlife: squirrels on the ground, birds perching and roosting, bats and owls.
 191. [ ] Raids: rowing ashore, the guard's club, punches and kicks.
 192. [ ] Town overview, worker map, build-queue totals, shortage warning.
-193. [ ] The pub (drinks in hand, drunks staggering home, upstairs piano), more pubs, the nightclub late, couples holding hands, the fire station's pole and engine bay, the lock-up and drunks spending the night in it, the documentary crew, the 1995/2026 story, batch 005 models.
+193. [x] The pub: everyone to their own seat, a pint, wine or a short in hand (Sam's too); drunks stagger, sing, dance and fall over on the way home, and the rowdy ones are nicked and spend the night in the Lock-Up (rebuilt in dressed stone). The fire station: an engine bay with a roller door, the pole, the night watch asleep upstairs until the bells go. Couples going out together walk side by side holding hands, and kiss hello when they meet up.
+194. [ ] Upstairs at the pub (piano and dancing), more pubs (a small local, an Irish pub), the nightclub open late, the documentary crew, the 1995/2026 story, batch 005 models.

@@ -45,7 +45,14 @@ export class Social {
     const dur = 4 + Math.random() * 7, first = Math.random() < 0.5;
     a.chat = { partner: b, t: dur, speaker: first, turn: 1.5 + Math.random() * 2, laugh: 0 }; b.chat = { partner: a, t: dur, speaker: !first, turn: 2, laugh: 0 };
     for (const [s, o] of [[a, b], [b, a]]) { s.faceGoal = Math.atan2(o.x - s.x, o.z - s.z); s.chatCool = 40 + Math.random() * 60; }
+    if (a.partner === b && a.kind === 'resident' && b.kind === 'resident' && a.activity !== 'work' && b.activity !== 'work' && this.game.clock.totalDays * 24 + this.game.clock.hour - (a.kissAt ?? -99) > 5) { this.kiss(a, b); return; }   // a couple meeting up: a kiss hello, not "alright?" (not every time they pass in the kitchen)
     this.say(first ? a : b, pick(['Alright?', 'Oh, hello!', 'Fancy seeing you!']), 2);
+  }
+  /** A couple meeting: they step close, a kiss, a soppy word. */
+  kiss(a, b) {
+    const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, h = Math.atan2(b.x - a.x, b.z - a.z), w = this.game.world;
+    for (const [s, o, sg] of [[a, b, -1], [b, a, 1]]) { const x = mx + Math.sin(h) * 0.24 * sg, z = mz + Math.cos(h) * 0.24 * sg; if (!w.collides(x, z, 0.2)) s.glide = { x, z }; s.faceGoal = Math.atan2(o.x - s.x, o.z - s.z); s.emote = { upper: 'kiss', t: 2.2 }; s.moodBoost += 0.03; s.kissAt = this.game.clock.totalDays * 24 + this.game.clock.hour; }
+    this.say(Math.random() < 0.5 ? a : b, pick(['Hello, gorgeous.', 'Missed you, love.', 'There you are!', 'Hiya, sweetheart.', 'Mwah!']), 2);
   }
   /** Standing in or right in front of a doorway, where a chat would block everyone. */
   inDoorway(s) { for (const b of this.game.buildings.list) { const d = b.doorPos || b.doorOut; if (d && Math.abs(d.x - s.x) < 2.2 && Math.abs(d.z - s.z) < 2.2) return true; } return false; }

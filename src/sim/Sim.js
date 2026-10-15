@@ -115,6 +115,7 @@ export class Sim {
     if (this.freezeT > 0) { this.freezeT -= dt; this.vel = 0; this.dist = 0; return; }
     if (this.down > 0) { this.cycling = false; if (!this.injured) this.down -= dt; this.vel = 0; this.dist = 0; if (this.down <= 0) { this.down = 0; this.recovering = true; } return; }
     if (this.pose === 'sleep') { this.vel = 0; return; }
+    if (this.walkWith && this.beside(dt, prevX, prevZ)) return;
     if (this.glide && this.path.length && !this.sitting) this.glide = null;
     if (this.glide) { const k = Math.min(1, dt * 7); this.x += (this.glide.x - this.x) * k; this.z += (this.glide.z - this.z) * k; if (Math.hypot(this.glide.x - this.x, this.glide.z - this.z) < 0.02) this.glide = null; }
     if (this.faceGoal !== undefined && !this.path.length) { const d = angleDiff(this.heading, this.faceGoal); this.heading += Math.max(-9 * dt, Math.min(9 * dt, d)); if (Math.abs(d) < 0.03) this.faceGoal = undefined; else this.turning = true; }
@@ -129,7 +130,7 @@ export class Sim {
     const want = Math.atan2(dx, dz), dh = angleDiff(this.heading, want), rate = 8;
     this.heading += Math.max(-rate * dt, Math.min(rate * dt, dh));
     const rl = this.rideLevel(); this.cycling = rl >= 0;   // (on a bike; 'riding' means carried: the Lift cage, a train, a car)
-    const hurry = this.hurry || this.panic ? 1.55 : 1, max = (this.cycling ? VEHICLE_SPEED[rl] : 1) * (this.game.weather && this.game.weather.slow || 1) * (this.speedK || 1) * this.style.speed * hurry * (this.carry ? 0.8 : 1) * (this.kind === 'security' ? 1.4 : 1) * (this.kind === 'raider' ? 1.1 : 1) * (this.drunk > 0.4 ? 1.1 - this.drunk * 0.35 : 1);
+    const hurry = this.hurry || this.panic ? 1.55 : 1, max = (this.cycling ? VEHICLE_SPEED[rl] : 1) * (this.game.weather && this.game.weather.slow || 1) * (this.speedK || 1) * this.style.speed * hurry * (this.carry ? 0.8 : 1) * (this.kind === 'security' ? 1.4 : 1) * (this.kind === 'raider' ? 1.1 : 1) * (this.drunk > 0.4 ? 1.1 - this.drunk * 0.35 : 1) * this.pace();
     let target = Math.abs(dh) > 1.1 ? 0.15 : max; if (this.path.length === 1) target = Math.min(target, Math.max(0.5, d * 1.6));
     this.vel += Math.max(-8 * dt, Math.min(5 * dt, target - this.vel));
     let move = this.vel * dt; if (Math.abs(dh) > 1.1) this.turning = true;
@@ -139,9 +140,28 @@ export class Sim {
     this.moved = true; this.dist = Math.hypot(this.x - prevX, this.z - prevZ);
     if (!this.path.length && this.phase === 1) { this.vel = 0; this.arrive(); }
   }
+  /** Walking out with their other half: on the partner's right, matching their pace, so the two can hold hands. Off the
+   *  pavement (a doorway ahead, inside, the partner stopped or gone another way) they make their own way to the same place. */
+  beside(dt, prevX, prevZ) {
+    const p = this.walkWith, w = this.game.world;
+    if (!this.walkSide) this.walkT -= dt;
+    if (!p || p.remove || p.partner !== this || p.activity !== 'leisure' || this.activity !== 'leisure' || this.dest !== this.walkDest || this.chat || this.frozen || this.sitting || this.walkT < 0) { this.walkWith = null; this.walkSide = false; return false; }
+    const d = Math.hypot(p.x - this.x, p.z - this.z), door = p.path.slice(0, 4).some((q) => (q.door || q.enter || q.exit) && Math.hypot(q.x - p.x, q.z - p.z) < 5);
+    const ok = !this.inside && !p.inside && !p.riding && !this.riding && !p.cycling && !p.chat && !p.frozen && !p.sitting && !(p.down > 0) && p.phase === 1 && p.path.length > 1 && !door;
+    if (!this.walkSide) { if (ok && d < 3) this.walkSide = true; else { this.hurry = d > 2.5; return false; } }
+    if (!ok || d > 5) { this.walkSide = false; this.walkWith = null; this.hurry = false; if (!this.goTo(this.walkDest)) this.path = []; return false; }   // (the last stretch on their own: in through the door, to a seat)
+    const h = p.heading, fx = Math.sin(h), fz = Math.cos(h), sd = this.walkSd || 1; let tx = p.x + fz * 0.8 * sd, tz = p.z - fx * 0.8 * sd;
+    if (w.collides(tx, tz, 0.25)) { if (!w.collides(p.x - fz * 0.8 * sd, p.z + fx * 0.8 * sd, 0.25)) { this.walkSd = -sd; tx = p.x - fz * 0.8 * sd; tz = p.z + fx * 0.8 * sd; } else { tx = p.x - fx * 0.75; tz = p.z - fz * 0.75; } }   // a wall that side: the other side of them, or in single file
+    const vx = fx * p.vel + (tx - this.x) * 2.2, vz = fz * p.vel + (tz - this.z) * 2.2, sp = Math.hypot(vx, vz), cap = Math.max(2.6, p.vel * 1.25 + 0.4), k = sp > cap ? cap / sp : 1, nx = this.x + vx * k * dt, nz = this.z + vz * k * dt;
+    if (!w.collides(nx, nz, 0.25)) { this.x = nx; this.z = nz; } else if (!w.collides(nx, this.z, 0.25)) this.x = nx; else if (!w.collides(this.x, nz, 0.25)) this.z = nz;
+    if (sp * k > 0.2) { const dh = angleDiff(this.heading, Math.atan2(vx, vz)); this.heading += Math.max(-8 * dt, Math.min(8 * dt, dh)); }
+    this.vel = sp * k; this.cycling = false; this.dist = Math.hypot(this.x - prevX, this.z - prevZ); this.moved = this.dist > 0.001; return true;
+  }
+  /** Walking with someone: a touch slower, and slower still while they catch up. */
+  pace() { const q = this.partner; if (!q || q.walkWith !== this) return 1; return q.walkSide ? 0.9 : Math.hypot(q.x - this.x, q.z - this.z) > 2.5 ? 0.5 : 0.9; }
   /** Does this sim ride (penny-farthing, bicycle or motorbike) on this stretch? Only outdoors, on longer trips, if they own one. */
   rideLevel() {
-    const T = this.game.transport; if (!T || T.bikeLv < 0 || this.riding || this.inside || this.path.length < 3 || this.carry || this.kind === 'raider' || this.kind === 'security' || this.crook || this.fight || this.down > 0 || this.age < 13 || this.age > 74) return -1;
+    const T = this.game.transport; if (!T || T.bikeLv < 0 || this.walkWith || (this.partner && this.partner.walkWith === this) || this.riding || this.inside || this.path.length < 3 || this.carry || this.kind === 'raider' || this.kind === 'security' || this.crook || this.fight || this.down > 0 || this.age < 13 || this.age > 74) return -1;
     return (this.id * 7) % 10 < 4 ? T.bikeLv : -1;
   }
   /** Beaten to the seat: stand by it instead, a step away from anyone already there (and facing the same way). */
@@ -267,7 +287,7 @@ export class Sim {
     if (this.mesh.visible) g.social.say(this, pick(DOWN_LINES), 2);
   }
   endActivity() {
-    this.panic = false; this.comeDown(); if (this.bunk) { this.bunk = false; this.hidden = false; this.woke = this.game.elapsed; } { const dd = this.dest; if (dd && dd.seat && dd.seat.taken === this && this.sitting !== dd.seat) dd.seat.taken = null; } if (this.roughAt) { const st = this.roughAt.seat; if (st && st.taken === this) st.taken = null; this.roughAt = null; this.roughLie = undefined; } if (this.bucketMesh && this.game.hazards) this.game.hazards.dropBucket(this); this.run = null;   // (up off the bench or out of the doorway; the bucket put down)   // (up out of a bunk at the fire station: down the pole)
+    this.panic = false; this.comeDown(); if (this.bunk) { this.bunk = false; this.hidden = false; this.woke = this.game.elapsed; } { const dd = this.dest; if (dd && dd.seat && dd.seat.taken === this && this.sitting !== dd.seat) dd.seat.taken = null; } if (this.roughAt) { const st = this.roughAt.seat; if (st && st.taken === this) st.taken = null; this.roughAt = null; this.roughLie = undefined; } if (this.bucketMesh && this.game.hazards) this.game.hazards.dropBucket(this); this.run = null; this.walkWith = null; this.walkSide = false;   // (up off the bench or out of the doorway; the bucket put down)   // (up out of a bunk at the fire station: down the pole)
     if (this.pose === 'sleep') { this.pose = 'stand'; const s = this.bedSpot; if (s) { this.x = s.ax; this.z = s.az; } this.bedSpot = null; this.moodBoost -= 0.0; }
     this.standUp(); this.abortJob(); this.bag = false; this.drinking = false; this.bandT = 0; this.served = false; this.browseT = 0; this.svc = null; if (this.order && this.game.service) this.game.service.release(this);
   }
@@ -357,7 +377,7 @@ export class Sim {
       if (g.transport && Object.values(g.transport.lines).some((L) => L && L.kind !== 'sky') && this.kind !== 'visitor' && h >= 8 && h < 20) opts.push('train', 'train');   // a trip on the railway or monorail
       const qk = this.quirk && this.quirk.leisure, home = this.home && this.home.state === 'done' && this.home.spots.idle.length ? this.home : null, have = { park: parks.length, pub: pubs.length, shop: shops.length, home: home ? 1 : 0 }; if (qk && adult && have[qk] !== 0) opts.push(qk, qk, qk); this.busk = false; this.jogging = false; if (church && g.clock.isSunday && h >= 9 && h < 12) opts.push('church', 'church', 'church', 'church'); if (pubs.length && g.clock.isSunday && h >= 12 && h < 17) opts.push('pub', 'pub', 'pub'); if (band && h >= 16 && h < 21) opts.push('band', 'band');   // (and on Sundays: dinner at the pub, or the beer garden)   // (a quirk with nowhere to go, a homebody with no home, an early bird with no park: something else)
       const c = pick(opts); let ok = false;
-      if (this.partner && !this.partner.sleeping && this.partner.activity === 'leisure' && this.partner.dest && this.partner.inside === null && Math.random() < 0.55) { const d = this.partner.dest, ax = (Math.random() - 0.5) * 2.4, az = (Math.random() - 0.5) * 2.4; ok = this.goTo({ b: d.b, x: d.x + ax, z: d.z + az }); if (ok) { this.timer = 14 + Math.random() * 25; this.hurry = false; return; } }
+      if (this.partner && !this.partner.sleeping && this.partner.activity === 'leisure' && this.partner.dest && (this.partner.inside === null || this.partner.inside === this.inside) && Math.random() < 0.55) { const p = this.partner, d = p.dest, ax = (Math.random() - 0.5) * 2.4, az = (Math.random() - 0.5) * 2.4, wd = { b: d.b, x: d.x + ax, z: d.z + az }; ok = this.goTo(wd); if (ok) { this.timer = 14 + Math.random() * 25; this.hurry = false; if (p.phase === 1 && p.path.length > 4 && Math.hypot(p.x - this.x, p.z - this.z) < 14) { this.walkWith = p; this.walkDest = wd; this.walkT = 30; this.walkSide = false; p.hurry = false; } return; } }   // (going out together: they'll walk there side by side)
       if (this.kind === 'child') this.hurry = Math.random() < 0.6;
       if (c === 'jog' || c === 'busk' || c === 'watch') {   // quirks: a run round the streets, a song on the corner, staring at the sky
         const w = g.world, T = 8; for (let i = 0; i < 6 && !ok; i++) { const x = this.x + (Math.random() - 0.5) * (c === 'jog' ? 120 : 50), z = this.z + (Math.random() - 0.5) * (c === 'jog' ? 120 : 50), tx = Math.floor(x / T), tz = Math.floor(z / T); if (w.inBounds(tx, tz) && (w.road[w.idx(tx, tz)] || c === 'watch')) ok = this.goTo({ x: (tx + 0.5) * T, z: (tz + 0.5) * T }); }
@@ -376,7 +396,21 @@ export class Sim {
       if (!ok) this.phase = 2; this.timer = 14 + Math.random() * 28;
       if (c !== 'shop' && this.shopping) { this.shopping = false; this.bag = Math.random() < 0.7; }
       if (c !== 'pub') this.drinking = false; if (c !== 'band') this.bandT = 0;
+      if (ok && adult && ['park', 'bench', 'pub', 'shop', 'band', 'church', 'street'].includes(c)) this.invite();
     }
+  }
+  /** Going out: their other half, at a loose end close by, sometimes comes along. */
+  invite() {
+    const q = this.partner; if (!q || q.remove || q.kind !== 'resident' || this.kind !== 'resident' || q.activity !== 'leisure' || q.phase === 1 || q.chat || q.sleeping || q.walkWith || this.walkWith || q.down > 0 || q.frozen || q.trip || q.inside !== this.inside || this.path.length < 5 || Math.random() > 0.45) return;
+    if (Math.hypot(q.x - this.x, q.z - this.z) < 12) q.tagAlong(this);
+  }
+  tagAlong(p) {
+    const d = p.dest; if (!d) return false; let wd = null;
+    if (d.seat && d.b) { const s = this.freeSeat(d.b, [d.seat.kind]).filter((st) => st !== d.seat && Math.hypot(st.x - d.seat.x, st.z - d.seat.z) < 3.2).sort((u, v) => Math.hypot(u.x - d.seat.x, u.z - d.seat.z) - Math.hypot(v.x - d.seat.x, v.z - d.seat.z))[0]; if (s) wd = { b: d.b, x: s.x, z: s.z, seat: s }; }   // (the next seat along)
+    if (!wd) { const a = Math.random() * 6.28; wd = { b: d.b, x: d.x + Math.cos(a) * 0.9, z: d.z + Math.sin(a) * 0.9, face: d.face }; }
+    if (!this.goTo(wd)) return false;
+    this.shopping = false; this.drinking = !!(wd.seat && p.drinking); this.bandT = p.bandT; this.busk = false; this.jogging = false; this.hurry = false; this.timer = p.timer;
+    this.walkWith = p; this.walkDest = wd; this.walkT = 30; this.walkSide = false; p.hurry = false; return true;
   }
   /** A wedding guest, one of the happy couple, or in the Bonfire Night crowd. */
   doEvent() {
@@ -571,6 +605,7 @@ export class Sim {
     if (this.busk && !this.moved && this.activity === 'leisure' && !this.chat) upper = this.busk === 'busk' ? 'airguitar' : this.busk === 'watch' ? 'lookaround' : upper;
     if (this.fightAnim) upper = this.fightAnim;
     if (this.cycling && this.moved) { lower = 'ride'; upper = 'handlebars'; }
+    { const pt = this.partner; if (pt && upper === 'idle' && lower === 'walk' && pt.moved && !pt.remove && !this.cycling && !pt.cycling) { const dx = pt.x - this.x, dz = pt.z - this.z, d = Math.hypot(dx, dz); const lat = Math.cos(this.heading) * dx - Math.sin(this.heading) * dz; if (d < 1.15 && Math.abs(lat) > 0.45 && Math.cos(pt.heading - this.heading) > 0.85) upper = lat > 0 ? 'holdR' : 'holdL'; } }   // a couple walking together, hand in hand
     return { lower, upper, speaking, motor: this.vehLv === 2 };
   }
   /** It's 1995: a lot of people smoke (builders most of all, and the pub's thick with it). Whether someone does is fixed by their name. */
