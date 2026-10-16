@@ -32,6 +32,8 @@ export const Sfx = {
       case 'dig': this.noise(0.18, { freq: 380, q: 0.8, vol: 0.55, type: 'lowpass' }); break;
       case 'hammer': this.tone(1300, 0.05, { type: 'square', vol: 0.18 }); this.noise(0.05, { freq: 2500, q: 3, vol: 0.3 }); break;
       case 'pick': this.noise(0.06, { freq: 1800, q: 1, vol: 0.25 }); this.tone(520, 0.06, { type: 'sine', vol: 0.15 }); break;
+      case 'step': this.tone(784, 0.09, { type: 'triangle', vol: 0.16 }); this.tone(1047, 0.16, { type: 'triangle', vol: 0.16, delay: 0.09 }); break;   // a step ticked off: a bright two-note chime
+      case 'goal': [523, 659, 784, 1047].forEach((f, i) => this.tone(f, i === 3 ? 0.42 : 0.13, { type: 'triangle', vol: 0.2, delay: i * 0.11 })); this.tone(262, 0.6, { type: 'sine', vol: 0.12, delay: 0.33 }); break;   // a goal done: a little fanfare
       case 'perfect': [880, 1175, 1568].forEach((f, i) => this.tone(f, 0.12, { type: 'square', vol: 0.12, delay: i * 0.05 })); break;
       case 'good': this.tone(660, 0.09, { type: 'square', vol: 0.1 }); break;
       case 'miss': this.tone(180, 0.15, { type: 'sawtooth', vol: 0.1, slide: -60 }); break;

@@ -73,7 +73,20 @@ export function stepProgress(g, st) {
   for (const id of n.b || []) { const done = g.buildings.count(id) > 0, site = !done && g.buildings.list.some((b) => b.id === id && b.state === 'site'); out.push(`${(BUILDINGS[id] || { name: id }).name} ${done ? '✓' : site ? '🏗️' : '✗'}`); }
   return out.join(' · ');
 }
-const obj = (id, title, steps, extra = {}) => ({ id, title, steps, text: steps.map((x) => x.text).join(' '), done: (g) => steps.every((x) => x.done(g)), target: (g) => { const s = steps.find((x) => !x.done(g)); return s && s.target ? s.target(g) : null; }, ...extra });
+/** A step that's only a way of getting somewhere ("click Roads", "walk to the rack"): it counts as done once a real step after it is. */
+const soft = (text, done, target, need) => ({ text, done, target, need, soft: true });
+/**
+ * A goal: steps one at a time. stepDone(g, i): done itself, or a soft step with a real step after it done (so nobody
+ * is stuck on "click Roads" after drawing the path another way). The goal is done when every step is.
+ */
+const obj = (id, title, steps, extra = {}) => {
+  const o = { id, title, steps, text: steps.map((x) => x.text).join(' '), ...extra };
+  o.state = (g) => { if (o._t === g.elapsed && o._s) return o._s; const d = steps.map((x) => !!x.done(g)); o._t = g.elapsed; return (o._s = d.map((v, i) => v || (!!steps[i].soft && d.some((w, j) => j > i && w && !steps[j].soft)))); };   // (worked out once a frame)
+  o.current = (g) => o.state(g).indexOf(false);
+  o.done = (g) => o.current(g) < 0;
+  o.target = (g) => { const s = steps[o.current(g)]; return s && s.target ? s.target(g) : null; };
+  return o;
+};
 const hasB = (g, id, state) => g.buildings.list.some((b) => b.id === id && (!state || b.state === state));
 const nearestTree = (g) => { let best = null, bd = 1e9; for (const t of g.terrain.trees) { if (!t.alive) continue; const d = Math.hypot(t.x - g.player.x, t.z - g.player.z); if (d < bd) { bd = d; best = t; } } return best && { x: best.x, z: best.z }; };
 const siteOf = (g, id) => { const b = g.buildings.list.find((q) => q.id === id && q.state === 'site'); return b && { x: b.cx, z: b.cz }; };
@@ -81,74 +94,117 @@ const siteFull = (g, id) => g.buildings.list.some((b) => b.id === id && (b.state
 const haulTarget = (g, id) => (g.player.invTotal() >= 4 ? siteOf(g, id) : (nearestTree(g)));
 const nearestPlan = (g) => { let best = null, bd = 1e9; for (const p of g.roadPlans.plans.values()) { const d = Math.hypot(p.cx - g.player.x, p.cz - g.player.z); if (d < bd) { bd = d; best = p; } } return best && { x: best.cx, z: best.cz }; };
 const rackTarget = (g) => { const u = g.tools.untaken[0]; return u ? { x: u.x, z: u.z } : null; };
+const paths = (g) => g.roadPlans.count + (g.flags.pathsBuilt || 0);
+const liftFront = (g) => ({ x: g.lift.doorOut.x, z: g.lift.doorOut.z + 6 });
+const near = (g, p, r) => !!p && Math.hypot(p.x - g.player.x, p.z - g.player.z) < r && g.mode === 'sim';
+const carrying = (g, m) => g.player.inv[m] || 0;
+const permitted = (g, id) => ['pending', 'approved'].includes(g.economy.permits[id]) || g.buildings.count(id, false) > 0;
+const postboxT = (g) => { const b = g.mail.box; return b && { x: b.cx, z: b.cz }; };
+const nearestSiteT = (g) => nearestSite(g);
 
 /** The order before the objectives were rewritten (old saves store a position in this list). */
 export const OLD_OBJECTIVES = ['plan', 'tools', 'dig', 'yard', 'hut', 'eat', 'post', 'feed', 'settle', 'yard2', 'hamlet', 'village', 'town', 'city', 'landmark'];
 export const OBJECTIVES = [
-  obj('plan', '1. Plan your camp (planning view)', [
-    step('Click ROADS (left), then drag a dirt path away from the Supply Lift.', (g) => g.roadPlans.count + (g.flags.pathsBuilt || 0) >= 3, (g) => ({ x: g.lift.doorOut.x, z: g.lift.doorOut.z + 6 })),
-    step('Click BUILDINGS, the Civic tab, then Stockyard. Click beside your path to order it.', (g) => hasB(g, 'stockyard')),
-    step('Now order a Log Cabin for Sam (BUILDINGS, Homes) beside the path.', (g) => hasB(g, 'shack') || hasB(g, 'hut')),
+  obj('plan', '1. Plan your camp', [
+    soft('Click Roads in the toolbar.', (g) => g.god.tool.id === 'road'),
+    step('Drag from the Supply Lift to draw a dirt path.', (g) => paths(g) >= 1, liftFront),
+    step('Make the path three squares long.', (g) => paths(g) >= 3, liftFront),
+    soft('Click Buildings in the toolbar.', (g) => g.god.tool.id === 'build'),
+    soft('Open the Civic tab.', (g) => g.god.tool.id === 'build' && g.ui.buildTab === 'Civic'),
+    step('Pick the Stockyard, then click beside your path to place it.', (g) => hasB(g, 'stockyard')),
+    soft('Open the Homes tab.', (g) => g.god.tool.id === 'build' && g.ui.buildTab === 'Homes'),
+    step('Pick the Log Cabin and place it beside the path. It will be Sam\'s home.', (g) => hasB(g, 'shack') || hasB(g, 'hut')),
   ]),
-  obj('tools', '2. Become Sam and pick up tools', [
+  obj('tools', '2. Become Sam', [
     step('Press TAB to step into Sam\'s shoes.', (g) => g.flags.sawSim),
-    step('Walk to the glowing Tool Rack (yellow star on your map) and pick up the Axe with E.', (g) => g.player.tools.has('axe'), rackTarget),
+    soft('Walk to the Tool Rack (the yellow star on your map).', (g) => near(g, g.tools, 4), rackTarget),
+    step('Press E to pick up the Axe.', (g) => g.player.tools.has('axe'), rackTarget),
     step('Pick up the Hammer.', (g) => g.player.tools.has('hammer'), rackTarget),
     step('Pick up the Shovel.', (g) => g.player.tools.has('shovel'), rackTarget),
   ]),
   obj('dig', '3. Dig the path', [
-    step('Stand on a staked path tile and tap E when the marker is in the green to dig it.', (g) => (g.flags.pathsBuilt || 0) >= 3 || (g.roadPlans.count === 0 && (g.flags.pathsBuilt || 0) >= 1), nearestPlan),
+    soft('Walk to a staked path square (little flags at the corners).', (g) => near(g, nearestPlan(g), 5), nearestPlan),
+    step('Tap E when the marker is in the green to dig.', (g) => (g.flags.pathsBuilt || 0) >= 1, nearestPlan),
+    step('Dig the rest of the path.', (g) => (g.flags.pathsBuilt || 0) >= 3 || (g.roadPlans.count === 0 && (g.flags.pathsBuilt || 0) >= 1), nearestPlan),
   ]),
   obj('yard', '4. Raise the Stockyard', [
-    step('Chop trees: tap E in the green. Then take the timber to the Stockyard site and press E to deliver (it needs 10).', (g) => siteFull(g, 'stockyard'), (g) => haulTarget(g, 'stockyard')),
-    step('Build the Stockyard: stand by the site and tap E in the green.', (g) => hasB(g, 'stockyard', 'done'), (g) => siteOf(g, 'stockyard')),
+    soft('Walk up to a tree.', (g) => near(g, nearestTree(g), 3.5), nearestTree),
+    soft('Tap E in the green to chop it.', (g) => carrying(g, 'timber') >= 1, nearestTree),
+    soft('Keep chopping until you carry 10 timber.', (g) => carrying(g, 'timber') >= 10, nearestTree),
+    step('Take it to the Stockyard site and press E to deliver it.', (g) => siteFull(g, 'stockyard'), (g) => haulTarget(g, 'stockyard')),
+    step('Build it: stand by the site and tap E in the green.', (g) => hasB(g, 'stockyard', 'done'), (g) => siteOf(g, 'stockyard')),
   ]),
   obj('hut', '5. A roof for Sam', [
-    step('Bring 6 timber to the Log Cabin site. Chop more, or press E at the Stockyard to pack what the site needs.', (g) => siteFull(g, 'shack') || siteFull(g, 'hut'), (g) => (g.player.invTotal() ? (siteOf(g, 'shack') || siteOf(g, 'hut')) : (g.depot ? { x: g.depot.doorOut.x, z: g.depot.doorOut.z } : nearestTree(g)))),
-    step('Build the Log Cabin (tap E in the green). It will be Sam\'s home.', (g) => hasB(g, 'shack', 'done') || hasB(g, 'hut', 'done'), (g) => siteOf(g, 'shack') || siteOf(g, 'hut')),
+    soft('Get 6 timber: chop more, or press E at the Stockyard.', (g) => carrying(g, 'timber') >= 6, (g) => (g.depot ? { x: g.depot.doorOut.x, z: g.depot.doorOut.z } : nearestTree(g))),
+    step('Deliver it to the Log Cabin site (press E there).', (g) => siteFull(g, 'shack') || siteFull(g, 'hut'), (g) => siteOf(g, 'shack') || siteOf(g, 'hut')),
+    step('Build the Log Cabin: tap E in the green.', (g) => hasB(g, 'shack', 'done') || hasB(g, 'hut', 'done'), (g) => siteOf(g, 'shack') || siteOf(g, 'hut')),
   ]),
   obj('eat', '6. Eat something', [
     step('Pick up the Basket from the Tool Rack.', (g) => g.player.tools.has('basket'), rackTarget),
-    step('Pick berries from a bush (tap E), then press Q to eat.', (g) => (g.flags.ate || 0) >= 1),
+    soft('Find a berry bush and tap E to pick berries.', (g) => carrying(g, 'food') >= 1),
+    step('Press Q to eat.', (g) => (g.flags.ate || 0) >= 1),
   ]),
   obj('post', '7. A postbox for letters', [
-    step('Planning view: order a Postbox (BUILDINGS, Civic) beside the path, then build it. It only needs 2 timber.', (g) => hasB(g, 'postbox', 'done'), (g) => siteOf(g, 'postbox') || nearestTree(g)),
-    step('Check the post (E at the red Postbox). Reports and permit forms come by letter.', (g) => g.flags.postRead, (g) => { const b = g.mail.box; return b && { x: b.cx, z: b.cz }; }),
+    soft('Press TAB for the planning view.', (g) => g.mode === 'god'),
+    step('Place a Postbox (Buildings, Civic tab).', (g) => hasB(g, 'postbox'), (g) => siteOf(g, 'postbox')),
+    step('Build the Postbox. It only needs 2 timber.', (g) => hasB(g, 'postbox', 'done'), (g) => siteOf(g, 'postbox') || nearestTree(g)),
+    step('Press E at the red Postbox to read your post.', (g) => g.flags.postRead, (g) => { const b = g.mail.box; return b && { x: b.cx, z: b.cz }; }),
   ]),
   obj('feed', '8. Feed the camp', [
-    step('Order a Campfire and a Forager\'s Hut (Food tab) and build them. The forager brings food to the Stockyard.', (g) => g.buildings.count('campfire') && g.buildings.count('forager'), (g) => siteOf(g, 'campfire') || siteOf(g, 'forager'), { b: ['campfire', 'forager'] }),
+    step('Place a Campfire (Buildings, Food tab).', (g) => hasB(g, 'campfire'), null, { b: ['campfire'] }),
+    step('Place a Forager\'s Hut (Food tab). The forager brings food to the Stockyard.', (g) => hasB(g, 'forager'), null, { b: ['forager'] }),
+    step('Build them both.', (g) => g.buildings.count('campfire') && g.buildings.count('forager'), (g) => siteOf(g, 'campfire') || siteOf(g, 'forager'), { b: ['campfire', 'forager'] }),
   ]),
   obj('settle', '9. Welcome settlers', [
-    step('Settlers need beds: build more Log Cabins (1 bed) or Wooden Huts (2). They arrive when there is a free bed and 3 food in the Stockyard. Reach 6 residents.', (g) => g.population.count() >= 6, null, { pop: 6 }),
-    step('Sleep through a night in Sam\'s own bed (E, after 20:00 or when tired).', (g) => g.flags.slept),
+    step('Build another home: settlers need a bed (a Log Cabin or a Wooden Hut).', (g) => g.buildings.list.filter((b) => b.state === 'done' && b.def.cat === 'res').length >= 2, nearestSiteT),
+    step('Wait for 3 residents. They come when there\'s a free bed and 3 food in the Stockyard.', (g) => g.population.count() >= 3, null, { pop: 3 }),
+    step('Reach 6 residents.', (g) => g.population.count() >= 6, nearestSiteT, { pop: 6 }),
+    step('Sleep a night in Sam\'s bed (E on the bed, after 20:00).', (g) => g.flags.slept),
   ]),
   obj('yard2', '10. Builders and lumber', [
-    step('Post permit forms (Postbox) for a Lumber Camp and a Builders\' Yard, then build both. Builders then work through the Work Queue (Planning menu) for you.', (g) => g.buildings.count('lumbercamp') && g.buildings.count('contractor'), (g) => siteOf(g, 'lumbercamp') || siteOf(g, 'contractor'), { b: ['lumbercamp', 'contractor'] }),
+    soft('Press E at the Postbox and open Permit forms.', (g) => permitted(g, 'lumbercamp') || permitted(g, 'contractor'), postboxT),
+    step('Post a permit form for a Lumber Camp.', (g) => permitted(g, 'lumbercamp'), postboxT),
+    step('Post a permit form for a Builders\' Yard.', (g) => permitted(g, 'contractor'), postboxT),
+    step('Build the Lumber Camp.', (g) => g.buildings.count('lumbercamp'), (g) => siteOf(g, 'lumbercamp') || nearestSite(g), { b: ['lumbercamp'] }),
+    step('Build the Builders\' Yard. Its builders then do the building for you.', (g) => g.buildings.count('contractor'), (g) => siteOf(g, 'contractor') || nearestSite(g), { b: ['contractor'] }),
   ]),
   obj('safe', '11. Look after the camp', [
-    step('Build a Well. If anything catches fire, neighbours run a bucket chain from it.', (g) => hasB(g, 'well', 'done'), (g) => siteOf(g, 'well') || nearestSite(g), { b: ['well'] }),
-    step('Build a Doctor\'s Surgery. Anyone hurt is carried there to be patched up.', (g) => hasB(g, 'surgery', 'done') || hasB(g, 'clinic', 'done'), (g) => siteOf(g, 'surgery') || nearestSite(g)),
+    step('Build a Well. If anything catches fire, neighbours fetch water from it.', (g) => hasB(g, 'well', 'done'), (g) => siteOf(g, 'well') || nearestSite(g), { b: ['well'] }),
+    step('Build a Doctor\'s Surgery. Anyone hurt is patched up there.', (g) => hasB(g, 'surgery', 'done') || hasB(g, 'clinic', 'done'), (g) => siteOf(g, 'surgery') || nearestSite(g)),
   ]),
   obj('hamlet', '12. Grow the hamlet', [
-    step('Reach 15 residents, with a Quarry and a Farm.', (g) => g.population.count() >= 15 && g.buildings.count('quarry') && g.buildings.count('farm'), (g) => nearestSite(g), { pop: 15, b: ['quarry', 'farm'] }),
-    step('Build a Carter\'s Yard: its horse carts haul materials from the Stockyard to the building sites.', (g) => hasB(g, 'stables', 'done'), (g) => siteOf(g, 'stables') || nearestSite(g), { b: ['stables'] }),
+    step('Build a Quarry for stone.', (g) => g.buildings.count('quarry'), nearestSiteT, { b: ['quarry'] }),
+    step('Build a Farm.', (g) => g.buildings.count('farm'), nearestSiteT, { b: ['farm'] }),
+    step('Reach 15 residents.', (g) => g.population.count() >= 15, nearestSiteT, { pop: 15 }),
+    step('Build a Carter\'s Yard: its carts take materials to the building sites.', (g) => hasB(g, 'stables', 'done'), (g) => siteOf(g, 'stables') || nearestSite(g), { b: ['stables'] }),
   ]),
   obj('village', '13. A proper village', [
-    step('Raise a pub (The Red Lion) and a Brickworks, then begin on Stone Cottages.', (g) => g.buildings.count('tavern') && g.buildings.count('brickworks') && g.buildings.count('cottage') >= 1, (g) => nearestSite(g), { b: ['tavern', 'brickworks', 'cottage'] }),
-    step('Open a Newsagent: papers, sweets and the National Lottery.', (g) => hasB(g, 'newsagent', 'done'), (g) => siteOf(g, 'newsagent') || nearestSite(g), { b: ['newsagent'] }),
+    step('Build a pub: the Red Lion.', (g) => g.buildings.count('tavern'), nearestSiteT, { b: ['tavern'] }),
+    step('Build a Brickworks.', (g) => g.buildings.count('brickworks'), nearestSiteT, { b: ['brickworks'] }),
+    step('Build a Stone Cottage.', (g) => g.buildings.count('cottage') >= 1, nearestSiteT, { b: ['cottage'] }),
+    step('Open a Newsagent: papers, sweets and the Lottery.', (g) => hasB(g, 'newsagent', 'done'), (g) => siteOf(g, 'newsagent') || nearestSite(g), { b: ['newsagent'] }),
   ]),
   obj('town', '14. Become a town', [
-    step('Reach 30 residents with a Town Hall and a Schoolhouse.', (g) => g.population.count() >= 30 && g.buildings.count('townhall') && g.buildings.count('school'), (g) => nearestSite(g), { pop: 30, b: ['townhall', 'school'] }),
-    step('Build a Police Station. A bigger town has more trouble: brawls, muggings and the odd protest.', (g) => hasB(g, 'police', 'done'), (g) => siteOf(g, 'police') || nearestSite(g), { b: ['police'] }),
+    step('Reach 30 residents.', (g) => g.population.count() >= 30, nearestSiteT, { pop: 30 }),
+    step('Build a Town Hall.', (g) => g.buildings.count('townhall'), nearestSiteT, { b: ['townhall'] }),
+    step('Build a Schoolhouse.', (g) => g.buildings.count('school'), nearestSiteT, { b: ['school'] }),
+    step('Build a Police Station. A bigger town has more trouble.', (g) => hasB(g, 'police', 'done'), (g) => siteOf(g, 'police') || nearestSite(g), { b: ['police'] }),
   ]),
   obj('money', '15. Balance the books', [
-    step('Build a Bank. With a Bank and the Town Hall you can set the rates and take out loans (Planning menu, Money & goods).', (g) => hasB(g, 'bank', 'done') && hasB(g, 'townhall', 'done'), (g) => siteOf(g, 'bank') || nearestSite(g), { b: ['bank', 'townhall'] }),
+    step('Build a Bank. With the Bank and the Town Hall you can set the rates and borrow.', (g) => hasB(g, 'bank', 'done') && hasB(g, 'townhall', 'done'), (g) => siteOf(g, 'bank') || nearestSite(g), { b: ['bank', 'townhall'] }),
   ]),
-  obj('power', '16. Switch on the power', [step('Reach 40 residents and build a Power Plant. The Electric age begins.', (g) => g.tech && g.tech.era >= 1, (g) => siteOf(g, 'power') || nearestSite(g), { pop: 40, b: ['power'] })]),
-  obj('city', '17. Become a city', [step('Grow to 60 residents with a Glassworks, a Foundry and a Hospital.', (g) => g.population.count() >= 60 && g.buildings.count('glassworks') && g.buildings.count('foundry') && g.buildings.count('clinic'), (g) => nearestSite(g), { pop: 60, b: ['glassworks', 'foundry', 'clinic'] })]),
-  obj('landmark', '18. Crown the skyline', [step('Build the Grand Hotel or Sam Tower.', (g) => g.largeCount() >= 1, (g) => nearestSite(g))]),
-];
-function nearestSite(g) {
+  obj('power', '16. Switch on the power', [
+    step('Reach 40 residents.', (g) => g.population.count() >= 40, nearestSiteT, { pop: 40 }),
+    step('Build a Power Plant. The electric age begins.', (g) => g.tech && g.tech.era >= 1, (g) => siteOf(g, 'power') || nearestSite(g), { b: ['power'] }),
+  ]),
+  obj('city', '17. Become a city', [
+    step('Reach 60 residents.', (g) => g.population.count() >= 60, nearestSiteT, { pop: 60 }),
+    step('Build a Glassworks.', (g) => g.buildings.count('glassworks'), nearestSiteT, { b: ['glassworks'] }),
+    step('Build a Foundry.', (g) => g.buildings.count('foundry'), nearestSiteT, { b: ['foundry'] }),
+    step('Build a Hospital.', (g) => g.buildings.count('clinic'), nearestSiteT, { b: ['clinic'] }),
+  ]),
+  obj('landmark', '18. Crown the skyline', [step('Build the Grand Hotel or Sam Tower.', (g) => g.largeCount() >= 1, nearestSiteT)]),
+];function nearestSite(g) {
   const s = g.buildings.list.filter((b) => b.state === 'site'); if (!s.length) return null;
   const p = g.player; s.sort((a, b) => Math.hypot(a.cx - p.x, a.cz - p.z) - Math.hypot(b.cx - p.x, b.cz - p.z)); return { x: s[0].cx, z: s[0].cz };
 }

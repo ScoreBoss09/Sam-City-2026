@@ -250,12 +250,25 @@ export class UI {
     const g = this.game, cur = g.story.objective, o = OBJECTIVES[cur], el = $('obj-list');
     if (!o) { $('obj-title').textContent = 'Free play'; $('obj-text').textContent = 'Grow the town however you like.'; el.innerHTML = ''; return; }
     // one thing at a time: only the current step is shown
-    const i = o.steps.findIndex((s) => !s.done(g)), k = i < 0 ? o.steps.length - 1 : i, step = o.steps[k];
+    const i = o.current(g), k = i < 0 ? o.steps.length - 1 : i, step = o.steps[k], st = o.state(g);
+    if (cur === 0 && k === 0 && !g.flags.objIntro && g.started && !g.demoMode && !(g.introScene && g.introScene.live) && !(g.cutscene && g.cutscene.live)) { g.flags.objIntro = true; this.objIntro(); }   // the very first goal: big in the middle of the screen, then it glides up to its corner
     const prog = stepProgress(g, step), sig0 = cur + ':' + k + g.input.padActive, sig = sig0 + prog; if (sig === this._objSig) return; this._objSig = sig;
     $('obj-title').textContent = o.title.replace(/^\d+\. /, ''); $('obj-text').textContent = this.keyText(step.text); { let p = $('obj-prog'); if (!p) { p = document.createElement('div'); p.id = 'obj-prog'; $('obj-text').after(p); } p.textContent = prog; p.style.display = prog ? '' : 'none'; }
-    el.innerHTML = `<div class="stepdots">${o.steps.map((s, n) => `<span class="${n < k ? 'd' : n === k ? 'c' : ''}"></span>`).join('')}<em>Step ${k + 1} of ${o.steps.length} · Goal ${cur + 1} of ${OBJECTIVES.length}</em></div>`;
-    if (this._lastStep && this._lastStep !== sig0) { const b = $('objectives'); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); Sfx.play('ui'); }
-    this._lastStep = sig0;
+    el.innerHTML = `<div class="stepdots">${o.steps.map((s, n) => `<span class="${st[n] ? 'd' : n === k ? 'c' : ''}"></span>`).join('')}<em>Step ${k + 1} of ${o.steps.length} · Goal ${cur + 1} of ${OBJECTIVES.length}</em></div>`;
+    // a step ticked off (on in the same goal): a green tick pops in the corner, and a chime
+    const was = this._lastStep && this._lastStep.split(':'); if (was && +was[0] === cur && parseInt(was[1], 10) < k) this.stepDone(); this._lastStep = sig0;
+  }
+  objIntro() { const b = $('objectives'); b.classList.add('intro'); clearTimeout(this._oiT); this._oiT = setTimeout(() => b.classList.remove('intro'), 4200); }
+  /** The tick: a green ✓ bursts out of the panel's corner and the panel glows for a moment. */
+  stepDone() {
+    const b = $('objectives'); Sfx.play('step'); b.classList.remove('stepdone'); void b.offsetWidth; b.classList.add('stepdone');
+    const t = document.createElement('div'); t.className = 'objtick'; t.textContent = '✓'; b.appendChild(t); setTimeout(() => t.remove(), 1300);
+  }
+  /** A whole goal done: a banner with its name drops in under the panel, with a little fanfare. */
+  goalDone(title) {
+    const b = $('objectives'); Sfx.play('goal'); b.classList.remove('stepdone', 'goaldone'); void b.offsetWidth; b.classList.add('goaldone');
+    const r = document.createElement('div'); r.className = 'objgoal'; r.innerHTML = `<small>GOAL COMPLETE</small><b>✓ ${title}</b>`; b.appendChild(r); setTimeout(() => r.remove(), 3600);
+    this._lastStep = null; this.renderObjectives();
   }
   flashObjective() { const o = $('objectives'); o.classList.remove('flash'); void o.offsetWidth; o.classList.add('flash'); this.renderObjectives(); }
 

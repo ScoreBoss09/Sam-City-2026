@@ -341,3 +341,16 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 @keyframes warnpulse { 0% { box-shadow: 0 0 0 0 rgba(255,178,74,.55); } 70% { box-shadow: 0 0 0 9px rgba(255,178,74,0); } 100% { box-shadow: 0 0 0 0 rgba(255,178,74,0); } }
 .ptown .note.bad { border-left: 3px solid var(--warn); padding-left: 8px; margin: 4px 0; }
 .ptown button.on, .pnote.qneed .bad { color: #ffb24a; } .pnote.qneed .ok { color: #7be08a; } .pnote.qneed small { color: #9fb0c8; }
+
+/* objectives: the first goal big in the middle, then gliding to its corner; a tick for each step; a banner for a goal */
+#objectives { transition: transform .9s cubic-bezier(.2, .8, .2, 1), box-shadow .4s; transform-origin: top right; }
+#app #objectives.intro { transform: translate(calc(-50vw + 10px + 67.5%), 30vh) scale(1.35); box-shadow: 0 0 0 9999px rgba(4, 8, 16, .4), 0 18px 50px rgba(0, 0, 0, .55) !important; z-index: 60; }   /* (centred: it scales from its top-right corner) */
+#objectives.stepdone { animation: objglow .9s ease-out; }
+#objectives.goaldone { animation: objglow 1.6s ease-out; }
+@keyframes objglow { 0% { box-shadow: 0 0 0 0 rgba(90, 210, 120, .0); } 20% { box-shadow: 0 0 0 4px rgba(90, 210, 120, .75), 0 0 28px rgba(90, 210, 120, .55); } 100% { box-shadow: 0 0 0 0 rgba(90, 210, 120, 0); } }
+#objectives .objtick { position: absolute; left: -16px; top: -14px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #3fbf6a; color: #fff; font: 800 20px/1 var(--ui-head, sans-serif); box-shadow: 0 4px 14px rgba(0, 0, 0, .45); animation: objtick 1.3s ease-out forwards; pointer-events: none; }
+@keyframes objtick { 0% { transform: scale(.2) rotate(-30deg); opacity: 0; } 18% { transform: scale(1.25) rotate(0); opacity: 1; } 35% { transform: scale(1); } 80% { opacity: 1; } 100% { transform: scale(.9) translateY(-8px); opacity: 0; } }
+#objectives .objgoal { position: absolute; left: 0; right: 0; top: calc(100% + 10px); padding: 10px 14px; border-radius: 10px; background: linear-gradient(135deg, #2f9a57, #1f6a3c); color: #fff; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); display: grid; gap: 2px; animation: objgoal 3.6s ease-out forwards; pointer-events: none; }
+#objectives .objgoal small { font: 700 11px var(--ui-head, sans-serif); letter-spacing: .22em; opacity: .85; } #objectives .objgoal b { font: 700 17px var(--ui-font, sans-serif); }
+@keyframes objgoal { 0% { transform: translateY(-14px) scale(.96); opacity: 0; } 10% { transform: none; opacity: 1; } 85% { opacity: 1; } 100% { transform: translateY(-6px); opacity: 0; } }
+#app #objectives { overflow: visible !important; max-height: none !important; }
