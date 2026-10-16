@@ -111,7 +111,7 @@ windows, "Sam is ..." under the clock in the planning view.
    - keep it intuitive for a first-time player; keyboard, mouse and controller all work.
    The current Planning menu lives in `src/ui/PlanMenu.js` (tabs: town, build, queue, upgrades, money) and opens with B
    in the planning view; the old left toolbox is `#toolbox` / `#submenu` in `UI.js`.
-2. **Objectives rework** (task #88, in progress when this was written). The owner: the goals in the top right are too
+2. **Objectives rework** (task #88): done. Kept here for reference; the toolbar redesign must keep the button names the steps use ("Roads", "Buildings", the "Civic"/"Homes"/"Food" tabs) or update the step text in `src/data/story.js`. The owner: the goals in the top right are too
    much for the common man. Wanted:
    - many more objectives, each one simple step ("Click ROADS on the left", "Drag from the Lift to draw a path",
      "Press E to pick up the Axe", "Walk up to a tree", "Tap E in the green to chop it", ...);

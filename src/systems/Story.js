@@ -26,7 +26,7 @@ export class Story {
 
   update(dt) {
     const g = this.game, o = this.currentObjective;
-    if (o && o.done(g)) { g.messages.push('Objective complete', o.title.replace(/^\d+\. /, ''), 'good'); this.objective++; g.ui.flashObjective(); Sfx.play('done'); }
+    if (o && o.done(g)) { g.messages.push('Objective complete', o.title.replace(/^\d+\. /, ''), 'quiet'); this.objective++; g.ui.goalDone(o.title.replace(/^\d+\. /, '')); }   // (the banner and the fanfare say it: no message on top)
     const pop = g.population.count();
     const days = g.clock.totalDays || 0;   // the story creeps in slowly: a village first, the oddities later
     if (this.stage < 1 && pop >= 12 && days >= 6) this.setStage(1);
