@@ -33,15 +33,22 @@ export class RoadPlans {
   cancel(x, z) { const p = this.get(x, z); if (!p) return false; this.drop(p); return true; }
   drop(p) { this.group.remove(p.mesh); if (p.ownMat) p.tile.material.dispose(); this.plans.delete(this.key(p.x, p.z)); if (p.reserved) p.reserved.roadPlan = null; }
 
-  /** Work done by a sim or Sam. Returns true when the tile became a road. */
-  work(p, dt) {
+  /** Work done by a sim or Sam (by: who, so the timber from a felled tree goes the right way). Returns true when the tile became a road. */
+  work(p, dt, by) {
     const g = this.game, w = g.world; if (this.plans.get(this.key(p.x, p.z)) !== p) return true;
-    // a tree on the tile is felled first (chop by chop, the timber goes to the Stockyard), then the path goes down
-    { const tree = g.terrain.trees.find((t) => t.alive && t.tx === p.x && t.tz === p.z); if (tree) { p.fellT = (p.fellT || 0) + dt; if (p.fellT >= 1.6) { p.fellT = 0; g.terrain.fallFrom = null; g.terrain.chopTree(tree); g.economy.add('timber', 1); g.particles && g.particles.burst(tree.x, 1.0, tree.z, 0x8a5a33, 4, 1.4, 0.6, 0.06); } p.felling = true; return false; } p.felling = false; }
+    // a tree on the tile is felled first, log by log, then the path goes down. The logs don't fly off to the Stockyard
+    // (there may not be one yet): Sam's go in his backpack (or at his feet if it's full), a builder's are left by the
+    // path in a pile for whoever's passing to carry in
+    { const tree = g.terrain.trees.find((t) => t.alive && t.tx === p.x && t.tz === p.z); if (tree) { p.fellT = (p.fellT || 0) + dt; if (p.fellT >= 1.6) { p.fellT = 0; g.terrain.fallFrom = null; g.terrain.chopTree(tree); this.logs(tree, by); g.particles && g.particles.burst(tree.x, 1.0, tree.z, 0x8a5a33, 4, 1.4, 0.6, 0.06); } p.felling = true; return false; } p.felling = false; }
     if (p.type >= 2 && !p.paid) { if (g.economy.stock.stone < 1) return false; g.economy.stock.stone -= 1; p.paid = true; }
     p.progress += dt / WORK[p.type]; p.tile.scale.y = 1 + p.progress * 2; if (!p.ownMat) { p.ownMat = true; p.tile.material = p.tile.material.clone(); } p.tile.material.opacity = 0.55 + p.progress * 0.35;   // (its own material: changing the shared one made every planned tile on the island pulse)
     if (p.progress >= 1) { g.terrain.clearStumpsIn(p.x, p.z); this.drop(p); w.addRoad(p.x, p.z, p.type); g.flags.pathsBuilt = (g.flags.pathsBuilt || 0) + 1; return true; }
     return false;
+  }
+  logs(tree, by) {
+    const g = this.game, P = g.player;
+    if (by === P) { if (P.invAdd('timber', 1)) { if (!this.toldBag) { this.toldBag = true; g.ui.toast('+1 timber in your backpack (from the tree on the path)', 2400); } return; } if (!this.toldFull) { this.toldFull = true; g.ui.toast('Backpack full: the log is left on the ground by the path', 2600); } }
+    g.piles.add(tree.x + 1.4, tree.z + 0.6, { timber: 1 });   // (the same spot each log, so one tree makes one pile)
   }
   /** Nearest unclaimed plan for a builder sim (paved ones only if there is stone). */
   next(sim) {

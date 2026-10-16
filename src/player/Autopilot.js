@@ -36,7 +36,7 @@ export class Autopilot {
     if (!this.active()) { if (this.on) { this.on = false; this.stop(); } return; }
     if (!this.on) { this.on = true; this.stop(); if (p.sleeping && g.clock.sleepBoost) g.clock.sleepBoost = 0; g.ui.fade(0); }
     p.moved = false; p.working = false; this.t -= dt;
-    if ((this.labelT = (this.labelT || 0) - dt) <= 0) { this.labelT = 1; const el = document.getElementById('c-mode'); if (el) el.textContent = this.note ? 'PLANNING · Sam is ' + this.note : 'PLANNING VIEW'; }
+    if ((this.labelT = (this.labelT || 0) - dt) <= 0) { this.labelT = 1; const el = document.getElementById('c-sam'); if (el) { el.classList.toggle('hidden', !this.note || g.mode !== 'god'); if (this.note) el.innerHTML = `<b>Sam</b> is ${this.note}`; } }   // (what he's up to while you plan, under the clock)
     const h = g.clock.hour, night = h >= 21.5 || h < 6;
     // asleep: stay in bed until morning
     if (p.sleeping) { this.note = 'asleep'; if (!night && h >= 6.5) { p.energy = 100; p.wake(); this.task = null; } return; }
@@ -87,7 +87,7 @@ export class Autopilot {
         p.working = true; p.target = { kind: 'site', b: s }; p.heading = Math.atan2(s.cx - p.x, s.cz - p.z); B.addWork(s, dt * 0.9 * g.skills.bonus('build')); if (Math.random() < dt * 0.5) g.skills.gain('build', 1);
         this.note = 'building the ' + s.def.name; if (t.time > 40) t.done = true; break;
       }
-      case 'dig': { const q = t.plan; if (!g.roadPlans.has(q.x, q.z)) { t.done = true; break; } p.working = true; p.target = { kind: 'road', plan: q }; if (g.roadPlans.work(q, dt * 0.9)) t.done = true; this.note = 'digging a path'; break; }
+      case 'dig': { const q = t.plan; if (!g.roadPlans.has(q.x, q.z)) { t.done = true; break; } p.working = true; p.target = { kind: 'road', plan: q }; if (g.roadPlans.work(q, dt * 0.9, p)) t.done = true; this.note = 'digging a path'; break; }
       case 'gather': {
         const n = t.node; if (!n || (n.kind === 'tree' ? !n.alive : (!n.infinite && n.amount < 1)) || p.invRoom() <= 0) { if (n && n.reserved === p) n.reserved = null; t.done = true; break; }
         const gd = GATHER[t.role]; p.working = true; p.target = { kind: 'gather', upper: gd.upper }; p.heading = Math.atan2(n.x - p.x, n.z - p.z); t.acc = (t.acc || 0) + dt;
