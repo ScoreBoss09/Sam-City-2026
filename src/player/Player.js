@@ -25,8 +25,8 @@ function segBox(x0, z0, x1, z1, q, skipEnd = 0) {
 }
 const R_IN = 0.28;   // slimmer indoors, where doorways are 1.2 m and the furniture is close together
 export const TOOLS = { axe: 'Axe', pick: 'Pickaxe', shovel: 'Shovel', basket: 'Basket', rod: 'Fishing rod', hammer: 'Hammer' };
-export const TOOL_ICON = { axe: '🪓', pick: '⛏', shovel: '🥄', basket: '🧺', rod: '🎣', hammer: '🔨' };
-export const MAT_ICON = { timber: '🪵', stone: '🪨', brick: '🧱', steel: '⚙', glass: '🔷', food: '🍎' };
+export const TOOL_ICON = { axe: '🌲', pick: '⛏', shovel: '🥄', basket: '🧺', rod: '🎣', hammer: '🔨' };
+export const MAT_ICON = { timber: '🌲', stone: '⛰️', brick: '🧱', steel: '⚙', glass: '🔷', food: '🍎' };
 const TOOL_FOR = { tree: 'axe', rock: 'pick', ore: 'pick', clay: 'shovel', sand: 'shovel', berry: 'basket', field: 'basket', fish: 'rod' };
 const WORK_KIND = { chop: 'chop', mine: 'mine', dig: 'dig', harvest: 'harvest', fish: 'fish' };
 const CHIP = { chop: 0xb5834a, mine: 0x9a9a92, dig: 0x7a5a3a, harvest: 0x7aa63a, fish: 0x7ec8e3, build: 0xe0c890 };
