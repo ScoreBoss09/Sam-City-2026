@@ -87,7 +87,7 @@ export class Autopilot {
         p.working = true; p.target = { kind: 'site', b: s }; p.heading = Math.atan2(s.cx - p.x, s.cz - p.z); B.addWork(s, dt * 0.9 * g.skills.bonus('build')); if (Math.random() < dt * 0.5) g.skills.gain('build', 1);
         this.note = 'building the ' + s.def.name; if (t.time > 40) t.done = true; break;
       }
-      case 'dig': { const q = t.plan; if (!g.roadPlans.has(q.x, q.z)) { t.done = true; break; } p.working = true; p.target = { kind: 'road', plan: q }; if (g.roadPlans.work(q, dt * 0.9)) t.done = true; this.note = 'digging a path'; break; }
+      case 'dig': { const q = t.plan; if (!g.roadPlans.has(q.x, q.z)) { t.done = true; break; } p.working = true; p.target = { kind: 'road', plan: q }; if (g.roadPlans.work(q, dt * 0.9, p)) t.done = true; this.note = 'digging a path'; break; }
       case 'gather': {
         const n = t.node; if (!n || (n.kind === 'tree' ? !n.alive : (!n.infinite && n.amount < 1)) || p.invRoom() <= 0) { if (n && n.reserved === p) n.reserved = null; t.done = true; break; }
         const gd = GATHER[t.role]; p.working = true; p.target = { kind: 'gather', upper: gd.upper }; p.heading = Math.atan2(n.x - p.x, n.z - p.z); t.acc = (t.acc || 0) + dt;

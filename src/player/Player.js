@@ -546,7 +546,7 @@ export class Player {
       wg.setProgress(t.b.progress, `${Math.round(t.b.progress * 100)}%`);
       if (t.b.state === 'done') { wg.stop(); this.finished(t.b); }
     } else if (t.kind === 'road') {
-      const p = t.plan; if (g.netVisitor) { if (value) g.net.help('dig', p, value * 1.6 * (tap ? 1 : speed)); } else if (value && g.roadPlans.work(p, value * 1.6 * (tap ? 1 : speed))) { wg.stop(); Sfx.play('unit'); g.ui.toast('Path dug!'); } else if (p.type === 2 && !p.paid) g.ui.toast('No stone in the Stockyard for paving.');
+      const p = t.plan; if (g.netVisitor) { if (value) g.net.help('dig', p, value * 1.6 * (tap ? 1 : speed)); } else if (value && g.roadPlans.work(p, value * 1.6 * (tap ? 1 : speed), this)) { wg.stop(); Sfx.play('unit'); g.ui.toast('Path dug!'); } else if (p.type === 2 && !p.paid) g.ui.toast('No stone in the Stockyard for paving.');
       wg.setProgress(p.progress, `${Math.round(p.progress * 100)}%`);
     }
   }
