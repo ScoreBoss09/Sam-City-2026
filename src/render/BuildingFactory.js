@@ -14,6 +14,8 @@ import { shellModel } from './GLB.js';
 
 const unit = new THREE.BoxGeometry(1, 1, 1);
 const mcache = {};
+/** A building's own lampshade material (lit or not with that building's lights: see BuildingManager.isLit). */
+function lampMat(b, c, o) { const L = b._lamps || (b._lamps = new Map()), k = c + JSON.stringify(o); let m = L.get(k); if (!m) { m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o }); m.userData.on = o.emissiveIntensity ?? 0.5; L.set(k, m); } return m; }
 export function stdMat(c, o = {}) { const k = c + JSON.stringify(o); return mcache[k] || (mcache[k] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o })); }
 function box(g, w, h, d, c, x, y, z, o) { const m = new THREE.Mesh(unit, stdMat(c, o)); m.scale.set(w, h, d); m.position.set(x, y + h / 2, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; }
 
@@ -830,7 +832,7 @@ function buildRooms(b, g) {
     }
   }
   for (const f of lay.floors || []) { const k = f.k || 0, o = new THREE.Mesh(new THREE.PlaneGeometry(f.x1 - f.x0, f.z1 - f.z0), floorMat(f.kind, f.col)); o.rotation.x = -Math.PI / 2; o.position.set((f.x0 + f.x1) / 2, (k ? k * H + 0.03 : 0.15), (f.z0 + f.z1) / 2); o.receiveShadow = true; o.material.map.repeat.set((f.x1 - f.x0) / 1.5, (f.z1 - f.z0) / 1.5); lv(k).add(o); }
-  for (const p of lay.lights || []) { const k = p.k || 0, y = (k + 1) * H - 0.3, grp = lv(k); const cord = new THREE.Mesh(unit, stdMat(0xf4f0e6)); cord.scale.set(0.02, 0.35, 0.02); cord.position.set(p.x, y - 0.15, p.z); grp.add(cord); const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.24, 0.22, 8), stdMat(0xf4e0b0, { emissive: 0xffd080, emissiveIntensity: 0.55 })); sh.position.set(p.x, y - 0.4, p.z); grp.add(sh); }
+  for (const p of lay.lights || []) { const k = p.k || 0, y = (k + 1) * H - 0.3, grp = lv(k); const cord = new THREE.Mesh(unit, stdMat(0xf4f0e6)); cord.scale.set(0.02, 0.35, 0.02); cord.position.set(p.x, y - 0.15, p.z); grp.add(cord); const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.24, 0.22, 8), lampMat(b, 0xf4e0b0, { emissive: 0xffd080, emissiveIntensity: 0.55 })); sh.position.set(p.x, y - 0.4, p.z); grp.add(sh); }
 }
 /** The colliders of a planned interior's walls (the solid stretches between doorways), on their own storeys, as tall as they're drawn (so the camera can't look over them). */
 export function roomColliders(lay) {
@@ -964,7 +966,7 @@ function dressWalls(b, g) {
     }
     // a lampshade or two, where the layout doesn't light the room
     if (!(lay.lights && lay.lights.length) && k === 0) { const ceil = floors > 1 ? WALL_H : Math.min(def.floors * WALL_H, WALL_H * 1.7), nx = Math.max(1, Math.min(3, Math.round(W / 6))), nz = Math.max(1, Math.min(2, Math.round(D / 7)));
-      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const x = -W / 2 + (i + 0.5) * W / nx, z = -D / 2 + (j + 0.5) * D / nz; const cord = new THREE.Mesh(unit, stdMat(0x2a2a2e)); cord.scale.set(0.02, 0.4, 0.02); cord.position.set(x, ceil - 0.32, z); grp.add(cord); const sh = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.2, 10, 1, true), stdMat(kind === 'works' ? 0x3a4a3a : 0xf2e2c0, { emissive: 0xffe0a0, emissiveIntensity: 0.5, side: THREE.DoubleSide })); sh.position.set(x, ceil - 0.6, z); grp.add(sh); }
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const x = -W / 2 + (i + 0.5) * W / nx, z = -D / 2 + (j + 0.5) * D / nz; const cord = new THREE.Mesh(unit, stdMat(0x2a2a2e)); cord.scale.set(0.02, 0.4, 0.02); cord.position.set(x, ceil - 0.32, z); grp.add(cord); const sh = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.2, 10, 1, true), lampMat(b, kind === 'works' ? 0x3a4a3a : 0xf2e2c0, { emissive: 0xffe0a0, emissiveIntensity: 0.5, side: THREE.DoubleSide })); sh.position.set(x, ceil - 0.6, z); grp.add(sh); }
     }
   }
 }
