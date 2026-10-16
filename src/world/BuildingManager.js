@@ -230,10 +230,19 @@ export class BuildingManager {
   }
   church() { return this.list.find((b) => b.id === 'church' && b.state === 'done') || this.list.find((b) => b.id === 'chapel' && b.state === 'done') || null; }
   hospital() { return this.list.find((b) => b.id === 'clinic' && b.state === 'done') || this.list.find((b) => b.id === 'surgery' && b.state === 'done') || null; }
-  /** Is anybody in there with the lights on? */
+  /**
+   * Are the lights on in there? One answer for everything: the room when Sam's inside, the lampshades, and the windows
+   * from the street. Sam's switch holds until the people who live or work there change things (come home, go to bed,
+   * open up, lock up); in a place nobody else uses, like Sam's own hut, it stays as he left it.
+   */
   isLit(b, h) {
     if (this.game.hazards && this.game.hazards.powerCut > 0 && this.game.tech && this.game.tech.era >= 1) return false;
-    if (b.light !== undefined && b.lightDay === (this.game.clock.totalDays || 0)) return b.light;   // Sam flicked the switch today
+    const auto = this.autoLit(b, h);
+    if (b.light !== undefined) { if (auto === b.lightAuto) return b.light; b.light = undefined; }   // (the household has changed it since: their say again)
+    return auto;
+  }
+  /** What the people there would have the lights at, left to themselves. */
+  autoLit(b, h) {
     const awake = (s) => s.inside === b && s.pose !== 'sleep';
     if (b.def.cat === 'res') return b.residents.some(awake);
     if (b.workers.some(awake)) return true;
@@ -245,7 +254,7 @@ export class BuildingManager {
     if (!b.doorPos || !b.doorIn) return null; const nx = b.doorIn.x - b.doorPos.x, nz = b.doorIn.z - b.doorPos.z, n = Math.hypot(nx, nz) || 1, ux = nx / n, uz = nz / n, k = -0.3 + WALL_T / 2 + 0.02;
     return { x: b.doorPos.x + ux * k + uz * 0.95, z: b.doorPos.z + uz * k - ux * 0.95, rot: Math.atan2(ux, uz) };
   }
-  flipLight(b) { const on = !this.isLit(b, this.game.clock.hour); b.light = on; b.lightDay = this.game.clock.totalDays || 0; Sfx.play('ui'); return on; }
+  flipLight(b) { const h = this.game.clock.hour, on = !this.isLit(b, h); b.light = on; b.lightAuto = this.autoLit(b, h); Sfx.play('ui'); return on; }
   /** Can Sam see the people inside? Yes when Sam is in there, or the front door is open and Sam is nearby. */
   canSeeInto(b) {
     if (b === this.playerInside) return true; const g = this.game; if (g.mode !== 'sim' || !b.doorPos) return false;
@@ -336,7 +345,8 @@ export class BuildingManager {
     // window lights: on while somebody in there is awake (or the place is open), off when they've gone to bed
     if (this._acc + dt > 0.25) {
       const glow = windowGlow(), h = g.clock.hour;
-      for (const b of this.list) { if (!b.glassMat || b.state !== 'done' || b.burning) continue; const want = glow > 0.05 && this.isLit(b, h) ? 1 : 0; b.litK += (want - b.litK) * 0.35; b.glassMat.emissiveIntensity = glow * 0.45 * (0.03 + 0.97 * b.litK); if (b.ext && b.ext.curtains) b.ext.curtains.visible = glow > 0.25 && (b.residents.length > 0 || b === this.playerInside || b === this.game.starterHome || b.reservedForPlayer); }   // curtains drawn at dusk in any home that's lived in (Sam's too), and left till morning: not opened the moment someone steps out
+      for (const b of this.list) { if (b._lamps && b.interior && !b.burning) { const on = this.isLit(b, h); for (const m of b._lamps.values()) m.emissiveIntensity = on ? m.userData.on : 0; }   // the lampshades inside, as seen through the windows, the same as the room
+        if (!b.glassMat || b.state !== 'done' || b.burning) continue; const want = glow > 0.05 && this.isLit(b, h) ? 1 : 0; b.litK += (want - b.litK) * 0.35; b.glassMat.emissiveIntensity = glow * 0.45 * (0.03 + 0.97 * b.litK); if (b.ext && b.ext.curtains) b.ext.curtains.visible = glow > 0.25 && (b.residents.length > 0 || b === this.playerInside || b === this.game.starterHome || b.reservedForPlayer); }   // curtains drawn at dusk in any home that's lived in (Sam's too), and left till morning: not opened the moment someone steps out
     }
     // warm interior light follows the player indoors
     this._acc = (this._acc || 0) + dt; this.t = (this.t || 0) + dt; const tick = this._acc > 0.25; if (tick) this._acc = 0;
