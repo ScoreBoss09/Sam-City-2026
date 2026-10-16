@@ -11,16 +11,20 @@ const CATS = [...TOOL_MENUS.build.map(([n, l]) => [n, l, 'build']), ['Parks', TO
 const matText = (m) => Object.entries(m).map(([k, n]) => `${n} ${MATERIALS[k].name.toLowerCase()}`).join(', ');
 
 /**
- * One big planning menu that works the same with a mouse or a controller (□ opens it, L1/R1 change page, L2/R2 change
- * category, D-pad moves, ✕ picks, ○ closes): buildings to place (ticked once you have one), the builders' work queue, and upgrades.
+ * The town's pages (the work queue, upgrades, money and goods, the town overview), docked above the planning view's
+ * toolbar (BuildBar picks which). They work the same with a mouse or a controller (D-pad moves, ✕ picks, ○ closes).
+ * The old full-screen menu with its own build cards is still here (dock() is the way in now), for anything that asks.
  */
 export class PlanMenu {
   constructor(game) {
     this.game = game; this.open = false; this.tab = 'build'; this.cat = 'Homes';
     $('planmenu').addEventListener('click', (e) => this.click(e));
   }
-  show(tab) { const g = this.game; if (tab) this.tab = tab; this.open = true; this.focusFirst = true; g.input.unlock(); this.render(); $('planmenu').classList.remove('hidden'); Sfx.play('ui'); }
-  close() { this.open = false; $('planmenu').classList.add('hidden'); this.game.ui.calm && this.game.ui.calm(); }
+  /** Asked for a page (the warning badge, the O key...): it opens on the toolbar, in the planning view. */
+  show(tab) { const g = this.game, k = tab === 'build' || !tab ? 'Homes' : tab; if (g.mode !== 'god') g.setMode('god'); if (g.ui.bar) { if (!(this.open && this.tab === k)) g.ui.bar.pick(k); return; } this.dock(k); }
+  /** One of the town's pages, docked above the toolbar (the town stays in view, the toolbar stays in reach). */
+  dock(tab) { const g = this.game; this.tab = tab; this.open = true; this.docked = true; this.focusFirst = true; g.input.unlock(); this.render(); const el = $('planmenu'); el.classList.add('docked'); el.classList.remove('hidden'); }
+  close(fromBar) { this.open = false; $('planmenu').classList.add('hidden'); this.game.ui.calm && this.game.ui.calm(); if (!fromBar && this.game.ui.bar && this.game.ui.bar.cat === this.tab) { this.game.ui.bar.cat = null; this.game.ui.bar.drawRow(); } }
   cycleTab(d) { const T = ['town', 'build', 'queue', 'upgrades', 'money'], i = T.indexOf(this.tab); this.tab = T[(i + d + T.length) % T.length]; this.focusFirst = true; this.render(); Sfx.play('ui'); }
   cycleCat(d) { if (this.tab !== 'build') return; const i = CATS.findIndex((c) => c[0] === this.cat); this.cat = CATS[(i + d + CATS.length) % CATS.length][0]; this.focusFirst = true; this.render(); Sfx.play('ui'); }
   render() {
@@ -28,7 +32,7 @@ export class PlanMenu {
     const W = g.overview ? (g.overview.data || g.overview.compute()).warn.length : 0, tabs = [['town', `🏘️ Town${W ? ` ⚠️${W}` : ''}`], ['build', '🏗️ Build'], ['queue', `📋 Work queue (${Q.length})`], ['upgrades', `⬆️ Upgrades${canUp ? ` (${canUp})` : ''}`], ['money', '💷 Money & goods']];
     let body = '';
     if (this.tab === 'town') body = `<div class="pmoney ptown">${g.overview.html()}</div>`; else if (this.tab === 'build') body = this.renderBuild(); else if (this.tab === 'queue') body = (g.overview ? g.overview.queueLine() : '') + this.renderQueue(Q); else if (this.tab === 'money') body = `<div class="pmoney">${moneyHTML(g)}${perDayTable(g.economy)}</div>`; else body = this.renderUpgrades(ups);
-    const html = `<div class="pwin"><div class="phead"><b>📐 PLANNING</b><span class="funds">Funds</span>${g.net && g.net.role === 'host' ? `<button data-a="raid">${g.raidNight ? '🎯 Raid night on' : '🎯 Start Raid night'}</button>` : ''}<button data-a="perf">📊 Report</button><button data-a="close" class="xbtn" title="Close">✕</button></div>
+    const name = (tabs.find((t) => t[0] === this.tab) || ['', ''])[1], html = this.docked ? `<div class="pwin"><div class="phead"><b>${name}</b><span class="funds">Funds</span><button data-a="close" class="xbtn" title="Close">✕</button></div>${body}</div>` : `<div class="pwin"><div class="phead"><b>📐 PLANNING</b><span class="funds">Funds</span>${g.net && g.net.role === 'host' ? `<button data-a="raid">${g.raidNight ? '🎯 Raid night on' : '🎯 Start Raid night'}</button>` : ''}<button data-a="perf">📊 Report</button><button data-a="close" class="xbtn" title="Close">✕</button></div>
       <div class="ptabs">${tabs.map(([k, n]) => `<button data-a="tab" data-k="${k}" class="${k === this.tab ? 'on' : ''}">${n}</button>`).join('')}<span class="hint">${pad ? '<b class="ps">L1</b>/<b class="ps">R1</b> page · <b class="ps">L2</b>/<b class="ps">R2</b> category · <b class="ps ps-x">✕</b> choose · <b class="ps ps-o">○</b> close' : 'B opens this · Esc closes'}</span></div>${body}</div>`;
     // the menu redraws every second on the queue and upgrades pages: only touch the page if something changed, and keep the scroll
     const el = $('planmenu'), keep = this.focusFirst ? 0 : (el.querySelector('.pwin') || {}).scrollTop || 0;

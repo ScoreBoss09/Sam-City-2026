@@ -57,7 +57,7 @@ export class Overview {
   badge() {
     const el = document.getElementById('h-warn'), pop = document.getElementById('h-warnpop'); if (!el) return; const W = this.data.warn;
     el.classList.toggle('hidden', !W.length || !!this.game.netVisitor); el.textContent = W.length > 1 ? W.length : '!';   // (!!: a bare undefined would make toggle() flip it every time)
-    if (pop) pop.innerHTML = W.map((w) => `<div>⚠️ ${w.text}</div>`).join('') + `<small>Click, or ${this.game.input.padActive ? 'see the Town tab of the Planning menu' : 'press ' + this.game.ui.keyText('O')}, for the town overview.</small>`;
+    if (pop) pop.innerHTML = W.map((w) => `<div>⚠️ ${w.text}</div>`).join('') + `<small>Click, or ${this.game.input.padActive ? 'pick Town on the toolbar (L1/R1)' : 'press ' + this.game.ui.keyText('O')}, for the town overview.</small>`;
     // and in words, under the town name: the first sentence of each problem in turn (no hovering needed)
     const tx = document.getElementById('h-warntxt'); if (!tx) return; this.wi = ((this.wi || 0) + 1) % Math.max(1, W.length * 3); const w = W[Math.floor(this.wi / 3)];
     tx.classList.toggle('hidden', !w || !!this.game.netVisitor); if (w) tx.innerHTML = `⚠️ ${w.text.split(/[:.](\s|$)/)[0]}${W.length > 1 ? ` (${Math.floor(this.wi / 3) + 1} of ${W.length})` : ''} <em>· ${this.game.input.padActive ? 'Town tab' : this.game.ui.keyText('O') + ' for more'}</em>`;

@@ -1,6 +1,7 @@
 import { moneyHTML, perDayTable } from './Money.js';
 import { PauseMenu } from './PauseMenu.js';
 import { PlanMenu } from './PlanMenu.js';
+import { BuildBar } from './BuildBar.js';
 import { purposeOf } from '../data/purpose.js';
 import { CHALLENGES } from '../systems/Challenges.js';
 import { SKILLS } from '../systems/Skills.js';
@@ -31,7 +32,7 @@ export class UI {
 
     // toolbox
     this.drawToolbox = () => { const tr = this.trackReady(); if (tr === this._trackShown) return; this._trackShown = tr; $('toolbox').innerHTML = this.tools().map(([id, ic, name]) => `<button class="tool" data-t="${id}"><span class="ic">${ic}</span>${name}</button>`).join('') + '<button class="tool wide" data-menu="1"><span class="ic">📐</span>Planning menu <b class="key kbonly">B</b><b class="ps padonly">□</b></button>'; this.refreshTools(); }; this.drawToolbox();
-    this.plan = new PlanMenu(game); this.pause = new PauseMenu(game);
+    this.plan = new PlanMenu(game); this.pause = new PauseMenu(game); this.bar = new BuildBar(game);   // (the planning view's toolbar along the bottom; the Planning menu's pages dock above it)
     for (const id of ['h-warn', 'h-warntxt']) $(id).addEventListener('click', () => { if (!game.netVisitor) this.plan.show('town'); });   // the warning badge (and its line of text): the town page
     for (const e of ['building:added', 'building:removed', 'building:done']) game.world.events.on(e, () => { this.buildDirty = true; });   // build menus that are open keep up (sites placed, finished, permits through)
     $('toolbox').addEventListener('click', (e) => { const b = e.target.closest('.tool'); if (!b) return; if (b.dataset.menu) { this.plan.show(); return; } const id = b.dataset.t; game.god.setTool(id, id === 'zone' ? 'res' : id === 'road' ? 'dirt' : null); this.openSub(id); });
@@ -44,7 +45,7 @@ export class UI {
     this.refreshTools(); this.renderObjectives();
   }
   /** A window is open (talking, the post, the backpack, the journal, the how-to card): worked out fresh each time so it can't get stuck. */
-  get modalOpen() { return !!((this.pause && this.pause.open) || this.perfOpen || this.noticeOpen || (this.game.cutscene && this.game.cutscene.live) || (this.game.minimap && this.game.minimap.big) || (this.plan && this.plan.open) || this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
+  get modalOpen() { return !!((this.pause && this.pause.open) || this.perfOpen || this.noticeOpen || (this.game.cutscene && this.game.cutscene.live) || (this.game.minimap && this.game.minimap.big) || (this.plan && this.plan.open && !this.plan.docked) || this.dialogue || this.terminalB || this.invOpen || this.journalOpen || !$('howto').classList.contains('hidden') || !$('ending').classList.contains('hidden')); }
   set modalOpen(v) { /* derived; kept so old callers stay harmless */ }
   get mouseOverCanvas() { return this.game.input.overCanvas !== false; }
   /** Something broke: say so on screen (once in a while) instead of silently freezing. */
@@ -67,9 +68,9 @@ export class UI {
   // ---------- modes ----------
   setMode(mode) {
     const god = mode === 'god';
-    ['toolbox'].forEach((i) => $(i).classList.toggle('hidden', !god)); if (!god) this.hide('submenu', 'hover');
+    this.hide('toolbox', 'submenu'); if (!god) this.hide('hover');   // (the toolbar along the bottom has taken over from the old toolbox: see BuildBar)
     $('crosshair').classList.toggle('hidden', god); $('simhud').classList.toggle('hidden', god); $('stock').classList.remove('hidden');
-    this.helpMode = mode; this.helpT = 0; $('help').textContent = this.game.input.padActive ? (god ? 'PLANNING · OPTIONS: be Sam · □ Planning menu · L-stick pan · R-stick rotate/zoom · ✕ place/paint · ○ cancel · △ rotate · L1/R1 tool · D-pad item · R3 whole island' : 'SAM · OPTIONS planning view · L-stick move · R-stick look · ✕ use / tap in the green · △ eat · ○ emote · □ punch · R2 kick · L3 bike · L1 sprint · R1 camera · L2 jump · D-pad ↑ backpack ↓ drop ← journal → door · R3 map') : god ? 'GOD MODE · TAB: control Sam · B planning menu · WASD pan · Q/E rotate · wheel zoom · right-drag pan · R rotate ghost · F frame island · Esc cancel tool' : 'SAM · TAB planning view · WASD move · Shift sprint · E use / tap in the green to work · I backpack · R drop · Q eat · F punch · X kick · B bike · V camera · M map · click to capture mouse';
+    this.helpMode = mode; this.helpT = 0; $('help').textContent = this.game.input.padActive ? (god ? 'PLANNING · OPTIONS: be Sam · L1/R1 toolbar · D-pad ◀/▶ cards · ✕ place/paint · ○ cancel · △ rotate · □ work queue · L-stick pan · R-stick rotate/zoom · R3 whole island' : 'SAM · OPTIONS planning view · L-stick move · R-stick look · ✕ use / tap in the green · △ eat · ○ emote · □ punch · R2 kick · L3 bike · L1 sprint · R1 camera · L2 jump · D-pad ↑ backpack ↓ drop ← journal → door · R3 map') : god ? 'PLANNING · TAB: be Sam · the toolbar at the bottom builds · right-click anything for what it is · B work queue · O town · WASD pan · Q/E rotate · wheel zoom · right-drag turn · R rotate · F frame island · Esc cancel' : 'SAM · TAB planning view · WASD move · Shift sprint · E use / tap in the green to work · I backpack · R drop · Q eat · F punch · X kick · B bike · V camera · M map · click to capture mouse';
     $('c-mode').textContent = god ? 'PLANNING VIEW' : 'SAM (' + (this.game.player.third ? '3rd' : '1st') + ' person)';
     if (god) this.game.input.unlock();
   }
@@ -114,10 +115,7 @@ export class UI {
     }
     this.clearPadFocus(); this.padLegend(this.dialogue ? { id: 'dialogue' } : null);
     if (g.mode !== 'god' || this.modalOpen || !g.started) return;
-    const ids = this.tools().map((t) => t[0]), cur = ids.indexOf(g.god.tool.id);
-    if (P.hitB[5] || P.hitB[4]) { const n = ids[(cur + (P.hitB[5] ? 1 : -1) + ids.length) % ids.length]; g.god.setTool(n, n === 'zone' ? 'res' : n === 'road' ? 'dirt' : null); this.openSub(n); this.toast(TOOLS.find((t) => t[0] === n)[2] + ' tool', 1200); }
-    const list = this.padItems(); if (list.length && (P.hitB[12] || P.hitB[13])) { const i = list.indexOf(g.god.tool.sub), n = list[(i + (P.hitB[13] ? 1 : -1) + list.length + (i < 0 ? 1 : 0)) % list.length]; g.god.setTool(g.god.tool.id, n); this.openSub(g.god.tool.id); }
-    if (g.god.tool.id === 'build' && (P.hitB[14] || P.hitB[15])) { const tabs = TOOL_MENUS.build.map(([n]) => n), i = tabs.indexOf(this.buildTab); this.buildTab = tabs[(i + (P.hitB[15] ? 1 : -1) + tabs.length) % tabs.length]; g.god.setTool('build', null); this.openSub('build'); }
+    this.bar.pad(P);   // L1/R1 the toolbar, D-pad the cards
   }
   /** Wanted stars and Sam's health, top centre (only when it matters). */
   setWanted(n, hp) {
@@ -131,6 +129,7 @@ export class UI {
    * glyphs, instead of instructions written into the menus.
    */
   padLegend(scope, pad = true) {
+    if (scope && scope.id === 'planmenu' && this.plan.docked && !pad) scope = null;   // (a page docked over the toolbar has its own ✕: no prompt bar on top of the toolbar)
     const id = scope ? scope.id : null, key = id && id + (pad ? ':pad' : ':kb') + (id === 'title' && $('menu-main').offsetParent ? ':main' : ''); if (key === this._legend) return; this._legend = key;
     const padbar = $('padbar'), kb = $('menuprompts'); padbar.classList.add('hidden'); kb.classList.add('hidden'); if (!id || (id === 'title' && !pad)) return;
     const P = (c, t) => `<b class="ps ${c}">${t}</b>`, K = (t) => `<b class="key">${t}</b>`, items = [];
@@ -170,6 +169,7 @@ export class UI {
     const g = this.game, t = g.god.tool.id; for (const b of $('toolbox').querySelectorAll('.tool')) b.classList.toggle('on', b.dataset.t === t);
   }
   openSub(id) {
+    if (this.bar) { this.bar.drawStrip(); return; }   // (the cards along the bottom: BuildBar)
     const g = this.game, sm = $('submenu');
     if (id === 'zone') { sm.innerHTML = [['res', 'Residential'], ['com', 'Commercial'], ['ind', 'Industrial'], ['none', 'Clear zone']].map(([k, n]) => `<button class="sub ${g.god.tool.sub === k ? 'on' : ''}" data-s="${k}">${n}<small>drag to paint</small></button>`).join(''); sm.classList.remove('hidden'); return; }
     if (id === 'road') { const pop = g.population.count(); sm.innerHTML = [['dirt', 'Dirt path', '£2 a tile, dug by hand'], ['paved', 'Paved road', pop >= 15 ? '£20 + 1 stone a tile' : 'needs 15 residents'], ['plaza', 'Plaza', pop >= 10 ? '£12 + 1 stone a tile: for people, no cars' : 'needs 10 residents'], ['lamps', 'Street lamps', g.lamps ? g.lamps.info() : '']].map(([k, n, t]) => `<button class="sub ${g.god.tool.sub === k ? 'on' : ''} ${(k === 'paved' && pop < 15) || (k === 'plaza' && pop < 10) ? 'locked' : ''}" data-s="${k}">${n}<small>${t}</small></button>`).join(''); sm.classList.remove('hidden'); return; }
@@ -252,7 +252,7 @@ export class UI {
     // one thing at a time: only the current step is shown
     const i = o.current(g), k = i < 0 ? o.steps.length - 1 : i, step = o.steps[k], st = o.state(g);
     if (cur === 0 && k === 0 && !g.flags.objIntro && g.started && !g.demoMode && !(g.introScene && g.introScene.live) && !(g.cutscene && g.cutscene.live)) { g.flags.objIntro = true; this.objIntro(); }   // the very first goal: big in the middle of the screen, then it glides up to its corner
-    const prog = stepProgress(g, step), sig0 = cur + ':' + k + g.input.padActive, sig = sig0 + prog; if (sig === this._objSig) return; this._objSig = sig;
+    const prog = stepProgress(g, step), sig0 = cur + ':' + k + g.input.padActive, sig = sig0 + prog + st.map(Number).join(''); if (sig === this._objSig) return; this._objSig = sig;
     $('obj-title').textContent = o.title.replace(/^\d+\. /, ''); $('obj-text').textContent = this.keyText(step.text); { let p = $('obj-prog'); if (!p) { p = document.createElement('div'); p.id = 'obj-prog'; $('obj-text').after(p); } p.textContent = prog; p.style.display = prog ? '' : 'none'; }
     el.innerHTML = `<div class="stepdots">${o.steps.map((s, n) => `<span class="${st[n] ? 'd' : n === k ? 'c' : ''}"></span>`).join('')}<em>Step ${k + 1} of ${o.steps.length} · Goal ${cur + 1} of ${OBJECTIVES.length}</em></div>`;
     // a step ticked off (on in the same goal): a green tick pops in the corner, and a chime
@@ -525,10 +525,10 @@ export class UI {
 
   // ---------- per-frame ----------
   update(dt) {
-    this.noticeKeys(dt);
+    this.noticeKeys(dt); this.bar.update(dt);
     if (this.qSim) { const s = this.qSim, g = this.game; if (s.remove || g.mode !== 'god') { this.qSim = null; $('query').classList.add('hidden'); } else { if (this.qFollow) g.god.target.set(s.x, 0, s.z); if ((this.qT = (this.qT || 0) - dt) <= 0) { this.qT = 0.5; this.simCard(); } } }   // the query card keeps up
     if (this.buildDirty && performance.now() - (this._bdT || 0) > 250) { this.buildDirty = false; this._bdT = performance.now(); this.refreshSub(); if (this.plan.open && this.plan.tab === 'build') this.plan.render(); }
-    if (this.plan.open && this.plan.tab !== 'build') { this._planT = (this._planT || 0) - dt; if (this._planT <= 0) { this._planT = 1; this.plan.render(); } }
+    if (this.plan.open) { this._planT = (this._planT || 0) - dt; if (this._planT <= 0) { this._planT = 1; this.plan.render(); } }
     const g = this.game;
     if (this.hoverTimer > 0) { this.hoverTimer -= dt; if (this.hoverTimer <= 0 || g.mode !== 'god') $('hover').classList.add('hidden'); }
     if (this.dialogue) { const d = this.dialogue; d.shown = Math.min(d.full.length, d.shown + dt * 55); $('d-text').textContent = d.full.slice(0, Math.floor(d.shown)); }

@@ -81,7 +81,7 @@ const soft = (text, done, target, need) => ({ text, done, target, need, soft: tr
  */
 const obj = (id, title, steps, extra = {}) => {
   const o = { id, title, steps, text: steps.map((x) => x.text).join(' '), ...extra };
-  o.state = (g) => { if (o._t === g.elapsed && o._s) return o._s; const d = steps.map((x) => !!x.done(g)); o._t = g.elapsed; return (o._s = d.map((v, i) => v || (!!steps[i].soft && d.some((w, j) => j > i && w && !steps[j].soft)))); };   // (worked out once a frame)
+  o.state = (g) => { const now = performance.now(); if (o._s && now - o._t < 80) return o._s; const d = steps.map((x) => !!x.done(g)); o._t = now; return (o._s = d.map((v, i) => v || (!!steps[i].soft && d.some((w, j) => j > i && w && !steps[j].soft)))); };   // (worked out once a frame)
   o.current = (g) => o.state(g).indexOf(false);
   o.done = (g) => o.current(g) < 0;
   o.target = (g) => { const s = steps[o.current(g)]; return s && s.target ? s.target(g) : null; };
@@ -106,14 +106,13 @@ const nearestSiteT = (g) => nearestSite(g);
 export const OLD_OBJECTIVES = ['plan', 'tools', 'dig', 'yard', 'hut', 'eat', 'post', 'feed', 'settle', 'yard2', 'hamlet', 'village', 'town', 'city', 'landmark'];
 export const OBJECTIVES = [
   obj('plan', '1. Plan your camp', [
-    soft('Click Roads in the toolbar.', (g) => g.god.tool.id === 'road'),
+    soft('Click Roads on the toolbar at the bottom.', (g) => g.god.tool.id === 'road'),
     step('Drag from the Supply Lift to draw a dirt path.', (g) => paths(g) >= 1, liftFront),
     step('Make the path three squares long.', (g) => paths(g) >= 3, liftFront),
-    soft('Click Buildings in the toolbar.', (g) => g.god.tool.id === 'build'),
-    soft('Open the Civic tab.', (g) => g.god.tool.id === 'build' && g.ui.buildTab === 'Civic'),
-    step('Pick the Stockyard, then click beside your path to place it.', (g) => hasB(g, 'stockyard')),
-    soft('Open the Homes tab.', (g) => g.god.tool.id === 'build' && g.ui.buildTab === 'Homes'),
-    step('Pick the Log Cabin and place it beside the path. It will be Sam\'s home.', (g) => hasB(g, 'shack') || hasB(g, 'hut')),
+    soft('Click Civic on the toolbar.', (g) => g.god.tool.id === 'build' && g.ui.buildTab === 'Civic'),
+    step('Pick the Stockyard card, then click beside your path to place it.', (g) => hasB(g, 'stockyard')),
+    soft('Click Homes on the toolbar.', (g) => g.god.tool.id === 'build' && g.ui.buildTab === 'Homes'),
+    step('Pick the Log Cabin card and place it beside the path. It will be Sam\'s home.', (g) => hasB(g, 'shack') || hasB(g, 'hut')),
   ]),
   obj('tools', '2. Become Sam', [
     step('Press TAB to step into Sam\'s shoes.', (g) => g.flags.sawSim),
@@ -146,13 +145,13 @@ export const OBJECTIVES = [
   ]),
   obj('post', '7. A postbox for letters', [
     soft('Press TAB for the planning view.', (g) => g.mode === 'god'),
-    step('Place a Postbox (Buildings, Civic tab).', (g) => hasB(g, 'postbox'), (g) => siteOf(g, 'postbox')),
+    step('Place a Postbox (Civic on the toolbar).', (g) => hasB(g, 'postbox'), (g) => siteOf(g, 'postbox')),
     step('Build the Postbox. It only needs 2 timber.', (g) => hasB(g, 'postbox', 'done'), (g) => siteOf(g, 'postbox') || nearestTree(g)),
     step('Press E at the red Postbox to read your post.', (g) => g.flags.postRead, (g) => { const b = g.mail.box; return b && { x: b.cx, z: b.cz }; }),
   ]),
   obj('feed', '8. Feed the camp', [
-    step('Place a Campfire (Buildings, Food tab).', (g) => hasB(g, 'campfire'), null, { b: ['campfire'] }),
-    step('Place a Forager\'s Hut (Food tab). The forager brings food to the Stockyard.', (g) => hasB(g, 'forager'), null, { b: ['forager'] }),
+    step('Place a Campfire (Parks on the toolbar).', (g) => hasB(g, 'campfire'), null, { b: ['campfire'] }),
+    step('Place a Forager\'s Hut (Food on the toolbar). The forager brings food to the Stockyard.', (g) => hasB(g, 'forager'), null, { b: ['forager'] }),
     step('Build them both.', (g) => g.buildings.count('campfire') && g.buildings.count('forager'), (g) => siteOf(g, 'campfire') || siteOf(g, 'forager'), { b: ['campfire', 'forager'] }),
   ]),
   obj('settle', '9. Welcome settlers', [

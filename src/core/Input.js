@@ -20,8 +20,8 @@ export class Input {
     window.addEventListener('keyup', (e) => { const k = this.binds.translate(e.code); if (k === null) return; this.keys.delete(k); this.released.add(k); });
     window.addEventListener('blur', () => { this.keys.clear(); this.virt = new Set(); });
     canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); this.mouse.x = (e.clientX - r.left) / r.width; this.mouse.y = (e.clientY - r.top) / r.height; if (this.locked) { const S = this.binds.sens; this.mouse.dx += e.movementX * S.mouse; this.mouse.dy += e.movementY * S.mouse * (S.invertMouse ? -1 : 1); } else if (this.drag) { this.mouse.dx += e.movementX; this.mouse.dy += e.movementY; } });
-    canvas.addEventListener('mousedown', (e) => { if (e.button === 0) { this.mouse.left = true; this.mouse.down = true; } if (e.button === 2) this.mouse.right = true; if (e.button === 1) this.mouse.middle = true; this.drag = e.button !== 0; this.mouse.btn = e.button; e.preventDefault(); });
-    window.addEventListener('mouseup', (e) => { if (e.button === 0) { this.mouse.left = false; this.mouse.up = true; } if (e.button === 2) this.mouse.right = false; if (e.button === 1) this.mouse.middle = false; this.drag = false; });
+    canvas.addEventListener('mousedown', (e) => { if (e.button === 0) { this.mouse.left = true; this.mouse.down = true; } if (e.button === 2) { this.mouse.right = true; this.mouse.rx0 = e.clientX; this.mouse.ry0 = e.clientY; } if (e.button === 1) this.mouse.middle = true; this.drag = e.button !== 0; this.mouse.btn = e.button; e.preventDefault(); });
+    window.addEventListener('mouseup', (e) => { if (e.button === 0) { this.mouse.left = false; this.mouse.up = true; } if (e.button === 2) { this.mouse.right = false; if (Math.hypot(e.clientX - (this.mouse.rx0 ?? e.clientX), e.clientY - (this.mouse.ry0 ?? e.clientY)) < 6) this.mouse.rclick = true; } if (e.button === 1) this.mouse.middle = false; this.drag = false; });   // (right button: a click, not a drag to turn the view, is its own event)
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('wheel', (e) => { this.mouse.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
     document.addEventListener('mousemove', (e) => { if (document.pointerLockElement === canvas) { /* handled above */ } });
@@ -94,5 +94,5 @@ export class Input {
   lock() { this.wantLock = true; try { const p = this.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* headless */ } }
   /** Let go of the mouse for a menu or the planning view (it's taken back afterwards: wantLock stays). */
   unlock() { if (document.pointerLockElement) { this._ourUnlock = true; document.exitPointerLock(); } }
-  endFrame() { this.pressed.clear(); this.released.clear(); this.mouse.dx = this.mouse.dy = 0; this.mouse.wheel = 0; this.mouse.down = this.mouse.up = false; }
+  endFrame() { this.pressed.clear(); this.released.clear(); this.mouse.dx = this.mouse.dy = 0; this.mouse.wheel = 0; this.mouse.down = this.mouse.up = this.mouse.rclick = false; }
 }
