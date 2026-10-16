@@ -1,4 +1,4 @@
-/** One emoji per building type: the Planning menu's cards and the map pins use the same ones. */
+/** One emoji per building type: the toolbar's cards and the map pins use the same ones. */
 export const CAT_ICON = { Homes: '🏠', Food: '🍞', Industry: '🏭', Civic: '🏛️', Commerce: '🛍️', Transport: '🚂', Parks: '🌳', Utilities: '⚡' };
 export const ICON = { rubble: '🚧', shack: '🏚️', hut: '🏕️', cabin: '🏡', bungalow: '🏠', cottage: '🏡', semi: '🏘️', townhouse: '🏘️', flats: '🏢', apartments: '🏢', forager: '🍓', allotment: '🥕', fisher: '🎣', bakery: '🥖', farm: '🌾', harbour: '⚓', chippy: '🍟', tavern: '🍺', local: '🍻', irish: '☘️',
   lumbercamp: '🌲', quarry: '⛏️', contractor: '🔨', brickworks: '🧱', glassworks: '🥃', foundry: '⚙️', factory: '🏭', stockyard: '📦', postbox: '📮', surveyor: '📐', villagehall: '🏛️', postoffice: '🏤', school: '🏫', library: '📚', church: '⛪', townhall: '🏛️', clinic: '🏥', police: '🚓',

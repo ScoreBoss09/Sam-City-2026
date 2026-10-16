@@ -10,7 +10,7 @@ export const KEY_ACTIONS = [
   { id: 'right', label: 'Step right', code: 'KeyD', group: 'Moving' },
   { id: 'sprint', label: 'Sprint', code: 'ShiftLeft', group: 'Moving' },
   { id: 'jump', label: 'Jump', code: 'Space', group: 'Moving' },
-  { id: 'bike', label: 'Bike or car (planning: Planning menu)', code: 'KeyB', group: 'Moving' },
+  { id: 'bike', label: 'Bike or car (planning: the work queue)', code: 'KeyB', group: 'Moving' },
   { id: 'camera', label: 'First / third person', code: 'KeyV', group: 'Moving' },
   { id: 'use', label: 'Use, talk, work (hold) · planning: rotate right', code: 'KeyE', group: 'Doing' },
   { id: 'eat', label: 'Eat · planning: rotate left', code: 'KeyQ', group: 'Doing' },

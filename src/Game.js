@@ -196,12 +196,13 @@ export class Game {
     else if (inp.wantLock && !inp.locked && !inp.padActive && inp.allowLock() && document.hasFocus() && performance.now() - (this._lockTry || 0) > 1000) { this._lockTry = performance.now(); inp.lock(); }
     // modal / toggles
     const wasModal = ui.modalOpen;
+    if (ui.plan.open && ui.plan.docked && inp.hit('Escape')) { ui.plan.close(); inp.pressed.delete('Escape'); }   // (Esc puts a docked page away first)
     if (ui.pause.open && inp.hit('Escape')) { ui.pause.hide(); inp.pressed.delete('Escape'); }
     else if (!wasModal && this.started && !this.ending && ((inp.hit('Escape') && (this.mode === 'sim' || this.god.tool.id === 'pan')) || inp.hit('PadSpeed'))) { ui.pause.show(); inp.pressed.delete('Escape'); inp.pressed.delete('PadSpeed'); }   // the in-game menu
     if (ui.dialogue) ui.dialogueKeys(inp);
     if (ui.plan.open && (inp.hit('Escape') || inp.hit('KeyB') || inp.hit('KeyO'))) { ui.plan.close(); inp.pressed.delete('KeyB'); inp.pressed.delete('KeyO'); inp.pressed.delete('Escape'); }
     else if (this.started && !this.ending && !this.netVisitor && !ui.modalOpen && inp.hit('KeyO')) { ui.plan.show('town'); inp.pressed.delete('KeyO'); }   // the town overview, from anywhere (what the warning badge is about)
-    else if (this.mode === 'god' && this.started && !ui.modalOpen && inp.hit('KeyB')) ui.plan.show();
+    else if (this.mode === 'god' && this.started && !ui.modalOpen && inp.hit('KeyB')) ui.bar.pick('queue');   // B: the work queue, docked above the toolbar
     if (inp.hit('F8') || (ui.perfOpen && inp.hit('Escape'))) { ui.togglePerf(); inp.pressed.delete('Escape'); }
     if (ui.terminalB && inp.hit('Escape')) ui.closeTerminal();
     if (ui.invOpen && (inp.hit('Escape') || inp.hit('KeyI'))) { ui.closeInventory(); inp.pressed.delete('KeyI'); }

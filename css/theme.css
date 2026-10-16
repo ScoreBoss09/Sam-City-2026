@@ -354,3 +354,67 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 #objectives .objgoal small { font: 700 11px var(--ui-head, sans-serif); letter-spacing: .22em; opacity: .85; } #objectives .objgoal b { font: 700 17px var(--ui-font, sans-serif); }
 @keyframes objgoal { 0% { transform: translateY(-14px) scale(.96); opacity: 0; } 10% { transform: none; opacity: 1; } 85% { opacity: 1; } 100% { transform: translateY(-6px); opacity: 0; } }
 #app #objectives { overflow: visible !important; max-height: none !important; }
+
+/* ---------- the planning view's toolbar (BuildBar): along the bottom, like Cities: Skylines ---------- */
+#app #toolbox, #app #submenu { display: none !important; }   /* replaced by the toolbar */
+#app #hover { top: 58px !important; bottom: auto !important; border-radius: 9px !important; background: rgba(12, 18, 30, .88) !important; border: 1px solid var(--line-2) !important; padding: 6px 12px !important; font: 600 13px var(--ui-font) !important; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+#buildbar { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 30; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+#buildbar.hidden { display: none; }
+#bb-row { pointer-events: auto; display: flex; align-items: stretch; padding: 6px 8px; background: var(--glass); border: 1px solid var(--line-2); border-radius: 16px; box-shadow: var(--shadow); }
+#bb-row .bb-group { display: flex; gap: 2px; } #bb-row .bb-sep { width: 1px; background: var(--line-2); margin: 6px 7px; }
+#app #buildbar .bb-btn { all: unset; box-sizing: border-box; position: relative; width: 52px; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 11px; cursor: pointer; color: var(--muted); font: 600 10.5px/1 var(--ui-font) !important; letter-spacing: .01em; text-align: center; transition: background .12s, color .12s, transform .12s; }
+#app #buildbar .bb-btn i { font-style: normal; font-size: 22px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .4)); }
+#app #buildbar .bb-btn span { white-space: nowrap; max-width: 50px; overflow: hidden; text-overflow: ellipsis; }
+#app #buildbar .bb-btn:hover { background: rgba(255, 255, 255, .07); color: #fff; transform: translateY(-1px); }
+#app #buildbar .bb-btn.on { background: var(--accent-soft); color: #fff; box-shadow: inset 0 0 0 1px var(--accent), 0 0 14px rgba(255, 197, 61, .18); }
+#app #buildbar .bb-btn.on::after { content: ''; position: absolute; left: 18px; right: 18px; bottom: 3px; height: 3px; border-radius: 3px; background: var(--accent); }
+#app #buildbar .bb-btn.padfocus { box-shadow: var(--ring); }
+#app #buildbar .bb-btn em { position: absolute; top: 3px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: var(--info); color: #fff; font: 700 10px/16px var(--ui-font) !important; font-style: normal; }
+#app #buildbar .bb-btn em.warn { background: var(--warn); color: #2a1600; }
+#bb-strip { pointer-events: auto; width: min(1080px, calc(100vw - 380px), 96vw); box-sizing: border-box; padding: 10px 12px 10px; background: var(--glass); border: 1px solid var(--line-2); border-radius: 16px; box-shadow: var(--shadow); animation: bbup .18s ease-out; }
+#bb-strip.hidden { display: none; }
+@keyframes bbup { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+#bb-strip .bb-head { display: flex; align-items: baseline; gap: 14px; margin: 0 4px 8px; }
+#bb-strip .bb-title { font: 700 18px var(--ui-head) !important; letter-spacing: .08em; text-transform: uppercase; color: #fff; }
+#bb-strip .bb-hint { font: 500 12.5px var(--ui-font) !important; color: var(--faint); }
+#bb-strip .bb-cards { display: flex; gap: 10px; overflow-x: auto; overflow-y: hidden; padding: 4px 2px 8px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .25) transparent; }
+#bb-strip .bb-cards.empty { display: none; }
+#app #buildbar .bb-card { all: unset; box-sizing: border-box; flex: 0 0 136px; display: flex; flex-direction: column; padding: 6px 6px 8px; border-radius: 12px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); color: var(--text); position: relative; cursor: pointer; transition: transform .12s, border-color .12s, background .12s, box-shadow .12s; }
+#app #buildbar .bb-card:hover { transform: translateY(-3px); background: rgba(255, 255, 255, .08); border-color: var(--line-2); }
+#app #buildbar .bb-card.on, #app #buildbar .bb-card.padfocus { border-color: var(--accent); box-shadow: var(--ring); background: rgba(255, 197, 61, .08); }
+#app #buildbar .bb-card.locked .pv { filter: grayscale(.85) brightness(.62); } #app #buildbar .bb-card.locked .nm { color: var(--muted); }
+#app :is(#buildbar, #bb-info) .pv { display: block; height: 94px; border-radius: 9px; background-color: #1b2a40; background-image: radial-gradient(ellipse at 50% 75%, #36577c, #172437 78%); background-size: contain; background-repeat: no-repeat; background-position: center 60%; position: relative; overflow: hidden; }
+#app :is(#buildbar, #bb-info) .pv::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 100%, rgba(120, 170, 90, .35), transparent 65%); pointer-events: none; }
+#app :is(#buildbar, #bb-info) .pv.ok { background-image: none; }
+#app :is(#buildbar, #bb-info) .pv .em { position: absolute; inset: 0; display: grid; place-items: center; font-size: 38px; font-style: normal; opacity: .9; }
+#app :is(#buildbar, #bb-info) .pv.ok .em { display: none; }
+#app #buildbar .pv.sw { background-color: var(--sw); background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, .07) 0 7px, transparent 7px 14px); }
+#app #buildbar .pv.sw .em { display: grid; }
+#app #buildbar .bb-card .nm { font: 700 13.5px/1.2 var(--ui-font) !important; margin: 7px 2px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app #buildbar .bb-card .st { font: 500 11.5px/1.3 var(--ui-font) !important; color: var(--muted); display: flex; flex-wrap: wrap; gap: 3px 7px; margin: 0 2px; }
+#app #buildbar .bb-card .st .m { white-space: nowrap; color: #dfe7f2; }
+#app #buildbar .bb-card .tick { position: absolute; top: 10px; right: 10px; padding: 2px 7px; border-radius: 9px; background: var(--good); color: #062512; font: 800 11px/1.3 var(--ui-font) !important; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
+#app #buildbar .bb-card .tick.site { background: var(--warn); color: #2a1600; }
+#app #buildbar .bb-card .ask { position: absolute; top: 9px; left: 10px; font-size: 15px; }
+#app #buildbar .bb-more { flex: 0 0 120px; display: grid; place-items: center; text-align: center; color: var(--faint); font: 500 12px/1.4 var(--ui-font) !important; border: 1px dashed var(--line-2); border-radius: 12px; }
+#app #buildbar .bb-more b { color: var(--accent); font-size: 18px; }
+/* what a building is: a note on hover, the whole story on right-click */
+#bb-info { position: absolute; z-index: 41; width: 310px; box-sizing: border-box; padding: 12px 14px 14px; background: var(--glass); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: var(--shadow); color: var(--text); font: 500 13.5px/1.42 var(--ui-font); animation: bbup .14s ease-out; }
+#bb-info.hidden { display: none; } #bb-info.brief { width: 250px; pointer-events: none; }
+#bb-info .pv.big { height: 156px; margin: 0 0 10px; }
+#bb-info .bi-head { display: flex; align-items: baseline; gap: 8px; } #bb-info .bi-head b { font: 700 19px var(--ui-head) !important; letter-spacing: .05em; text-transform: uppercase; color: #fff; }
+#bb-info .bi-head :is(.cat, .have) { margin-left: auto; font: 600 12px var(--ui-font) !important; color: var(--muted); white-space: nowrap; } #bb-info .bi-head .have { color: var(--good); }
+#bb-info p { margin: 6px 0 0; color: #d6deea; } #bb-info p.blurb { color: var(--muted); font-style: italic; }
+#bb-info dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+#bb-info dt { color: var(--faint); font: 700 11px/1.6 var(--ui-head) !important; letter-spacing: .1em; text-transform: uppercase; } #bb-info dd { margin: 0; }
+#bb-info .bi-cost { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; color: var(--accent); font: 600 13px var(--ui-font) !important; } #bb-info .bi-cost .m { white-space: nowrap; }
+#bb-info .bi-more { display: block; margin-top: 8px; color: var(--faint); font: 500 11px var(--ui-font) !important; }
+#bb-info .ok { color: var(--good); } #bb-info b { color: #fff; }
+#app #bb-info .bi-x { all: unset; position: absolute; top: 8px; right: 8px; z-index: 2; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: rgba(8, 12, 20, .7); border: 1px solid var(--line-2); color: #fff; cursor: pointer; font: 700 13px var(--ui-font) !important; }
+#app #bb-info .bi-x:hover { background: var(--bad); }
+/* the town's pages, docked above the toolbar instead of over the whole screen */
+#app #planmenu.docked { inset: auto auto 84px 50% !important; transform: translateX(-50%); width: min(960px, calc(100vw - 400px), 96vw); display: block; background: none !important; pointer-events: none; z-index: 29; }
+#app #planmenu.docked .pwin { pointer-events: auto; width: 100%; max-height: 58vh; box-sizing: border-box; overflow: auto; animation: bbup .18s ease-out; padding: 16px 20px 14px !important; }
+#app #planmenu.docked .phead { font-size: 24px !important; margin-bottom: 12px !important; padding-bottom: 10px !important; }
+@media (max-width: 1180px) { #app #buildbar .bb-btn { width: 46px; height: 48px; } #app #buildbar .bb-btn span { display: none; } #app #planmenu.docked { bottom: 76px !important; } }
+@media (max-width: 1500px) { #buildbar { transform: translateX(calc(-50% - 84px)); } #app #planmenu.docked { transform: translateX(calc(-50% - 84px)); } }   /* (clear of the clock in the corner) */

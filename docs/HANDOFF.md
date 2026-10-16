@@ -100,7 +100,7 @@ windows, "Sam is ..." under the clock in the planning view.
 
 ## To do (the owner's open list, most recent first)
 
-1. **Replace the Planning menu with a Cities: Skylines style interface** (task #93). The owner: "I don't think it
+1. **Replace the Planning menu with a Cities: Skylines style interface** (task #93): first version done (`src/ui/BuildBar.js`, `src/ui/Previews.js`; the Planning menu's pages now dock above the bar via `PlanMenu.dock()`; right-click on the map or a card for details; B = work queue, O = town). Possible next polish: a richer right-click card for things on the map (the old `#query` panel), and checking every screen size and the controller flow end to end. Original brief: The owner: "I don't think it
    should be there as it might confuse players." Everything should be reachable from the planning view itself:
    - a bottom toolbar with category tabs (roads, homes, food, industry, civic, commerce, parks, utilities, plus
      panels for the work queue, upgrades, money and the town overview), like Cities: Skylines;

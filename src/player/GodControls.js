@@ -61,6 +61,7 @@ export class GodControls {
     this.grid.visible = active && this.tool.id !== 'pan' && this.tool.id !== 'query';
     if (!active || g.ui.modalOpen || !g.ui.mouseOverCanvas) { this.ghost.visible = false; this.tileBox.visible = false; if (!inp.mouse.left) this.painting = false; return; }
     const p = this.pick(inp); if (!p) return; const tx = Math.floor(p.x / TILE), tz = Math.floor(p.z / TILE); this.hover = [tx, tz];
+    if (inp.mouse.rclick && g.world.inBounds(tx, tz)) { g.ui.query(this.queryAt(p, tx, tz)); return; }   // right-click anything, with any tool: what it is
     if (g.world.inBounds(tx, tz)) g.ui.setHover(this.describe(tx, tz));
     const id = this.tool.id; this.tileBox.visible = false; this.ghost.visible = false;
     if (id === 'road' && this.tool.sub === 'lamps' && g.lamps) {   // street lamps: pick the corner or side of the square under the cursor
@@ -105,8 +106,8 @@ export class GodControls {
     } else if ((id === 'build' || id === 'park' || id === 'util') && !this.tool.sub) {
       // a tool is picked but not a building yet: still show where the cursor is, and say what to do
       this.tileBox.visible = g.world.inBounds(tx, tz); this.tileBox.scale.set(TILE, 0.2, TILE); this.tileBox.position.set((tx + 0.5) * TILE, 0.15, (tz + 0.5) * TILE); this.tileBox.material.color.setHex(0xffd23f);
-      g.ui.setHover(g.input.padActive ? 'Pick a building: D-pad ↑/↓, then ✕ to place it (□ opens the Planning menu)' : '👈 Pick a building from the list first, then click here to place it');
-      if (inp.mouse.down) g.ui.toast('Choose a building from the list on the left first.');
+      g.ui.setHover(g.input.padActive ? 'Pick a building: D-pad ◀/▶ along the cards, then ✕ to place it' : '👇 Pick a building from the cards at the bottom first, then click here to place it');
+      if (inp.mouse.down) g.ui.toast('Choose a building from the cards at the bottom first.');
     } else if (id === 'query') {
       if (inp.mouse.down) g.ui.query(this.queryAt(p, tx, tz));
     }
