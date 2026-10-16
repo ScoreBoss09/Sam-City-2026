@@ -638,6 +638,7 @@ export class Sim {
     if (this.fightAnim) upper = this.fightAnim;
     if (this.cycling && this.moved) { lower = 'ride'; upper = 'handlebars'; }
     { const pt = this.partner; if (pt && upper === 'idle' && lower === 'walk' && pt.moved && !pt.remove && !this.cycling && !pt.cycling) { const dx = pt.x - this.x, dz = pt.z - this.z, d = Math.hypot(dx, dz); const lat = Math.cos(this.heading) * dx - Math.sin(this.heading) * dz; if (d < 1.15 && Math.abs(lat) > 0.45 && Math.cos(pt.heading - this.heading) > 0.85) upper = lat > 0 ? 'holdR' : 'holdL'; } }   // a couple walking together, hand in hand
+    if (this.deskSit) lower = 'sit';   // (the office above the sky: sat at a desk with no seat to take)
     return { lower, upper, speaking, motor: this.vehLv === 2 };
   }
   /** It's 1995: a lot of people smoke (builders most of all, and the pub's thick with it). Whether someone does is fixed by their name. */
