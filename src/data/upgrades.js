@@ -51,6 +51,12 @@ const POLICE = [
     apply(def) { def.policeSpeed = 1.9; def.policeCar = true; } },
 ];
 
+// Sam Tower's last step, once the seams in the sky have shown (story.domeRevealed): a stair up to the ceiling of the sky
+const TOWER = [
+  { name: 'Stairway to Heaven', icon: '🪜', age: 0, desc: 'A steel stair from the roof of Sam Tower that winds up and up, past the clouds, until it touches the sky.', mat: { steel: 40, timber: 20, glass: 6 }, work: 160, pop: 0,
+    need: (g) => !!(g.story && g.story.domeRevealed), apply(def) { def.stairway = true; } },
+];
+
 /** The list of upgrade steps for a building type (empty if it has none). */
 export function upgradesFor(id, base) {
   if (GATHER_YARDS.includes(id)) return YARD;
@@ -58,6 +64,7 @@ export function upgradesFor(id, base) {
   if (id === 'cycleshop') return CYCLES;
   if (id === 'stables') return STABLES;
   if (id === 'police' || id === 'watchhouse') return POLICE;
+  if (id === 'skyscraper') return TOWER;
   if (base.cat === 'res' && base.floors === 1 && base.w * base.d >= 4) return HOME;   // (a one-room shack or caravan has no room for stairs)
   if (base.cat === 'res' && base.floors === 2) return TALL_HOME;
   return [];

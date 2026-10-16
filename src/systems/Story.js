@@ -49,7 +49,8 @@ export class Story {
     const inB = g.buildings.playerInside, near = g.population.sims.filter((q) => q.kind === 'resident' && q.age >= 16 && q.mesh.visible && !q.chat && !q.bubble && !q.sitting && q.pose !== 'sleep' && !q.fight && !q.crook && (q.inside || null) === (inB || null) && Math.hypot(q.x - P.x, q.z - P.z) < 9);
     const s = pick(near); if (!s) { this.slipT = 20; return; }
     const a = this.anachronism(); g.social.say(s, a.s, 2.2); s.faceGoal = Math.atan2(P.x - s.x, P.z - s.z);
-    this.beats.push({ s, t: 2.3, text: a.c, dur: 3.4, emote: pick(['facepalm', 'earpiece', 'lookaround', 'shush']) });
+    const knowing = !!g.flags.stayed;   // (after the office above the sky, they've stopped pretending. Mostly.)
+    this.beats.push({ s, t: 2.3, text: knowing ? pick(['...You know what I mean, Sam. (A wink.)', 'Oh, come on. You know.', '(A wink.) Same time tomorrow, Sam.']) : a.c, dur: 3.4, emote: knowing ? 'thumbsup' : pick(['facepalm', 'earpiece', 'lookaround', 'shush']) });
     const o = near.find((q) => q !== s && Math.hypot(q.x - s.x, q.z - s.z) < 5); if (o && Math.random() < 0.6) { const [p, Pp, him] = he(s); this.beats.push({ s: o, t: 4.2, text: pick(COVER_UPS).replace(/\{P\}/g, Pp).replace(/\{p\}/g, p).replace(/\{him\}/g, him), dur: 2.4, emote: 'laugh' }); }
     this.heard(a, s);
   }

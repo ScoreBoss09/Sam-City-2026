@@ -18,12 +18,13 @@ export class Upgrades {
   next(b) { const s = this.steps(b), l = b.level || 0; return l < s.length ? s[l] : null; }
   orderFor(b) { return this.orders.find((o) => o.upgradeOf === b) || null; }
   /** Buildings that could be upgraded right now (or are being), for the menu. */
-  candidates() { return this.game.buildings.list.filter((b) => b.state === 'done' && (this.next(b) || this.orderFor(b))); }
+  candidates() { return this.game.buildings.list.filter((b) => { if (b.state !== 'done') return false; const n = this.next(b); return this.orderFor(b) || (n && (!n.need || n.need(this.game))); }); }   // (a step that needs something first stays secret until then)
   check(b) {
     const up = this.next(b), pop = this.game.population.count();
     if (b.state !== 'done') return { ok: false, why: 'Finish building it first' };
     if (this.orderFor(b)) return { ok: false, why: 'Already being upgraded' };
     if (!up) return { ok: false, why: 'Fully upgraded' };
+    if (up.need && !up.need(this.game)) return { ok: false, why: 'Not yet' };
     if (pop < up.pop) return { ok: false, why: `Needs ${up.pop} residents` };
     if ((up.age || 0) > (this.game.tech ? this.game.tech.age : 4)) return { ok: false, why: `Needs the ${AGES[up.age]} age` };
     return { ok: true, up };

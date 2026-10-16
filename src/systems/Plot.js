@@ -61,6 +61,7 @@ export class Plot {
     if (a && f.liftPlot === 'letter' && !a.inside && a.pose !== 'sleep') { const d = Math.hypot(a.x - x, a.z - z); if (d < 2.6) out.push({ kind: 'act', text: `Ask ${a.first} about the blasting powder`, act: () => this.allyTalk(a), x: a.x, z: a.z, d: d - 0.6 }); }
     if (a && f.liftPlot === 'agreed' && a.plot && this.keg) { const d = Math.hypot(this.keg.position.x - x, this.keg.position.z - z); if (d < 3) out.push({ kind: 'act', text: g.security && g.security.onDuty() ? 'Wait for the guards to change over (2 till 4)' : 'Light the fuse', act: () => { if (!g.security.onDuty()) this.blast(a); }, x: this.keg.position.x, z: this.keg.position.z, d: d - 0.8 }); }
     if (f.liftDown) { const p = this.pit(), d = Math.hypot(p.x - x, p.z - z); if (d < 4) out.push({ kind: 'act', text: 'Climb down the ladder into the shaft', act: () => this.ladder(), x: p.x, z: p.z, d: d - 1 }); }
+    if (g.stairway) out.push(...g.stairway.targets(x, z));
     return out;
   }
   /**
@@ -116,8 +117,8 @@ export class Plot {
     this.makeWreck(true); Sfx.noise(2.2, { freq: 180, q: 0.4, vol: 0.9, type: 'lowpass' }); Sfx.tone(46, 1.6, { type: 'sine', vol: 0.5, slide: -20 }); Sfx.noise(0.5, { freq: 2400, vol: 0.4, delay: 0.05 });
     for (let i = 0; i < 6; i++) g.particles.burst(p.x + (Math.random() - 0.5) * 4, 1 + i, p.z + (Math.random() - 0.5) * 4, i % 2 ? 0xff7a1a : 0xffc040, 16, 3.5, 6 + i, 0.25);
     for (let i = 0; i < 4; i++) g.particles.burst(p.x, 2 + i * 2, p.z, 0x5a5a5a, 14, 2.5, 3, 0.4);
-    const fire = (c, o) => new THREE.Mesh(new THREE.IcosahedronGeometry(1, 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending })), ball = fire(0xff6a1a, 0.9), core = fire(0xffe08a, 1), light = new THREE.PointLight(0xffa050, 60, 120, 1.4);
-    ball.add(core); core.scale.setScalar(0.6); ball.position.set(p.x, 3, p.z); light.position.set(p.x, 6, p.z); g.scene.add(ball, light); this.fx.push({ t: 0, ball, light });   // (a white-hot core in an orange fireball, lighting up the night)
+    const fire = (c, o) => new THREE.Mesh(new THREE.IcosahedronGeometry(1, 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending })), ball = fire(0xff6a1a, 0.9), core = fire(0xffe08a, 1);
+    ball.add(core); core.scale.setScalar(0.6); ball.position.set(p.x, 3, p.z); g.scene.add(ball); this.fx.push({ t: 0, ball }); g.atmosphere.flash = 1.4; g.atmosphere.flashCol = 0xffa050;   // (a white-hot core in an orange fireball, and the whole town lit up orange: no new lamp, so nothing has to be recompiled)
     for (const s of g.population.sims) { if (s.kind !== 'resident' && s.kind !== 'child') continue; s.moodBoost -= 0.2; const d = Math.hypot(s.x - p.x, s.z - p.z); if (d < 60 && !s.inside) { s.emote = { upper: 'panic', t: 3 }; s.hurry = true; } if (d < 40 && s.mesh.visible && Math.random() < 0.3) g.social.say(s, pick(['WHAT WAS THAT?!', 'The Lift! The LIFT!', 'Oh my God!', 'Was that a bomb?!']), 2.5); }
     g.messages.push('Town news', 'BOOM. The Lift has been blown up. Nobody can come down to Sam City, and nobody can go back up. No newcomers, no visitors, no deliveries.', 'alarm');
   }
@@ -151,7 +152,7 @@ export class Plot {
     const g = this.game;
     for (const e of this.fx) {
       e.t += dt;
-      if (e.ball) { const k = e.t / 1.6, core = e.ball.children[0]; e.ball.scale.setScalar(2 + k * 12); e.ball.position.y = 3 + k * 6; e.ball.rotation.y += dt; e.ball.material.opacity = Math.max(0, 0.9 - k * 0.8); if (core) core.material.opacity = Math.max(0, 1 - k * 1.6); e.light.intensity = Math.max(0, 60 * (1 - e.t / 2.2)); if (k >= 1.4) { g.scene.remove(e.ball, e.light); e.ball.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); e.done = true; } }
+      if (e.ball) { const k = e.t / 1.6, core = e.ball.children[0]; e.ball.scale.setScalar(2 + k * 12); e.ball.position.y = 3 + k * 6; e.ball.rotation.y += dt; e.ball.material.opacity = Math.max(0, 0.9 - k * 0.8); if (core) core.material.opacity = Math.max(0, 1 - k * 1.6); g.atmosphere.flash = Math.max(0, 1.4 * (1 - e.t / 2.4)); if (k >= 1.4) { g.scene.remove(e.ball); g.atmosphere.flash = 0; e.ball.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); e.done = true; } }
       if (e.deb && !e.rest) { e.vy -= 22 * dt; const m = e.deb; m.position.x += e.vx * dt; m.position.z += e.vz * dt; m.position.y += e.vy * dt; m.rotation.x += e.spin * dt; m.rotation.z += e.spin * 0.7 * dt; if (m.position.y < 0.2) { m.position.y = 0.2; e.rest = true; } }
     }
     this.fx = this.fx.filter((e) => !e.done);
