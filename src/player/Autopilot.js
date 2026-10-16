@@ -36,7 +36,7 @@ export class Autopilot {
     if (!this.active()) { if (this.on) { this.on = false; this.stop(); } return; }
     if (!this.on) { this.on = true; this.stop(); if (p.sleeping && g.clock.sleepBoost) g.clock.sleepBoost = 0; g.ui.fade(0); }
     p.moved = false; p.working = false; this.t -= dt;
-    if ((this.labelT = (this.labelT || 0) - dt) <= 0) { this.labelT = 1; const el = document.getElementById('c-mode'); if (el) el.textContent = this.note ? 'PLANNING · Sam is ' + this.note : 'PLANNING VIEW'; }
+    if ((this.labelT = (this.labelT || 0) - dt) <= 0) { this.labelT = 1; const el = document.getElementById('c-sam'); if (el) { el.classList.toggle('hidden', !this.note || g.mode !== 'god'); if (this.note) el.innerHTML = `<b>Sam</b> is ${this.note}`; } }   // (what he's up to while you plan, under the clock)
     const h = g.clock.hour, night = h >= 21.5 || h < 6;
     // asleep: stay in bed until morning
     if (p.sleeping) { this.note = 'asleep'; if (!night && h >= 6.5) { p.energy = 100; p.wake(); this.task = null; } return; }

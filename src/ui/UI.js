@@ -542,7 +542,7 @@ export class UI {
     if (this.helpT > 0) { this.helpT -= 0.25; if (this.helpT <= 0) $('help').classList.add('hidden'); }
     if (this._padWas !== g.input.padActive) { this._padWas = g.input.padActive; this.setMode(g.mode); }
     $('crosshair').classList.toggle('hidden', g.mode === 'god' && !g.input.padActive); $('crosshair').classList.toggle('godcur', g.mode === 'god');
-    if (g.mode === 'sim') $('c-mode').textContent = 'SAM (' + (g.player.third ? '3rd' : '1st') + ' person)';
+    if (g.mode === 'sim') { $('c-mode').textContent = 'SAM (' + (g.player.third ? '3rd' : '1st') + ' person)'; $('c-sam').classList.add('hidden'); }
     this.renderObjectives();
   }
 }

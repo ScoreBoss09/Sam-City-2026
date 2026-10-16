@@ -196,7 +196,11 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 #c-date { font: 700 15px var(--ui-head) !important; letter-spacing: .14em !important; color: var(--muted); }
 #c-time { font: 700 34px/1.1 var(--ui-head) !important; color: #fff !important; }
 #c-speed { display: flex; justify-content: center; gap: 4px; margin-top: 6px; }
-#app #clockbox #c-speed button { padding: 4px 8px !important; font-size: 12px !important; border-radius: 7px !important; min-width: 30px; }
+#app #clockbox #c-speed button { padding: 4px 0 !important; font-size: 12px !important; border-radius: 7px !important; min-width: 0; flex: 1 1 0; }
+#app #clockbox #btn-perf { position: absolute; top: 33px; right: 8px; width: 26px; height: 24px; padding: 0 !important; font-size: 12px !important; border-radius: 7px !important; opacity: .75; }   /* the report button: in the corner, out of the speed row */
+#app #clockbox #btn-perf:hover { opacity: 1; }
+#c-sam { margin-top: 7px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, .1); font: 600 11.5px/1.35 var(--ui-font, sans-serif); color: #cfe0f4; text-align: center; }
+#c-sam.hidden { display: none; } #c-sam b { color: var(--accent, #ffd23f); font-weight: 700; }
 /* the interaction prompt: a key cap and the action, low in the middle */
 #prompt { background: rgba(8, 12, 20, .8) !important; border: 1px solid var(--line-2) !important; border-radius: 999px !important; padding: 9px 20px 9px 10px !important; font: 600 16px var(--ui-font) !important; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); display: flex; flex-direction: column; align-items: center; }
 #prompt-text { display: flex; align-items: center; gap: 10px; }
