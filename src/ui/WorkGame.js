@@ -13,12 +13,23 @@ const KINDS = {
   build:   { title: 'HAMMER',  speed: 1.55, good: 0.22, perfect: 0.07, sfx: 'hammer' },
 };
 const $ = (id) => document.getElementById(id);
+/**
+ * The streak: perfects build it (1 point each, a good only helps at the bottom and costs a point near the top), a miss
+ * knocks it down a whole level. Each level makes a perfect stroke worth more and sends a bigger shockwave along the
+ * ground (src/systems/Shockwave.js); the bar gets quicker and the gold narrower as it climbs, so the top is hard to reach
+ * and harder to keep.
+ */
+const TIERS = [0, 2, 4, 7, 11, 16];
+const TIER_NAME = ['', 'Warming up', 'On a roll', 'Red hot', 'Unstoppable', 'Legendary'];
+const tierOf = (pts) => { let t = 0; while (t < 5 && pts >= TIERS[t + 1]) t++; return t; };
 
 export class WorkGame {
-  constructor(game) { this.game = game; this.el = $('workgame'); this.active = false; this.key = null; this.pos = 0; this.dir = 1; this.center = 0.6; this.combo = 0; this.idle = 0; this.popT = 0; }
+  constructor(game) { this.game = game; this.el = $('workgame'); this.active = false; this.key = null; this.pos = 0; this.dir = 1; this.center = 0.6; this.combo = 0; this.pts = 0; this.tier = 0; this.idle = 0; this.popT = 0; }
   start(kind, key) {
     if (this.active && this.key === key) { this.idle = 0; return; }
-    const k = KINDS[kind] || KINDS.chop; this.kind = kind; this.k = k; const keep = kind === this.lastKind && performance.now() - (this.lastPress || 0) < 3000 ? this.combo : 0; this.key = key; this.active = true; this.pos = 0; this.dir = 1; this.combo = keep; this.idle = 0; this.newZone(); $('wg-combo').textContent = keep > 1 ? `🔥 CHAIN x${keep}` : ''; this.el.dataset.heat = Math.min(4, keep); this.lastKind = kind;
+    const k = KINDS[kind] || KINDS.chop; this.kind = kind; this.k = k; const keep = kind === this.lastKind && performance.now() - (this.lastPress || 0) < 4000; this.key = key; this.active = true; this.pos = 0; this.dir = 1; this.idle = 0;
+    if (!keep) { this.combo = 0; this.pts = 0; this.tier = 0; } else if (this.tier) this.pop(`Streak kept: ${TIER_NAME[this.tier]}`, 'good');   // (straight on to the next tree or rock: the streak carries over, and says so)
+    this.newZone(); this.streakLine(); this.lastKind = kind;
     { const S = this.game.skills, lv = S.level(kind), b = S.bonus(kind); $('wg-title').textContent = `${k.title} · Lv ${lv}${lv > 1 ? ` · ${b.toFixed(2).replace(/0$/, '')}x speed` : ''}`; } this.el.classList.remove('hidden'); this.el.classList.toggle('fishing', kind === 'fish'); if (kind === 'fish') this.cast(); this.render();
   }
   /** Fishing: wait for the float to bob, then strike while it is under. */
@@ -28,21 +39,35 @@ export class WorkGame {
   /** Returns { q: 'perfect'|'good'|'miss', mult } */
   press() {
     if (this.kind === 'fish') return this.strike();
-    const k = this.k, d = Math.abs(this.pos - this.center), q = d <= this.pw() / 2 ? 'perfect' : d <= this.gw() / 2 ? 'good' : 'miss';
-    // a chain of golds speeds the work up, but the marker gets faster and the gold bar narrower
-    this.combo = q === 'perfect' ? this.combo + 1 : q === 'good' ? Math.max(0, this.combo - 1) : 0; this.idle = 0; this.best = Math.max(this.best || 0, this.combo); this.lastPress = performance.now();
-    const mult = q === 'perfect' ? 1 + Math.min(this.combo - 1, 7) * 0.35 : 1;
-    this.pop(q === 'perfect' ? (this.combo > 1 ? `PERFECT x${this.combo}` : 'PERFECT!') : q === 'good' ? 'GOOD' : 'miss', q);
-    Sfx.play(k.sfx); Sfx.play(q); if (q === 'perfect' && this.combo > 1) Sfx.tone(600 + this.combo * 90, 0.08, { type: 'square', vol: 0.1, delay: 0.12 });
+    const k = this.k, d = Math.abs(this.pos - this.center), q = d <= this.pw() / 2 ? 'perfect' : d <= this.gw() / 2 ? 'good' : 'miss', was = this.tier;
+    if (q === 'perfect') { this.combo++; this.pts += 1; }
+    else if (q === 'good') { this.combo = 0; this.pts = Math.max(0, this.pts + (was < 2 ? 0.5 : was < 3 ? 0 : -1)); }   // (near the top only perfects will do)
+    else { this.combo = 0; this.pts = was > 0 ? TIERS[was - 1] : 0; }   // a miss: down a level, to the bottom of the one below
+    this.tier = tierOf(this.pts); this.idle = 0; this.best = Math.max(this.best || 0, this.tier); if (this.tier > (this.game.flags.bestStreak || 0)) this.game.flags.bestStreak = this.tier; this.lastPress = performance.now();
+    const up = this.tier > was, down = this.tier < was, mult = q === 'perfect' ? 1 + 0.3 * this.tier : 1;
+    this.pop(up ? `STREAK ${this.tier}: ${TIER_NAME[this.tier].toUpperCase()}!` : q === 'perfect' ? (this.combo > 1 ? `PERFECT x${this.combo}` : 'PERFECT!') : q === 'good' ? (down ? 'GOOD · streak slipping' : 'GOOD') : down ? `miss · streak down to ${this.tier}` : 'miss', up ? 'perfect' : q);
+    Sfx.play(k.sfx); Sfx.play(q); if (q === 'perfect' && this.combo > 1) Sfx.tone(600 + Math.min(this.combo, 12) * 70, 0.08, { type: 'square', vol: 0.1, delay: 0.12 });
+    if (up) [523, 659, 784, 1047].slice(0, 2 + Math.min(2, this.tier)).forEach((f, i) => Sfx.tone(f, 0.1, { type: 'square', vol: 0.11, delay: 0.14 + i * 0.07 }));
+    if (down) Sfx.tone(330, 0.22, { type: 'triangle', vol: 0.16, slide: -140, delay: 0.08 });
     if (q !== 'miss') this.newZone();
-    const c = $('wg-combo'); c.textContent = this.combo > 1 ? `🔥 CHAIN x${this.combo}  (+${Math.round((mult - 1) * 100)}%)` : ''; this.el.dataset.heat = Math.min(4, this.combo);
-    this.el.classList.remove('hit-perfect', 'hit-good', 'hit-miss'); void this.el.offsetWidth; this.el.classList.add('hit-' + q);
-    return { q, mult };
+    this.streakLine(); this.el.classList.remove('hit-perfect', 'hit-good', 'hit-miss'); void this.el.offsetWidth; this.el.classList.add('hit-' + q);
+    if (up && this.tier === 1 && !this.game.flags.toldStreak) { this.game.flags.toldStreak = true; this.game.ui.toast('🔥 A streak! Perfect taps in a row send a shockwave along the ground that works on things nearby. A miss knocks the streak down a level.', 5200); }
+    return { q, mult, tier: this.tier, up, down };
   }
-  /** Zone widths and marker speed tighten as the gold chain grows. */
-  pw() { return this.k.perfect * this.game.skills.zone(this.kind) * Math.max(0.4, 1 - Math.min(this.combo, 6) * 0.1); }
-  gw() { return this.k.good * this.game.skills.zone(this.kind) * Math.max(0.6, 1 - Math.min(this.combo, 6) * 0.06); }
-  spd() { return this.k.speed * (1 + Math.min(this.combo, 8) * 0.12); }
+  /** The streak under the bar: five pips, its name and what a perfect is worth now. */
+  streakLine() {
+    const t = this.tier, c = $('wg-combo'); this.el.dataset.heat = t;
+    c.textContent = t ? `🔥 ${'●'.repeat(t)}${'○'.repeat(5 - t)}  ${TIER_NAME[t].toUpperCase()} · perfects x${(1 + 0.3 * t).toFixed(1)}` : this.pts > 0 ? `○○○○○  perfects in a row build a streak` : '';
+  }
+  /**
+   * How hard the bar is. The streak makes the marker quicker and the gold narrower; so does skill past level 3 (the
+   * zone widens a little up to level 5 and narrows after), so the top levels have to be earned and kept. Never quicker
+   * than a person can hit: the gold is always at least ~32 ms wide in time, the green ~100 ms.
+   */
+  lvl() { return this.game.skills.level(this.kind); }
+  spd() { return this.k.speed * (1 + 0.035 * Math.max(0, this.lvl() - 3)) * (1 + 0.07 * this.tier); }
+  pw() { return Math.max(this.k.perfect * this.game.skills.zone(this.kind) * (1 - 0.07 * this.tier), this.spd() * 0.032); }
+  gw() { return Math.max(this.k.good * this.game.skills.zone(this.kind) * (1 - 0.04 * this.tier), this.spd() * 0.1); }
   strike() {
     this.idle = 0; this.lastPress = performance.now(); let q;
     if (this.fishState === 'bite') { const fast = this.fishT > this.biteWin() * 0.5; q = fast ? 'perfect' : 'good'; this.combo = q === 'perfect' ? this.combo + 1 : this.combo; this.pop(q === 'perfect' ? (this.combo > 1 ? `CAUGHT IT! x${this.combo}` : 'CAUGHT IT!') : 'Got one!', q); Sfx.play('perfect'); this.fishState = 'reel'; this.fishT = 0.8; }
@@ -71,6 +96,6 @@ export class WorkGame {
   render() {
     const k = this.k; $('wg-cursor').style.left = (this.pos * 100) + '%';
     const g = $('wg-good'), p = $('wg-perfect'); const gw = this.gw(), pw = this.pw(); g.style.left = ((this.center - gw / 2) * 100) + '%'; g.style.width = (gw * 100) + '%'; p.style.left = ((this.center - pw / 2) * 100) + '%'; p.style.width = (pw * 100) + '%';
-    $('wg-hint').textContent = this.game.ui.keyText(this.combo > 1 ? 'Keep the chain going! Gold gets smaller and faster.' : 'Tap E in the green, gold = perfect. Golds in a row = faster work.');
+    $('wg-hint').textContent = this.game.ui.keyText(this.tier ? 'Keep the streak going! A miss knocks it down a level.' : 'Tap E in the green, gold = perfect. Perfects in a row build a streak.');
   }
 }
