@@ -40,11 +40,13 @@ export class RoadPlans {
     // (there may not be one yet): Sam's go in his backpack (or at his feet if it's full), a builder's are left by the
     // path in a pile for whoever's passing to carry in
     { const tree = g.terrain.trees.find((t) => t.alive && t.tx === p.x && t.tz === p.z); if (tree) { p.fellT = (p.fellT || 0) + dt; if (p.fellT >= 1.6) { p.fellT = 0; g.terrain.fallFrom = null; g.terrain.chopTree(tree); this.logs(tree, by); g.particles && g.particles.burst(tree.x, 1.0, tree.z, 0x8a5a33, 4, 1.4, 0.6, 0.06); } p.felling = true; return false; } p.felling = false; }
-    if (p.type >= 2 && !p.paid) { if (g.economy.stock.stone < 1) return false; g.economy.stock.stone -= 1; p.paid = true; }
+    if (p.type >= 2 && !p.paid) { if (g.economy.stock.stone >= 1) g.economy.stock.stone -= 1; else if (by && by === g.player && by.invTake('stone', 1)) {} else return false; p.paid = true; }   // (Sam can pave with stone from his backpack)
     p.progress += dt / WORK[p.type]; p.tile.scale.y = 1 + p.progress * 2; if (!p.ownMat) { p.ownMat = true; p.tile.material = p.tile.material.clone(); } p.tile.material.opacity = 0.55 + p.progress * 0.35;   // (its own material: changing the shared one made every planned tile on the island pulse)
     if (p.progress >= 1) { g.terrain.clearStumpsIn(p.x, p.z); this.drop(p); w.addRoad(p.x, p.z, p.type); g.flags.pathsBuilt = (g.flags.pathsBuilt || 0) + 1; return true; }
     return false;
   }
+  /** Can the tile be laid now? Paving and plaza tiles need their stone first, from the Stockyard (or Sam's backpack). */
+  hasStone(p, by) { const g = this.game; return p.type < 2 || p.paid || g.netVisitor || g.economy.stock.stone >= 1 || !!(by && by === g.player && (by.inv.stone || 0) >= 1); }
   logs(tree, by) {
     const g = this.game, P = g.player;
     if (by === P) { if (P.invAdd('timber', 1)) { if (!this.toldBag) { this.toldBag = true; g.ui.toast('+1 timber in your backpack (from the tree on the path)', 2400); } return; } if (!this.toldFull) { this.toldFull = true; g.ui.toast('Backpack full: the log is left on the ground by the path', 2600); } }

@@ -391,7 +391,8 @@ export class Player {
     for (const b of B) if (b.state === 'done' && b.spots.seat && (b.def.open || b.def.park || b === g.buildings.playerInside)) for (const s of b.spots.seat) { if (s.taken) continue; const d = Math.hypot(s.x - px, s.z - pz); if (d < (b.def.park === 'camp' ? 2.2 : 1.4)) consider({ kind: 'seat', seat: s, b, text: b.def.park === 'camp' ? 'Sit by the fire' : 'Sit down' }, d + 0.3, s.x, s.z); }
     if (g.roadPlans.count) {
       const p0 = g.roadPlans.at(px, pz); let rp = p0, rd = 0; if (!rp) { for (const q of g.roadPlans.plans.values()) { const d = Math.hypot(q.cx - px, q.cz - pz); if (d < 3.4 && (!rp || d < rd)) { rp = q; rd = d; } } }
-      if (rp) consider(this.tools.has('shovel') ? { kind: 'road', plan: rp, work: 'dig', text: rp.type === 3 ? 'Lay the plaza paving (uses 1 stone)' : `Dig the ${rp.type === 2 ? 'paved road (uses 1 stone)' : 'path'}` } : { kind: 'info', text: 'You need the Shovel to dig paths. Pick it up from the Tool Rack.' }, rd + 0.3, undefined, undefined, [rp.cx, rp.cz]);
+      if (rp) { const what = rp.type === 3 ? 'plaza paving' : 'paved road', stone = g.roadPlans.hasStone(rp, this), bag = rp.type >= 2 && !rp.paid && !g.netVisitor && g.economy.stock.stone < 1 ? ' from your backpack' : '';
+      consider(!this.tools.has('shovel') ? { kind: 'info', text: 'You need the Shovel to dig paths. Pick it up from the Tool Rack.' } : !stone ? { kind: 'info', text: `The ${what} needs 1 stone, and there's none in the Stockyard or your backpack. Mine a rock first.` } : { kind: 'road', plan: rp, work: 'dig', text: rp.type === 3 ? `Lay the plaza paving (uses 1 stone${bag})` : rp.type === 2 ? `Dig the paved road (uses 1 stone${bag})` : 'Dig the path' }, rd + 0.3, undefined, undefined, [rp.cx, rp.cz]); }
     }
     { const v = g.celebrations.guests.v; if (v && v.s.mesh.visible && !g.photos.shoot) { const d = Math.hypot(v.s.x - px, v.s.z - pz); if (d < 3.4) consider({ kind: 'act', text: v.met ? `Say hello to ${v.G.name} again` : g.photos.hasCamera ? `Ask ${v.G.name} for a photo (they'll sign it)` : `Ask ${v.G.name} for an autograph`, act: () => g.celebrations.guests.meet() }, d - 3, undefined, undefined, [v.s.x, v.s.z]); } }   // (ahead of the fans crowding round)
     for (const b of g.upgrades.orders.length ? B.concat(g.upgrades.orders) : B) {
@@ -546,7 +547,7 @@ export class Player {
       wg.setProgress(t.b.progress, `${Math.round(t.b.progress * 100)}%`);
       if (t.b.state === 'done') { wg.stop(); this.finished(t.b); }
     } else if (t.kind === 'road') {
-      const p = t.plan; if (g.netVisitor) { if (value) g.net.help('dig', p, value * 1.6 * (tap ? 1 : speed)); } else if (value && g.roadPlans.work(p, value * 1.6 * (tap ? 1 : speed), this)) { wg.stop(); Sfx.play('unit'); g.ui.toast('Path dug!'); } else if (p.type === 2 && !p.paid) g.ui.toast('No stone in the Stockyard for paving.');
+      const p = t.plan; if (g.netVisitor) { if (value) g.net.help('dig', p, value * 1.6 * (tap ? 1 : speed)); } else if (value && g.roadPlans.work(p, value * 1.6 * (tap ? 1 : speed), this)) { wg.stop(); Sfx.play('unit'); g.ui.toast('Path dug!'); } else if (!p.felling && !g.roadPlans.hasStone(p, this)) { wg.stop(); Sfx.play('deny'); g.ui.toast(`No stone left for the ${p.type === 3 ? 'plaza paving' : 'paved road'}: mine a rock or fill the Stockyard.`, 2600); }
       wg.setProgress(p.progress, `${Math.round(p.progress * 100)}%`);
     }
   }
