@@ -48,7 +48,7 @@ export class PlanMenu {
       if (un) status = matText(d.mat) || 'free';
       else if (p === 'pending') { status = 'permit pending…'; act = 'none'; }
       else if (pop < d.permit.pop) { status = `needs ${d.permit.pop} residents`; act = 'none'; }
-      else { status = `permit ${fmtMoney(d.permit.cost)}: press to request`; act = 'permit'; }
+      else { status = `permit ${fmtMoney(d.permit.cost)}: post a form at the Postbox`; act = 'postbox'; }   // (permits go by post, or by computer terminal later: not from here)
       const tick = n ? `<span class="tick">✓${n > 1 ? ' ×' + n : ''}</span>` : sites ? '<span class="tick site">🏗️</span>' : '', asked = !n && g.flags.asks && g.flags.asks[k] && g.flags.asks[k].length;
       if (asked) status = `🙋 ${asked} asked for one · ` + status;
       return `<button class="card ${n ? 'built' : ''} ${un ? '' : 'locked'} ${g.god.tool.sub === k ? 'on' : ''}" data-a="${act}" data-k="${k}"><span class="ic">${ICON[k] || '🏠'}</span>${tick}<b>${d.name}</b><small>${status}</small><small class="pp">${purposeOf(k, d)}</small></button>`;
@@ -95,7 +95,7 @@ export class PlanMenu {
     if (a === 'tab') { this.tab = k; this.focusFirst = true; }
     if (a === 'cat') { this.cat = k; }
     if (a === 'place') { const cat = CATS.find((c) => c[1].includes(k)), tool = cat ? cat[2] : 'build'; if (tool === 'build') g.ui.buildTab = cat[0]; g.god.setTool(tool, k); g.ui.openSub(tool); this.close(); g.ui.toast(`Place the ${BUILDINGS[k].name}: ${g.input.padActive ? 'move the cursor, ✕ to place, △ to rotate, ○ to cancel' : 'click on the map, R rotates'}.`, 3200); return; }
-    if (a === 'permit') { const r = g.economy.requestPermit(k); g.ui.toast(r.ok ? `Permit requested for the ${BUILDINGS[k].name}. The Council replies by morning.` : r.msg, 2800); }
+    if (a === 'postbox') { const box = g.mail.box; g.ui.toast(box ? `The ${BUILDINGS[k].name} needs a permit: fill in a form at the Postbox (walk Sam there and press E). The Council replies by morning.` : 'Permits go by post: build a Postbox first (Civic), then fill in a form there.', 4200); if (box && g.markers) g.markers.add(box.cx, box.cz, '📮', 'Postbox: permit forms', 120); Sfx.play('ui'); return; }
     if (a === 'none') { Sfx.play('deny'); return; }
     if (a === 'q') { const it = this.q[+btn.dataset.i], m = btn.dataset.m; if (!it) return;
       if (m === 'show') { this.close(); g.god.target.set(it.s.cx, 0, it.s.cz); g.god.dist = Math.min(g.god.dist, 45); return; }
