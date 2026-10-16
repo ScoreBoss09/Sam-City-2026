@@ -6,7 +6,7 @@ import { Sfx } from '../core/Sfx.js';
 
 /** Little things to find while exploring. A few of them are a bit odd for a sleepy English island. */
 export const CURIOS = [
-  { id: 'coin', icon: '🪙', name: 'Old penny', desc: 'A 1967 penny, worn smooth. Somebody\'s lucky charm once. The Queen is facing the wrong way.' },
+  { id: 'coin', icon: '💰', name: 'Old penny', desc: 'A 1967 penny, worn smooth. Somebody\'s lucky charm once. The Queen is facing the wrong way.' },
   { id: 'teacup', icon: '☕', name: 'Chipped teacup', desc: 'Bone china with roses on. The same pattern as the cups at the café, and the vicarage, and in your own kitchen.' },
   { id: 'medal', icon: '🎖️', name: 'Bowls club medal', desc: '"Runner-up, Ladies\' Pairs". Everyone at the bowls club remembers the medal. Nobody remembers the match.' },
   { id: 'marble', icon: '🔮', name: 'Glass marble', desc: 'A blue swirl marble, the kind children lose down a drain. Held up to the light, the swirl looks painted on.' },

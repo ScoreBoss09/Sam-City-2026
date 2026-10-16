@@ -11,7 +11,7 @@ const paved = (g) => { let n = 0; for (const r of g.world.road) if (r === 2) n++
 const avgMood = (g) => { const R = g.population.adults(); return R.length ? Math.round(R.reduce((a, s) => a + s.mood, 0) / R.length * 100) : 0; };
 export const CHALLENGES = [
   { id: 'larder', icon: '🧺', title: 'A full larder', text: 'Have 40 food in the Stockyard.', need: 40, have: (g) => Math.floor(g.economy.stock.food), pay: 400, pop: 0 },
-  { id: 'logpile', icon: '🪵', title: 'Timber stack', text: 'Have 50 timber in the Stockyard.', need: 50, have: (g) => Math.floor(g.economy.stock.timber), pay: 350, pop: 0 },
+  { id: 'logpile', icon: '🌲', title: 'Timber stack', text: 'Have 50 timber in the Stockyard.', need: 50, have: (g) => Math.floor(g.economy.stock.timber), pay: 350, pop: 0 },
   { id: 'handy', icon: '🛠️', title: 'Handy Sam', text: 'Reach a total of 12 skill levels (see your journal).', need: 12, have: (g) => g.skills.total(), pay: 400, pop: 0 },
   { id: 'friends', icon: '🤝', title: 'Friendly face', text: 'Make 3 friends: chat to people and do them favours.', need: 3, have: friends, pay: 350, pop: 3 },
   { id: 'favours', icon: '🎁', title: 'Good neighbour', text: 'Do 5 favours for the townsfolk.', need: 5, have: (g) => g.flags.favours || 0, pay: 500, pop: 4 },

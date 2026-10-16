@@ -5,11 +5,11 @@ const GATHER_YARDS = ['forager', 'fisher', 'lumbercamp', 'quarry', 'farm', 'bric
 
 // `age` is the architecture age an upgrade needs (see ages.js): you can't fit steel tools before there's a foundry.
 const HOME = [
-  { name: 'Upstairs rooms', icon: '🪜', age: 1, desc: 'A second storey with bedrooms up a proper staircase.', mat: { timber: 8, stone: 4 }, work: 30, pop: 4,
+  { name: 'Upstairs rooms', icon: '⬆️', age: 1, desc: 'A second storey with bedrooms up a proper staircase.', mat: { timber: 8, stone: 4 }, work: 30, pop: 4,
     apply(def) { def.floors += 1; def.bedsUp = (def.bedsUp || 0) + (def.w * def.d >= 4 ? 2 : 1); def.stairs = true; } },
   { name: 'Tudor makeover', icon: '🏡', age: 1, desc: 'Black-and-white timber framing and a tiled roof. Another bed, and the family are thrilled.', mat: { timber: 10, brick: 6, glass: 2 }, work: 40, pop: 12,
     apply(def) { def.wall = 'tudor'; def.roof = 'gable'; def.roofColor = 0x7a4a37; def.bedsUp = (def.bedsUp || 0) + 1; def.homeJoy = 0.1; def.stairs = true; } },
-  { name: 'Gas lamps and a bay window', icon: '🪟', age: 2, desc: 'Gas lighting, a coal range and a bay window to wave from. Cosier evenings.', mat: { brick: 6, glass: 3, steel: 1 }, work: 30, pop: 20,
+  { name: 'Gas lamps and a bay window', icon: '💡', age: 2, desc: 'Gas lighting, a coal range and a bay window to wave from. Cosier evenings.', mat: { brick: 6, glass: 3, steel: 1 }, work: 30, pop: 20,
     apply(def) { def.homeJoy = (def.homeJoy || 0) + 0.05; } },
   { name: 'Central heating and double glazing', icon: '🔥', age: 3, desc: 'Radiators in every room and no more ice on the inside of the windows.', mat: { steel: 3, glass: 4 }, work: 30, pop: 35,
     apply(def) { def.homeJoy = (def.homeJoy || 0) + 0.08; def.heating = true; } },
@@ -18,7 +18,7 @@ const TALL_HOME = [HOME[1], HOME[2], HOME[3]];
 const YARD = [
   { name: 'Hand carts', icon: '🛒', age: 0, desc: 'Workers knock up hand carts and haul twice as much each trip.', mat: { timber: 8 }, work: 20, pop: 0,
     apply(def) { def.carry = 2; def.cart = 1; } },
-  { name: 'Wagons and steel tools', icon: '🛞', age: 2, desc: 'Four-wheeled wagons (three times the load) and steel tools that work a quarter faster.', mat: { timber: 10, steel: 2 }, work: 35, pop: 15,
+  { name: 'Wagons and steel tools', icon: '🚜', age: 2, desc: 'Four-wheeled wagons (three times the load) and steel tools that work a quarter faster.', mat: { timber: 10, steel: 2 }, work: 35, pop: 15,
     apply(def) { def.carry = 3; def.cart = 2; def.toolSpeed = 1.25; } },
   { name: 'Steam engine', icon: '♨️', age: 2, desc: 'A little steam engine does the heavy lifting: half as fast again.', mat: { steel: 4, brick: 4 }, work: 40, pop: 25,
     apply(def) { def.toolSpeed = (def.toolSpeed || 1) * 1.3; } },
@@ -53,7 +53,7 @@ const POLICE = [
 
 // Sam Tower's last step, once the seams in the sky have shown (story.domeRevealed): a stair up to the ceiling of the sky
 const TOWER = [
-  { name: 'Stairway to Heaven', icon: '🪜', age: 0, desc: 'A steel stair from the roof of Sam Tower that winds up and up, past the clouds, until it touches the sky.', mat: { steel: 40, timber: 20, glass: 6 }, work: 160, pop: 0,
+  { name: 'Stairway to Heaven', icon: '☁️', age: 0, desc: 'A steel stair from the roof of Sam Tower that winds up and up, past the clouds, until it touches the sky.', mat: { steel: 40, timber: 20, glass: 6 }, work: 160, pop: 0,
     need: (g) => !!(g.story && g.story.domeRevealed), apply(def) { def.stairway = true; } },
 ];
 

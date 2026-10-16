@@ -2,10 +2,10 @@ import { Sfx } from '../core/Sfx.js';
 
 /** Practice makes perfect: every good tap on the timing bar teaches Sam a little. Higher levels work faster, get a wider green zone and, from level 5, the odd bonus unit. */
 export const SKILLS = {
-  chop:    { icon: '🪓', name: 'Woodcutting', perk: 'a spare log now and then' },
+  chop:    { icon: '🌲', name: 'Woodcutting', perk: 'a spare log now and then' },
   mine:    { icon: '⛏️', name: 'Quarrying',   perk: 'a spare stone now and then' },
   dig:     { icon: '🛠️', name: 'Digging',     perk: 'paths dug in fewer strokes' },
-  harvest: { icon: '🫐', name: 'Foraging',    perk: 'a spare handful now and then' },
+  harvest: { icon: '🍓', name: 'Foraging',    perk: 'a spare handful now and then' },
   fish:    { icon: '🎣', name: 'Fishing',     perk: 'more time to strike, a spare fish now and then' },
   build:   { icon: '🔨', name: 'Building',    perk: 'sites go up faster' },
 };

@@ -7,7 +7,7 @@
 // Buildings keep their plan and use; their walls and roofs change as the age turns (one building at a time).
 
 export const AGES = ['Timber & Thatch', 'Brick & Masonry', 'Industrial', 'Electric', 'Modern'];
-export const AGE_ICON = ['🪵', '🧱', '🏭', '💡', '🏙️'];
+export const AGE_ICON = ['🌲', '🧱', '🏭', '💡', '🏙️'];
 export const AGE_NEEDS = [
   '',
   'a finished Brickworks',
