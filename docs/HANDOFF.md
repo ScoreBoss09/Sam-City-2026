@@ -100,7 +100,7 @@ windows, "Sam is ..." under the clock in the planning view.
 
 ## To do (the owner's open list, most recent first)
 
-1. **Replace the Planning menu with a Cities: Skylines style interface** (task #93): first version done (`src/ui/BuildBar.js`, `src/ui/Previews.js`; the Planning menu's pages now dock above the bar via `PlanMenu.dock()`; right-click on the map or a card for details; B = work queue, O = town). Possible next polish: a richer right-click card for things on the map (the old `#query` panel), and checking every screen size and the controller flow end to end. Original brief: The owner: "I don't think it
+1. **Replace the Planning menu with a Cities: Skylines style interface** (task #93): done (`src/ui/BuildBar.js`, `src/ui/Previews.js`; the Planning menu's pages now dock above the bar via `PlanMenu.dock()`; right-click on the map or a card for details, with a building card (`UI.buildingCard`) for buildings and sites; B = work queue, O = town). Possible next polish: checking every screen size and the controller flow end to end. Original brief: The owner: "I don't think it
    should be there as it might confuse players." Everything should be reachable from the planning view itself:
    - a bottom toolbar with category tabs (roads, homes, food, industry, civic, commerce, parks, utilities, plus
      panels for the work queue, upgrades, money and the town overview), like Cities: Skylines;
@@ -123,12 +123,11 @@ windows, "Sam is ..." under the clock in the planning view.
    a chapter is done when all its hard steps are; in `UI.renderObjectives` add a centred intro (CSS class with a
    transform transition) the first time, and a tick/burst animation plus a two-note chime on each step, a bigger one on
    each chapter (`Sfx.tone` in `src/core/Sfx.js`).
-3. **Gathering and digging mini-games** (task #89). Berries, trees, rocks and path digging: ramp the difficulty up at
-   the top levels so they stay a challenge; on a combo or a perfect, a **visible shockwave** spreads along the ground from
-   Sam that chops/gathers nearby trees and resources and lights up and advances nearby paths, so the existing bonus near
-   the next tree no longer looks like a glitch; as the streak grows, the wave grows and also adds build progress to
-   nearby sites, each touched thing highlighted, with sound. The mini-game is `src/ui/WorkGame.js`; skills in
-   `src/systems/Skills.js`; path work in `src/systems/RoadPlans.js` (`work(p, dt, by)`).
+3. **Gathering and digging mini-games** (task #89): done (round 6.11, item 204 in the roadmap). The streak lives in
+   `src/ui/WorkGame.js` (`TIERS`, `press()` returns `{ q, mult, tier, up, down }`), the wave in
+   `src/systems/Shockwave.js` (`g.shock.fire(P, target, tier, up)`), skill slipping in `Skills.slip()`. Tune there if
+   the owner finds it too hard or too generous. The plaza/paving stone check (owner's note) is done too
+   (`RoadPlans.hasStone`).
 4. **Batch 005 models** (task #60): 97 reworked GLBs in the owner's upload
    `SamCity_Batch_005_Visual_Quality_Fixes_97_GLBS.zip` (if it isn't in your session, ask the owner to re-upload).
    Vehicles need see-through windows and visible drivers. Pipeline and rules: `docs/ASSETS.md`, `tools/assets/`.

@@ -229,6 +229,15 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 #wg-good { background: rgba(90, 210, 140, .75) !important; } #wg-perfect { background: var(--accent) !important; }
 #wg-cursor { border-radius: 3px; }
 .wg-pop { font: 700 24px var(--ui-head) !important; letter-spacing: .06em; }
+/* the streak: the panel warms up level by level (data-heat 1..5), the top one glows and breathes */
+#wg-combo { font: 700 12px var(--ui-head) !important; letter-spacing: .08em; color: #ffb45a !important; height: 16px; margin-top: 6px !important; text-shadow: 0 0 8px rgba(255, 120, 30, .6) !important; }
+#workgame[data-heat="1"] { border-color: rgba(255, 210, 63, .45) !important; }
+#workgame[data-heat="2"] { border-color: rgba(255, 176, 58, .7) !important; box-shadow: 0 0 10px rgba(255, 160, 40, .35) !important; }
+#workgame[data-heat="3"] { border-color: #ff8a2a !important; box-shadow: 0 0 16px rgba(255, 120, 40, .55) !important; }
+#workgame[data-heat="4"] { border-color: #ff5a1a !important; box-shadow: 0 0 24px rgba(255, 80, 20, .75) !important; }
+#workgame[data-heat="5"] { border-color: #fff07a !important; box-shadow: 0 0 30px rgba(255, 210, 60, .9) !important; animation: wgheat 0.9s ease-in-out infinite alternate; }
+#workgame[data-heat="4"] #wg-perfect, #workgame[data-heat="5"] #wg-perfect { background: #fff07a !important; box-shadow: 0 0 12px #ffcc00; }
+@keyframes wgheat { from { box-shadow: 0 0 18px rgba(255, 210, 60, .6); } to { box-shadow: 0 0 34px rgba(255, 230, 90, 1); } }
 /* planning view tools */
 #toolbox, #submenu { background: var(--hud) !important; border-radius: var(--r-md) !important; }
 #app .tool { border-radius: var(--r-sm) !important; font: 600 12px var(--ui-font) !important; }
