@@ -14,6 +14,7 @@ import { TOOLS as TOOL_NAMES, TOOL_ICON, MAT_ICON, BACKPACK } from '../player/Pl
 import { Sfx } from '../core/Sfx.js';
 import { PAD_NAMES } from '../core/Bindings.js';
 import { CURIOS } from '../systems/Curios.js';
+import { ICON } from '../data/icons.js';
 
 const $ = (id) => document.getElementById(id);
 /** Line icons for the tool belt (they look the same on every system, unlike the newer emoji). */
@@ -465,13 +466,13 @@ export class UI {
 
   // ---------- query ----------
   query(o) {
-    const q = $('query'), g = this.game; let h = ''; clearTimeout(this._qt); this.qSim = null; this.qFollow = false; q.classList.remove('card');
+    const q = $('query'), g = this.game; let h = ''; clearTimeout(this._qt); this.qSim = null; this.qB = null; this._qH = ''; this.qFollow = false; q.classList.remove('card');
     if (o.sim) { this.qSim = o.sim; this.qT = 0; q.classList.add('card'); this.simCard(); q.classList.remove('hidden'); Sfx.play('ui');
       const s = o.sim, alive = () => this.qSim === s && !s.remove;   // pins for them, their home and their work while the card is open
       if (g.markers) { g.markers.add(s.x, s.z, '👤', s.name, 3600, s, alive); if (s.home) g.markers.add(s.home.cx, s.home.cz, '🏠', `${s.first}'s home`, 3600, null, alive); if (s.workplace) g.markers.add(s.workplace.cx, s.workplace.cz, '💼', `${s.first}'s work`, 3600, null, alive); }
       return; }
     q.dataset.who = '';
-    if (o.b) { const b = o.b; h = `<b>${b.def.name}</b><br>${b.def.blurb || ''}<br><i>${purposeOf(b.id, b.def)}</i><br>${b.graffiti ? 'Covered in graffiti.<br>' : ''}${b.state === 'site' ? `Under construction: ${Math.round(b.progress * 100)}%<br>Materials: ${Object.entries(b.need).map(([m, n]) => `${m} ${b.have[m] || 0}/${n}`).join(', ')}` : `Residents ${b.residents.length}/${b.def.beds || 0}${b.residents.length ? ': ' + b.residents.map((r) => r.first).join(', ') : ''}<br>Workers ${b.workers.length}/${Object.values(b.def.jobs || {}).reduce((x, c) => x + c, 0)}${b.workers.length ? ': ' + b.workers.map((r) => r.first).join(', ') : ''}`}`; }
+    if (o.b) { this.buildingCard(o.b); Sfx.play('ui'); return; }
     else if (o.node) h = `<b>${o.node.label}</b><br>${o.node.more}`;
     else h = g.god.describe(o.tile[0], o.tile[1]);
     q.innerHTML = h; q.classList.remove('hidden'); this._qt = setTimeout(() => q.classList.add('hidden'), 6000);
@@ -502,7 +503,32 @@ export class UI {
       <div class="qbtns">${s.home ? '<button data-q="home">🏠 Home</button>' : ''}${s.workplace ? '<button data-q="work">💼 Work</button>' : ''}<button data-q="follow">👁 Follow</button></div>`; }
     const d = q.querySelector('.qdyn'); if (d && d.innerHTML !== dyn) d.innerHTML = dyn; const f = q.querySelector('[data-q="follow"]'); if (f) f.classList.toggle('on', !!this.qFollow);
   }
+  /**
+   * Right-click (or Info) on a building: a card like the toolbar's, for this one in particular: its picture, what it's
+   * for, who lives or works there and the jobs going, how far along it is if it's a site and what it's waiting for, its
+   * upgrades (with a button for the next), whether the lights are on. Stays till closed.
+   */
+  buildingCard(b) {
+    const g = this.game, q = $('query'), d = b.def, url = this.bar && this.bar.previews.get(b.id), site = b.state === 'site', jobs = Object.values(d.jobs || {}).reduce((x, c) => x + c, 0), U = g.upgrades, steps = U ? U.steps(b) : [], lvl = b.level || 0;
+    const names = (L) => L.map((r) => r.first).join(', '), line = (k, v) => `<div class="qline"><b>${k}</b> ${v}</div>`, bar = (label, v, col) => `<div class="qbar"><span>${label}</span><i><b style="width:${Math.round(Math.max(0, Math.min(1, v)) * 100)}%;background:${col}"></b></i></div>`;
+    let h = `<h2><span>${ICON[b.id] || '🏠'} ${d.name}</span><button data-q="close" class="xbtn" title="Close">✕</button></h2><div class="pv qpv ${url ? 'ok' : ''}" ${url ? `style="background-image:url(${url})"` : ''}><i class="em">${ICON[b.id] || '🏠'}</i></div>`;
+    const why = purposeOf(b.id, site ? d : { ...d, beds: 0, jobs: null });   // (once built, the lines below say who lives and works there)
+    if (d.blurb) h += `<div class="qline blurb">${d.blurb}</div>`; if (why) h += `<div class="qline">${why}</div>`;
+    if (site) {
+      const left = Object.entries(b.need).map(([m, n]) => `${n - Math.min(n, b.have[m] || 0)} ${(MATERIALS[m] || { name: m }).name.toLowerCase()}`).filter((t) => !t.startsWith('0 ')).join(', ');
+      h += bar('Built', b.progress || 0, '#ffc53d') + line('Still needs', left || 'nothing: it\'s all on site') + line('Builders', b.builders ? `${b.builders} at work` : 'none on it right now');
+    } else {
+      if (d.beds) h += line('Home to', `${b.residents.length} of ${d.beds}${b.residents.length ? ': ' + names(b.residents) : ''}`);
+      if (jobs) h += line('Jobs', `${b.workers.length} of ${jobs} filled${b.workers.length ? ': ' + names(b.workers) : ''}`);
+      if (steps.length) { const nx = U.next(b), ord = U.orderFor(b), ok = nx && U.check(b).ok; h += line('Upgrades', `${steps.map((_, k) => (k < lvl ? '★' : '☆')).join('')}${nx ? ` · next: ${nx.icon} ${nx.name}${ord ? ' (in the work queue)' : ok ? '' : ` (${U.check(b).why.toLowerCase()})`}` : ' · fully upgraded'}`); if (ok && !ord) h += `<div class="qbtns"><button data-q="upgrade">⬆️ ${nx.name}: ${U.costText(nx)}</button></div>`; }
+      if (!d.park && g.buildings.isLit) h += line('Lights', g.buildings.isLit(b, g.clock.hour) ? 'on' : 'off');
+      if (b.graffiti) h += line('Note', 'covered in graffiti');
+    }
+    if (!url && this.bar && !this._qPv) this._qPv = this.bar.previews.onReady((id) => { if (this.qB && this.qB.id === id) this.buildingCard(this.qB); });   // (the picture fills in when it's drawn)
+    this.qSim = null; this.qB = b; this.qBT = 1; if (this._qH !== h) { this._qH = h; q.innerHTML = h; } q.classList.add('card'); q.classList.remove('hidden');
+  }
   queryClick(e) {
+    const bt = e.target.closest('button'); if (bt && this.qB && !this.qSim) { const g = this.game, b = this.qB; if (bt.dataset.q === 'close') { this.qB = null; $('query').classList.add('hidden'); return; } if (bt.dataset.q === 'upgrade') { const r = g.upgrades.order(b); g.ui.toast(r.ok ? `${b.def.name}: upgrade added to the work queue.` : r.why, 2600); Sfx.play(r.ok ? 'ui' : 'deny'); this.buildingCard(b); } return; }
     const b = e.target.closest('button'); if (!b || !this.qSim) return; const a = b.dataset.q, s = this.qSim, G = this.game.god;
     if (a === 'close') { this.qSim = null; this.qFollow = false; $('query').classList.add('hidden'); return; }
     const go = (x, z) => { G.target.set(x, 0, z); G.distGoal = Math.min(G.distGoal || G.dist, 70); this.qFollow = false; };
@@ -526,6 +552,8 @@ export class UI {
   // ---------- per-frame ----------
   update(dt) {
     this.noticeKeys(dt); this.bar.update(dt);
+    if (this.qB && (this.game.mode !== 'god' || this.qB.removed || !this.game.buildings.list.includes(this.qB))) { this.qB = null; $('query').classList.add('hidden'); }   // (a building's card goes with the planning view, or the building)
+    else if (this.qB && (this.qBT -= dt) <= 0) this.buildingCard(this.qB);   // (and keeps up once a second: a site's progress, who's moved in)
     if (this.qSim) { const s = this.qSim, g = this.game; if (s.remove || g.mode !== 'god') { this.qSim = null; $('query').classList.add('hidden'); } else { if (this.qFollow) g.god.target.set(s.x, 0, s.z); if ((this.qT = (this.qT || 0) - dt) <= 0) { this.qT = 0.5; this.simCard(); } } }   // the query card keeps up
     if (this.buildDirty && performance.now() - (this._bdT || 0) > 250) { this.buildDirty = false; this._bdT = performance.now(); this.refreshSub(); if (this.plan.open && this.plan.tab === 'build') this.plan.render(); }
     if (this.plan.open) { this._planT = (this._planT || 0) - dt; if (this._planT <= 0) { this._planT = 1; this.plan.render(); } }
