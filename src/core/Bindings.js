@@ -22,6 +22,7 @@ export const KEY_ACTIONS = [
   { id: 'bag', label: 'Backpack', code: 'KeyI', group: 'Menus' },
   { id: 'journal', label: 'Journal', code: 'KeyJ', group: 'Menus' },
   { id: 'map', label: 'Island map', code: 'KeyM', group: 'Menus' },
+  { id: 'town', label: 'Town overview (what needs doing)', code: 'KeyO', group: 'Menus' },
   { id: 'planning', label: 'Planning view / Sam', code: 'Tab', group: 'Menus' },
   { id: 'help', label: 'Show the controls', code: 'KeyH', group: 'Menus' },
   { id: 'pause', label: 'Pause / carry on', code: 'KeyP', group: 'Game speed' },

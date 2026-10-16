@@ -199,7 +199,8 @@ export class Game {
     if (ui.pause.open && inp.hit('Escape')) { ui.pause.hide(); inp.pressed.delete('Escape'); }
     else if (!wasModal && this.started && !this.ending && ((inp.hit('Escape') && (this.mode === 'sim' || this.god.tool.id === 'pan')) || inp.hit('PadSpeed'))) { ui.pause.show(); inp.pressed.delete('Escape'); inp.pressed.delete('PadSpeed'); }   // the in-game menu
     if (ui.dialogue) ui.dialogueKeys(inp);
-    if (ui.plan.open && (inp.hit('Escape') || inp.hit('KeyB'))) { ui.plan.close(); inp.pressed.delete('KeyB'); inp.pressed.delete('Escape'); }
+    if (ui.plan.open && (inp.hit('Escape') || inp.hit('KeyB') || inp.hit('KeyO'))) { ui.plan.close(); inp.pressed.delete('KeyB'); inp.pressed.delete('KeyO'); inp.pressed.delete('Escape'); }
+    else if (this.started && !this.ending && !this.netVisitor && !ui.modalOpen && inp.hit('KeyO')) { ui.plan.show('town'); inp.pressed.delete('KeyO'); }   // the town overview, from anywhere (what the warning badge is about)
     else if (this.mode === 'god' && this.started && !ui.modalOpen && inp.hit('KeyB')) ui.plan.show();
     if (inp.hit('F8') || (ui.perfOpen && inp.hit('Escape'))) { ui.togglePerf(); inp.pressed.delete('Escape'); }
     if (ui.terminalB && inp.hit('Escape')) ui.closeTerminal();

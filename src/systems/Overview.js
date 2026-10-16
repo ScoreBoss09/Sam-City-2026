@@ -34,8 +34,8 @@ export class Overview {
       return { m, name: MATERIALS[m].name, stock, made, use, need: need[m], short, days, makers };
     });
     // what's wrong
-    const warn = [];
-    for (const r of mats) {
+    const warn = [], early = !g.depot;   // (before there's a Stockyard nothing can be stored: the first goals are about exactly that)
+    for (const r of mats) { if (early) break;
       if (r.m === 'food') { const per = Math.max(r.use, P.count() * 0.6); if (per > 0 && r.stock < per * 1.5) warn.push({ k: 'food', text: `Food is running low: ${r.stock} left, about ${r1(per)} eaten a day.${r.made ? ` ${r1(r.made)} a day coming in.` : ' Nothing coming in.'} More farms, foragers or fishers, or buy food at the Lift.` }); continue; }
       if (!BUILD_MATS.includes(r.m) || r.short <= 0 || r.days < 1.5) continue;
       const mk = r.makers.reduce((a, o) => ({ jobs: a.jobs + o.jobs, filled: a.filled + o.filled }), { jobs: 0, filled: 0 }), where = BUILDINGS[MAKER[r.m]];
@@ -56,8 +56,11 @@ export class Overview {
   /** The round warning badge on the town panel (hover: what's wrong; click: the town page). */
   badge() {
     const el = document.getElementById('h-warn'), pop = document.getElementById('h-warnpop'); if (!el) return; const W = this.data.warn;
-    el.classList.toggle('hidden', !W.length || this.game.netVisitor); el.textContent = W.length > 1 ? W.length : '!';
-    if (pop) pop.innerHTML = W.map((w) => `<div>⚠️ ${w.text}</div>`).join('') + '<small>Click for the town overview.</small>';
+    el.classList.toggle('hidden', !W.length || !!this.game.netVisitor); el.textContent = W.length > 1 ? W.length : '!';   // (!!: a bare undefined would make toggle() flip it every time)
+    if (pop) pop.innerHTML = W.map((w) => `<div>⚠️ ${w.text}</div>`).join('') + `<small>Click, or ${this.game.input.padActive ? 'see the Town tab of the Planning menu' : 'press ' + this.game.ui.keyText('O')}, for the town overview.</small>`;
+    // and in words, under the town name: the first sentence of each problem in turn (no hovering needed)
+    const tx = document.getElementById('h-warntxt'); if (!tx) return; this.wi = ((this.wi || 0) + 1) % Math.max(1, W.length * 3); const w = W[Math.floor(this.wi / 3)];
+    tx.classList.toggle('hidden', !w || !!this.game.netVisitor); if (w) tx.innerHTML = `⚠️ ${w.text.split(/[:.](\s|$)/)[0]}${W.length > 1 ? ` (${Math.floor(this.wi / 3) + 1} of ${W.length})` : ''} <em>· ${this.game.input.padActive ? 'Town tab' : this.game.ui.keyText('O') + ' for more'}</em>`;
   }
   // ---- where one trade's people are, live and work (god mode)
   toggle(role) { if (this.role === role) return this.hide(); this.hide(); this.role = role; this.build(); }
