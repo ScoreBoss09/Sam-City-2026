@@ -51,18 +51,30 @@ export class Birds {
     for (let k = 0; k < 12; k++) { const tx = Math.floor(Math.random() * MAP), tz = Math.floor(Math.random() * MAP), water = w.terrain[w.idx(tx, tz)] === T.WATER; if (water && k < 6 && Math.random() < 0.3) continue; q.tx = (tx + 0.5) * TILE; q.tz = (tz + 0.5) * TILE; break; }
     q.ty = 8 + Math.random() * 18; q.state = 'soar'; q.t = 6 + Math.random() * 10;
   }
+  /**
+   * Somewhere for a gull to spend the night: a roof near it, but never one with three gulls on already, never the roof
+   * Sam's under or right by him (gulls round Sam would all pick his hut otherwise), and not too near a building's edge.
+   */
+  roostFor(q, not) {
+    const g = this.game, P = g.player, inB = g.buildings.playerInside, count = new Map();
+    for (const o of this.gulls) if (o !== q && o.on && (o.state === 'perch' || o.state === 'land')) count.set(o.on, (count.get(o.on) || 0) + 1);
+    const C = g.buildings.list.filter((b) => b !== not && b !== inB && b.state === 'done' && b.ext && !b.def.park && (count.get(b) || 0) < 3 && Math.hypot(b.cx - P.x, b.cz - P.z) > 14 && Math.hypot(b.cx - q.x, b.cz - q.z) < 160)
+      .map((b) => [b, Math.hypot(b.cx - q.x, b.cz - q.z) + Math.random() * 40]).sort((a, c) => a[1] - c[1]);
+    for (const [b] of C.slice(0, 8)) { const p = perchOn(b, 6); if (p) return p; }
+    return null;
+  }
   update(dt) {
     const g = this.game; this.t += dt; const t = this.t, cam = g.camera.position, P = g.player, w = g.world;
     // ---------- gulls ----------
     const night = (g.atmosphere.night || 0) > 0.5;
     for (const q of this.gulls) {
       q.t -= dt; let flap = false;
-      if (night && q.state !== 'perch' && q.state !== 'land') { const p = nearestPerch(g.buildings.list, q.x, q.z, 140); if (p) { q.state = 'land'; q.on = p.b; q.tx = p.x; q.tz = p.z; q.ty = p.y + 0.12; q.t = 40; } }   // dusk: off to roost on the nearest roof
+      if (night && q.state !== 'perch' && q.state !== 'land' && (q.roostT = (q.roostT || 0) - dt) <= 0) { q.roostT = 3; const p = this.roostFor(q); if (p) { q.state = 'land'; q.on = p.b; q.tx = p.x; q.tz = p.z; q.ty = p.y + 0.12; q.t = 40; } }   // dusk: off to roost on a roof of its own
       if (q.state === 'perch') {
         q.g.position.set(q.x, q.y, q.z); q.wl.rotation.z = 0.15; q.wr.rotation.z = -0.15; q.g.rotation.z = 0; q.g.rotation.x = 0;
-        const gone = q.on && (q.on.remove || !g.buildings.list.includes(q.on)), scared = Math.hypot(P.x - q.x, P.z - q.z) < 7 && Math.abs((P.floorY || 0) + 1.6 - q.y) < 6;
+        const gone = q.on && (q.on.remove || !g.buildings.list.includes(q.on)), scared = !g.buildings.playerInside && Math.hypot(P.x - q.x, P.z - q.z) < (night ? 4 : 7) && Math.abs((P.floorY || 0) + 1.6 - q.y) < (night ? 2.5 : 6);   // (Sam indoors, under the slates, doesn't count)
         if (night && !gone && !scared) { q.t = 5; continue; }   // asleep on the roof till morning
-        if (night) { const p = nearestPerch(g.buildings.list.filter((b) => b !== q.on), q.x, q.z, 80); if (p) { q.state = 'land'; q.on = p.b; q.tx = p.x; q.tz = p.z; q.ty = p.y + 0.12; q.t = 30; q.speed = 4; continue; } }   // woken: just over to the next roof
+        if (night) { const p = this.roostFor(q, q.on); if (p) { q.state = 'land'; q.on = p.b; q.tx = p.x; q.tz = p.z; q.ty = p.y + 0.12; q.t = 30; q.speed = 4; continue; } }   // woken: over to another roof, away from Sam
         if (q.t <= 0 || gone || scared) { this.pickSoar(q); q.ty = q.y + 8; q.speed = 4; }
         continue;
       }
@@ -78,7 +90,15 @@ export class Birds {
       if (q.state === 'dive') { const d2 = Math.hypot(tx - q.x, tz - q.z); ty = d2 < 10 ? SEA + 0.4 : Math.max(q.y, 6); if (q.t <= 0) { q.state = 'climb'; q.t = 3; } if (q.y < SEA + 0.9) { q.state = 'climb'; q.t = 3; g.particles && Math.hypot(cam.x - q.x, cam.z - q.z) < 60 && g.particles.burst(q.x, SEA + 0.1, q.z, 0xdfeaf2, 6, 1.5, 2, 0.08); } }
       if (q.state === 'climb') { ty = 14; flap = true; if (q.t <= 0) this.pickSoar(q); }
       if (q.state !== 'dive') ty = Math.max(ty, 3);   // only a diving gull goes down to the water
-      if (q.state === 'land') { const d2 = Math.hypot(tx - q.x, tz - q.z); if (d2 < 1.2 && Math.abs(q.y - ty) < 0.6) { q.state = 'perch'; q.x = tx; q.z = tz; q.y = ty; q.t = 6 + Math.random() * 14; continue; } if (d2 > 6) ty = Math.max(ty + 4, q.y); if (q.t <= 0) this.pickSoar(q); }
+      if (q.state === 'land') {
+        const d2 = Math.hypot(tx - q.x, tz - q.z); if (q.t <= 0) { this.pickSoar(q); }
+        else if (d2 < 5) {   // the last few metres: straight in, wings up, feet down (no circling round the spot it can't turn tightly enough to hit)
+          const k = Math.min(1, dt * 2.2); q.x += (tx - q.x) * k; q.z += (tz - q.z) * k; q.y += (ty - q.y) * k; if (d2 > 0.05) q.h = Math.atan2(tx - q.x, tz - q.z);
+          if (d2 < 0.25 && Math.abs(q.y - ty) < 0.15) { q.state = 'perch'; q.x = tx; q.z = tz; q.y = ty; q.t = 6 + Math.random() * 14; }
+          const f = Math.sin(t * 12 + q.ph) * 0.5; q.wl.rotation.z = 0.5 + f; q.wr.rotation.z = -0.5 - f; q.g.position.set(q.x, q.y, q.z); q.g.rotation.set(-0.25, q.h, 0, 'YXZ'); q.bank = 0; q.speed = 2; continue;
+        }
+        else if (d2 > 6) ty = Math.max(ty + 4, q.y);
+      }
       // steer: turn towards the target (banking into the turn), ease up and down, slow right down to land
       const dx = tx - q.x, dz = tz - q.z, dist = Math.hypot(dx, dz), want = Math.atan2(dx, dz); let dh = want - q.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
       const turn = Math.max(-1.4, Math.min(1.4, dh * 1.6)); q.h += turn * dt; q.bank += (-turn * 0.45 - q.bank) * Math.min(1, dt * 3);
@@ -106,12 +126,12 @@ export class Birds {
       this.starlings.instanceMatrix.needsUpdate = true;
     } else this.flockAt = null;
     // ---------- pigeons ----------
-    if (!this.homes || (this.reT = (this.reT || 0) - dt) <= 0) { this.reT = 8; const old = this.homes || []; this.homes = [0, 1, 2].map((i) => (old[i] && Math.hypot(old[i].x - cam.x, old[i].z - cam.z) < 90 ? old[i] : this.townSpot(cam))); for (const p of this.pigeons) if (this.homes[p.flock] !== old[p.flock]) p.placed = false; if (this.homes.some((h) => !h)) this.reT = 1; }   // nowhere yet: try again soon
+    if (!this.homes || (this.reT = (this.reT || 0) - dt) <= 0) { this.reT = 8; const old = this.homes || []; this.homes = [0, 1, 2].map((i) => (old[i] && Math.hypot(old[i].x - cam.x, old[i].z - cam.z) < 90 ? old[i] : this.townSpot(cam))); for (const p of this.pigeons) if (this.homes[p.flock] !== old[p.flock]) { p.placed = false; p.state = 'peck'; p.y = p.sy = p.fy = 0; p.roost = null; p.toRoost = false; } if (this.homes.some((h) => !h)) this.reT = 1; }   // nowhere yet: try again soon (and a flock moved elsewhere starts on the ground there, not at the old roof's height)
     for (const p of this.pigeons) {
       const home = this.homes[p.flock]; if (!home) { p.g.visible = false; continue; }
       if (!p.placed) { p.placed = true; p.x = home.x + (Math.random() - 0.5) * 6; p.z = home.z + (Math.random() - 0.5) * 6; }
       p.g.visible = Math.hypot(p.x - cam.x, p.z - cam.z) < 95; p.t -= dt;
-      if (night && p.state === 'peck') { const r = p.roost || (p.roost = nearestPerch(g.buildings.list, home.x + (Math.random() - 0.5) * 10, home.z + (Math.random() - 0.5) * 10, 50)); if (r) { p.state = 'fly'; p.u = 0; p.sx = p.x; p.sz = p.z; p.sy = p.y; p.fx = r.x + (Math.random() - 0.5) * 1.2; p.fz = r.z + (Math.random() - 0.5) * 1.2; p.fy = r.y; p.toRoost = true; } }   // up onto a roof for the night
+      if (night && p.state === 'peck' && (p.rT = (p.rT || 0) - dt) <= 0) { p.rT = 4; if (!home.roofB || !g.buildings.list.includes(home.roofB)) { const n = nearestPerch(g.buildings.list.filter((b) => b !== g.buildings.playerInside), home.x, home.z, 50); home.roofB = n && n.b; } const r = home.roofB && perchOn(home.roofB, 8); if (r) { p.roost = r; p.state = 'fly'; p.u = 0; p.sx = p.x; p.sz = p.z; p.sy = p.y; p.fx = r.x; p.fz = r.z; p.fy = r.y; p.toRoost = true; } }   // up onto the flock's roof for the night, each to a spot of its own (the slates' real height there)
       if (p.state === 'roost') { p.wl.visible = p.wr.visible = false; p.hd.position.y = 0.22; if (!night) { p.state = 'fly'; p.u = 0; p.sx = p.x; p.sz = p.z; p.sy = p.y; p.fx = home.x + (Math.random() - 0.5) * 6; p.fz = home.z + (Math.random() - 0.5) * 6; p.fy = 0; p.toRoost = false; p.roost = null; } p.g.position.set(p.x, p.y, p.z); p.g.rotation.y = p.h || 0; continue; }
       if (p.state === 'peck') {
         const close = Math.hypot(P.x - p.x, P.z - p.z) < 3 || g.population.sims.some((s) => !s.inside && Math.abs(s.x - p.x) < 2 && Math.abs(s.z - p.z) < 2 && s.moved);
