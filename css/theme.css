@@ -383,11 +383,11 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 #app #buildbar .bb-card:hover { transform: translateY(-3px); background: rgba(255, 255, 255, .08); border-color: var(--line-2); }
 #app #buildbar .bb-card.on, #app #buildbar .bb-card.padfocus { border-color: var(--accent); box-shadow: var(--ring); background: rgba(255, 197, 61, .08); }
 #app #buildbar .bb-card.locked .pv { filter: grayscale(.85) brightness(.62); } #app #buildbar .bb-card.locked .nm { color: var(--muted); }
-#app :is(#buildbar, #bb-info) .pv { display: block; height: 94px; border-radius: 9px; background-color: #1b2a40; background-image: radial-gradient(ellipse at 50% 75%, #36577c, #172437 78%); background-size: contain; background-repeat: no-repeat; background-position: center 60%; position: relative; overflow: hidden; }
-#app :is(#buildbar, #bb-info) .pv::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 100%, rgba(120, 170, 90, .35), transparent 65%); pointer-events: none; }
-#app :is(#buildbar, #bb-info) .pv.ok { background-image: none; }
-#app :is(#buildbar, #bb-info) .pv .em { position: absolute; inset: 0; display: grid; place-items: center; font-size: 38px; font-style: normal; opacity: .9; }
-#app :is(#buildbar, #bb-info) .pv.ok .em { display: none; }
+#app :is(#buildbar, #bb-info, #query) .pv { display: block; height: 94px; border-radius: 9px; background-color: #1b2a40; background-image: radial-gradient(ellipse at 50% 75%, #36577c, #172437 78%); background-size: contain; background-repeat: no-repeat; background-position: center 60%; position: relative; overflow: hidden; }
+#app :is(#buildbar, #bb-info, #query) .pv::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 100%, rgba(120, 170, 90, .35), transparent 65%); pointer-events: none; }
+#app :is(#buildbar, #bb-info, #query) .pv.ok { background-image: none; }
+#app :is(#buildbar, #bb-info, #query) .pv .em { position: absolute; inset: 0; display: grid; place-items: center; font-size: 38px; font-style: normal; opacity: .9; }
+#app :is(#buildbar, #bb-info, #query) .pv.ok .em { display: none; }
 #app #buildbar .pv.sw { background-color: var(--sw); background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, .07) 0 7px, transparent 7px 14px); }
 #app #buildbar .pv.sw .em { display: grid; }
 #app #buildbar .bb-card .nm { font: 700 13.5px/1.2 var(--ui-font) !important; margin: 7px 2px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -418,3 +418,6 @@ body.ontitle #app > :not(#view):not(#title):not(#fade):not(#flash):not(#toast):n
 #app #planmenu.docked .phead { font-size: 24px !important; margin-bottom: 12px !important; padding-bottom: 10px !important; }
 @media (max-width: 1180px) { #app #buildbar .bb-btn { width: 46px; height: 48px; } #app #buildbar .bb-btn span { display: none; } #app #planmenu.docked { bottom: 76px !important; } }
 @media (max-width: 1500px) { #buildbar { transform: translateX(calc(-50% - 84px)); } #app #planmenu.docked { transform: translateX(calc(-50% - 84px)); } }   /* (clear of the clock in the corner) */
+#app #query .pv.qpv { height: 128px; margin: 0 0 8px; }
+#app #query .qline.blurb { color: var(--muted); font-style: italic; }
+#app #query .qbtns { margin-top: 8px; } #app #query .qbtns button { width: 100%; padding: 8px 10px; border-radius: 9px; background: var(--accent-soft); border: 1px solid var(--accent); color: #fff; font: 600 13px var(--ui-font) !important; cursor: pointer; } #app #query .qbtns button:hover { background: var(--accent); color: var(--accent-ink); }
